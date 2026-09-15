@@ -85,6 +85,34 @@ def write_json(path: Path, payload: dict[str, Any]) -> int:
     return len(text.encode("utf-8"))
 
 
+
+THAI_DIR = DOCS / "thai"
+PAGE_FILE = DOCS / "index.html"
+FAVICON_FIXES = (
+    ('href="favicon.ico"', 'href="../favicon.ico"'),
+    ('href="favicon-32.png"', 'href="../favicon-32.png"'),
+    ('href="favicon-16.png"', 'href="../favicon-16.png"'),
+    ('href="apple-touch-icon.png"', 'href="../apple-touch-icon.png"'),
+)
+
+
+def write_thai_page() -> int:
+    """Publish the same page one level deeper so /thai/ opens the Thailand tab.
+
+    The copy is generated, never hand edited: index.html stays the only source.
+    The page itself detects the /thai/ path and switches both the tab and the
+    directory it reads data from, so only the icon paths need rewriting here.
+    """
+    html = PAGE_FILE.read_text(encoding="utf-8")
+    for old, new in FAVICON_FIXES:
+        if html.count(old) != 1:
+            raise RuntimeError("favicon anchor not found exactly once: " + old)
+        html = html.replace(old, new, 1)
+    THAI_DIR.mkdir(parents=True, exist_ok=True)
+    target = THAI_DIR / "index.html"
+    target.write_text(html, encoding="utf-8", newline="\n")
+    return len(html.encode("utf-8"))
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     core.init_db()
@@ -110,6 +138,7 @@ def main() -> None:
         "article_count": total,
         "region_counts": region_counts,
     })
+    logging.info("thai page: %d bytes", write_thai_page())
     logging.info("wrote %s: %d articles total", INDEX_FILE.name, total)
     print("total=%d %s" % (total, region_counts))
 
