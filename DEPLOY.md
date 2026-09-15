@@ -2,6 +2,16 @@
 
 내 PC를 켜두지 않아도 공개 페이지가 24시간 돌아가게 만드는 방법이다.
 
+## 주소
+
+| 주소 | 내용 |
+| --- | --- |
+| https://freaky0.github.io/teemobkk-live-news/ | 로 매크로·크립토 탭으로 시작 |
+| https://freaky0.github.io/teemobkk-live-news/thai/ | 태국 소식 탭으로 시작 |
+| https://freaky0.github.io/teemobkk-live-news/?tab=thai | 같은 동작(쿼리 방식) |
+
+`docs/thai/index.html`은 손으로 고치지 않는다. `docs/index.html`을 복사해 파비콘 경로만 한 단계 위로 바꾼 것이고, 수집할 때마다 자동으로 다시 만들어진다. 페이지가 스스로 `/thai/` 경로를 보고 과 자료 위치를 정하기 때문이다.
+
 ## 지금 배포된 상태
 
 - 공개 주소: https://freaky0.github.io/teemobkk-live-news/
