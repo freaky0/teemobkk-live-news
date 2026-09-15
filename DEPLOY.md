@@ -11,6 +11,38 @@
 
 수동으로 다시 돌리려면 저장소의 Actions - collect - Run workflow를 누른다.
 
+## 신 구조 (수정본)
+
+GitHub의 예약 실행은 "최선 노력"이라 새 저장소에서 45분 넘게 한 번도 발화하지 않았다. 그래서 갱신을 깨우는 역할만 Cloudflare Worker로 옮겼다.
+
+```
+Cloudflare Worker (크론 5분, CPU 1ms)
+        |  GitHub API로 workflow_dispatch
+        v
+GitHub Actions (수집, 실제 CPU 사용)
+        |  docs/*.json 커밋
+        v
+GitHub Pages (공개 페이지가 그 JSON을 읽음)
+```
+
+- Worker는 수집하지 않는다. 무료 플랜은 호출당 CPU 10ms, 서브리퀘스트 50개라 피드 40개를 파싱할 수 없다.
+- 수집 로직은 계속 파이썬 한 벌이고, 로컬 대시보드와 같은 코드를 쓴다.
+- 저장소에도 크론이 남아 있다(`*/30`). Worker가 멈춰도 최소 30분마다 갱신된다.
+
+## Worker 정보
+
+| 항목 | 값 |
+| --- | --- |
+| 이름 | `teemobkk-live-news-trigger` |
+| 주소 | https://teemobkk-live-news-trigger.teemobkk-live-news.workers.dev |
+| 크론 | `*/5 * * * *` |
+| 시크릿 | `GH_TOKEN` (해당 저장소만, Actions 쓰기 권한) |
+| 코드 | `worker/src/index.js`, `worker/wrangler.toml` |
+
+토큰을 바꾸려면: `cd worker && npx wrangler secret put GH_TOKEN`
+배포하려면: `cd worker && npx wrangler deploy`
+로그를 보려면: `cd worker && npx wrangler tail`
+
 ## 구조
 
 - 수집: GitHub Actions가 15분마다 `deploy/collect_public.py`를 실행한다.
