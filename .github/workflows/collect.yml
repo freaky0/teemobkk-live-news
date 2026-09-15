@@ -1,8 +1,16 @@
 name: collect
 
+# Why a loop instead of a plain schedule:
+# GitHub's scheduler is best-effort and, for this repository, fired only a couple of
+# times in half a day. Cloudflare's cron trigger on the same account never fired at
+# all. So instead of asking a scheduler for every five-minute tick, one firing here
+# keeps collecting every five minutes for about five hours and forty minutes, and
+# several cheap schedule attempts queue up behind it (see concurrency).
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "0 */6 * * *"   # main restart attempt
+    - cron: "20 */2 * * *"  # backup attempts; they queue while a loop is running
+    - cron: "40 * * * *"    # hourly fallback attempt
   workflow_dispatch:
 
 permissions:
@@ -15,23 +23,46 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 355 # hard ceiling is 360; the loop itself stops after 340 minutes
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Collect the public news JSON
-        run: python deploy/collect_public.py
-      - name: Commit the refreshed data
+
+      - name: Collect every five minutes until the deadline
         run: |
+          set -u
           git config user.name "teemo-live-news-bot"
           git config user.email "teemo-live-news-bot@users.noreply.github.com"
-          git add docs/index.json docs/global.json docs/thai.json docs/thai/index.html
-          if git diff --quiet --cached; then
-            echo "no change"
-          else
-            git commit -m "data: refresh $(date -u +%Y-%m-%dT%H:%MZ)"
-            git pull --rebase origin main
-            git push
-          fi
+
+          deadline=$(( $(date +%s) + 20400 ))   # 5h40m
+          cycle=0
+
+          while [ "$(date +%s)" -lt "$deadline" ]; do
+            cycle=$((cycle + 1))
+            started=$(date +%s)
+            echo "::group::cycle $cycle at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+            if python deploy/collect_public.py; then
+              git add docs/index.json docs/global.json docs/thai.json docs/thai/index.html
+              if git diff --quiet --cached; then
+                echo "no data change this cycle"
+              else
+                git commit -m "data: refresh $(date -u +%Y-%m-%dT%H:%MZ)"
+                git pull --rebase origin main && git push
+              fi
+            else
+              echo "collector failed this cycle; keeping the loop alive"
+            fi
+
+            echo "::endgroup::"
+
+            spent=$(( $(date +%s) - started ))
+            wait=$(( 300 - spent ))
+            if [ "$wait" -gt 0 ]; then
+              sleep "$wait"
+            fi
+          done
+
+          echo "loop finished after $cycle cycles"
