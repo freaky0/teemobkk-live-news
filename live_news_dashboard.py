@@ -219,7 +219,7 @@ def make_article(title: str, link: str, summary: str, published: str, source: st
             priority += 1
     return {
         "title": clean_text(title),
-        "summary": clean_text(summary)[:420],
+        "summary": clean_text(summary)[:800],
         "link": link.strip(),
         "source": source,
         "source_type": source_type,
@@ -248,7 +248,7 @@ def fetch_google_news(source: str, query: str, region: str = "글로벌", requir
     return fetched
 
 
-def _coinness_items(url: str, source: str, limit: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def _coinness_items(url: str, source: str, limit: int, link_path: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     target = f"{url}?limit={limit}"
     try:
         request = urllib.request.Request(target, headers={"User-Agent": USER_AGENT, "Accept": "application/json", "Origin": "https://coinness.com", "Referer": "https://coinness.com/"})
@@ -258,7 +258,9 @@ def _coinness_items(url: str, source: str, limit: int) -> tuple[list[dict[str, A
         output = []
         for item in items:
             title = clean_text(item.get("title", ""))
-            link = (item.get("link") or "").strip() or f"https://coinness.com/news/{item.get('id', '')}"
+            # CoinNess sends no link for either feed, so the article URL is built per feed:
+            # breaking news lives at /news/{id}, stock news at /stock-news/{id}/quote.
+            link = (item.get("link") or "").strip() or "https://coinness.com/" + link_path.format(item_id=item.get("id", ""))
             if title and link:
                 article = make_article(title, link, item.get("content", ""), parse_date(item.get("publishAt", "")), source, "breaking")
                 if item.get("isImportant"):
@@ -271,11 +273,11 @@ def _coinness_items(url: str, source: str, limit: int) -> tuple[list[dict[str, A
 
 
 def fetch_coinness(limit: int = 30) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    return _coinness_items(COINNESS_BREAKING_URL, "CoinNess", limit)
+    return _coinness_items(COINNESS_BREAKING_URL, "CoinNess", limit, "news/{item_id}")
 
 
 def fetch_coinness_stock(limit: int = 30) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    return _coinness_items(COINNESS_STOCK_URL, "CoinNess Stock", limit)
+    return _coinness_items(COINNESS_STOCK_URL, "CoinNess Stock", limit, "stock-news/{item_id}/quote")
 
 
 def _sbh_recent_urls() -> list[str]:

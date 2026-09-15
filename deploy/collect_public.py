@@ -62,10 +62,27 @@ def fetch_window() -> list[dict[str, Any]]:
     return rows
 
 
+
+def normalize_link(article: dict[str, Any]) -> dict[str, Any]:
+    """Fix stock items stored before the feed-specific path existed.
+
+    CoinNess sends no link for either feed, so older stock rows were written with
+    the breaking-news path. Keep this guard so the committed history stays clean.
+    """
+    if article.get("source") == "CoinNess Stock":
+        prefix = "https://coinness.com/news/"
+        link = str(article.get("link") or "")
+        if link.startswith(prefix):
+            ident = link[len(prefix):].split("/")[0].split("?")[0]
+            if ident.isdigit():
+                article["link"] = "https://coinness.com/stock-news/" + ident + "/quote"
+    return article
+
+
 def merge(previous: list[dict[str, Any]], fresh: list[dict[str, Any]]) -> list[dict[str, Any]]:
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=KEEP_HOURS)).isoformat()
     by_link: dict[str, dict[str, Any]] = {}
-    for article in list(previous) + list(fresh):
+    for article in [normalize_link(a) for a in list(previous)] + list(fresh):
         link = str(article.get("link") or "")
         published = str(article.get("published_at") or "")
         if not link or published < cutoff:
