@@ -1,0 +1,24 @@
+# runtime data and local artefacts
+news.db
+news.db-wal
+news.db-shm
+news_cache.json
+server.log
+stdout.log
+stderr.log
+
+# editor backups of the dashboard page
+index_backup_*.html
+index_new.html
+icon_variants/
+
+# python
+__pycache__/
+*.pyc
+# logs
+*.log
+*.log.err
+*.err
+
+# your original artwork: keep the working copy local, publish only the generated icons
+icon-source.png

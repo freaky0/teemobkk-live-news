@@ -1,0 +1,36 @@
+name: collect
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Collect the public news JSON
+        run: python deploy/collect_public.py
+      - name: Commit the refreshed data
+        run: |
+          git config user.name "teemo-live-news-bot"
+          git config user.email "teemo-live-news-bot@users.noreply.github.com"
+          git add docs/index.json docs/global.json docs/thai.json
+          if git diff --quiet --cached; then
+            echo "no change"
+          else
+            git commit -m "data: refresh $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push
+          fi
