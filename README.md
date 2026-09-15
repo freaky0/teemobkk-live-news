@@ -1,5 +1,7 @@
 # TeemoBKK Live News
 
+공개 주소: https://freaky0.github.io/teemobkk-live-news/ (자세한 내용은 DEPLOY.md)
+
 무료 RSS와 공개 API를 모아 60초마다 갱신하고, 수집한 기사를 SQLite에 누적해 검색할 수 있는 로컬 뉴스 대시보드입니다.
 
 ## 포함된 수집원

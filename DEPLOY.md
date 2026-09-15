@@ -2,6 +2,15 @@
 
 내 PC를 켜두지 않아도 공개 페이지가 24시간 돌아가게 만드는 방법이다.
 
+## 지금 배포된 상태
+
+- 공개 주소: https://freaky0.github.io/teemobkk-live-news/
+- 저장소: https://github.com/freaky0/teemobkk-live-news
+- 수집: `collect` 워크플로가 15분마다 자동 실행되고 결과를 커밋한다.
+- 확인: 저장소의 Actions 탭에서 실행 기록을 볼 수 있다.
+
+수동으로 다시 돌리려면 저장소의 Actions - collect - Run workflow를 누른다.
+
 ## 구조
 
 - 수집: GitHub Actions가 15분마다 `deploy/collect_public.py`를 실행한다.
