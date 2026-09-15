@@ -1,0 +1,14 @@
+{
+  "name": "teemobkk-live-news-trigger",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Cron trigger that wakes the GitHub Actions news collector",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}

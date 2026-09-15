@@ -22,3 +22,7 @@ __pycache__/
 
 # your original artwork: keep the working copy local, publish only the generated icons
 icon-source.png
+
+# cloudflare worker deps
+worker/node_modules/
+worker/.wrangler/

@@ -1,0 +1,12 @@
+name = "teemobkk-live-news-trigger"
+main = "src/index.js"
+compatibility_date = "2026-09-15"
+workers_dev = true
+
+# Primary schedule. The GitHub Actions workflow keeps its own cron as a fallback.
+[triggers]
+crons = ["*/5 * * * *"]
+
+[vars]
+REPO = "freaky0/teemobkk-live-news"
+WORKFLOW = "collect.yml"
