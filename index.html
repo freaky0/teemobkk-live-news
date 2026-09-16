@@ -94,6 +94,12 @@ mark{background:#3f3418;color:#ffe9b0;border-radius:3px;padding:0 2px}
 .cal-s{color:var(--hot);font-size:10.5px}
 .cal-n{color:#c3cfe6}
 .cal-v{color:var(--muted);font-size:12px}
+.cal-v b.up{color:#5fd08a}
+.cal-v b.down{color:#ff6b6b}
+.cal-v b.flat{color:#ffd479}
+.cal-s.i3{color:#e04242}
+.cal-s.i2{color:#ff9a3c}
+.cal-s.i1{color:#ffd479}
 .cal-v b{color:var(--official)}
 @media (max-width:900px){.cal-grid{grid-template-columns:1fr}}
 body.tab-cal .cal[hidden]{display:none}
@@ -359,15 +365,23 @@ document.querySelector('#feed').addEventListener('click',function(ev){
 
 var CAL_URL='https://raw.githubusercontent.com/freaky0/teemobkk-live-news/main/docs/calendar.json';
 function calEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function calNum(t){var m=String(t==null?'':t).replace(/,/g,'').match(/-?\d+(\.\d+)?/);return m?parseFloat(m[0]):null}
+function calTone(e){var a=calNum(e.actual),c=calNum(e.consensus);if(a===null||c===null)return 'flat';
+  var tol=Math.abs(c)*0.02;return Math.abs(a-c)<=tol?'flat':(a>c?'up':'down')}
 function paintCalendar(data){
   var days=(data&&data.days)||[];
   if(!days.length)return;
   document.querySelector('#cal-stamp').textContent=(data.updated_at_kst||'')+' KST';
   document.querySelector('#cal-body').innerHTML=days.map(function(d){
     var rows=d.events.length?d.events.map(function(e){
-      var val=e.released?('<b>'+calEsc(e.actual)+'</b>'):(e.passed?'발표':(e.consensus?('예상 '+calEsc(e.consensus)+(e.previous?' · 이전 '+calEsc(e.previous):'')):''));
+      var parts=[];
+      if(e.released)parts.push('실제 <b class="'+calTone(e)+'">'+calEsc(e.actual)+'</b>');
+      else if(e.passed)parts.push('발표');
+      if(e.consensus)parts.push('예상 '+calEsc(e.consensus));
+      if(e.previous)parts.push('이전 '+calEsc(e.previous));
+      var val=parts.join(' · ');
       var name=calEsc(e.country_code||e.country)+' · '+calEsc(e.name);
-      return '<div class="cal-row"><span class="cal-t">'+calEsc(e.kst)+'</span><span class="cal-s">'+new Array(e.importance+1).join('*')+'</span><span class="cal-n">'+name+'</span><span class="cal-v">'+val+'</span></div>';
+      return '<div class="cal-row"><span class="cal-t">'+calEsc(e.kst)+'</span><span class="cal-s i'+e.importance+'">'+new Array(e.importance+1).join('*')+'</span><span class="cal-n">'+name+'</span><span class="cal-v">'+val+'</span></div>';
     }).join(''):'<div class="note">주요 지표 없음</div>';
     return '<div class="cal-day"><h3>'+calEsc(d.label)+' <span>'+calEsc(String(d.date).slice(5))+' ('+calEsc(d.weekday)+')</span></h3>'+rows+'</div>';
   }).join('');
