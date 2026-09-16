@@ -65,7 +65,7 @@ WORLD = (
     "monetary policy",
 )
 NOISE = ("speaks", "speech", "press conference", "minutes", "testifies", "testimony", "auction", "nowcast", "gdpnow", "4-week")
-LABELS = ("\uc624\ub298", "\ub0b4\uc77c")  # today, tomorrow
+LABELS = {-1: "\uc5b4\uc81c", 0: "\uc624\ub298", 1: "\ub0b4\uc77c"}  # yesterday, today, tomorrow
 WEEKDAYS = "\uc6d4\ud654\uc218\ubaa9\uae08\ud1a0\uc77c"  # Mon..Sun
 
 
@@ -93,6 +93,45 @@ def wanted(name: str, country: str) -> int:
     return 3 if lowered.startswith(WORLD) else 0
 
 
+def decimal(text: str) -> str:
+    """Turn a Fed style fraction ("3-3/4", "1/4", "4") into a decimal string."""
+    text = text.strip()
+    mixed = re.match(r"^(\d+)-(\d+)/(\d+)$", text)
+    if mixed:
+        return "%.2f" % (int(mixed.group(1)) + int(mixed.group(2)) / int(mixed.group(3)))
+    frac = re.match(r"^(\d+)/(\d+)$", text)
+    if frac:
+        return "%.2f" % (int(frac.group(1)) / int(frac.group(2)))
+    plain = re.match(r"^\d+(\.\d+)?$", text)
+    return ("%.2f" % float(text)) if plain else text
+
+
+def fed_funds_range(timeout: int = 40) -> str:
+    """Fallback for the rate decision: Nasdaq often leaves that row blank, so read
+    the target range straight out of the Federal Reserve's own FOMC statement."""
+    import urllib.request
+
+    feed = urllib.request.urlopen(urllib.request.Request(
+        "https://www.federalreserve.gov/feeds/press_monetary.xml",
+        headers={"User-Agent": UA}), timeout=timeout).read().decode("utf-8", "replace")
+    link = ""
+    for item in re.findall(r"<item>(.*?)</item>", feed, re.S):
+        title = re.search(r"<title>(.*?)</title>", item, re.S)
+        if title and "fomc statement" in title.group(1).lower():
+            found = re.search(r"<link>(.*?)</link>", item, re.S)
+            link = re.sub(r"<!\[CDATA\[|\]\]>", "", found.group(1)).strip() if found else ""
+            break
+    if not link:
+        return ""
+    page = urllib.request.urlopen(urllib.request.Request(
+        link, headers={"User-Agent": UA}), timeout=timeout).read().decode("utf-8", "replace")
+    text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", page))
+    found = re.search(r"federal funds rate.*?to ([0-9/\-]+) to ([0-9/\-]+) percent", text, re.I)
+    if not found:
+        return ""
+    return "%s~%s%%" % (decimal(found.group(1)), decimal(found.group(2)))
+
+
 def fetch_day(day: str, timeout: int = 40) -> list[dict[str, Any]]:
     import urllib.request
 
@@ -117,7 +156,7 @@ def collect(now: datetime | None = None) -> dict[str, Any]:
     events: list[dict[str, Any]] = []
     errors: list[str] = []
 
-    for offset in (-1, 0, 1, 2):  # covers the KST days either side of now
+    for offset in (-2, -1, 0, 1, 2):  # covers the KST days either side of now
         page_date = anchor + timedelta(days=offset)
         try:
             rows = fetch_day(page_date.isoformat())
@@ -148,7 +187,21 @@ def collect(now: datetime | None = None) -> dict[str, Any]:
                 "consensus": clean(row.get("consensus")),
                 "previous": clean(row.get("previous")),
                 "released": bool(clean(row.get("actual"))),
+                "passed": moment <= now,
             })
+
+    # Nasdaq leaves the rate-decision row blank. Once that release is out, fill it from
+    # the Fed's own statement rather than showing no result at all.
+    try:
+        target = fed_funds_range()
+    except Exception:
+        target = ""
+    if target:
+        for event in events:
+            if (not event["released"] and event["passed"] and event["country"] == "United States"
+                    and "interest rate decision" in event["name"].lower()):
+                event["actual"] = target
+                event["released"] = True
 
     # One release arrives as several rows (CPI / CPI n.s.a / CPIH). Keep the shortest
     # name per time and country, and drop any name that starts with it.
@@ -165,10 +218,10 @@ def collect(now: datetime | None = None) -> dict[str, Any]:
     kept.sort(key=lambda item: (item["date"], item["kst"]))
 
     days: list[dict[str, Any]] = []
-    for offset in (0, 1):
+    for offset in (-1, 0, 1):
         day_date = anchor + timedelta(days=offset)
         mine = [event for event in kept if event["date"] == day_date.isoformat()]
-        if not mine and offset == 1:
+        if not mine:
             continue
         days.append({
             "date": day_date.isoformat(),
