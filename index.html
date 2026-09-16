@@ -84,6 +84,18 @@ mark{background:#3f3418;color:#ffe9b0;border-radius:3px;padding:0 2px}
 .more-wrap{display:flex;justify-content:center;padding:20px 0 6px}
 #more{padding:11px 28px;font-weight:700;background:var(--panel2);border:1px solid var(--line);border-radius:var(--r-ctl);cursor:pointer}
 #more:hover{border-color:var(--accent);color:var(--accent)}
+.cal{margin:0 0 14px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-card);background:var(--panel)}
+.cal[hidden]{display:none}
+.cal h2{margin:0 0 10px;font-size:12.5px;color:var(--muted);font-weight:600}
+.cal-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 22px}
+.cal-day h3{margin:0 0 6px;font-size:13px}
+.cal-row{display:grid;grid-template-columns:44px 24px 1fr auto;gap:8px;align-items:baseline;padding:3px 0;border-bottom:1px solid var(--line);font-size:13px}
+.cal-t{font-weight:600;font-variant-numeric:tabular-nums}
+.cal-s{color:var(--hot);font-size:10.5px}
+.cal-n{color:#c3cfe6}
+.cal-v{color:var(--muted);font-size:12px}
+.cal-v b{color:var(--official)}
+@media (max-width:900px){.cal-grid{grid-template-columns:1fr}}
 .foot{color:var(--muted);font-size:12px;border-top:1px solid var(--line);margin-top:26px;padding-top:16px;line-height:1.8}
 body.public .admin{display:none!important}
 body.public .side{display:none}
@@ -119,6 +131,11 @@ body.public .layout{grid-template-columns:minmax(0,1fr)}
     <button id="tab-global" class="tab active" data-tab="global" data-region="글로벌">글로벌 매크로·크립토</button>
     <button id="tab-thai" class="tab th" data-tab="thai" data-region="태국">태국 소식</button>
   </div>
+
+  <section class="cal" id="cal" hidden>
+    <h2>주요 경제지표 · 한국시각 <span class="note" id="cal-stamp"></span></h2>
+    <div class="cal-grid" id="cal-body"></div>
+  </section>
 
   <section class="toolbar">
     <input id="q" type="search" placeholder="제목·요약 검색" aria-label="뉴스 검색">
@@ -334,6 +351,30 @@ document.querySelector('#feed').addEventListener('click',function(ev){
  const open=s.classList.toggle('clamp')===false;
  btn.textContent=open?collapseLabel:expandLabel;
  btn.setAttribute('aria-expanded',open?'true':'false')});
+
+var CAL_URL='https://freaky0.github.io/teemobkk-live-news/calendar.json';
+function calEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function paintCalendar(data){
+  var days=(data&&data.days)||[];
+  if(!days.length)return;
+  document.querySelector('#cal-stamp').textContent=(data.updated_at_kst||'')+' KST';
+  document.querySelector('#cal-body').innerHTML=days.map(function(d){
+    var rows=d.events.length?d.events.map(function(e){
+      var val=e.released?('<b>'+calEsc(e.actual)+'</b>'):(e.consensus?('예상 '+calEsc(e.consensus)+(e.previous?' · 이전 '+calEsc(e.previous):'')):'');
+      var name=(e.country==='United States'?'':calEsc(e.country)+' · ')+calEsc(e.name);
+      return '<div class="cal-row"><span class="cal-t">'+calEsc(e.kst)+'</span><span class="cal-s">'+new Array(e.importance+1).join('*')+'</span><span class="cal-n">'+name+'</span><span class="cal-v">'+val+'</span></div>';
+    }).join(''):'<div class="note">주요 지표 없음</div>';
+    return '<div class="cal-day"><h3>'+calEsc(d.label)+' <span>'+calEsc(String(d.date).slice(5))+' ('+calEsc(d.weekday)+')</span></h3>'+rows+'</div>';
+  }).join('');
+  document.querySelector('#cal').hidden=false;
+}
+function loadCalendar(){
+  fetch(CAL_URL+'?ts='+Date.now(),{cache:'no-store'}).then(function(r){
+    if(!r.ok)throw Error(r.status);return r.json();
+  }).then(paintCalendar).catch(function(){});
+}
+loadCalendar();
+setInterval(loadCalendar,900000);
 
 skeleton();
 setTab('global');

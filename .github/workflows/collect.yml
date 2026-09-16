@@ -44,8 +44,8 @@ jobs:
             started=$(date +%s)
             echo "::group::cycle $cycle at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-            if python deploy/collect_public.py; then
-              git add docs/index.json docs/global.json docs/thai.json docs/thai/index.html
+            if python deploy/collect_public.py && python econ_calendar.py docs/calendar.json; then
+              git add docs
               if git diff --quiet --cached; then
                 echo "no data change this cycle"
               else
