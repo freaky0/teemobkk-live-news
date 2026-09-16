@@ -11,9 +11,9 @@ Two quirks of that source are handled here, both verified against the data:
 
 Importance is not published, so it is derived by keyword:
 
-    US releases at level 2 or above are kept (3 = FOMC, CPI, PCE, payrolls, GDP,
-    jobless claims, retail sales; 2 = PPI, ISM, PMI, housing, inventories, ...).
-    Other countries are limited to COUNTRIES and to headline releases.
+    Releases are ranked by keyword (3 = FOMC, CPI, PCE, payrolls, GDP, jobless claims,
+    retail sales; 2 = PPI, ISM, PMI, housing, inventories, exports, imports, ...).
+    Level 2 and above is published for every country in COUNTRIES, level 1 is dropped.
 
 Three kinds of row are published:
 
@@ -67,13 +67,12 @@ LEVEL2 = (
     "consumer confidence", "consumer sentiment", "housing starts", "building permits",
     "trade balance", "adp", "crude oil inventories", "factory orders", "current account",
     "business confidence", "wholesale", "import price", "export price",
+    # Korea's monthly trade report is a headline for the won and for risk appetite,
+    # and Nasdaq names the parts plainly.
+    "exports", "imports",
 )
-# Non-US: matched on the start of the name, so "Current Account % of GDP" is out.
-WORLD = (
-    "interest rate decision", "rate decision", "cpi", "gdp", "unemployment rate",
-    "employment change", "retail sales", "payroll", "inflation rate", "trade balance",
-    "monetary policy",
-)
+# Non-US releases used to be gated on this list; every listed country is now ranked
+# with LEVEL3/LEVEL2 like the US, so the constant is gone.
 # Minutes, auctions and forecast models stay out; speakers are kept as their own kind.
 NOISE = ("minutes", "auction", "nowcast", "gdpnow", "4-week")
 SPEAK_WORDS = ("speaks", "speech", "press conference", "testifies", "testimony", "remarks")
@@ -102,10 +101,6 @@ def clean(value: Any) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def is_us(country: str) -> bool:
-    return clean(country).lower() in ("united states", "u.s.", "us", "usa")
-
-
 def speaker_stars(name: str) -> int:
     """Rank a speaker by who is talking rather than by the event name."""
     lowered = name.lower()
@@ -127,9 +122,11 @@ def classify(name: str, country: str) -> tuple[int, str]:
     if any(word in lowered for word in SPEAK_WORDS):
         return (speaker_stars(name), "speech")
     level = 3 if any(key in lowered for key in LEVEL3) else (2 if any(key in lowered for key in LEVEL2) else 1)
-    if is_us(country):
-        return (level if level >= 2 else 0, "econ")
-    return (3 if lowered.startswith(WORLD) else 0, "econ")
+    # Every listed country is ranked the same way: level 2 and up is published, level 1
+    # is dropped. The old rule required a non-US name to *start* with one of a short
+    # list of headline words, which silently dropped Korea entirely - its releases are
+    # named plainly ("PPI", "Exports", "Consumer Confidence").
+    return (level if level >= 2 else 0, "econ")
 
 
 def decimal(text: str) -> str:
