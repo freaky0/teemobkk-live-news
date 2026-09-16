@@ -96,6 +96,11 @@ mark{background:#3f3418;color:#ffe9b0;border-radius:3px;padding:0 2px}
 .cal-v{color:var(--muted);font-size:12px}
 .cal-v b{color:var(--official)}
 @media (max-width:900px){.cal-grid{grid-template-columns:1fr}}
+@media (min-width:900px){.cal{display:none}body.tab-cal .cal{display:block}}
+body.tab-cal .cal[hidden]{display:none}
+body.tab-cal .cal-grid{grid-template-columns:1fr 1fr}
+body.tab-cal .toolbar,body.tab-cal .pills,body.tab-cal #feed,body.tab-cal .more-wrap,body.tab-cal .side{display:none!important}
+body.tab-cal .layout{grid-template-columns:minmax(0,1fr)}
 .foot{color:var(--muted);font-size:12px;border-top:1px solid var(--line);margin-top:26px;padding-top:16px;line-height:1.8}
 body.public .admin{display:none!important}
 body.public .side{display:none}
@@ -130,6 +135,7 @@ body.public .layout{grid-template-columns:minmax(0,1fr)}
   <div class="tabs">
     <button id="tab-global" class="tab active" data-tab="global" data-region="글로벌">글로벌 매크로·크립토</button>
     <button id="tab-thai" class="tab th" data-tab="thai" data-region="태국">태국 소식</button>
+    <button id="tab-cal" class="tab cal" data-tab="cal" data-region="">경제지표</button>
   </div>
 
   <section class="cal" id="cal" hidden>
@@ -321,6 +327,7 @@ async function changeInterval(){
  }catch(e){alert('갱신 간격 변경 실패: '+e.message)}}
 function setTab(next){
  state.tab=next;state.mode='all';state.value='';state.filter='';state.offset=0;
+ document.body.classList.toggle('tab-cal',next==='cal');
  document.querySelectorAll('.tab').forEach(function(b){
    const on=b.dataset.tab===next;b.classList.toggle('active',on);b.setAttribute('aria-selected',on?'true':'false')});
  const gRow=document.querySelector('#filters-global'), tRow=document.querySelector('#filters-thai');
@@ -330,7 +337,7 @@ function setTab(next){
  document.querySelectorAll('.pill[data-filter]').forEach(function(b){
    const inThai=b.closest('.pills').id==='filters-thai';
    b.classList.toggle('active',(inThai===(next==='thai'))&&b.dataset.filter==='전체')});
- renderGuide();load(false)}
+ renderGuide();if(next!=='cal')load(false)}
 
 document.querySelectorAll('.tab').forEach(function(b){b.onclick=function(){setTab(b.dataset.tab)}});
 document.querySelectorAll('.pill[data-filter]').forEach(function(b){b.onclick=function(){
@@ -361,7 +368,7 @@ function paintCalendar(data){
   document.querySelector('#cal-body').innerHTML=days.map(function(d){
     var rows=d.events.length?d.events.map(function(e){
       var val=e.released?('<b>'+calEsc(e.actual)+'</b>'):(e.consensus?('예상 '+calEsc(e.consensus)+(e.previous?' · 이전 '+calEsc(e.previous):'')):'');
-      var name=(e.country==='United States'?'':calEsc(e.country)+' · ')+calEsc(e.name);
+      var name=calEsc(e.country_ko||e.country)+' · '+calEsc(e.name);
       return '<div class="cal-row"><span class="cal-t">'+calEsc(e.kst)+'</span><span class="cal-s">'+new Array(e.importance+1).join('*')+'</span><span class="cal-n">'+name+'</span><span class="cal-v">'+val+'</span></div>';
     }).join(''):'<div class="note">주요 지표 없음</div>';
     return '<div class="cal-day"><h3>'+calEsc(d.label)+' <span>'+calEsc(String(d.date).slice(5))+' ('+calEsc(d.weekday)+')</span></h3>'+rows+'</div>';

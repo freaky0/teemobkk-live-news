@@ -1,13 +1,20 @@
-"""Economic calendar for the top of the dashboard: today and tomorrow, Korea time.
+"""Economic calendar for the dashboard: today and tomorrow, Korea time.
 
 Source: Nasdaq's public economic calendar JSON (no key, no token, no paid tier).
-It publishes no importance level, so one is derived here by keyword:
+
+Two quirks of that source are handled here, both verified against the data:
+
+    * The time column is labelled "gmt" but holds US Eastern time (retail sales
+      reads 08:30 for an 08:30 ET release), so times are read as ET.
+    * The page for date D lists the events of ET day D-1 (the FOMC that settled
+      on 16 Sep ET appears on the 17 Sep page), so the date is shifted back one day.
+
+Importance is not published, so it is derived by keyword:
 
     US releases at level 2 or above are kept (3 = FOMC, CPI, PCE, payrolls, GDP,
     jobless claims, retail sales; 2 = PPI, ISM, PMI, housing, inventories, ...).
-    Non-US releases are kept only when the name starts with a headline release.
-    Speakers, press conferences, minutes and duplicate variants of one release
-    are dropped.
+    Other countries are limited to COUNTRIES and to headline releases.
+    Speakers, minutes and duplicate variants of one release are dropped.
 
 Times are KST only, and the list is deliberately short: a glance list.
 """
@@ -23,11 +30,27 @@ UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 KST = timezone(timedelta(hours=9))
 ET = timezone(timedelta(hours=-4))  # the source's time column is Eastern, not GMT
 
+# Only these countries are shown; everything else is dropped as noise.
+COUNTRIES = (
+    "United States", "Japan", "United Kingdom", "South Korea", "China",
+    "Euro Zone", "Germany", "Canada", "Australia",
+)
+COUNTRY_KO = {
+    "United States": "\ubbf8\uad6d",
+    "Japan": "\uc77c\ubcf8",
+    "United Kingdom": "\uc601\uad6d",
+    "South Korea": "\ud55c\uad6d",
+    "China": "\uc911\uad6d",
+    "Euro Zone": "\uc720\ub85c\uc874",
+    "Germany": "\ub3c5\uc77c",
+    "Canada": "\uce94\ub2e4\ub2e4",
+    "Australia": "\ud638\uc8fc",
+}
 LEVEL3 = (
-    "fomc", "fed funds", "interest rate decision", "rate decision", "federal reserve",
+    "fomc", "fed funds", "interest rate decision", "rate decision",
     "powell", "cpi", "consumer price", "pce", "personal consumption", "nonfarm",
     "non-farm", "unemployment rate", "employment report", "payroll", "gdp",
-    "gross domestic product", "jobless claims", "treasury", "retail sales",
+    "gross domestic product", "jobless claims", "retail sales",
 )
 LEVEL2 = (
     "ppi", "producer price", "ism", "pmi", "durable goods", "industrial production",
@@ -41,7 +64,7 @@ WORLD = (
     "employment change", "retail sales", "payroll", "inflation rate", "trade balance",
     "monetary policy",
 )
-NOISE = ("speaks", "speech", "press conference", "minutes", "testifies", "testimony", "auction")
+NOISE = ("speaks", "speech", "press conference", "minutes", "testifies", "testimony", "auction", "nowcast", "gdpnow", "4-week")
 LABELS = ("\uc624\ub298", "\ub0b4\uc77c")  # today, tomorrow
 WEEKDAYS = "\uc6d4\ud654\uc218\ubaa9\uae08\ud1a0\uc77c"  # Mon..Sun
 
@@ -58,9 +81,12 @@ def is_us(country: str) -> bool:
 
 def wanted(name: str, country: str) -> int:
     """Importance level to publish, or 0 to drop the event."""
+    country = clean(country)
+    if country not in COUNTRIES:
+        return 0
     lowered = name.lower()
-    if any(word in lowered for word in NOISE) and "powell" not in lowered:
-        return 0  # ponytail: speakers are noise; loosen when a Fed chair talk matters
+    if any(word in lowered for word in NOISE):
+        return 0
     level = 3 if any(key in lowered for key in LEVEL3) else (2 if any(key in lowered for key in LEVEL2) else 1)
     if is_us(country):
         return level if level >= 2 else 0
@@ -91,16 +117,15 @@ def collect(now: datetime | None = None) -> dict[str, Any]:
     events: list[dict[str, Any]] = []
     errors: list[str] = []
 
-    for offset in (-1, 0, 1, 2):  # one day either side so KST rollover is covered
-        day_date = anchor + timedelta(days=offset)
+    for offset in (-1, 0, 1, 2):  # covers the KST days either side of now
+        page_date = anchor + timedelta(days=offset)
         try:
-            rows = fetch_day(day_date.isoformat())
+            rows = fetch_day(page_date.isoformat())
         except Exception as exc:  # a network problem must never break the dashboard
-            errors.append("%s: %s" % (day_date.isoformat(), exc))
+            errors.append("%s: %s" % (page_date.isoformat(), exc))
             continue
-        # Nasdaq labels this column "gmt", but the values are US Eastern time (retail
-        # sales reads 08:30 for an 08:30 ET release). Convert from ET, not from UTC.
-        midnight = datetime.combine(day_date, datetime.min.time(), tzinfo=ET)
+        # The page for date D lists ET day D-1, and its times are Eastern.
+        midnight = datetime.combine(page_date - timedelta(days=1), datetime.min.time(), tzinfo=ET)
         for row in rows:
             parsed = clock(row.get("gmt"))
             name = clean(row.get("eventName"))
@@ -116,6 +141,7 @@ def collect(now: datetime | None = None) -> dict[str, Any]:
                 "kst": moment.strftime("%H:%M"),
                 "date": moment.date().isoformat(),
                 "country": country,
+                "country_ko": COUNTRY_KO.get(country, country),
                 "name": name,
                 "importance": level,
                 "actual": clean(row.get("actual")),
@@ -156,6 +182,7 @@ def collect(now: datetime | None = None) -> dict[str, Any]:
         "updated_at_kst": now.astimezone(KST).strftime("%Y-%m-%d %H:%M"),
         "source": "Nasdaq economic calendar",
         "timezone": "KST",
+        "countries": list(COUNTRIES),
         "errors": errors,
         "days": days,
     }
@@ -178,6 +205,6 @@ if __name__ == "__main__":
         print("%s %s (%s) - %d" % (day["label"], day["date"], day["weekday"], len(day["events"])))
         for event in day["events"]:
             value = (" = %s" % event["actual"]) if event["released"] else (" vs %s" % event["consensus"] if event["consensus"] else "")
-            print("   %s  %s %-14s %s%s" % (event["kst"], "*" * event["importance"], event["country"][:14], event["name"][:50], value))
+            print("   %s  %s %-6s %s%s" % (event["kst"], "*" * event["importance"], event["country_ko"], event["name"][:50], value))
     if payload["errors"]:
         print("errors:", payload["errors"])
