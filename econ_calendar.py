@@ -33,6 +33,8 @@ import re
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
+import potus_schedule
+
 SOURCE_URL = "https://api.nasdaq.com/api/calendar/economicevents?date=%s"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 KST = timezone(timedelta(hours=9))
@@ -290,6 +292,12 @@ def collect(now: datetime | None = None) -> dict[str, Any]:
             continue
         events.extend(earnings_rows(page_date, rows))
 
+    # The President's public schedule, filtered down to newsworthy entries.
+    try:
+        events.extend(potus_schedule.fetch())
+    except Exception as exc:  # a network problem must never break the dashboard
+        errors.append("potus schedule: %s" % exc)
+
     # Nasdaq leaves the rate-decision row blank. Once that release is out, fill it from
     # the Fed's own statement rather than showing no result at all.
     try:
@@ -304,11 +312,12 @@ def collect(now: datetime | None = None) -> dict[str, Any]:
                 event["released"] = True
 
     # One release arrives as several rows (CPI / CPI n.s.a / CPIH). Keep the shortest
-    # name per time and country, and drop any name that starts with it. Earnings are
-    # excluded: several companies can report at the same minute, and collapsing those
-    # groups by name length would silently delete most of them.
-    kept: list[dict[str, Any]] = [event for event in events if event["kind"] == "earnings"]
-    release_rows = [event for event in events if event["kind"] != "earnings"]
+    # name per time and country, and drop any name that starts with it. Only indicator
+    # releases are collapsed: several companies can report at the same minute and
+    # several White House entries can share a slot, so folding those by name length
+    # would silently delete most of them.
+    kept: list[dict[str, Any]] = [event for event in events if event["kind"] != "econ"]
+    release_rows = [event for event in events if event["kind"] == "econ"]
     groups = {(event["date"], event["kst"], event["country"]) for event in release_rows}
     for group in sorted(groups):
         chosen: list[dict[str, Any]] = []
