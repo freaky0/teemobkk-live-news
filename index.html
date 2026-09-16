@@ -54,6 +54,7 @@ select{cursor:pointer}
 .chip.official{border-color:var(--official);color:var(--official)}
 .chip.hot{border-color:var(--hot);color:var(--hot)}
 .chip.th{border-color:#5a4a24;color:var(--thai)}
+.chip.speak{border-color:#ffb86b;color:#ffb86b}
 .title{font-size:17px;line-height:1.45;letter-spacing:-.01em;font-weight:600;margin:0 0 7px}
 .title a:hover{color:var(--accent)}
 .summary{color:#c3cfe6;font-size:14px;max-width:65ch;margin:0 0 8px}
@@ -259,10 +260,14 @@ function summaryBlock(a){
  const long=s.length>220;
  return '<div class="summary'+(long?' clamp':'')+'">'+hl(s)+'</div>'+
    (long?'<button class="expand" type="button" aria-expanded="false">'+expandLabel+'</button>':'')}
+const SPEAKERS=['트럼프','Trump','TRUMP','머스크','Musk','MUSK','파월','Powell','워시','Warsh','베센트','Bessent','라가르드','Lagarde','푸틴','Putin','시진핑','Xi Jinping','네타냐후','Netanyahu','우에다','Ueda'];
+function speakChip(a){var t=(a.title||'')+' '+(a.summary||'');
+ return SPEAKERS.some(function(n){return t.indexOf(n)>=0})?'<span class="chip speak">인물 발언</span>':''}
 function card(a,th,lead){
  const src='chip src'+(a.source_type==='official'?' official':'')+(th?' th':'');
  return '<article class="card'+(th?' th':'')+(lead?' lead':'')+'">'+
   '<div class="meta"><span class="'+src+'">'+esc(a.source)+'</span>'+
+   speakChip(a)+
    '<span class="chip">'+esc(a.category)+'</span>'+
    (th?'':'<span class="chip">'+esc(a.asset)+'</span>')+
    '<span>'+age(a.published_at)+'</span>'+stars(a)+'</div>'+
