@@ -131,9 +131,9 @@ body.public .layout{grid-template-columns:minmax(0,1fr)}
 
 <main class="wrap">
   <div class="tabs">
-    <button id="tab-global" class="tab active" data-tab="global" data-region="글로벌">글로벌 매크로·크립토</button>
+    <button id="tab-global" class="tab active" data-tab="global" data-region="글로벌">경제 소식</button>
+    <button id="tab-cal" class="tab" data-tab="cal" data-region="">경제 지표</button>
     <button id="tab-thai" class="tab th" data-tab="thai" data-region="태국">태국 소식</button>
-    <button id="tab-cal" class="tab cal" data-tab="cal" data-region="">경제지표</button>
   </div>
 
   <section class="cal" id="cal" hidden>
@@ -366,7 +366,7 @@ function paintCalendar(data){
   document.querySelector('#cal-body').innerHTML=days.map(function(d){
     var rows=d.events.length?d.events.map(function(e){
       var val=e.released?('<b>'+calEsc(e.actual)+'</b>'):(e.passed?'발표':(e.consensus?('예상 '+calEsc(e.consensus)+(e.previous?' · 이전 '+calEsc(e.previous):'')):''));
-      var name=calEsc(e.country_ko||e.country)+' · '+calEsc(e.name);
+      var name=calEsc(e.country_code||e.country)+' · '+calEsc(e.name);
       return '<div class="cal-row"><span class="cal-t">'+calEsc(e.kst)+'</span><span class="cal-s">'+new Array(e.importance+1).join('*')+'</span><span class="cal-n">'+name+'</span><span class="cal-v">'+val+'</span></div>';
     }).join(''):'<div class="note">주요 지표 없음</div>';
     return '<div class="cal-day"><h3>'+calEsc(d.label)+' <span>'+calEsc(String(d.date).slice(5))+' ('+calEsc(d.weekday)+')</span></h3>'+rows+'</div>';

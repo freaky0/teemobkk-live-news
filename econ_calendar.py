@@ -35,16 +35,16 @@ COUNTRIES = (
     "United States", "Japan", "United Kingdom", "South Korea", "China",
     "Euro Zone", "Germany", "Canada", "Australia",
 )
-COUNTRY_KO = {
-    "United States": "\ubbf8\uad6d",
-    "Japan": "\uc77c\ubcf8",
-    "United Kingdom": "\uc601\uad6d",
-    "South Korea": "\ud55c\uad6d",
-    "China": "\uc911\uad6d",
-    "Euro Zone": "\uc720\ub85c\uc874",
-    "Germany": "\ub3c5\uc77c",
-    "Canada": "\uce94\ub2e4\ub2e4",
-    "Australia": "\ud638\uc8fc",
+COUNTRY_CODE = {
+    "United States": "US",
+    "Japan": "JP",
+    "United Kingdom": "UK",
+    "South Korea": "KR",
+    "China": "CN",
+    "Euro Zone": "EU",
+    "Germany": "DE",
+    "Canada": "CA",
+    "Australia": "AU",
 }
 LEVEL3 = (
     "fomc", "fed funds", "interest rate decision", "rate decision",
@@ -180,7 +180,7 @@ def collect(now: datetime | None = None) -> dict[str, Any]:
                 "kst": moment.strftime("%H:%M"),
                 "date": moment.date().isoformat(),
                 "country": country,
-                "country_ko": COUNTRY_KO.get(country, country),
+                "country_code": COUNTRY_CODE.get(country, country),
                 "name": name,
                 "importance": level,
                 "actual": clean(row.get("actual")),
@@ -258,6 +258,6 @@ if __name__ == "__main__":
         print("%s %s (%s) - %d" % (day["label"], day["date"], day["weekday"], len(day["events"])))
         for event in day["events"]:
             value = (" = %s" % event["actual"]) if event["released"] else (" vs %s" % event["consensus"] if event["consensus"] else "")
-            print("   %s  %s %-6s %s%s" % (event["kst"], "*" * event["importance"], event["country_ko"], event["name"][:50], value))
+            print("   %s  %s %-3s %s%s" % (event["kst"], "*" * event["importance"], event["country_code"], event["name"][:50], value))
     if payload["errors"]:
         print("errors:", payload["errors"])
