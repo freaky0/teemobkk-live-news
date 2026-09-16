@@ -84,7 +84,7 @@ mark{background:#3f3418;color:#ffe9b0;border-radius:3px;padding:0 2px}
 .more-wrap{display:flex;justify-content:center;padding:20px 0 6px}
 #more{padding:11px 28px;font-weight:700;background:var(--panel2);border:1px solid var(--line);border-radius:var(--r-ctl);cursor:pointer}
 #more:hover{border-color:var(--accent);color:var(--accent)}
-.cal{margin:0 0 14px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-card);background:var(--panel)}
+.cal{display:none;margin:0 0 14px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-card);background:var(--panel)}
 .cal[hidden]{display:none}
 .cal h2{margin:0 0 10px;font-size:12.5px;color:var(--muted);font-weight:600}
 .cal-grid{display:grid;grid-template-columns:1fr;gap:2px 22px}
@@ -102,6 +102,7 @@ mark{background:#3f3418;color:#ffe9b0;border-radius:3px;padding:0 2px}
 .cal-s.i1{color:#ffd479}
 .cal-v b{color:var(--official)}
 @media (max-width:900px){.cal-grid{grid-template-columns:1fr}}
+body.tab-cal .cal{display:block}
 body.tab-cal .cal[hidden]{display:none}
 body.tab-cal .toolbar,body.tab-cal .pills,body.tab-cal #feed,body.tab-cal .more-wrap,body.tab-cal .side{display:none!important}
 body.tab-cal .layout{grid-template-columns:minmax(0,1fr)}
