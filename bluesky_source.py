@@ -15,12 +15,22 @@ import json
 from typing import Any
 
 HANDLES = (
+    # official policy and institutions
+    "federalreserve.gov",
+    "ecb.europa.eu",
+    # wire services - high volume, kept for coverage; the source chip filters them
     "reuters.com",
     "bloomberg.com",
     "wsj.com",
+    # crypto
     "coindesk.com",
     "decrypt.co",
-    "federalreserve.gov",
+    "protos.com",
+    # markets and business, chosen for low daily volume so the feed does not drown
+    "axios.com",
+    "theinformation.com",
+    "marketwatch.com",
+    "barrons.com",
 )
 FEED_URL = "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=%s&limit=15&filter=posts_no_replies"
 WEB_URL = "https://bsky.app/profile/%s/post/%s"
