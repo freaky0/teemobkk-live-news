@@ -1,16 +1,17 @@
 name: collect
 
-# Why a loop instead of a plain schedule:
-# GitHub's scheduler is best-effort and, for this repository, fired only a couple of
-# times in half a day. Cloudflare's cron trigger on the same account never fired at
-# all. So instead of asking a scheduler for every five-minute tick, one firing here
-# keeps collecting every five minutes for about five hours and forty minutes, and
-# several cheap schedule attempts queue up behind it (see concurrency).
+# The Cloudflare cron trigger fires every five minutes and dispatches this workflow,
+# so this file deliberately keeps each run short.
+#
+# An earlier version kept a five hour loop alive inside one job instead. When that
+# loop stalled it held the concurrency group, every later dispatch queued and was
+# cancelled, and the published site silently stopped updating. One short run per
+# dispatch cannot fail that way: a bad run is simply retried by the next slot.
 on:
   schedule:
-    - cron: "0 */6 * * *"   # main restart attempt
-    - cron: "20 */2 * * *"  # backup attempts; they queue while a loop is running
-    - cron: "40 * * * *"    # hourly fallback attempt
+    - cron: "0 */6 * * *"   # fallback attempts if the cron trigger is ever down
+    - cron: "20 */2 * * *"
+    - cron: "40 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -23,46 +24,26 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 355 # hard ceiling is 360; the loop itself stops after 340 minutes
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Collect every five minutes until the deadline
+      - name: Collect the public news JSON and the calendar
+        run: python deploy/collect_public.py && python econ_calendar.py docs/calendar.json
+
+      - name: Commit the refreshed data
         run: |
-          set -u
           git config user.name "teemo-live-news-bot"
           git config user.email "teemo-live-news-bot@users.noreply.github.com"
-
-          deadline=$(( $(date +%s) + 20400 ))   # 5h40m
-          cycle=0
-
-          while [ "$(date +%s)" -lt "$deadline" ]; do
-            cycle=$((cycle + 1))
-            started=$(date +%s)
-            echo "::group::cycle $cycle at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-
-            if python deploy/collect_public.py && python econ_calendar.py docs/calendar.json; then
-              git add docs
-              if git diff --quiet --cached; then
-                echo "no data change this cycle"
-              else
-                git commit -m "data: refresh $(date -u +%Y-%m-%dT%H:%MZ)"
-                git pull --rebase origin main && git push
-              fi
-            else
-              echo "collector failed this cycle; keeping the loop alive"
-            fi
-
-            echo "::endgroup::"
-
-            spent=$(( $(date +%s) - started ))
-            wait=$(( 300 - spent ))
-            if [ "$wait" -gt 0 ]; then
-              sleep "$wait"
-            fi
-          done
-
-          echo "loop finished after $cycle cycles"
+          git add docs
+          if git diff --quiet --cached; then
+            echo "no change this run"
+          else
+            git commit -m "data: refresh $(date -u +%Y-%m-%dT%H:%MZ)"
+            git pull --rebase origin main && git push
+          fi

@@ -55,6 +55,9 @@ select{cursor:pointer}
 .chip.hot{border-color:var(--hot);color:var(--hot)}
 .chip.th{border-color:#5a4a24;color:var(--thai)}
 .chip.speak{border-color:#ffb86b;color:#ffb86b}
+.chip.tap{cursor:pointer}
+.chip.tap:hover,.chip.tap.on{border-color:var(--accent);color:var(--accent)}
+.pill.on{border-color:var(--accent);color:var(--accent)}
 .title{font-size:17px;line-height:1.45;letter-spacing:-.01em;font-weight:600;margin:0 0 7px}
 .title a:hover{color:var(--accent)}
 .summary{color:#c3cfe6;font-size:14px;max-width:65ch;margin:0 0 8px}
@@ -104,7 +107,7 @@ mark{background:#3f3418;color:#ffe9b0;border-radius:3px;padding:0 2px}
 .cal-s.i2{color:#ff9a3c}
 .cal-s.i1{color:#ffd479}
 .cal-v b{color:var(--official)}
-@media (max-width:900px){.cal-grid{grid-template-columns:1fr}}
+@media (max-width:900px){.cal-grid{grid-template-columns:1fr}.cal-row{grid-template-columns:44px 24px 1fr}.cal-v{grid-column:1 / -1}}
 body.tab-cal .cal{display:block}
 body.tab-cal .cal[hidden]{display:none}
 body.tab-cal .toolbar,body.tab-cal .pills,body.tab-cal #feed,body.tab-cal .more-wrap,body.tab-cal .side{display:none!important}
@@ -264,11 +267,13 @@ const SPEAKERS=['트럼프','Trump','TRUMP','머스크','Musk','MUSK','파월','
 function speakChip(a){var t=(a.title||'')+' '+(a.summary||'');
  return SPEAKERS.some(function(n){return t.indexOf(n)>=0})?'<span class="chip speak">인물 발언</span>':''}
 function card(a,th,lead){
- const src='chip src'+(a.source_type==='official'?' official':'')+(th?' th':'');
+ const srcOn=state.mode==='source'&&state.value===a.source, catOn=state.mode==='category'&&state.filter===a.category;
+ const src='chip src tap'+(a.source_type==='official'?' official':'')+(th?' th':'')+(srcOn?' on':'');
+ const cat='chip tap'+(catOn?' on':'');
  return '<article class="card'+(th?' th':'')+(lead?' lead':'')+'">'+
-  '<div class="meta"><span class="'+src+'">'+esc(a.source)+'</span>'+
+  '<div class="meta"><span class="'+src+'" data-tag="source" data-v="'+esc(a.source)+'">'+esc(a.source)+'</span>'+
    speakChip(a)+
-   '<span class="chip">'+esc(a.category)+'</span>'+
+   '<span class="'+cat+'" data-tag="category" data-v="'+esc(a.category)+'">'+esc(a.category)+'</span>'+
    (th?'':'<span class="chip">'+esc(a.asset)+'</span>')+
    '<span>'+age(a.published_at)+'</span>'+stars(a)+'</div>'+
   '<h2 class="title"><a href="'+esc(a.link)+'" target="_blank" rel="noopener">'+hl(a.title)+'</a></h2>'+
@@ -365,6 +370,21 @@ document.querySelector('#hours').onchange=function(){state.hours=Number(document
 document.querySelector('#more').onclick=function(){state.offset=(data.articles||[]).length;load(true)};
 document.querySelector('#interval').onchange=changeInterval;
 document.querySelector('#feed').addEventListener('click',function(ev){
+ const chip=ev.target.closest('.chip.tap');
+ if(chip){
+  const k=chip.dataset.tag,v=chip.dataset.v;
+  const same=state.mode===k&&((k==='category'?state.filter:state.value)===v);
+  state.mode=same?'all':k;state.value=same?'':v;state.filter=(!same&&k==='category')?v:'';
+  state.offset=0;
+  document.querySelectorAll('.pill[data-filter]').forEach(function(x){x.classList.remove('active')});
+  const row=document.querySelector(state.tab==='thai'?'#filters-thai':'#filters-global');
+  const old=row.querySelector('#clrtag');if(old)old.remove();
+  if(same){row.querySelectorAll('.pill[data-filter="전체"]').forEach(function(x){x.classList.add('active')})}
+  else{const b=document.createElement('button');b.type='button';b.className='pill on';b.id='clrtag';
+   b.textContent='✕ '+v;b.onclick=function(){state.mode='all';state.value='';state.filter='';state.offset=0;
+    b.remove();row.querySelectorAll('.pill[data-filter="전체"]').forEach(function(x){x.classList.add('active')});load(false)};
+   row.appendChild(b)}
+  load(false);return}
  const btn=ev.target.closest('.expand');if(!btn)return;
  const s=btn.previousElementSibling;
  const open=s.classList.toggle('clamp')===false;
