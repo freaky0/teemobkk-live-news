@@ -107,6 +107,8 @@ mark{background:#3f3418;color:#ffe9b0;border-radius:3px;padding:0 2px}
 .cal-s.i2{color:#ff9a3c}
 .cal-s.i1{color:#ffd479}
 .cal-v b{color:var(--official)}
+.cal-row.talk .cal-t{color:#8ea3c4}
+.cal-row.earn .cal-t{color:#e1ceb6}
 @media (max-width:900px){.cal-grid{grid-template-columns:1fr}.cal-row{grid-template-columns:44px 24px 1fr}.cal-v{grid-column:1 / -1}}
 body.tab-cal .cal{display:block}
 body.tab-cal .cal[hidden]{display:none}
@@ -403,13 +405,18 @@ function paintCalendar(data){
   document.querySelector('#cal-body').innerHTML=days.map(function(d){
     var rows=d.events.length?d.events.map(function(e){
       var parts=[];
-      if(e.released)parts.push('실제 <b class="'+calTone(e)+'">'+calEsc(e.actual)+'</b>');
-      else if(e.passed)parts.push('발표');
-      if(e.consensus)parts.push('예상 '+calEsc(e.consensus));
-      if(e.previous)parts.push('이전 '+calEsc(e.previous));
+      if(e.kind==='earnings'){parts.push('실적 발표')}
+      else{
+        if(e.released)parts.push('실제 <b class="'+calTone(e)+'">'+calEsc(e.actual)+'</b>');
+        else if(e.passed)parts.push('발표');
+        if(e.consensus)parts.push('예상 '+calEsc(e.consensus));
+        if(e.previous)parts.push('이전 '+calEsc(e.previous));
+      }
       var val=parts.join(' · ');
       var name=calEsc(e.country_code||e.country)+' · '+calEsc(e.name);
-      return '<div class="cal-row"><span class="cal-t">'+calEsc(e.kst)+'</span><span class="cal-s i'+e.importance+'">'+new Array(e.importance+1).join('*')+'</span><span class="cal-n">'+name+'</span><span class="cal-v">'+val+'</span></div>';
+      var at=calEsc(e.kst||'');
+      if(e.approx&&at)at='~'+at;
+      return '<div class="cal-row'+(e.kind==='earnings'?' earn':'')+((e.kind==='speech')?' talk':'')+'"><span class="cal-t">'+at+'</span><span class="cal-s i'+e.importance+'">'+new Array(e.importance+1).join('*')+'</span><span class="cal-n">'+name+'</span><span class="cal-v">'+val+'</span></div>';
     }).join(''):'<div class="note">주요 지표 없음</div>';
     return '<div class="cal-day"><h3>'+calEsc(d.label)+' <span>'+calEsc(String(d.date).slice(5))+' ('+calEsc(d.weekday)+')</span></h3>'+rows+'</div>';
   }).join('');

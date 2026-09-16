@@ -14,7 +14,15 @@ Importance is not published, so it is derived by keyword:
     US releases at level 2 or above are kept (3 = FOMC, CPI, PCE, payrolls, GDP,
     jobless claims, retail sales; 2 = PPI, ISM, PMI, housing, inventories, ...).
     Other countries are limited to COUNTRIES and to headline releases.
-    Speakers, minutes and duplicate variants of one release are dropped.
+
+Three kinds of row are published:
+
+    econ     the indicator releases above
+    speech   central bank speakers and press conferences, ranked by who speaks
+             (chair or president level first). The same feed names the speaker,
+             e.g. "ECB President Lagarde Speaks", "FOMC Member Bowman Speaks".
+    earnings mega-cap company results, from Nasdaq's earnings calendar, listed as
+             before-the-bell or after-the-close because the source gives no clock.
 
 Times are KST only, and the list is deliberately short: a glance list.
 """
@@ -22,7 +30,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 SOURCE_URL = "https://api.nasdaq.com/api/calendar/economicevents?date=%s"
@@ -64,7 +72,24 @@ WORLD = (
     "employment change", "retail sales", "payroll", "inflation rate", "trade balance",
     "monetary policy",
 )
-NOISE = ("speaks", "speech", "press conference", "minutes", "testifies", "testimony", "auction", "nowcast", "gdpnow", "4-week")
+# Minutes, auctions and forecast models stay out; speakers are kept as their own kind.
+NOISE = ("minutes", "auction", "nowcast", "gdpnow", "4-week")
+SPEAK_WORDS = ("speaks", "speech", "press conference", "testifies", "testimony", "remarks")
+# Who is speaking decides the stars: chair and president level first, then the rest.
+SPEAK_TOP = (
+    "chair powell", "federal reserve chair", "fomc press conference", "ecb president",
+    "president lagarde", "boj governor", "boj press conference", "bank of england governor",
+    "treasury secretary", "vice chair",
+)
+SPEAK_HIGH = ("fomc member", "ecb's", "governor", "buba president", "rba gov", "deputy governor", "gov ")
+EARNINGS_URL = "https://api.nasdaq.com/api/calendar/earnings?date=%s"
+# Only mega-caps: the calendar is a glance list, not an earnings dump.
+EARNINGS_MIN_CAP = 50_000_000_000
+EARNINGS_WHEN = {
+    "time-pre-market": ("장전", "21:00"),
+    "time-after-hours": ("장후", "05:00"),
+    "time-not-supplied": ("시간미정", ""),
+}
 LABELS = {-1: "\uc5b4\uc81c", 0: "\uc624\ub298", 1: "\ub0b4\uc77c"}  # yesterday, today, tomorrow
 WEEKDAYS = "\uc6d4\ud654\uc218\ubaa9\uae08\ud1a0\uc77c"  # Mon..Sun
 
@@ -79,18 +104,30 @@ def is_us(country: str) -> bool:
     return clean(country).lower() in ("united states", "u.s.", "us", "usa")
 
 
-def wanted(name: str, country: str) -> int:
-    """Importance level to publish, or 0 to drop the event."""
+def speaker_stars(name: str) -> int:
+    """Rank a speaker by who is talking rather than by the event name."""
+    lowered = name.lower()
+    if any(key in lowered for key in SPEAK_TOP):
+        return 5
+    if any(key in lowered for key in SPEAK_HIGH):
+        return 4
+    return 3
+
+
+def classify(name: str, country: str) -> tuple[int, str]:
+    """Return (importance, kind), or (0, "") when the row should be dropped."""
     country = clean(country)
     if country not in COUNTRIES:
-        return 0
+        return (0, "")
     lowered = name.lower()
     if any(word in lowered for word in NOISE):
-        return 0
+        return (0, "")
+    if any(word in lowered for word in SPEAK_WORDS):
+        return (speaker_stars(name), "speech")
     level = 3 if any(key in lowered for key in LEVEL3) else (2 if any(key in lowered for key in LEVEL2) else 1)
     if is_us(country):
-        return level if level >= 2 else 0
-    return 3 if lowered.startswith(WORLD) else 0
+        return (level if level >= 2 else 0, "econ")
+    return (3 if lowered.startswith(WORLD) else 0, "econ")
 
 
 def decimal(text: str) -> str:
@@ -142,6 +179,58 @@ def fetch_day(day: str, timeout: int = 40) -> list[dict[str, Any]]:
     return [row for row in rows if isinstance(row, dict)]
 
 
+def fetch_earnings(day: str, timeout: int = 40) -> list[dict[str, Any]]:
+    import urllib.request
+
+    request = urllib.request.Request(EARNINGS_URL % day, headers={"User-Agent": UA, "Accept": "application/json"})
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        payload = json.loads(response.read())
+    rows = (payload.get("data") or {}).get("rows") or []
+    return [row for row in rows if isinstance(row, dict)]
+
+
+def money(value: Any) -> int:
+    digits = re.sub(r"[^0-9]", "", str(value or ""))
+    return int(digits) if digits else 0
+
+
+def earnings_rows(page_date: date, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Mega-cap results. The source publishes no clock, only before or after the bell,
+    so each row carries an approximate KST time instead: 21:00 for a before-the-bell
+    report, and 05:00 on the next KST day for an after-the-close one.
+
+    Unlike the economic calendar, the earnings page is NOT shifted a day: the page for
+    date D carries the companies reporting on ET D. Verified against COST, whose last
+    report date (9/25/2025) and this year's page (9/24/2026) are both the last
+    Thursday of September.
+    """
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        symbol = clean(row.get("symbol"))
+        cap = money(row.get("marketCap"))
+        if not symbol or cap < EARNINGS_MIN_CAP:
+            continue
+        label, clock = EARNINGS_WHEN.get(clean(row.get("time")), ("", ""))
+        day = page_date + timedelta(days=1) if label == "장후" else page_date
+        company = clean(row.get("name"))
+        out.append({
+            "kst": clock,
+            "approx": True,
+            "date": day.isoformat(),
+            "country": "United States",
+            "country_code": "US",
+            "name": ("%s %s (%s)" % (symbol, company, label)) if label else ("%s %s" % (symbol, company)),
+            "kind": "earnings",
+            "importance": 4 if cap >= 500_000_000_000 else 3,
+            "actual": "",
+            "consensus": "",
+            "previous": "",
+            "released": False,
+            "passed": datetime.combine(day, datetime.min.time(), tzinfo=KST) <= datetime.now(KST),
+        })
+    return out
+
+
 def clock(value: Any) -> tuple[int, int] | None:
     match = re.match(r"^\s*(\d{1,2}):(\d{2})", str(value or ""))
     if not match:
@@ -171,7 +260,7 @@ def collect(now: datetime | None = None) -> dict[str, Any]:
             country = clean(row.get("country"))
             if not parsed or not name:
                 continue
-            level = wanted(name, country)
+            level, kind = classify(name, country)
             if not level:
                 continue
             hour, minute = parsed
@@ -182,6 +271,7 @@ def collect(now: datetime | None = None) -> dict[str, Any]:
                 "country": country,
                 "country_code": COUNTRY_CODE.get(country, country),
                 "name": name,
+                "kind": kind,
                 "importance": level,
                 "actual": clean(row.get("actual")),
                 "consensus": clean(row.get("consensus")),
@@ -189,6 +279,16 @@ def collect(now: datetime | None = None) -> dict[str, Any]:
                 "released": bool(clean(row.get("actual"))),
                 "passed": moment <= now,
             })
+
+    # Mega-cap results, which the economic feed does not carry at all.
+    for offset in (-1, 0, 1):
+        page_date = anchor + timedelta(days=offset)
+        try:
+            rows = fetch_earnings(page_date.isoformat())
+        except Exception as exc:  # a network problem must never break the dashboard
+            errors.append("earnings %s: %s" % (page_date.isoformat(), exc))
+            continue
+        events.extend(earnings_rows(page_date, rows))
 
     # Nasdaq leaves the rate-decision row blank. Once that release is out, fill it from
     # the Fed's own statement rather than showing no result at all.
@@ -204,18 +304,22 @@ def collect(now: datetime | None = None) -> dict[str, Any]:
                 event["released"] = True
 
     # One release arrives as several rows (CPI / CPI n.s.a / CPIH). Keep the shortest
-    # name per time and country, and drop any name that starts with it.
-    kept: list[dict[str, Any]] = []
-    groups = {(event["date"], event["kst"], event["country"]) for event in events}
+    # name per time and country, and drop any name that starts with it. Earnings are
+    # excluded: several companies can report at the same minute, and collapsing those
+    # groups by name length would silently delete most of them.
+    kept: list[dict[str, Any]] = [event for event in events if event["kind"] == "earnings"]
+    release_rows = [event for event in events if event["kind"] != "earnings"]
+    groups = {(event["date"], event["kst"], event["country"]) for event in release_rows}
     for group in sorted(groups):
         chosen: list[dict[str, Any]] = []
-        for event in sorted([e for e in events if (e["date"], e["kst"], e["country"]) == group],
+        for event in sorted([e for e in release_rows if (e["date"], e["kst"], e["country"]) == group],
                             key=lambda item: len(item["name"])):
             if any(event["name"].lower().startswith(other["name"].lower()) for other in chosen):
                 continue
             chosen.append(event)
         kept.extend(chosen)
-    kept.sort(key=lambda item: (item["date"], item["kst"]))
+    # A result with no clock goes last inside its own day.
+    kept.sort(key=lambda item: (item["date"], item["kst"] or "99:99"))
 
     days: list[dict[str, Any]] = []
     for offset in (-1, 0, 1):
