@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import bluesky_source
+import whitehouse_source
 import difflib
 import email.utils
 import html
@@ -559,6 +560,7 @@ def collect_news() -> dict[str, Any]:
     articles.extend(sbhnews)
     status["SBHNews"] = sbh_status
     articles.extend(bluesky_source.fetch_into(status))
+    articles.extend(whitehouse_source.fetch_into(status))
     fresh_articles = keep_recent(articles)
     deduped = dedupe_by_region(fresh_articles)
     inserted = insert_articles(deduped)
