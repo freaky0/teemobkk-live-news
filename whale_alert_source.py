@@ -59,7 +59,8 @@ def money(text: str) -> int:
 
 def clean(text: str) -> str:
     text = re.sub(r"(\*|_|#|\\)+", "", text)
-    text = re.sub(r"🚨|⚠️|🐋", " ", text)
+    # Emoji runs (🚨🔥💵 …) are decoration on the alert; the words carry the meaning.
+    text = re.sub(r"[\U0001F300-\U0001FAFF\u2600-\u27BF\u2B00-\u2BFF\uFE0F]", " ", text)
     text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)
     text = re.sub(r"<[^>]+>", " ", text)
     return re.sub(r"\s+", " ", text).strip()
@@ -120,9 +121,9 @@ def to_article(core: Any, row: dict[str, Any]) -> dict[str, Any] | None:
     title = re.sub(r"\s+", " ", row["text"]).strip()
     if not title:
         return None
-    # Routine treasury issuance runs several times a day at the same size; only the
-    # unusually large ones are worth a slot in the feed.
-    if re.search(r"minted at .*treasury", title, re.I) and usd < MINT_MIN_USD:
+    # Routine treasury issuance and redemptions run several times a day at the same
+    # size; only the unusually large ones are worth a slot in the feed.
+    if re.search(r"(minted|burned) at .*treasury", title, re.I) and usd < MINT_MIN_USD:
         return None
     if len(title) > TITLE_MAX:
         title = title[:TITLE_MAX] + "…"
