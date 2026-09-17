@@ -453,6 +453,11 @@ function renderGuide(){
     :'<h2>관찰 기준</h2><p class="note">유동성·금리, 달러·국채, 미국 정책, 지정학, ETF·기관 수급, 파생상품, 온체인, 스테이블코인, X 발언을 우선 수집합니다.</p><p class="note">뉴스 사실과 시장 해석을 분리합니다. X 게시물과 속보는 공식 발표나 원문 확인 전까지 확정 사실로 취급하지 않습니다.</p>'}
 
 function setTab(next,silent){
+  // The indicator tab toggles: pressing it again closes the panel and returns to the
+  // last news tab. Previously the calendar stayed open above the feed once visited,
+  // because it was shown with an inline style that the tab class could not undo.
+  if(next==='cal'&&V.tab==='cal'&&!silent){setTab(V.lastNews||'global');return}
+  if(next!=='cal')V.lastNews=next;
   V.tab=next;V.filter='전체';V.tag=null;V.limit=PAGE;V.offset=0;V.mode='all';V.value='';
   document.body.classList.toggle('tab-cal',next==='cal');
   document.querySelectorAll('.tab').forEach(b=>{
@@ -472,7 +477,6 @@ function setTab(next,silent){
   else{fetchFeed()}}
 
 function calendarFailure(message){
-  document.querySelector('#cal').style.display='block';
   document.querySelector('#cal-stamp').textContent='';
   document.querySelector('#cal-body').innerHTML='<div class="cal-err">'+esc(message)+
     '<button type="button" id="cal-retry">다시 시도</button></div>';
@@ -484,7 +488,6 @@ function calTone(e){const a=calNum(e.actual),c=calNum(e.consensus);if(a===null||
   const tol=Math.abs(c)*0.02;return Math.abs(a-c)<=tol?'flat':(a>c?'up':'down')}
 function paintCalendar(data){
   const days=(data&&data.days)||[];
-  document.querySelector('#cal').style.display='block';
   if(!days.length){document.querySelector('#cal-stamp').textContent='';
     document.querySelector('#cal-body').innerHTML='<div class="note">표시할 일정이 없습니다.</div>';return}
   let total=0,top=0;
