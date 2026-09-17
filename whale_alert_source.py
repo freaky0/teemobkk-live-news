@@ -127,15 +127,22 @@ def to_article(core: Any, row: dict[str, Any]) -> dict[str, Any] | None:
     if len(title) > TITLE_MAX:
         title = title[:TITLE_MAX] + "…"
     when = row.get("when") or ""
+    note = ""
     if re.fullmatch(r"[A-Z][a-z]+ \d{1,2}", when):
-        # markdown fallback: date without a clock, so use the date at 00:00 UTC
+        # The proxy transport only gives a posting date. Anchor it at midday so the row
+        # is not pushed out of the 24 hour window by a whole day, and say so in the text
+        # rather than implying a precision the source does not have.
         try:
             parsed = datetime.strptime(when + " %d" % datetime.now(timezone.utc).year, "%B %d %Y")
-            when = parsed.replace(tzinfo=timezone.utc).isoformat()
+            when = parsed.replace(hour=12, tzinfo=timezone.utc).isoformat()
+            note = "게시 날짜 기준(시각 미상)"
         except ValueError:
             when = ""
     published = core.parse_date(when) if when else datetime.now(timezone.utc).isoformat()
-    return core.make_article(title, row["link"], title, published, SOURCE, SOURCE_TYPE)
+    if len(title) > TITLE_MAX - 30:
+        title = title[:TITLE_MAX - 30] + "…"
+    summary = title + ((" · " + note) if note else "")
+    return core.make_article(title, row["link"], summary, published, SOURCE, SOURCE_TYPE)
 
 
 def fetch_into(status: dict[str, Any], core: Any = None) -> list[dict[str, Any]]:
@@ -203,6 +210,11 @@ def fetch_into(status: dict[str, Any], core: Any = None) -> list[dict[str, Any]]
 
     status[SOURCE] = {"ok": True, "count": len(output), "scanned": len(rows),
                       "transport": transport, "url": DIRECT}
+    # Logged so the CI transcript shows which transport ran: the runner can reach t.me
+    # directly while this machine cannot, and that difference is invisible otherwise.
+    import logging
+    logging.info("Whale Alert: %d published from %d messages via %s",
+                 len(output), len(rows), transport)
     if transport != "direct":
         status[SOURCE]["note"] = "proxy (%s)" % error
     return output
