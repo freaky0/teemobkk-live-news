@@ -628,7 +628,8 @@ function paintCalendar(data){
   let total=0,top=0;
   days.forEach(d=>{total+=d.events.length;d.events.forEach(e=>{if(e.importance>=4)top++})});
   document.querySelector('#cal-stamp').textContent=(data.updated_at_kst||'')+' KST';
-  document.querySelector('#cal-sum').textContent='앞으로 3일 일정 '+total+'건 · 중요도 ★4 이상 '+top+'건 · 출처 나스닥 캘린더 · 연준 · 백악관 · Factba.se';
+  document.querySelector('#cal-sum').textContent='앞으로 3일 일정 '+total+'건 · 중요도 ★4 이상 '+top+'건 · 출처 나스닥 캘린더 · 연준 · 백악관 · Factba.se'
+    +' · 시각 기준 KST(UTC+9) · 방콕은 여기서 2시간 뒤';
   document.querySelector('#cal-body').innerHTML=days.map(d=>{
     const rows=d.events.length?d.events.map(e=>{
       const parts=[];
