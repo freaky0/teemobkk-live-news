@@ -117,8 +117,8 @@ CATEGORY_RULES = {
 
 # 태국 교민 생활에 직접 닿는 순서로 배치한다.
 THAI_CATEGORY_RULES = {
-    "비자·이민": ["visa", "immigration", "work permit", "residence", "extension of stay", "90-day", "overstay", "visa run", "land border", "entry requirement", "비자", "이민", "체류", "워크퍼밋", "วีซ่า", "ตรวจคนเข้าเมือง", "ต่ออายุ"], 
-    "사고·재난": ["flood", "fire", "crash", "collision", "accident", "explosion", "earthquake", "storm", "drown", "collapse", "killed", "injured", "outbreak", "홍수", "화재", "사고", "폭발", "지진", "태풍", "붕", "사망", "부상", "น้ำท่วม", "ไฟไหม้", "อุบัติเหตุ", "แผ่นดินไหว", "พายุ", "ระเบิด"],
+    "비자·이민": ["visa", "immigration", "work permit", "residence permit", "permanent residence", "residence visa", "extension of stay", "90-day", "overstay", "visa run", "land border", "entry requirement", "비자", "이민", "체류", "워크퍼밋", "วีซ่า", "ตรวจคนเข้าเมือง", "ต่ออายุ"], 
+    "사고·재난": ["flood", "fire", "wildfire", "crash", "collision", "accident", "explosion", "earthquake", "storm", "drown", "collapse", "killed", "injured", "outbreak", "홍수", "화재", "사고", "폭발", "지진", "태풍", "붕", "사망", "부상", "น้ำท่วม", "ไฟไหม้", "อุบัติเหตุ", "แผ่นดินไหว", "พายุ", "ระเบิด"],
     "태국 생활": ["bts", "mrt", "skytrain", "subway", "tollway", "expressway", "traffic", "water outage", "power outage", "blackout", "electricity", "water supply", "dust", "pm2.5", "air quality", "weather", "rain", "heat", "교통", "단수", "정전", "지하철", "미세먼지", "날씨", "폭우", "고속도로", "น้ำไม่ไหล", "ไฟฟ้าดับ", "ฝุ่น", "จราจร", "อากาศ"],
     "태국 경제": ["baht", "thai economy", "gdp", "inflation", "set index", "bank of thailand", "bot ", "investment", "tax", "export", "tourism revenue", "minimum wage", "경제", "밧", "물가", "투자", "세금", "관세", "최저임금", "수출", "เศรษฐกิจ", "บาท", "ภาษี", "ลงทุน", "เงินเฟ้อ", "ค่าแรง"],
     "태국 정치·사회": ["government", "prime minister", "parliament", "senate", "election", "protest", "constitution", "court", "police", "corruption", "party", "cabinet", "정치", "정부", "총리", "의회", "선거", "시위", "경찰", "부패", "탄핵", "รัฐบาล", "นายกรัฐมนตรี", "สภา", "เลือกตั้ง", "ตำรวจ", "ทุจริต"],
@@ -186,6 +186,47 @@ def parse_rss(payload: bytes, source: str, source_type: str, region: str = "글�
     return output
 
 
+# Terms that must match a whole word, chosen from measurement rather than taste.
+#
+# Substring matching stays the default: Korean and Thai have no reliable word breaks, so
+# a compound like 규제법 legitimately contains 규제 and a Thai run contains its words
+# joined. Latin terms are different — an unbounded hit usually means the term fired
+# inside an unrelated word. Counting the enclosing words over one day showed which:
+#
+#   war  212 substring vs 21 whole-word: warsh(136), toward(30), warns(25), payward(16)
+#   ban   92 vs  5: bank(67), banks(27), bitbank(18), banking(13)
+#   sec  128 vs 44: security(27), secretary(20), second(18), sector(7)
+#   repo  46 vs  4: reports(36), report(22)
+#   eth  130 vs 28: whether(15), ethiopia(6), method(4)   (ethereum/ether are separate terms)
+#   bill 121 vs 75: billion(66), billionaire(14)
+#   gold  55 vs 39: goldman(19), golden(5)
+#   rain  17 vs  8: train(7), bahrain(6), training(3), ukraine(2), brain(2)
+#   fire   9 vs  4: gas-fired(4), ceasefire(4)
+#   dust   7 vs  0: industry(13)          ppi 20 vs 10: shipping(5), dropping(4)
+#   hospital 6 vs 1: hospitality(10)      qe   5 vs  0: base64-like feed artefacts
+#
+# The worst of these was not cosmetic: "warsh" was putting Fed-governor coverage into
+# 지정학 instead of the rates categories.
+#
+# Deliberately NOT listed, because their unbounded hits are the intent:
+#   fed→federal(71), institution→institutional(65), iran→iranian(26), russia→russian(15),
+#   regulator→regulatory(19), law→lawsuit/lawmaker, market→polymarket, etf→etfflows
+BOUNDARY_TERMS = {
+    "war", "ban", "sec", "repo", "bill", "gold", "rain", "fire", "travel",
+    "dust", "ppi", "qe", "defi", "hospital", "eth", "ether",
+}
+
+
+def _term_hits(text: str, term: str) -> bool:
+    """Match a category keyword, whole-word for the terms listed above and by substring otherwise."""
+    term = term.strip()
+    if not term:
+        return False
+    if term in BOUNDARY_TERMS:
+        return re.search(r"\b" + re.escape(term) + r"s?\b", text) is not None
+    return term in text
+
+
 def canonical_link(link: str) -> str:
     """Drop tracking parameters that would turn one article into several rows.
 
@@ -207,7 +248,7 @@ def make_article(title: str, link: str, summary: str, published: str, source: st
     rules = THAI_CATEGORY_RULES if region == "태국" else CATEGORY_RULES
     category = "일반"
     for candidate, terms in rules.items():
-        if any(term in text for term in terms):
+        if any(_term_hits(text, term) for term in terms):
             category = candidate
             break
     if region == "태국":
