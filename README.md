@@ -67,6 +67,24 @@ cd /d "C:\AI\Work_Folders\News_Macros\live_news_dashboard"
 python live_news_dashboard.py --interval 30
 ```
 
+### 백그라운드(분리) 실행 — 권장
+
+`start_dashboard_bg.bat` 은 서버를 **분리된 프로세스**로 띄우고, 포트가 실제로 응답하면 바로 돌아온다. 창이 남지 않고 실행한 쪽(탐색기·cmd·Hermes 세션)이 끝나도 서버는 계속 돈다.
+
+```bat
+start_dashboard_bg.bat          :: 기동. 포트를 잡고 있는 이전 프로세스는 정리한다
+start_dashboard_bg.bat open     :: 기동 후 브라우저까지 열기
+```
+
+```
+동작     이전 리스너 종료 → 분리 기동 → 포트 LISTENING 확인 → 그 뒤에 성공 반환
+실패 시   포트가 안 열리면 로그 마지막 12줄을 출력하고 exit 1
+출력     local.log · local.log.err (로거가 stderr로 쓰므로 내용은 .err에 있다)
+         직전 실행분은 *.prev로 보존 — 숨은 창은 다른 흔적을 남기지 않는다
+```
+
+분리 기동 자체는 `run_dashboard_bg.py` 가 맡는다. `Start-Process -WindowStyle Hidden` 으로 띄우면 자식이 호출자의 콘솔을 물려받아, 실행한 쪽이 **서버가 끝날 때까지** 기다린다(실측: 서버는 정상인데 에이전트 도구 호출이 5분 대기). `DETACHED_PROCESS` 로 콘솔을 아예 주지 않으면 즉시 반환한다(실측 1.7초).
+
 ## 설계 원칙
 
 - API 키 없이 실행
