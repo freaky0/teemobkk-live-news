@@ -231,8 +231,11 @@ def make_article(title: str, link: str, summary: str, published: str, source: st
         priority = 3
         if source_type == "official":
             priority += 2
-        if source_type == "breaking":
-            priority += 1
+        # No blanket bonus for breaking-news feeds. FinancialJuice, SBHNews and CoinNess
+        # stamp *every* item as breaking, which pinned a whole source at the top band no
+        # matter what it published (measured: 100% of each source's day at 4+; after this
+        # change the same sources sit at 17-40%). The per-article keyword check below
+        # carries the real urgency signal.
         if category in {"ETF·수급", "규제·정책", "거시경제", "지정학"}:
             priority += 1
         if any(word in text for word in ("breaking", "urgent", "hack", "approval", "approved", "소식")):
