@@ -8,6 +8,7 @@ missed run does not leave a hole in the published list.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import sys
@@ -20,22 +21,36 @@ ROOT = HERE.parent
 sys.path.insert(0, str(ROOT))
 
 import live_news_dashboard as core  # noqa: E402  (path is set just above)
+import page_build  # noqa: E402
 
 DOCS = ROOT / "docs"
 INDEX_FILE = DOCS / "index.json"
 REGION_FILES = {core.GLOBAL_REGION: DOCS / "global.json", core.THAI_REGION: DOCS / "thai.json"}
 KEEP_HOURS = 24
 MAX_PER_REGION = 1500
+# The page opens on 25 rows but "더 보기" can walk the whole window, so each region is
+# published twice: a small recent file the page loads first, and the full file it only
+# fetches once the reader actually pages past the recent set.
+RECENT_PER_REGION = 300
 PAGE_SIZE = 1000
 FIELDS = (
-    "title", "link", "summary", "published_at", "collected_at",
-    "source", "source_type", "region", "category", "asset", "priority",
+    "title", "link", "summary", "published_at",
+    "source", "source_type", "category", "priority",
 )
+
+
+SUMMARY_CHARS = 240
 
 
 def public_row(row: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {key: row.get(key) for key in FIELDS}
     out["priority"] = int(out.get("priority") or 3)
+    # The page clamps a summary to three lines (~220 chars) and trims it only when it
+    # is longer than that, so shipping the full 800-char text wasted most of the file.
+    # Trimming here cut global.json from 936KB to about half, with nothing lost on screen.
+    summary = str(out.get("summary") or "")
+    if len(summary) > SUMMARY_CHARS:
+        out["summary"] = summary[:SUMMARY_CHARS].rstrip() + "…"
     return out
 
 
@@ -96,6 +111,23 @@ def merge(previous: list[dict[str, Any]], fresh: list[dict[str, Any]]) -> list[d
     return ordered[:MAX_PER_REGION]
 
 
+def digest_of(articles: list[dict[str, Any]]) -> str:
+    """A stamp that changes only when the published rows change.
+
+    The page polls index.json with this value in hand and skips the regional download
+    when it matches, so an idle poll costs about 200 bytes instead of the whole file.
+    """
+    hasher = hashlib.sha1()
+    for article in articles:
+        hasher.update(str(article.get("link")).encode("utf-8"))
+        hasher.update(b"\n")
+    return hasher.hexdigest()[:16]
+
+
+def recent_path(path: Path) -> Path:
+    return path.with_name(path.stem + "-recent.json")
+
+
 def write_json(path: Path, payload: dict[str, Any]) -> int:
     text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     path.write_text(text, encoding="utf-8")
@@ -103,57 +135,62 @@ def write_json(path: Path, payload: dict[str, Any]) -> int:
 
 
 
-THAI_DIR = DOCS / "thai"
-PAGE_FILE = DOCS / "index.html"
-FAVICON_FIXES = (
-    ('href="favicon.ico"', 'href="../favicon.ico"'),
-    ('href="favicon-32.png"', 'href="../favicon-32.png"'),
-    ('href="favicon-16.png"', 'href="../favicon-16.png"'),
-    ('href="apple-touch-icon.png"', 'href="../apple-touch-icon.png"'),
-)
-
-
 def write_thai_page() -> int:
-    """Publish the same page one level deeper so /thai/ opens the Thailand tab.
+    """Regenerate the published pages and report the Thailand copy's size.
 
-    The copy is generated, never hand edited: index.html stays the only source.
-    The page itself detects the /thai/ path and switches both the tab and the
-    directory it reads data from, so only the icon paths need rewriting here.
+    Both public pages now come from page_build, so a markup or style change can never
+    land on only one of them. (The old /thai/ copy was a find-and-replace of
+    docs/index.html, and a CSS class rename once reached only one of the two.)
     """
-    html = PAGE_FILE.read_text(encoding="utf-8")
-    for old, new in FAVICON_FIXES:
-        if html.count(old) != 1:
-            raise RuntimeError("favicon anchor not found exactly once: " + old)
-        html = html.replace(old, new, 1)
-    THAI_DIR.mkdir(parents=True, exist_ok=True)
-    target = THAI_DIR / "index.html"
-    target.write_text(html, encoding="utf-8", newline="\n")
-    return len(html.encode("utf-8"))
+    sizes = page_build.build_all()
+    return sizes["docs/thai/index.html"]
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     core.init_db()
     core.collect_news()
-    fresh = [public_row(row) for row in fetch_window()]
+    rows = fetch_window()
     DOCS.mkdir(parents=True, exist_ok=True)
 
+    now = datetime.now(timezone.utc)
     region_counts: dict[str, int] = {}
+    regions: dict[str, dict[str, Any]] = {}
     total = 0
     for region, path in REGION_FILES.items():
-        mine = [row for row in fresh if str(row.get("region") or core.GLOBAL_REGION) == region]
-        articles = merge(read_articles(path), mine)
-        size = write_json(path, {"region": region, "articles": articles})
+        mine = [public_row(row) for row in rows if str(row.get("region") or core.GLOBAL_REGION) == region]
+        # Trim again after the merge: rows kept from the previous file were written
+        # before the cap existed and would otherwise keep their full-length summaries.
+        articles = [public_row(row) for row in merge(read_articles(path), mine)]
+        recent = articles[:RECENT_PER_REGION]
+        write_json(path, {
+            "region": region,
+            "stamp": digest_of(articles),
+            "count": len(articles),
+            "articles": articles,
+        })
+        size = write_json(recent_path(path), {
+            "region": region,
+            "stamp": digest_of(recent),
+            "count": len(recent),
+            "articles": recent,
+        })
         region_counts[region] = len(articles)
+        regions[region] = {
+            "count": len(articles),
+            "stamp": digest_of(articles),
+            "recent_count": len(recent),
+            "recent_stamp": digest_of(recent),
+        }
         total += len(articles)
-        logging.info("%s: %d articles (%d bytes)", path.name, len(articles), size)
+        logging.info("%s: %d articles, recent %d (%d bytes)", path.name, len(articles), len(recent), size)
 
-    now = datetime.now(timezone.utc)
     write_json(INDEX_FILE, {
         "updated_at": now.isoformat(),
         "updated_at_ict": now.astimezone(core.ICT).strftime("%Y-%m-%d %H:%M"),
         "window_hours": KEEP_HOURS,
         "article_count": total,
         "region_counts": region_counts,
+        "regions": regions,
     })
     logging.info("thai page: %d bytes", write_thai_page())
     logging.info("wrote %s: %d articles total", INDEX_FILE.name, total)

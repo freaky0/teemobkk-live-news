@@ -1,21 +1,34 @@
-<!doctype html>
-<html lang="ko">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex">
-<meta name="description" content="비트코인·매크로·태국 뉴스를 5분마다 모아 보여주는 실시간 대시보드. 경제지표와 주요 일정 포함.">
-<meta property="og:title" content="TeemoBKK Live News">
-<meta property="og:description" content="비트코인·매크로·태국 뉴스 실시간 대시보드. 경제지표·연설·실적 일정 포함.">
-<meta property="og:type" content="website">
-<meta property="og:image" content="og-image.png">
-<meta name="twitter:card" content="summary_large_image">
-<link rel="icon" href="favicon.ico" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<title>TeemoBKK Live News</title>
-<style>
+"""Build every dashboard page from one source.
+
+Three files are published and they must never drift apart:
+
+    index.html            local, served by the collector on 127.0.0.1:8765 (admin extras)
+    docs/index.html       public, GitHub Pages root
+    docs/thai/index.html  public, same page one level deeper so /thai/ opens the Thailand tab
+
+Before this module existed the three were edited by hand and a CSS class rename once
+landed on only some of them, so colours silently stopped matching. Now the markup,
+the stylesheet and the script live here once, and each target only differs in a small
+config block.
+
+Two data paths are supported and selected by `public`:
+
+    public  static JSON on GitHub Pages. The page filters in the browser, groups the
+            feed into time sections, and only downloads a regional file when the tiny
+            index.json says that region actually changed.
+    local   the collector's own /api/news endpoint, which filters and pages on the
+            server, plus the admin panel (source health, poll interval, archive size).
+"""
+from __future__ import annotations
+
+import io
+import json
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+DOCS = ROOT / "docs"
+
+CSS = """\
 :root{
   --bg:#0a0e1a; --panel:#111a2c; --panel2:#16213a; --text:#eef3ff; --muted:#8b9bbd;
   --line:#243252; --line2:#2e3d61; --accent:#64d7ff; --thai:#ffd479; --hot:#ffb86b;
@@ -169,70 +182,10 @@ body.public .layout{grid-template-columns:minmax(0,1fr)}
   .lead .title{font-size:20px}
   .count{margin-left:0;width:100%}
 }
-</style>
-</head>
-<body class="public">
+"""
 
-<header class="bar">
-  <div class="bar-in">
-    <div>
-      <div class="brand">TeemoBKK Live News</div>
-      <h1>실시간 뉴스 대시보드</h1>
-    </div>
-    <div class="spacer"></div>
-    <div class="stamp">업데이트 <b id="updated">-</b><br><span id="stale" class="stale"></span></div>
-  </div>
-</header>
-
-<main class="wrap">
-  <div class="tabs" role="tablist">
-    <button id="tab-global" class="tab active" data-tab="global" role="tab" aria-selected="true">경제 소식</button>
-    <button id="tab-cal" class="tab" data-tab="cal" role="tab" aria-selected="false">경제 지표</button>
-    <button id="tab-thai" class="tab th" data-tab="thai" role="tab" aria-selected="false">태국 소식</button>
-  </div>
-
-  <section class="cal" id="cal">
-    <h2>경제지표 · 연설 · 실적 · 대통령 일정 <span class="note" id="cal-stamp"></span></h2>
-    <p class="cal-sum" id="cal-sum"></p>
-    <div class="cal-grid" id="cal-body"><div class="note">불러오는 중…</div></div>
-  </section>
-
-  <section class="toolbar">
-    <input id="q" type="search" placeholder="제목·요약·출처 검색 ( / )" aria-label="뉴스 검색">
-    <select id="hours" aria-label="기간">
-      <option value="1">최근 1시간</option>
-      <option value="6">최근 6시간</option>
-      <option value="12">최근 12시간</option>
-      <option value="24" selected>최근 24시간</option>
-    </select>
-    
-    <button id="newpill" class="newpill" type="button"></button>
-    <span class="count" id="counts"></span>
-  </section>
-
-  <section id="filters-global" class="pills"></section>
-  <section id="filters-thai" class="pills th" hidden></section>
-
-  <div class="layout">
-    <section>
-      <div id="feed" class="feed"></div>
-      <span class="sr-only" aria-live="polite" id="live"></span>
-      <div class="more-wrap">
-        <button id="more" type="button" hidden>더 보기</button>
-        <button id="totop" type="button">맨 위로</button>
-      </div>
-    </section>
-    
-  </div>
-
-  <footer class="foot">
-    각 기사의 저작권은 원 매체에 있습니다. 제목과 요약, 그리고 원문 링크만 표시하며 원문 확인은 링크를 통해 해 주세요.<br>
-    자동 수집 결과이므로 표기 오류나 지연이 있을 수 있습니다. 투자 판단의 근거로 사용하지 마세요.
-  </footer>
-</main>
-
-<script>
-const CFG={"public":true,"datadir":"","wantThai":false,"admin":false,"api":"","calendar":"https://raw.githubusercontent.com/freaky0/teemobkk-live-news/main/docs/calendar.json"};
+SCRIPT = """\
+const CFG=__CONFIG__;
 const PUBLIC=CFG.public, DATADIR=CFG.datadir, API=CFG.api;
 const PAGE=25, BIG=25, STALE_MIN=35, GRACE_MS=3*3600000;
 const GLOBAL_CATS=['유동성·금리','미국 정책·트럼프','지정학','ETF·수급','파생상품·청산','온체인·기관','스테이블코인','X 발언','주식·원자재','채굴','규제·정책','거시경제','시장·가격','이더리움·알트'];
@@ -267,7 +220,7 @@ function bucket(iso){const t=new Date(iso).getTime();if(!isFinite(t))return '이
   if(day===bangkokDay(y))return '어제';
   return '이전'}
 function hl(t){const txt=esc(t);const q=(V.q||'').trim();if(!q)return txt;
-  const qe=esc(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const qe=esc(q).replace(/[.*+?^${}()|[\\]\\\\]/g,'\\\\$&');
   try{return txt.replace(new RegExp('('+qe+')','gi'),'<mark>$1</mark>')}catch(e){return txt}}
 function keep(a){
   const hours=Number(V.hours)||24,t=new Date(a.published_at).getTime();
@@ -479,7 +432,7 @@ function calendarFailure(message){
   const b=document.querySelector('#cal-retry');
   if(b)b.onclick=()=>{document.querySelector('#cal-body').innerHTML='<div class="note">불러오는 중…</div>';loadCalendar()}}
 function calEsc(s){return esc(s)}
-function calNum(t){const m=String(t==null?'':t).replace(/,/g,'').match(/-?\d+(\.\d+)?/);return m?parseFloat(m[0]):null}
+function calNum(t){const m=String(t==null?'':t).replace(/,/g,'').match(/-?\\d+(\\.\\d+)?/);return m?parseFloat(m[0]):null}
 function calTone(e){const a=calNum(e.actual),c=calNum(e.consensus);if(a===null||c===null)return 'flat';
   const tol=Math.abs(c)*0.02;return Math.abs(a-c)<=tol?'flat':(a>c?'up':'down')}
 function paintCalendar(data){
@@ -580,5 +533,137 @@ document.addEventListener('visibilitychange',()=>{hidden=document.hidden;
   if(V.tab==='cal')loadCalendar();
   setInterval(()=>{if(!hidden&&V.tab==='cal')loadCalendar()},900000);
 })();
-</script>
+"""
+
+
+def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, admin: bool) -> str:
+    config = {
+        "public": public,
+        "datadir": datadir,
+        "wantThai": want_thai,
+        "admin": admin,
+        "api": "",
+        "calendar": "https://raw.githubusercontent.com/freaky0/teemobkk-live-news/main/docs/calendar.json",
+    }
+    stamp = ('<div class="stamp"><span id="state">연결 중</span> <b id="updated">-</b>'
+             if admin else '<div class="stamp">업데이트 <b id="updated">-</b>')
+    admin_toolbar = ('' if not admin else
+                     '<label class="note admin" for="interval">갱신</label>'
+                     '<select id="interval" class="admin" aria-label="갱신 간격">'
+                     '<option value="10">10초</option><option value="30">30초</option>'
+                     '<option value="60" selected>1분</option><option value="120">2분</option>'
+                     '<option value="300">5분</option></select>')
+    side = ('' if not admin else
+            '<aside class="side admin"><div class="box"><h2>수집 상태</h2><div id="sources">'
+            '<div class="note">대기 중</div></div></div><div class="box" id="tguide"></div></aside>')
+    og = ('' if admin else
+          '<meta name="description" content="비트코인·매크로·태국 뉴스를 5분마다 모아 보여주는 실시간 대시보드. 경제지표와 주요 일정 포함.">\n'
+          '<meta property="og:title" content="TeemoBKK Live News">\n'
+          '<meta property="og:description" content="비트코인·매크로·태국 뉴스 실시간 대시보드. 경제지표·연설·실적 일정 포함.">\n'
+          '<meta property="og:type" content="website">\n'
+          '<meta property="og:image" content="' + icon_prefix + 'og-image.png">\n'
+          '<meta name="twitter:card" content="summary_large_image">\n')
+    title = "TeemoBKK Live News" + (" · 태국 소식" if want_thai else "")
+    script = SCRIPT.replace("__CONFIG__", json.dumps(config, ensure_ascii=False, separators=(",", ":")))
+    return f"""<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+{og}<link rel="icon" href="{icon_prefix}favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="{icon_prefix}favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="{icon_prefix}favicon-16.png">
+<link rel="apple-touch-icon" href="{icon_prefix}apple-touch-icon.png">
+<title>{title}</title>
+<style>
+{CSS}</style>
+</head>
+<body{' class="public"' if public else ''}>
+
+<header class="bar">
+  <div class="bar-in">
+    <div>
+      <div class="brand">TeemoBKK Live News</div>
+      <h1>실시간 뉴스 대시보드</h1>
+    </div>
+    <div class="spacer"></div>
+    {stamp}<br><span id="stale" class="stale"></span></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="tabs" role="tablist">
+    <button id="tab-global" class="tab active" data-tab="global" role="tab" aria-selected="true">경제 소식</button>
+    <button id="tab-cal" class="tab" data-tab="cal" role="tab" aria-selected="false">경제 지표</button>
+    <button id="tab-thai" class="tab th" data-tab="thai" role="tab" aria-selected="false">태국 소식</button>
+  </div>
+
+  <section class="cal" id="cal">
+    <h2>경제지표 · 연설 · 실적 · 대통령 일정 <span class="note" id="cal-stamp"></span></h2>
+    <p class="cal-sum" id="cal-sum"></p>
+    <div class="cal-grid" id="cal-body"><div class="note">불러오는 중…</div></div>
+  </section>
+
+  <section class="toolbar">
+    <input id="q" type="search" placeholder="제목·요약·출처 검색 ( / )" aria-label="뉴스 검색">
+    <select id="hours" aria-label="기간">
+      <option value="1">최근 1시간</option>
+      <option value="6">최근 6시간</option>
+      <option value="12">최근 12시간</option>
+      <option value="24" selected>최근 24시간</option>
+    </select>
+    {admin_toolbar}
+    <button id="newpill" class="newpill" type="button"></button>
+    <span class="count" id="counts"></span>
+  </section>
+
+  <section id="filters-global" class="pills"></section>
+  <section id="filters-thai" class="pills th" hidden></section>
+
+  <div class="layout">
+    <section>
+      <div id="feed" class="feed"></div>
+      <span class="sr-only" aria-live="polite" id="live"></span>
+      <div class="more-wrap">
+        <button id="more" type="button" hidden>더 보기</button>
+        <button id="totop" type="button">맨 위로</button>
+      </div>
+    </section>
+    {side}
+  </div>
+
+  <footer class="foot">
+    각 기사의 저작권은 원 매체에 있습니다. 제목과 요약, 그리고 원문 링크만 표시하며 원문 확인은 링크를 통해 해 주세요.<br>
+    자동 수집 결과이므로 표기 오류나 지연이 있을 수 있습니다. 투자 판단의 근거로 사용하지 마세요.
+  </footer>
+</main>
+
+<script>
+{script}</script>
 </body></html>
+"""
+
+
+def write(path: Path, text: str) -> int:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with io.open(path, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(text)
+    return len(text.encode("utf-8"))
+
+
+def build_all() -> dict[str, int]:
+    """Rewrite the local page and both published pages."""
+    sizes = {}
+    sizes["index.html"] = write(ROOT / "index.html", render(
+        public=False, datadir="", want_thai=False, icon_prefix="", admin=True))
+    sizes["docs/index.html"] = write(DOCS / "index.html", render(
+        public=True, datadir="", want_thai=False, icon_prefix="", admin=False))
+    sizes["docs/thai/index.html"] = write(DOCS / "thai" / "index.html", render(
+        public=True, datadir="../", want_thai=True, icon_prefix="../", admin=False))
+    return sizes
+
+
+if __name__ == "__main__":
+    for name, size in build_all().items():
+        print("wrote %s (%d bytes)" % (name, size))
