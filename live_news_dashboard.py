@@ -4,7 +4,7 @@ import argparse
 import bluesky_source
 import sbh_open_news
 import sbh_source
-import whale_alert_source
+import telegram_source
 import whitehouse_source
 import difflib
 import email.utils
@@ -563,7 +563,7 @@ def collect_news() -> dict[str, Any]:
     articles.extend(sbh_open_news.fetch_into(status))
     articles.extend(bluesky_source.fetch_into(status))
     articles.extend(whitehouse_source.fetch_into(status))
-    articles.extend(whale_alert_source.fetch_into(status))
+    articles.extend(telegram_source.fetch_into(status))
     fresh_articles = keep_recent(articles)
     deduped = dedupe_by_region(fresh_articles)
     inserted = insert_articles(deduped)
