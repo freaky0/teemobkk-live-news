@@ -186,7 +186,22 @@ def parse_rss(payload: bytes, source: str, source_type: str, region: str = "글�
     return output
 
 
+def canonical_link(link: str) -> str:
+    """Drop tracking parameters that would turn one article into several rows.
+
+    FinancialJuice serves the same story as ?xy=rss, ?xy=free, ?xy=1 or with no query at
+    all, and which variant a request gets back varies from request to request. The link
+    is the table's primary key, so without this the same story is stored once per variant
+    and separated by whole collection cycles, which no in-cycle title check can catch.
+    """
+    link = (link or "").strip()
+    if re.match(r"^https?://(?:www\.)?financialjuice\.com/news/", link, re.I):
+        return link.split("?", 1)[0].split("#", 1)[0]
+    return link
+
+
 def make_article(title: str, link: str, summary: str, published: str, source: str, source_type: str, region: str = "글로벌") -> dict[str, Any]:
+    link = canonical_link(link)
     title = re.sub(r"^FinancialJuice:\s*", "", title or "")
     text = f"{title} {summary}".lower()
     rules = THAI_CATEGORY_RULES if region == "태국" else CATEGORY_RULES
@@ -367,7 +382,7 @@ def dedupe(articles: list[dict[str, Any]], limit: int | None = None) -> list[dic
     seen_links: set[str] = set()
     keys: list[str] = []
     for article in articles:
-        link = article["link"].split("#", 1)[0]
+        link = canonical_link(article["link"])
         key = normalize_title(article["title"])
         if link in seen_links:
             continue

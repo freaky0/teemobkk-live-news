@@ -353,7 +353,12 @@ function renderFeed(){
     ? '총 <b>'+all.length+'</b>건, <b>'+view.length+'</b>건 표시'
     : '총 <b>'+(DATA.total==null?all.length:DATA.total)+'</b>건, <b>'+view.length+'</b>건 표시'
       +(CFG.admin?'<span class="admin">, 보관 <b>'+archiveTotal+'</b>건</span>':''));
-  document.querySelector('#more').hidden=!(PUBLIC?all.length>view.length:DATA.has_more);
+  // Local: also require that the last request actually returned the whole window, so the
+  // button disappears when the API's own limit caps the page instead of silently doing
+  // nothing on every further click.
+  document.querySelector('#more').hidden=!(PUBLIC
+    ? all.length>view.length
+    : (DATA.has_more&&view.length>=V.limit));
   const pend=PENDING[region()]||0,np=document.querySelector('#newpill');
   if(pend>0){np.textContent='새 글 '+pend+'건 보기';np.dataset.show='1'}
   else{np.dataset.show='0';np.textContent=''}
@@ -538,7 +543,13 @@ document.querySelector('#more').onclick=async()=>{
   if(PUBLIC){
     if(V.limit+PAGE>articles().length&&!FULL[region()])await loadFull();
     V.limit+=PAGE;renderFeed()}
-  else{V.offset=(DATA.articles||[]).length;fetchFeed()}};
+  // Local: the feed is rendered from visible().slice(0,V.limit), so raising the offset
+  // alone grew the stored rows but left the reader looking at the same first page.
+  // Grow the window and refetch from the top instead; the API caps the response anyway.
+  else{
+    const cap=DATA.total||0;
+    V.limit=cap?Math.min(V.limit+PAGE,cap):V.limit+PAGE;
+    V.offset=0;fetchFeed()}};
 document.querySelector('#newpill').onclick=()=>{const t=region();
   if(LATEST[t]){
     // Mark what arrived since the reader last looked, so the swap is visible.

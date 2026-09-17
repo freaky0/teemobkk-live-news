@@ -91,6 +91,8 @@ def normalize_link(article: dict[str, Any]) -> dict[str, Any]:
             ident = link[len(prefix):].split("/")[0].split("?")[0]
             if ident.isdigit():
                 article["link"] = "https://coinness.com/stock-news/" + ident + "/quote"
+    # FinancialJuice variants are collapsed here too so the committed history stays clean.
+    article["link"] = core.canonical_link(str(article.get("link") or ""))
     return article
 
 
