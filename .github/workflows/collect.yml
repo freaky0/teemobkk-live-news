@@ -43,7 +43,18 @@ jobs:
           git add docs
           if git diff --quiet --cached; then
             echo "no change this run"
-          else
-            git commit -m "data: refresh $(date -u +%Y-%m-%dT%H:%MZ)"
-            git pull --rebase origin main && git push
+            exit 0
           fi
+          git commit -m "data: refresh $(date -u +%Y-%m-%dT%H:%MZ)"
+          # docs/*.json is regenerated every run, so on a race with a hand push the
+          # just-generated file must win: -X theirs keeps this run's data. A second
+          # attempt covers the case where another run pushed between pull and push.
+          for attempt in 1 2 3; do
+            if git pull --rebase -X theirs origin main && git push; then
+              echo "pushed on attempt $attempt"
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep 5
+          done
+          echo "push failed after retries"; exit 1
