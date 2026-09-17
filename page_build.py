@@ -89,6 +89,11 @@ select{cursor:pointer}
 .pill.active{background:var(--panel2);border-color:var(--accent);color:var(--accent)}
 .pill.th.active{border-color:var(--thai);color:var(--thai)}
 .pill.on{border-color:var(--accent);color:var(--accent)}
+/* Source chips sit in the same row as the category pills but are a different axis, so they
+   are dashed and separated. */
+.pill.src{border-style:dashed}
+.pill.src.th.active{border-color:var(--thai);color:var(--thai)}
+.pillsep{flex:0 0 auto;width:1px;margin:0 3px;background:var(--line2);align-self:stretch}
 .pill i{font-style:normal;opacity:.6;margin-left:5px;font-size:11.5px}
 .sec{display:flex;align-items:center;gap:10px;margin:18px 0 8px;color:var(--muted);font-size:12px;font-weight:600}
 .sec::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -206,6 +211,12 @@ const PUBLIC=CFG.public, DATADIR=CFG.datadir, API=CFG.api;
 const PAGE=25, BIG=25, STALE_MIN=35, GRACE_MS=3*3600000;
 const GLOBAL_CATS=['유동성·금리','미국 정책·트럼프','지정학','ETF·수급','파생상품·청산','온체인·기관','스테이블코인','X 발언','주식·원자재','채굴','규제·정책','거시경제','시장·가격','이더리움·알트'];
 const THAI_CATS=[['비자·이민','비자·이민'],['사고·재난','사고·재난'],['태국 생활','생활·교통·날씨'],['태국 경제','태국 경제'],['태국 정치·사회','정치·사회'],['태국 관광','관광'],['태국 보건','보건']];
+// Source chips. The list is data, not preference: the server matches the source column exactly
+// (source = ?), so each string has to be one that actually appears in the feed. Same-source
+// feeds are listed separately when the collector names them differently (CoinNess / CoinNess
+// Stock, Bangkok Post / Bangkok Post Business).
+const GLOBAL_SRC=['Whale Alert','Walter Bloomberg','FinancialJuice','SBHNews','CoinNess','CoinNess Stock'];
+const THAI_SRC=['Matichon','Thairath','Bangkok Post','Bangkok Post Business'];
 const CAL_URL=CFG.calendar;
 const CACHE_KEY='teemo-live-news-cache-v4';
 
@@ -293,16 +304,27 @@ function renderPills(){
   const row=document.querySelector(th?'#filters-thai':'#filters-global');
   document.querySelector(th?'#filters-global':'#filters-thai').hidden=true;
   const cats=th?THAI_CATS:GLOBAL_CATS;
+  const srcs=th?THAI_SRC:GLOBAL_SRC;
   const items=[['전체','전체']].concat(cats.map(c=>Array.isArray(c)?c:[c,c]));
   row.innerHTML=items.map(pair=>{
     const n=PUBLIC?pillCount(pair[0]):0;
     const badge=(PUBLIC&&n&&pair[0]!=='전체')?'<i>'+n+'</i>':'';
     return '<button type="button" class="pill'+(th?' th':'')+(pair[0]===V.filter?' active':'')+
       '" data-cat="'+esc(pair[0])+'">'+esc(pair[1])+badge+'</button>'}).join('')+
+    (srcs.length?'<span class="pillsep"></span>':'')+
+    srcs.map(s=>{
+      const on=V.tag&&V.tag.k==='src'&&V.tag.v===s;
+      return '<button type="button" class="pill src'+(th?' th':'')+(on?' active':'')+
+        '" data-src="'+esc(s)+'" aria-pressed="'+(on?'true':'false')+'">'+esc(s)+'</button>'}).join('')+
     (V.tag?'<button type="button" class="pill on" id="clrtag">✕ '+esc(V.tag.v)+'</button>':'');
   row.hidden=false;
   row.querySelectorAll('button[data-cat]').forEach(b=>b.onclick=()=>{
     V.filter=b.dataset.cat;V.limit=PAGE;V.offset=0;renderPills();fetchFeed()});
+  row.querySelectorAll('button[data-src]').forEach(b=>b.onclick=()=>{
+    const v=b.dataset.src;
+    V.tag=(V.tag&&V.tag.k==='src'&&V.tag.v===v)?null:{k:'src',v:v};
+    V.filter='전체';V.mode='all';V.value='';
+    V.limit=PAGE;V.offset=0;renderPills();fetchFeed()});
   const clr=row.querySelector('#clrtag');
   if(clr)clr.onclick=()=>{V.tag=null;V.limit=PAGE;V.offset=0;renderPills();fetchFeed()};
   document.querySelectorAll('.tab').forEach(b=>{
@@ -502,6 +524,9 @@ function buildQuery(){
   else if(V.mode==='official')p.set('source_type','official');
   else if(V.mode==='source'&&V.value)p.set('source',V.value);
   else if(V.mode==='category'&&V.filter)p.set('category',V.filter);
+  // Card chips set V.tag, not V.mode/V.value. Without this the local page sent an
+  // unfiltered request, so clicking a chip only highlighted it and the list never moved.
+  if(V.tag){if(V.tag.k==='cat')p.set('category',V.tag.v);else p.set('source',V.tag.v)}
   return p.toString()}
 async function loadLocal(){
   const r=await fetch(API+'/api/news?'+buildQuery(),{cache:'no-cache'});
@@ -621,7 +646,6 @@ document.querySelectorAll('.pill[data-filter]').forEach(b=>b.onclick=()=>{
   V.tag=null;V.limit=PAGE;V.offset=0;fetchFeed()});
 document.querySelector('#q').oninput=()=>{clearTimeout(window.__qt);
   window.__qt=setTimeout(()=>{V.q=document.querySelector('#q').value.trim();
-    if(V.q)try{localStorage.setItem('teemo-live-q',V.q)}catch(e){}
     V.limit=PAGE;V.offset=0;fetchFeed()},350)};
 document.querySelector('#hours').onchange=()=>{V.hours=Number(document.querySelector('#hours').value)||24;
   V.limit=PAGE;V.offset=0;fetchFeed()};
@@ -647,6 +671,9 @@ document.querySelector('#feed').addEventListener('click',ev=>{
   const chip=ev.target.closest('.chip.tap');
   if(chip){const k=chip.dataset.k,v=chip.dataset.v;
     V.tag=(V.tag&&V.tag.k===k&&V.tag.v===v)?null:{k:k,v:v};
+    // The category pill row and the card chips are two different filters. Left alone they
+    // would be sent together and ANDed on the server, which usually returns nothing.
+    V.filter='전체';V.mode='all';V.value='';
     V.limit=PAGE;V.offset=0;renderPills();fetchFeed();return}
   const btn=ev.target.closest('.expand');
   if(!btn)return;
@@ -677,8 +704,8 @@ document.addEventListener('visibilitychange',()=>{hidden=document.hidden;
   renderGuide();
   if(CFG.wantThai||hash.indexOf('tab=thai')>=0)setTab('thai',true);
   else if(hash.indexOf('tab=cal')>=0)setTab('cal',true);
-  const saved=localStorage.getItem('teemo-live-q');
-  if(saved){const qi=document.querySelector('#q');if(qi){qi.value=saved;V.q=saved}}
+  // The search box starts empty on every load. Restoring the last query meant a reload
+  // silently kept filtering the list, which reads as the dashboard being stuck.
   skeleton();
   if(PUBLIC){fetchFeed();setInterval(()=>{if(!hidden&&V.tab!=='cal')fetchFeed()},300000)}
   else{fetchFeed();refreshTimer=setInterval(()=>{if(!hidden)fetchFeed()},30000)}
