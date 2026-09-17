@@ -86,9 +86,7 @@ select{cursor:pointer}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-card);padding:16px;
   border-left:3px solid var(--accent)}
 .card.th{border-left-color:var(--thai)}
-.card.lead{background:var(--panel2);border-color:var(--line2);border-left:3px solid var(--accent)}
-.card.lead.th{border-left-color:var(--thai)}
-.lead .title{font-size:24px;line-height:1.32;letter-spacing:-.015em}
+.card.new{border-left-color:var(--hot);box-shadow:0 0 0 1px rgba(255,184,107,.22)}
 .meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:12px;margin-bottom:9px}
 .chip{border:1px solid var(--line);border-radius:var(--r-pill);padding:5px 11px;white-space:nowrap;
   background:none;font-size:12px;font-family:inherit}
@@ -141,11 +139,11 @@ mark{background:#3f3418;color:#ffe9b0;border-radius:3px;padding:0 2px}
 .cal-sum{color:var(--muted);font-size:11.5px;margin:0 0 12px}
 .cal-grid{display:grid;grid-template-columns:1fr;gap:2px 22px}
 .cal-day h3{margin:0 0 6px;font-size:13px}
-.cal-row{display:grid;grid-template-columns:46px 26px 1fr auto;gap:8px;align-items:baseline;
+.cal-row{display:grid;grid-template-columns:68px 26px 1fr auto;gap:8px;align-items:baseline;
   padding:4px 0 4px 8px;border-bottom:1px solid var(--line);border-left:2px solid transparent;font-size:13px}
 .cal-row.i5{border-left-color:#e04242}
 .cal-row.i4{border-left-color:#ff7a45}
-.cal-t{font-weight:600;font-variant-numeric:tabular-nums}
+.cal-t{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
 .cal-s{font-size:10.5px;color:var(--hot)}
 .cal-n{color:#c3cfe6}
 .cal-v{color:var(--muted);font-size:12px}
@@ -164,7 +162,7 @@ mark{background:#3f3418;color:#ffe9b0;border-radius:3px;padding:0 2px}
 .cal-err{border:1px dashed var(--line);border-radius:var(--r-ctl);padding:14px;color:var(--muted);font-size:12.5px}
 .cal-err button{margin-left:10px;background:var(--panel2);border:1px solid var(--line);
   border-radius:var(--r-ctl);padding:6px 14px;cursor:pointer}
-@media (max-width:900px){.cal-row{grid-template-columns:46px 26px 1fr}.cal-row .cal-v{grid-column:1 / -1;padding-left:0}}
+@media (max-width:900px){.cal-row{grid-template-columns:68px 26px 1fr}.cal-row .cal-v{grid-column:1 / -1;padding-left:0}}
 body.tab-cal .cal{display:block}
 body.tab-cal .toolbar,body.tab-cal .pills,body.tab-cal #feed,body.tab-cal .more-wrap,body.tab-cal .side{display:none!important}
 body.tab-cal .layout{grid-template-columns:minmax(0,1fr)}
@@ -172,6 +170,11 @@ body.tab-cal .layout{grid-template-columns:minmax(0,1fr)}
 body.public .admin{display:none!important}
 body.public .side{display:none}
 body.public .layout{grid-template-columns:minmax(0,1fr)}
+/* The stretched title link (whole card clickable) is for readers. The local instance is
+   a working copy: text has to stay selectable so a headline can be dragged out, so the
+   overlay is switched off there and a plain 원문 열기 link is shown instead. */
+body.local .title a::after{content:none}
+body.local .card{cursor:auto}
 @media (max-width:1000px){.layout{grid-template-columns:minmax(0,1fr)}.side{grid-template-columns:1fr}}
 @media (min-width:1080px){.feed{grid-template-columns:1fr 1fr}.card.lead{grid-column:1 / -1}}
 @media (max-width:820px){
@@ -246,7 +249,7 @@ function card(a,th,lead){
   const srcOn=tag.k==='src'&&tag.v===a.source,catOn=tag.k==='cat'&&tag.v===a.category;
   const srcCls='chip src tap'+(a.source_type==='official'?' official':'')+(th?' th':'')+(srcOn?' on':'');
   const catCls='chip tap'+(catOn?' on':'');
-  return '<article class="card'+(th?' th':'')+(lead?' lead':'')+'">'+
+  return '<article class="card'+(th?' th':'')+(a.fresh?' new':'')+'">'+
     '<div class="meta">'+
       '<button type="button" class="'+srcCls+'" data-k="src" data-v="'+esc(a.source)+'" aria-pressed="'+(srcOn?'true':'false')+'">'+esc(a.source)+'</button>'+
       speakChip(a)+
@@ -255,6 +258,7 @@ function card(a,th,lead){
     '</div>'+
     '<h2 class="title"><a href="'+esc(a.link)+'" target="_blank" rel="noopener nofollow">'+hl(a.title)+'</a></h2>'+
     summaryBlock(a)+
+    (CFG.admin?'<a class="open" href="'+esc(a.link)+'" target="_blank" rel="noopener nofollow">원문 열기</a>':'')+
   '</article>'}
 
 function pillCount(cat){return articles().filter(a=>a.category===cat).length}
@@ -281,11 +285,6 @@ function renderPills(){
     b.setAttribute('aria-selected',on?'true':'false')});
 }
 
-function leadOf(list){
-  const recent=list.filter(a=>{const t=new Date(a.published_at).getTime();return isFinite(t)&&Date.now()-t<GRACE_MS});
-  let best=null;
-  recent.forEach(a=>{if(!best||(Number(a.priority)||0)>(Number(best.priority)||0))best=a});
-  return best}
 function renderFeed(){
   const all=visible(),view=all.slice(0,V.limit),th=V.tab==='thai';
   const feed=document.querySelector('#feed');
@@ -293,18 +292,16 @@ function renderFeed(){
     feed.innerHTML='<div class="empty"><b>조건에 맞는 뉴스가 없습니다</b>검색어를 지우거나 기간을 넓혀 보세요.</div>';
     document.querySelector('#counts').innerHTML='총 <b>'+all.length+'</b>건';
     document.querySelector('#more').hidden=true;return}
-  const lead=leadOf(view);
-  const rest=view.filter(a=>a!==lead);
-  let html=lead?card(lead,th,true):'';
-  if(PUBLIC){
-    let current='';
-    rest.forEach(a=>{
+  // Strictly newest first, with light time headings. An earlier version pinned the
+  // highest-priority story of the last three hours to the top; a reader watching a
+  // quiet feed could not tell it was intentional, so the promotion is gone.
+  let html='',current='';
+  view.forEach(a=>{
+    if(PUBLIC){
       const b=bucket(a.published_at);
       if(b!==current){current=b;html+='<div class="sec">'+esc(b)+'</div>'}
-      html+=card(a,th,false)});
-  }else{
-    html+=rest.map(a=>card(a,th,false)).join('');
-  }
+    }
+    html+=card(a,th,false)});
   feed.innerHTML=html;
   document.querySelector('#counts').innerHTML=(PUBLIC
     ? '총 <b>'+all.length+'</b>건, <b>'+view.length+'</b>건 표시'
@@ -377,6 +374,9 @@ async function loadLocal(){
   if(!r.ok)throw Error(r.status);
   const fresh=await r.json();
   if(V.offset>0&&(DATA.articles||[]).length)fresh.articles=(DATA.articles||[]).concat(fresh.articles||[]);
+  const before=(DATA.articles||[]).length?String(DATA.articles[0].published_at||''):'';
+  if(before&&V.offset===0)(fresh.articles||[]).forEach(a=>{
+    if(String(a.published_at||'')>before)a.fresh=true});
   DATA=fresh;
   archiveTotal=(fresh.archived_total!=null?fresh.archived_total:archiveTotal);
   try{localStorage.setItem(CACHE_KEY,JSON.stringify(DATA))}catch(e){}
@@ -493,7 +493,13 @@ document.querySelector('#more').onclick=async()=>{
     if(V.limit+PAGE>articles().length&&!FULL[region()])await loadFull();
     V.limit+=PAGE;renderFeed()}
   else{V.offset=(DATA.articles||[]).length;fetchFeed()}};
-document.querySelector('#newpill').onclick=()=>{const t=region();if(LATEST[t])MEM[t]=LATEST[t];PENDING[t]=0;V.limit=PAGE;renderFeed()};
+document.querySelector('#newpill').onclick=()=>{const t=region();
+  if(LATEST[t]){
+    // Mark what arrived since the reader last looked, so the swap is visible.
+    const before=(MEM[t]||[]).length?String((MEM[t]||[])[0].published_at||''):'';
+    LATEST[t].forEach(a=>{if(before&&String(a.published_at||'')>before)a.fresh=true});
+    MEM[t]=LATEST[t]}
+  PENDING[t]=0;V.limit=PAGE;renderFeed()};
 document.querySelector('#feed').addEventListener('click',ev=>{
   const chip=ev.target.closest('.chip.tap');
   if(chip){const k=chip.dataset.k,v=chip.dataset.v;
@@ -582,8 +588,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
 <style>
 {CSS}</style>
 </head>
-<body{' class="public"' if public else ''}>
-
+<body class="{"public" if public else "local"}">
 <header class="bar">
   <div class="bar-in">
     <div>
