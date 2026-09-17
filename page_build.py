@@ -581,13 +581,15 @@ function paintCalendar(data){
   days.forEach(d=>{total+=d.events.length;d.events.forEach(e=>{if(e.importance>=4)top++})});
   document.querySelector('#cal-stamp').textContent=(data.updated_at_kst||'')+' KST';
   document.querySelector('#cal-sum').textContent='앞으로 3일 일정 '+total+'건 · 중요도 ★4 이상 '+top+'건 · 출처 나스닥 캘린더 · 연준 · 백악관 · Factba.se'
-    +' · 시각 기준 KST(UTC+9) · 방콕은 여기서 2시간 뒤';
+    +' · 시각 기준 KST(UTC+9) · 방콕은 여기서 2시간 뒤'
+    +' · 연준 인물 명단 '+(data.fed_roster_as_of||'?')+'년 기준';
   document.querySelector('#cal-body').innerHTML=days.map(d=>{
     const rows=d.events.length?d.events.map(e=>{
       const parts=[];
       if(e.kind==='earnings'){parts.push('실적 발표')}
       else if(e.kind==='potus'){parts.push('대통령 일정')}
       else{
+        if(e.kind==='speech'&&e.fed_vote)parts.push(e.fed_vote);
         if(e.released)parts.push(shown(e.actual,calTone(e)));
         else if(e.passed)parts.push('발표');
         if(e.consensus)parts.push('예상 '+calEsc(e.consensus));

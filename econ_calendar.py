@@ -83,6 +83,40 @@ SPEAK_TOP = (
     "treasury secretary", "vice chair",
 )
 SPEAK_HIGH = ("fomc member", "ecb's", "governor", "buba president", "rba gov", "deputy governor", "gov ")
+
+# 2026 FOMC: who actually votes. From federalreserve.gov (the FOMC membership page and the
+# July 2026 minutes' attendance list). The roster turns over at the first meeting of each
+# year, so it carries its own as-of value and the page states it. A speaker is annotated
+# only when the event name also says Fed/FOMC, so an ECB or Buba speaker whose surname
+# happens to match is left alone.
+FED_ROSTER_AS_OF = "2026"
+FED_VOTERS = (
+    "warsh", "williams", "barr", "bowman", "cook", "hammack",
+    "jefferson", "kashkari", "logan", "paulson", "powell", "waller",
+)
+FED_NONVOTERS = (
+    "barkin", "daly", "goolsbee", "shukla", "venable",   # 2026 alternates
+    "bostic", "collins", "musalem", "schmid",            # attend, no vote this year
+)
+FED_MARKS = ("fed", "fomc", "federal reserve", "board of governors")
+
+
+def fed_vote(name: str) -> str:
+    """Return whether a Fed speaker votes in 2026, or '' when the speaker is not one.
+
+    Word boundaries matter here for the same reason they do in the classifier: a bare
+    substring test would let 'Barr' fire inside another name.
+    """
+    lowered = (name or "").lower()
+    if not any(mark in lowered for mark in FED_MARKS):
+        return ""
+    for surname in FED_NONVOTERS:
+        if re.search(r"\b" + surname + r"\b", lowered):
+            return "비투표권"
+    for surname in FED_VOTERS:
+        if re.search(r"\b" + surname + r"\b", lowered):
+            return "투표권"
+    return ""
 EARNINGS_URL = "https://api.nasdaq.com/api/calendar/earnings?date=%s"
 # Only mega-caps: the calendar is a glance list, not an earnings dump.
 EARNINGS_MIN_CAP = 50_000_000_000
@@ -272,6 +306,7 @@ def collect(now: datetime | None = None) -> dict[str, Any]:
                 "name": name,
                 "kind": kind,
                 "importance": level,
+                "fed_vote": fed_vote(name) if kind == "speech" else "",
                 "actual": clean(row.get("actual")),
                 "consensus": clean(row.get("consensus")),
                 "previous": clean(row.get("previous")),
@@ -345,6 +380,7 @@ def collect(now: datetime | None = None) -> dict[str, Any]:
         "updated_at_kst": now.astimezone(KST).strftime("%Y-%m-%d %H:%M"),
         "source": "Nasdaq economic calendar",
         "timezone": "KST",
+        "fed_roster_as_of": FED_ROSTER_AS_OF,
         "countries": list(COUNTRIES),
         "errors": errors,
         "days": days,
