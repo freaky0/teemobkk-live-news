@@ -74,6 +74,16 @@ select{cursor:pointer}
 .pills::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}
 @media (min-width:900px){.pills{flex-wrap:wrap;overflow-x:visible}}
 .pills[hidden]{display:none!important}
+.trend{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px;padding:2px}
+.trend[hidden]{display:none!important}
+.trend .tlabel{color:var(--muted);font-size:12px;white-space:nowrap}
+.trend .n{color:var(--muted);font-size:11px;margin-left:6px}
+/* Own class rather than the filter chips' ".chip.tap": those are toggles carrying
+   aria-pressed, while a trend button is a one-shot search action. Reusing the class
+   made every ".chip.tap" invariant assertion count a chip that is not a toggle. */
+.trend .tbtn{border:1px solid var(--line);border-radius:var(--r-pill);padding:5px 11px;
+  background:none;font-family:inherit;font-size:12.5px;color:var(--text);cursor:pointer;white-space:nowrap}
+.trend .tbtn:hover{border-color:var(--accent);color:var(--accent)}
 .pill{flex:0 0 auto;background:none;border:1px solid var(--line);border-radius:var(--r-pill);
   padding:7px 14px;cursor:pointer;font-size:12.5px;color:var(--muted);white-space:nowrap}
 .pill.active{background:var(--panel2);border-color:var(--accent);color:var(--accent)}
@@ -167,7 +177,7 @@ mark{background:#3f3418;color:#ffe9b0;border-radius:3px;padding:0 2px}
   border-radius:var(--r-ctl);padding:6px 14px;cursor:pointer}
 @media (max-width:900px){.cal-row{grid-template-columns:68px 26px 1fr}.cal-row .cal-v{grid-column:1 / -1;padding-left:0}}
 body.tab-cal .cal{display:block}
-body.tab-cal .toolbar,body.tab-cal .pills,body.tab-cal #feed,body.tab-cal .more-wrap,body.tab-cal .side{display:none!important}
+body.tab-cal .toolbar,body.tab-cal .pills,body.tab-cal .trend,body.tab-cal #feed,body.tab-cal .more-wrap,body.tab-cal .side{display:none!important}
 body.tab-cal .layout{grid-template-columns:minmax(0,1fr)}
 .foot{color:var(--muted);font-size:12px;border-top:1px solid var(--line);margin-top:26px;padding-top:16px;line-height:1.8}
 body.public .admin{display:none!important}
@@ -301,7 +311,110 @@ function renderPills(){
     b.setAttribute('aria-selected',on?'true':'false')});
 }
 
+// --- trend strip ------------------------------------------------------------------
+// What the wire is talking about, counted in the browser from headlines already in
+// hand, so no endpoint or core change is needed and the local and hosted pages run the
+// same code. Two structural cleanings come first, both measured on a day of data:
+// Google News titles carry a " - Publisher" tail (1820 of 1833), which is where
+// post/nation/the/yahoo/tradingview noise came from, and social posts embed short links
+// (reut.rs/4Ao...) which produced "reut" and "rs".
+const T_STOP=new Set(("그리고 그러나 또한 이번 지난 오늘 어제 내일 관련 발표 예정 가능 필요 대해 통해 위해 때문 이라 라고 이라고 있다 없다 했다 한다 된다 등등 경우 상황 내용 사실 우리 전체 주요 최근 현재 기록 "
+ +"the and for with from that this will said says after over into its his her has have was were are not but you your more than about could would should may might what "
+ +"new now out off all one two three how why who when where first last next week month year day time report news update live exclusive "
+ +"actual forecast previous consensus revised mom yoy qoq things best top world center "
+  +"unknown transferred minted burned treasury wallet details "
+   +"very reach foreign amid ahead survive "
+   +"jan feb mar apr may jun jul aug sep sept oct nov dec").split(' '));
+// The whole page is about these, so they would head the list every hour and say nothing.
+const T_SKIP={
+  global:new Set('bitcoin btc crypto cryptocurrency 비트코인 암호화폐 코인'.split(' ')),
+  thai:new Set('태국 방콕 태국인 교민 thai thailand bangkok'.split(' '))};
+const T_URL=/https?:\/\/\S+|\b[\w-]+\.(?:com|net|org|co|io|kr|uk|rs|me|ly|gov|ai|news)\S*/gi;
+const T_TAIL=/\s+-\s+[^-]{2,40}$/;
+const T_TOK=/[0-9A-Za-z가-힣\u0e00-\u0e7f]+/g;
+function tFold(w){if(!/^[a-z]+$/.test(w))return w;const s=w.replace(/s$/,'');return (s!==w&&s.length>=3)?s:w}
+function trends(){
+  const skip=T_SKIP[V.tab]||T_SKIP.global,uni={},bi={},form={};
+  trendSource().forEach(a=>{
+    let t=a.title||'';
+    if((a.source||'').indexOf('Google News')===0)t=t.replace(T_TAIL,'');
+    t=t.replace(T_URL,' ');
+    const tl=t.toLowerCase(),keep=[];
+    (tl.match(T_TOK)||[]).forEach((w,i)=>{
+      if(/^\d+$/.test(w))return;
+      // Minimum length per script: Korean words are short and space-separated, while
+      // Thai runs have no spaces between words, so anything short there is a particle
+      // (the first run surfaced "นี้", meaning "this").
+      const ko=/[\uac00-\ud7a3]/.test(w),thai=/[\u0e00-\u0e7f]/.test(w);
+      if(w.length<(ko?2:(thai?5:3)))return;
+      keep.push({w:w,raw:w,i:i})});
+    const good=[],seenU={},seenB={};
+    keep.forEach(g=>{const f=tFold(g.w);
+      if(T_STOP.has(g.w)||T_STOP.has(f)||skip.has(f))return;good.push({w:f,raw:g.raw,i:g.i})});
+    good.forEach(g=>{
+      if(!seenU[g.w]){seenU[g.w]=1;uni[g.w]=(uni[g.w]||0)+1;
+        const m=form[g.w]||(form[g.w]={});m[g.raw]=(m[g.raw]||0)+1}});
+    for(let k=0;k+1<good.length;k++){
+      if(good[k+1].i!==good[k].i+1)continue;
+      // Only keep a pair the title actually contains as one phrase, so clicking it
+      // finds the same stories it was counted from.
+      if(tl.indexOf(good[k].raw+' '+good[k+1].raw)<0)continue;
+      const key=good[k].w+' '+good[k+1].w;
+      if(seenB[key])continue;seenB[key]=1;bi[key]=(bi[key]||0)+1}
+  });
+  const show=k=>{const m=form[k];if(!m)return k;let best=k,bc=-1;
+    for(const r in m)if(m[r]>bc){bc=m[r];best=r}return best};
+  const out=[],used={};
+  Object.keys(bi).sort((x,y)=>bi[y]-bi[x]).forEach(k=>{
+      const c=bi[k];if(c<4)return;
+      const p=k.split(' ');
+      // Drop a pair that only repeats one word of a stronger phrase already taken: that is
+      // how fragments like "reach asian" (out of "reach Asian Games") got in.
+      if(used[p[0]]||used[p[1]])return;
+      const lo=Math.min(uni[p[0]]||0,uni[p[1]]||0);
+      if(c<0.5*lo)return;
+      used[p[0]]=1;used[p[1]]=1;out.push({t:show(p[0])+' '+show(p[1]),c:c})});
+  Object.keys(uni).sort((x,y)=>uni[y]-uni[x]).forEach(k=>{
+    if(used[k]||uni[k]<3)return;out.push({t:show(k),c:uni[k]})});
+  out.sort((x,y)=>y.c-x.c);
+  return out.slice(0,10);
+}
+const T_DATA={},T_FETCH={},T_CACHE={sig:'',list:[]};
+// The feed only holds one page (25 rows on the local page), so counting from it ranked
+// whatever happened to be on screen: the first run put "reut 4" on top. Trends need the
+// window, so the local page asks for it separately (capped at 300 rows) and the hosted
+// page uses the file it already loaded.
+function trendSource(){return PUBLIC?(MEM[region()]||[]):(T_DATA[region()]||[])}
+function loadTrends(force){
+  if(PUBLIC){renderTrends();return}
+  const r=region(),now=Date.now();
+  if(!force&&T_FETCH[r]&&now-T_FETCH[r]<60000)return;
+  T_FETCH[r]=now;
+  const p=new URLSearchParams({region:r,hours:String(V.hours),limit:'300',offset:'0'});
+  fetch(API+'/api/news?'+p.toString(),{cache:'no-cache'})
+    .then(x=>x.ok?x.json():null)
+    .then(d=>{if(d)T_DATA[r]=d.articles||[];renderTrends()})
+    .catch(()=>{});
+}
+function renderTrends(){
+  const el=document.querySelector('#trend');if(!el)return;
+  const a=trendSource(),sig=V.tab+'|'+V.hours+'|'+a.length+'|'+((a[0]||{}).link||'');
+  if(T_CACHE.sig!==sig){T_CACHE.sig=sig;T_CACHE.list=trends()}
+  const list=T_CACHE.list||[];
+  if(!list.length){el.hidden=true;el.innerHTML='';return}
+  el.hidden=false;
+  el.innerHTML='<span class="tlabel">지금 뜨는 키워드</span>'+list.map(function(x){
+    return '<button type="button" class="tbtn" data-trend="'+esc(x.t)+'">'+esc(x.t)+
+          '<span class="n">'+x.c+'</span></button>'}).join('');
+}
+document.querySelector('#trend').onclick=ev=>{
+  const b=ev.target.closest('[data-trend]');if(!b)return;
+  // Reuse the search box's own handler so a trend click behaves exactly like typing.
+  const q=document.querySelector('#q');q.value=b.dataset.trend;q.oninput();
+};
+
 function renderFeed(){
+  loadTrends();renderTrends();
   const all=visible(),view=all.slice(0,V.limit),th=V.tab==='thai';
   const feed=document.querySelector('#feed');
   if(!view.length){
@@ -652,6 +765,8 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
     <button id="newpill" class="newpill" type="button"></button>
     <span class="count" id="counts"></span>
   </section>
+
+  <section class="trend" id="trend" hidden></section>
 
   <section id="filters-global" class="pills"></section>
   <section id="filters-thai" class="pills th" hidden></section>
