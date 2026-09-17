@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import bluesky_source
+import sbh_open_news
+import sbh_source
 import whitehouse_source
 import difflib
 import email.utils
@@ -556,9 +558,8 @@ def collect_news() -> dict[str, Any]:
     coinness_stock, coinness_stock_status = fetch_coinness_stock()
     articles.extend(coinness_stock)
     status["CoinNess Stock"] = coinness_stock_status
-    sbhnews, sbh_status = fetch_sbhnews()
-    articles.extend(sbhnews)
-    status["SBHNews"] = sbh_status
+    articles.extend(sbh_source.fetch_into(status))
+    articles.extend(sbh_open_news.fetch_into(status))
     articles.extend(bluesky_source.fetch_into(status))
     articles.extend(whitehouse_source.fetch_into(status))
     fresh_articles = keep_recent(articles)
