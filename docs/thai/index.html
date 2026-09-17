@@ -82,6 +82,9 @@ select{cursor:pointer}
 .chip.hot{border-color:var(--hot);color:var(--hot)}
 .chip.th{border-color:#5a4a24;color:var(--thai)}
 .chip.speak{border-color:#ffb86b;color:#ffb86b}
+.chip.verif{border-color:var(--line2);color:var(--muted);letter-spacing:.02em}
+.chip.verif.off{border-color:var(--official);color:var(--official)}
+.chip.verif.sns{border-color:#b48cff;color:#c7a8ff}
 .chip.static{cursor:default}
 .chip.tap{cursor:pointer}
 .chip.tap:hover,.chip.tap.on{border-color:var(--accent);color:var(--accent)}
@@ -290,6 +293,18 @@ function summaryBlock(a){
 const SPEAKERS=['트럼프','Trump','TRUMP','머스크','Musk','MUSK','파월','Powell','워시','Warsh','베센트','Bessent','라가르드','Lagarde','푸틴','Putin','시진핑','Xi Jinping','네타냐후','Netanyahu','우에다','Ueda'];
 function speakChip(a){const t=(a.title||'')+' '+(a.summary||'');
   return SPEAKERS.some(n=>t.indexOf(n)>=0)?'<span class="chip speak">인물 발언</span>':''}
+// Verification level, not a second source name. The source chip already says who
+// published it, so only the levels that change how much a line should be trusted are
+// shown, and they are meant to be rare: measured over a day, official is 0.5% and
+// social is 10.6%, while breaking (37%) and aggregated (41%) are ordinary media
+// volume - labelling those would put a badge on four cards out of five and mean
+// nothing. A "[카더라]" style label is not derived here: that is an editor's
+// annotation on the other site, and this collector sees zero such markers in the
+// wire text it receives.
+function verifChip(a){
+  if(a.source_type==='official')return '<span class="chip verif off" title="공식 기관이 직접 발표한 문서">공식</span>';
+  if(a.source_type==='social')return '<span class="chip verif sns" title="소셜·채널 게시물 — 언론 보도가 아니며 원문 확인이 필요함">SNS</span>';
+  return ''}
 function card(a,th,lead){
   const tag=V.tag||{};
   const srcOn=tag.k==='src'&&tag.v===a.source,catOn=tag.k==='cat'&&tag.v===a.category;
@@ -297,6 +312,7 @@ function card(a,th,lead){
   const catCls='chip tap'+(catOn?' on':'');
   return '<article class="card'+(th?' th':'')+(a.fresh?' new':'')+'">'+
     '<div class="meta">'+
+      verifChip(a)+
       '<button type="button" class="'+srcCls+'" data-k="src" data-v="'+esc(a.source)+'" aria-pressed="'+(srcOn?'true':'false')+'">'+esc(a.source)+'</button>'+
       speakChip(a)+
       '<button type="button" class="'+catCls+'" data-k="cat" data-v="'+esc(a.category)+'" aria-pressed="'+(catOn?'true':'false')+'">'+esc(a.category)+'</button>'+
