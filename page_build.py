@@ -56,8 +56,8 @@ h1{font-size:19px;margin:0;letter-spacing:-.01em}
   border-radius:var(--r-pill);padding:3px 10px;font-size:11.5px}
 .stale[data-show="1"]{display:inline-block}
 .tabs{display:flex;gap:6px;margin:22px 0 12px;border-bottom:1px solid var(--line)}
-.tab{background:none;border:0;border-bottom:2px solid transparent;padding:10px 14px;cursor:pointer;
-  color:var(--muted);font-weight:600;font-size:14px;margin-bottom:-1px}
+.tab{background:none;border:0;border-bottom:2px solid transparent;padding:11px 16px;cursor:pointer;
+  color:var(--muted);font-weight:600;font-size:17px;letter-spacing:-.01em;margin-bottom:-1px}
 .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 .tab.th.active{color:var(--thai);border-bottom-color:var(--thai)}
 .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
@@ -202,6 +202,10 @@ body.local .card{cursor:auto}
   .stamp{text-align:left;font-size:11.5px}
   .lead .title{font-size:20px}
   .count{margin-left:0;width:100%}
+  /* Three tab labels at the desktop size overflow a phone; step down and allow a scroll
+     rather than letting the row break. */
+  .tabs{overflow-x:auto}
+  .tab{padding:10px 12px;font-size:16px}
 }
 """
 
