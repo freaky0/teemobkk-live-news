@@ -319,7 +319,10 @@ function renderPills(){
     (V.tag?'<button type="button" class="pill on" id="clrtag">✕ '+esc(V.tag.v)+'</button>':'');
   row.hidden=false;
   row.querySelectorAll('button[data-cat]').forEach(b=>b.onclick=()=>{
-    V.filter=b.dataset.cat;V.limit=PAGE;V.offset=0;renderPills();fetchFeed()});
+    // Same exclusivity as the card chips: a category and a source tag sent together are ANDed
+    // server-side, which usually returns nothing at all.
+    V.filter=b.dataset.cat;V.tag=null;V.mode='all';V.value='';
+    V.limit=PAGE;V.offset=0;renderPills();fetchFeed()});
   row.querySelectorAll('button[data-src]').forEach(b=>b.onclick=()=>{
     const v=b.dataset.src;
     V.tag=(V.tag&&V.tag.k==='src'&&V.tag.v===v)?null:{k:'src',v:v};
@@ -523,7 +526,10 @@ function buildQuery(){
   if(V.mode==='priority')p.set('priority',V.value||'5');
   else if(V.mode==='official')p.set('source_type','official');
   else if(V.mode==='source'&&V.value)p.set('source',V.value);
-  else if(V.mode==='category'&&V.filter)p.set('category',V.filter);
+  // V.filter is only ever a category name or '전체'. The category pill row sets it without
+  // setting V.mode, so gating this branch on the mode left the pill highlighted while the
+  // server still returned the unfiltered list.
+  if(V.filter&&V.filter!=='전체')p.set('category',V.filter);
   // Card chips set V.tag, not V.mode/V.value. Without this the local page sent an
   // unfiltered request, so clicking a chip only highlighted it and the list never moved.
   if(V.tag){if(V.tag.k==='cat')p.set('category',V.tag.v);else p.set('source',V.tag.v)}
@@ -637,13 +643,10 @@ function loadCalendar(){
   }).then(paintCalendar).catch(()=>calendarFailure('경제지표 데이터를 불러오지 못했습니다.'))}
 
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
-document.querySelectorAll('.pill[data-filter]').forEach(b=>b.onclick=()=>{
-  const row=b.closest('.pills');
-  row.querySelectorAll('.pill[data-filter]').forEach(x=>x.classList.remove('active'));
-  b.classList.add('active');
-  V.mode=b.dataset.mode||'category';V.value=b.dataset.value||'';
-  V.filter=(V.mode==='category')?(b.dataset.filter||''):'';
-  V.tag=null;V.limit=PAGE;V.offset=0;fetchFeed()});
+// The category and source rows are built by renderPills(), which binds each button as it
+// writes them. An earlier build also had a static `.pill[data-filter]` row here; nothing in
+// the template carries that attribute any more, so the handler was removed rather than left
+// as a second, dead copy of the filter logic.
 document.querySelector('#q').oninput=()=>{clearTimeout(window.__qt);
   window.__qt=setTimeout(()=>{V.q=document.querySelector('#q').value.trim();
     V.limit=PAGE;V.offset=0;fetchFeed()},350)};
