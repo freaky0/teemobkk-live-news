@@ -722,7 +722,8 @@ document.addEventListener('visibilitychange',()=>{hidden=document.hidden;
 """
 
 
-def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, admin: bool) -> str:
+def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, admin: bool,
+           html_lang: str = "ko") -> str:
     config = {
         "public": public,
         "datadir": datadir,
@@ -752,7 +753,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
     title = "TeemoBKK Live News" + (" · 태국 소식" if want_thai else "")
     script = SCRIPT.replace("__CONFIG__", json.dumps(config, ensure_ascii=False, separators=(",", ":")))
     return f"""<!doctype html>
-<html lang="ko">
+<html lang="{html_lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -846,8 +847,14 @@ def build_all() -> dict[str, int]:
         public=False, datadir="", want_thai=False, icon_prefix="", admin=True))
     sizes["docs/index.html"] = write(DOCS / "index.html", render(
         public=True, datadir="", want_thai=False, icon_prefix="", admin=False))
+    # The published Thai page declares Thai. Its headlines are Thai (Matichon, Thairath)
+    # and English (Bangkok Post, Khaosod, most Google News hits); only 9% are Korean.
+    # Declaring it ko made Safari treat the page as already-Korean and never offer
+    # translation. Safari decides on the device, so this is a hypothesis to test on a
+    # phone, not a guarantee.
     sizes["docs/thai/index.html"] = write(DOCS / "thai" / "index.html", render(
-        public=True, datadir="../", want_thai=True, icon_prefix="../", admin=False))
+        public=True, datadir="../", want_thai=True, icon_prefix="../", admin=False,
+        html_lang="th"))
     return sizes
 
 
