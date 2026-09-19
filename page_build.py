@@ -21,6 +21,8 @@ Two data paths are supported and selected by `public`:
 """
 from __future__ import annotations
 
+import datetime
+import html
 import io
 import json
 from pathlib import Path
@@ -477,7 +479,12 @@ function renderFeed(){
   const live=document.querySelector('#live');
   if(live)live.textContent=all.length+'건 표시 중'}
 function skeleton(){
-  document.querySelector('#feed').innerHTML='<div class="skel"><span></span><span></span><span></span></div>'.repeat(2)}
+  const feed=document.querySelector('#feed');
+  // The page ships the latest headlines in its own HTML (see seed_feed) so a language
+  // detector has real article text to read before the script runs. Leave that content in
+  // place; renderFeed() replaces it as soon as the fetch returns.
+  if(feed.children.length)return;
+  feed.innerHTML='<div class="skel"><span></span><span></span><span></span></div>'.repeat(2)}
 
 function setStamp(text,regions){
   const el=document.querySelector('#updated');
@@ -722,8 +729,72 @@ document.addEventListener('visibilitychange',()=>{hidden=document.hidden;
 """
 
 
+def _script_lang(text: str) -> str:
+    """Dominant script of a headline, used as the lang attribute on seeded cards."""
+    ko = th = latin = 0
+    for ch in text:
+        code = ord(ch)
+        if 0xAC00 <= code <= 0xD7A3:
+            ko += 1
+        elif 0x0E00 <= code <= 0x0E7F:
+            th += 1
+        elif ch.isalpha():
+            latin += 1
+    if not (ko or th or latin):
+        return ""
+    if th >= ko and th >= latin:
+        return "th"
+    return "ko" if ko > latin else "en"
+
+
+def _ict_stamp(value) -> str:
+    try:
+        moment = datetime.datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return str(value)[:16].replace("T", " ")
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=datetime.timezone.utc)
+    shifted = moment.astimezone(datetime.timezone(datetime.timedelta(hours=7)))
+    return shifted.strftime("%m-%d %H:%M")
+
+
+def seed_feed(path: str, want_thai: bool, limit: int = 25) -> str:
+    """Render the latest headlines into the page itself.
+
+    The feed is built by the script from JSON, so when a browser first looks at the page the
+    only words on it are the Korean interface. Safari decides the page language on the device
+    at that moment, concludes the page is Korean, and then offers to translate it into
+    English instead of into Korean. News sites do not have this problem because their article
+    text is in the HTML from the start. Seeding the same headlines here gives the same signal,
+    and the page also reads correctly when scripts are disabled.
+    """
+    try:
+        with io.open(path, encoding="utf-8") as handle:
+            items = json.load(handle).get("articles") or []
+    except (OSError, ValueError):
+        return ""
+    rows = []
+    for item in items[:limit]:
+        title = str(item.get("title") or "")
+        summary = str(item.get("summary") or "")
+        if not title:
+            continue
+        lang = _script_lang(title + " " + summary)
+        attr = ' lang="%s"' % lang if lang else ""
+        rows.append(
+            '<article class="card seed' + (" th" if want_thai else "") + '">'
+            '<div class="meta"><span class="chip src">' + html.escape(str(item.get("source") or "")) + '</span>'
+            '<span class="chip">' + html.escape(str(item.get("category") or "")) + '</span>'
+            '<span>' + html.escape(_ict_stamp(item.get("published_at"))) + '</span></div>'
+            '<h2 class="title"' + attr + '><a href="' + html.escape(str(item.get("link") or ""))
+            + '" target="_blank" rel="noopener nofollow">' + html.escape(title) + '</a></h2>'
+            '<p class="summary clamp"' + attr + '>' + html.escape(summary) + '</p>'
+            '</article>')
+    return "".join(rows)
+
+
 def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, admin: bool,
-           html_lang: str = "en") -> str:
+           html_lang: str = "en", seed_path: str = "") -> str:
     config = {
         "public": public,
         "datadir": datadir,
@@ -752,6 +823,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
           '<meta name="twitter:card" content="summary_large_image">\n')
     title = "TeemoBKK Live News" + (" · 태국 소식" if want_thai else "")
     script = SCRIPT.replace("__CONFIG__", json.dumps(config, ensure_ascii=False, separators=(",", ":")))
+    seed = seed_feed(seed_path, want_thai) if seed_path else ""
     return f"""<!doctype html>
 <html lang="{html_lang}">
 <head>
@@ -811,7 +883,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
 
   <div class="layout">
     <section>
-      <div id="feed" class="feed"></div>
+      <div id="feed" class="feed">{seed}</div>
       <span class="sr-only" aria-live="polite" id="live"></span>
       <div class="more-wrap">
         <button id="more" type="button" hidden>더 보기</button>
@@ -844,9 +916,11 @@ def build_all() -> dict[str, int]:
     """Rewrite the local page and both published pages."""
     sizes = {}
     sizes["index.html"] = write(ROOT / "index.html", render(
-        public=False, datadir="", want_thai=False, icon_prefix="", admin=True))
+        public=False, datadir="", want_thai=False, icon_prefix="", admin=True,
+        seed_path=str(DOCS / "global-recent.json")))
     sizes["docs/index.html"] = write(DOCS / "index.html", render(
-        public=True, datadir="", want_thai=False, icon_prefix="", admin=False))
+        public=True, datadir="", want_thai=False, icon_prefix="", admin=False,
+        seed_path=str(DOCS / "global-recent.json")))
     # The published Thai page declares Thai. Its headlines are Thai (Matichon, Thairath)
     # and English (Bangkok Post, Khaosod, most Google News hits); only 9% are Korean.
     # Declaring it ko made Safari treat the page as already-Korean and never offer
@@ -854,7 +928,7 @@ def build_all() -> dict[str, int]:
     # phone, not a guarantee. This is a deliberate override of the en default.
     sizes["docs/thai/index.html"] = write(DOCS / "thai" / "index.html", render(
         public=True, datadir="../", want_thai=True, icon_prefix="../", admin=False,
-        html_lang="th"))
+        html_lang="th", seed_path=str(DOCS / "thai-recent.json")))
     return sizes
 
 
