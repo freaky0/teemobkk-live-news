@@ -723,7 +723,7 @@ document.addEventListener('visibilitychange',()=>{hidden=document.hidden;
 
 
 def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, admin: bool,
-           html_lang: str = "ko") -> str:
+           html_lang: str = "en") -> str:
     config = {
         "public": public,
         "datadir": datadir,
@@ -851,7 +851,7 @@ def build_all() -> dict[str, int]:
     # and English (Bangkok Post, Khaosod, most Google News hits); only 9% are Korean.
     # Declaring it ko made Safari treat the page as already-Korean and never offer
     # translation. Safari decides on the device, so this is a hypothesis to test on a
-    # phone, not a guarantee.
+    # phone, not a guarantee. This is a deliberate override of the en default.
     sizes["docs/thai/index.html"] = write(DOCS / "thai" / "index.html", render(
         public=True, datadir="../", want_thai=True, icon_prefix="../", admin=False,
         html_lang="th"))
