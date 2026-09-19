@@ -912,23 +912,32 @@ def write(path: Path, text: str) -> int:
     return len(text.encode("utf-8"))
 
 
-def build_all() -> dict[str, int]:
-    """Rewrite the local page and both published pages."""
+def build_public() -> dict[str, int]:
+    """Rewrite only the two published pages.
+
+    The collector calls this every cycle, including in CI, and it must not touch anything
+    outside docs/. An earlier version called build_all() here, which also rewrote the local
+    page at the repository root. That left an unstaged modification in the CI working tree on
+    every run, so `git pull --rebase` refused to start ("cannot pull with rebase: You have
+    unstaged changes"), the push failed after its retries, and the published site silently
+    stopped updating while the workflow still reported a run every five minutes.
+    """
     sizes = {}
-    sizes["index.html"] = write(ROOT / "index.html", render(
-        public=False, datadir="", want_thai=False, icon_prefix="", admin=True,
-        seed_path=str(DOCS / "global-recent.json")))
     sizes["docs/index.html"] = write(DOCS / "index.html", render(
         public=True, datadir="", want_thai=False, icon_prefix="", admin=False,
         seed_path=str(DOCS / "global-recent.json")))
-    # The published Thai page declares Thai. Its headlines are Thai (Matichon, Thairath)
-    # and English (Bangkok Post, Khaosod, most Google News hits); only 9% are Korean.
-    # Declaring it ko made Safari treat the page as already-Korean and never offer
-    # translation. Safari decides on the device, so this is a hypothesis to test on a
-    # phone, not a guarantee. This is a deliberate override of the en default.
     sizes["docs/thai/index.html"] = write(DOCS / "thai" / "index.html", render(
         public=True, datadir="../", want_thai=True, icon_prefix="../", admin=False,
-        html_lang="th", seed_path=str(DOCS / "thai-recent.json")))
+        seed_path=str(DOCS / "thai-recent.json")))
+    return sizes
+
+
+def build_all() -> dict[str, int]:
+    """Rewrite the local page and both published pages (used when building by hand)."""
+    sizes = {"index.html": write(ROOT / "index.html", render(
+        public=False, datadir="", want_thai=False, icon_prefix="", admin=True,
+        seed_path=str(DOCS / "global-recent.json")))}
+    sizes.update(build_public())
     return sizes
 
 

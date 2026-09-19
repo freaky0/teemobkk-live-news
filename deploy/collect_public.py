@@ -144,7 +144,7 @@ def write_thai_page() -> int:
     land on only one of them. (The old /thai/ copy was a find-and-replace of
     docs/index.html, and a CSS class rename once reached only one of the two.)
     """
-    sizes = page_build.build_all()
+    sizes = page_build.build_public()
     return sizes["docs/thai/index.html"]
 
 def main() -> None:

@@ -46,6 +46,16 @@ jobs:
             exit 0
           fi
           git commit -m "data: refresh $(date -u +%Y-%m-%dT%H:%MZ)"
+
+          # Everything this job generates lives in docs/. Anything else modified here is a
+          # bug, and a dirty tree makes `git pull --rebase` refuse to run, which stops the
+          # site updating while the schedule keeps firing. Say so, then discard it so the
+          # push still lands.
+          if ! git diff --quiet; then
+            echo "UNEXPECTED unstaged changes, discarding:"
+            git status --short
+            git checkout -- .
+          fi
           # docs/*.json is regenerated every run, so on a race with a hand push the
           # just-generated file must win: -X theirs keeps this run's data. A second
           # attempt covers the case where another run pushed between pull and push.
