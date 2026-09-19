@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
-<meta name="description" content="비트코인·매크로·태국 뉴스를 5분마다 모아 보여주는 실시간 대시보드. 경제지표와 주요 일정 포함.">
+<meta name="description" content="비트코인·매크로·태국 뉴스를 5 min마다 모아 보여주는 실시간 대시보드. 경제지표와 주요 일정 포함.">
 <meta property="og:title" content="TeemoBKK Live News">
-<meta property="og:description" content="비트코인·매크로·태국 뉴스 실시간 대시보드. 경제지표·연설·실적 일정 포함.">
+<meta property="og:description" content="Bitcoin, macro and Thailand news in real time, with the indicator calendar.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="og-image.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -81,6 +81,10 @@ select{cursor:pointer}
 .pill.src{border-style:dashed}
 .pill.src.th.active{border-color:var(--thai);color:var(--thai)}
 .pillsep{flex:0 0 auto;width:1px;margin:0 3px;background:var(--line2);align-self:stretch}
+.langbar{display:flex;gap:6px;align-items:center;font-size:13px}
+.langbar a,.langbar b{padding:4px 10px;border:1px solid var(--line);border-radius:var(--r-pill);
+  color:var(--muted);font-weight:500;text-decoration:none}
+.langbar b{border-color:var(--accent);color:var(--accent);font-weight:600}
 .pill i{font-style:normal;opacity:.6;margin-left:5px;font-size:11.5px}
 .sec{display:flex;align-items:center;gap:10px;margin:18px 0 8px;color:var(--muted);font-size:12px;font-weight:600}
 .sec::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -177,7 +181,7 @@ body.public .side{display:none}
 body.public .layout{grid-template-columns:minmax(0,1fr)}
 /* The stretched title link (whole card clickable) is for readers. The local instance is
    a working copy: text has to stay selectable so a headline can be dragged out, so the
-   overlay is switched off there and a plain 원문 열기 link is shown instead. */
+   overlay is switched off there and a plain Open original link is shown instead. */
 body.local .title a::after{content:none}
 body.local .card{cursor:auto}
 @media (max-width:1000px){.layout{grid-template-columns:minmax(0,1fr)}.side{grid-template-columns:1fr}}
@@ -201,33 +205,34 @@ body.local .card{cursor:auto}
   <div class="bar-in">
     <div>
       <div class="brand">TeemoBKK Live News</div>
-      <h1>실시간 뉴스 대시보드</h1>
+      <h1>Live news dashboard</h1>
     </div>
     <div class="spacer"></div>
-    <div class="stamp">업데이트 <b id="updated">-</b><br><span id="stale" class="stale"></span></div>
+    <nav class="langbar" aria-label="Language"><b aria-current="true">English</b><a href="ko/index.html" lang="ko">한국어</a></nav>
+    <div class="stamp">Updated <b id="updated">-</b><br><span id="stale" class="stale"></span></div>
   </div>
 </header>
 
 <main class="wrap">
   <div class="tabs" role="tablist">
-    <button id="tab-global" class="tab active" data-tab="global" role="tab" aria-selected="true">경제 소식</button>
-    <button id="tab-cal" class="tab" data-tab="cal" role="tab" aria-selected="false">경제 지표</button>
-    <button id="tab-thai" class="tab th" data-tab="thai" role="tab" aria-selected="false">태국 소식</button>
+    <button id="tab-global" class="tab active" data-tab="global" role="tab" aria-selected="true">Markets</button>
+    <button id="tab-cal" class="tab" data-tab="cal" role="tab" aria-selected="false">Indicators</button>
+    <button id="tab-thai" class="tab th" data-tab="thai" role="tab" aria-selected="false">Thailand</button>
   </div>
 
   <section class="cal" id="cal">
-    <h2>경제지표 · 연설 · 실적 · 대통령 일정 <span class="note" id="cal-stamp"></span></h2>
+    <h2>Indicators · speeches · earnings · presidential schedule <span class="note" id="cal-stamp"></span></h2>
     <p class="cal-sum" id="cal-sum"></p>
-    <div class="cal-grid" id="cal-body"><div class="note">불러오는 중…</div></div>
+    <div class="cal-grid" id="cal-body"><div class="note">Loading…</div></div>
   </section>
 
   <section class="toolbar">
-    <input id="q" type="search" placeholder="제목·요약·출처 검색 ( / )" aria-label="뉴스 검색">
-    <select id="hours" aria-label="기간">
-      <option value="1">최근 1시간</option>
-      <option value="6">최근 6시간</option>
-      <option value="12">최근 12시간</option>
-      <option value="24" selected>최근 24시간</option>
+    <input id="q" type="search" placeholder="Search title, summary or source ( / )" aria-label="Search news">
+    <select id="hours" aria-label="Period">
+      <option value="1">Last hour</option>
+      <option value="6">Last 6 hours</option>
+      <option value="12">Last 12 hours</option>
+      <option value="24" selected>Last 24 hours</option>
     </select>
     
     <button id="newpill" class="newpill" type="button"></button>
@@ -241,28 +246,28 @@ body.local .card{cursor:auto}
 
   <div class="layout">
     <section>
-      <div id="feed" class="feed"><article class="card seed"><div class="meta"><span class="chip src">FinancialJuice</span><span class="chip">일반</span><span>09-20 02:00</span></div><h2 class="title" lang="en"><a href="https://www.financialjuice.com/News/9770564/Creative-ideas-emerge-on-resolving-S-400-issue-with-US-collaboration-aims-for-positive-progress.aspx" target="_blank" rel="noopener nofollow">Creative ideas emerge on resolving S-400 issue with US, collaboration aims for positive progress</a></h2><p class="summary clamp" lang="en"></p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · theinformation.com</span><span class="chip">일반</span><span>09-20 02:00</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/theinformation.com/post/3mvvek4rfye2a" target="_blank" rel="noopener nofollow">The cost of securing AI infrastructure is reshaping startup financing. Cloud providers are demanding larger prepayments while lenders charge…</a></h2><p class="summary clamp" lang="en">The cost of securing AI infrastructure is reshaping startup financing. Cloud providers are demanding larger prepayments while lenders charge more to finance capacity for less-proven customers. Read the full story: https://thein.fo/4cSOCRP</p></article><article class="card seed"><div class="meta"><span class="chip src">Google News · Bitcoin</span><span class="chip">거시경제</span><span>09-20 01:58</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMiW0FVX3lxTE56ZkxQQjhIbDlwTFNmYVJ1OFNlazJHekp0THZfWWkzY1g1V3JjNXBzWXZDbkRLSzlQVnJudTRENi1aMXl2Y3VBX2RwRTlNbDZNSnRKR0U0SWI5Ylk?oc=5" target="_blank" rel="noopener nofollow">Fed Rate Hike September 2026: Why Bitcoin Held $76K - Memeburn</a></h2><p class="summary clamp" lang="en">Fed Rate Hike September 2026: Why Bitcoin Held $76K Memeburn</p></article><article class="card seed"><div class="meta"><span class="chip src">FinancialJuice</span><span class="chip">일반</span><span>09-20 01:58</span></div><h2 class="title" lang="en"><a href="https://www.financialjuice.com/News/9770563/Turkish-foreign-minister-Creative-ideas-exist-on-resolving-S-400-issue-with-US-collaborating-to-achieve-solutions-and-anticipating-positive-progress.aspx" target="_blank" rel="noopener nofollow">Turkish foreign minister: Creative ideas exist on resolving S-400 issue with US, collaborating to achieve solutions and anticipating positive progress</a></h2><p class="summary clamp" lang="en"></p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · wsj.com</span><span class="chip">채굴</span><span>09-20 01:56</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/wsj.com/post/3mvveeid4x42f" target="_blank" rel="noopener nofollow">After Lane Kiffin left Ole Miss, the Rebels launched a full-blown campaign of counterespionage, player signings and NIL fundraising to keep …</a></h2><p class="summary clamp" lang="en">After Lane Kiffin left Ole Miss, the Rebels launched a full-blown campaign of counterespionage, player signings and NIL fundraising to keep him from undermining their program. 🔗 on.wsj.com/4yJS0XC</p></article><article class="card seed"><div class="meta"><span class="chip src">SBHNews</span><span class="chip">일반</span><span>09-20 01:51</span></div><h2 class="title" lang="ko"><a href="https://www.sbhnews.com/news/korean-cinema-closures-despite-box-office-recovery-d11066ff-2026-09-19-PM-01-54" target="_blank" rel="noopener nofollow">흥행 영화 속에도 영화관 줄폐업…고정비 압박이 주범</a></h2><p class="summary clamp" lang="ko">올해 1~8월 영화 시장 관객과 매출이 각각 28.9%, 36.4% 증가하며 회복 중 주요 멀티플렉스 3사의 영화관은 9곳이 감소해 개별 점포 경영 악화 지속 고정비 부담과 시장 재편이 폐점 원인으로 작용</p></article><article class="card seed"><div class="meta"><span class="chip src">SBHNews</span><span class="chip">일반</span><span>09-20 01:51</span></div><h2 class="title" lang="ko"><a href="https://www.sbhnews.com/news/kim-ji-yong-prosecution-chief-candidate-verification-155a22e7-2026-09-19-PM-06-06" target="_blank" rel="noopener nofollow">청와대, 김지용 중수청장 후보자 추가 검증···인사청문 지연</a></h2><p class="summary clamp" lang="ko">청와대가 김지용 중대범죄수사청장 후보자에 대한 추가 검증을 진행 중입니다. 다음 달 2일 출범을 앞둔 중수청 구성이 여권 반발로 지연되고 있습니다. 인사청문요청서 제출 시점이 확정되지 않은 상태입니다.</p></article><article class="card seed"><div class="meta"><span class="chip src">Google News · Bitcoin</span><span class="chip">온체인·기관</span><span>09-20 01:49</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMiogFBVV95cUxNbUc2QU1JeHdTaXZzTm82VGFIZU0tS0d6SGNPMFhsODBJYUZSSkdNdUNUN01id0xabVRMcHFHOTVFdmhOdWZlM0JaQnRiYnZlaUJlUUZGQ3h2UTlqQ1AtU0RXYjJfMEllbWFaQXFPeS1hcDJTaDFPMlNCZFN2T0R6Ym1RSy1QZzhDeUMtdlh5aTJsU0lEa1NjOUFTZDEwZE95TFE?oc=5" target="_blank" rel="noopener nofollow">Blink Wallet Hit by Attacker, &#x27;Few Dozen&#x27; Custodial Accounts Drained - news.bitcoin.com</a></h2><p class="summary clamp" lang="en">Blink Wallet Hit by Attacker, &#x27;Few Dozen&#x27; Custodial Accounts Drained news.bitcoin.com</p></article><article class="card seed"><div class="meta"><span class="chip src">Walter Bloomberg</span><span class="chip">지정학</span><span>09-20 01:47</span></div><h2 class="title" lang="en"><a href="https://t.me/WalterBloomberg/35665" target="_blank" rel="noopener nofollow">TURKISH FOREIGN MINISTER: WE HAVE SENT OFFER TO UKRAINE, RUSSIA TO END FIGHTING IN THE BLACK SEA, AWAITING THEIR RESPONSES</a></h2><p class="summary clamp" lang="en"></p></article><article class="card seed"><div class="meta"><span class="chip src">Google News · Bitcoin</span><span class="chip">일반</span><span>09-20 01:47</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMiqgFBVV95cUxOWGU3Ymt3ektzak95NFpFc2NlLUZJNktweU1iTk9zZEtreDQ3cDRnbUVEMFdzY0tJajZjZzlNZHNrSlZlMlRDZFl6WHFDS3hjdkEybHFWQUN5U2wyODF1bUJsT1cyOTcwcEs0Y0NaWUUwQ0p1cEFQMDd4WkxSbldQSnZXNzZDZFNsbXkySkF1ekVIa2lkRTV1eFYxVVVkaHdvRzJwZ0N0SFZzdw?oc=5" target="_blank" rel="noopener nofollow">Warren Buffett Steps Down After 60 Years – And His Bitcoin Views Are Unforgettable - CryptoPotato</a></h2><p class="summary clamp" lang="en">Warren Buffett Steps Down After 60 Years – And His Bitcoin Views Are Unforgettable CryptoPotato</p></article><article class="card seed"><div class="meta"><span class="chip src">Google News · X 발언</span><span class="chip">X 발언</span><span>09-20 01:43</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMijAFBVV95cUxOQlJ5em5Pc3RTb2VxYWcyY2pBTUxzSUk3ZzRCTU9rUDJ4c3pibGxiSWpnSXBZd3IyQ2swRXhkbmJ1aEg1NDFRZEtfT3lYWnQtRUU2eEZQZEh5azFGa0tmNXFFMDJfR2xiQzZabmM1WFE0TXZreUJxUGFNOFBWUGFxcmdQVnZzc0JKOTg0Rg?oc=5" target="_blank" rel="noopener nofollow">Michael Saylor Reveals Viral Insights on Bitcoin Governance - Coinfomania</a></h2><p class="summary clamp" lang="en">Michael Saylor Reveals Viral Insights on Bitcoin Governance Coinfomania</p></article><article class="card seed"><div class="meta"><span class="chip src">CoinNess Stock</span><span class="chip">일반</span><span>09-20 01:40</span></div><h2 class="title" lang="ko"><a href="https://coinness.com/stock-news/127320/quote" target="_blank" rel="noopener nofollow">튀르키예, 우크라·러에 흑해 분쟁 중단 제안…답변 대기 중</a></h2><p class="summary clamp" lang="ko">튀르키예 외무장관은 흑해 분쟁 중단을 위한 제안을 우크라이나와 러시아 양측에 전달했으며, 현재 양측의 답변을 기다리고 있다고 밝혔다.</p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · reuters.com</span><span class="chip">지정학</span><span>09-20 01:40</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/reuters.com/post/3mvvdgeyhal2v" target="_blank" rel="noopener nofollow">US Treasury&#x27;s Bessent, China&#x27;s He to meet on Sunday at JPMorgan headquarters reut.rs/4hegelB</a></h2><p class="summary clamp" lang="en">US Treasury&#x27;s Bessent, China&#x27;s He to meet on Sunday at JPMorgan headquarters reut.rs/4hegelB</p></article><article class="card seed"><div class="meta"><span class="chip src">FinancialJuice</span><span class="chip">지정학</span><span>09-20 01:38</span></div><h2 class="title" lang="en"><a href="https://www.financialjuice.com/News/9770558/Turkish-foreign-minister-sent-proposal-to-Ukraine-Russia-to-halt-fighting-in-Black-Sea-awaiting-replies.aspx" target="_blank" rel="noopener nofollow">Turkish foreign minister: sent proposal to Ukraine, Russia to halt fighting in Black Sea, awaiting replies</a></h2><p class="summary clamp" lang="en"></p></article><article class="card seed"><div class="meta"><span class="chip src">Walter Bloomberg</span><span class="chip">미국 정책·트럼프</span><span>09-20 01:32</span></div><h2 class="title" lang="en"><a href="https://t.me/WalterBloomberg/35664" target="_blank" rel="noopener nofollow">U.S.-CHINA TALKS SET AHEAD OF TRUMP-XI SUMMIT Treasury Secretary Scott Bessent will meet Chinese Vice Premier He Lifeng on Sunday in New York to discuss AI security, trade and broa…</a></h2><p class="summary clamp" lang="en"></p></article><article class="card seed"><div class="meta"><span class="chip src">FinancialJuice</span><span class="chip">지정학</span><span>09-20 01:32</span></div><h2 class="title" lang="en"><a href="https://www.financialjuice.com/News/9770557/Turkish-foreign-minister-initiatives-exist-to-end-Ukraine-Russia-war-but-hard-for-lasting-solution.aspx" target="_blank" rel="noopener nofollow">Turkish foreign minister: initiatives exist to end Ukraine-Russia war, but hard for lasting solution</a></h2><p class="summary clamp" lang="en"></p></article><article class="card seed"><div class="meta"><span class="chip src">Google News · 미국 정책·트럼프</span><span class="chip">미국 정책·트럼프</span><span>09-20 01:31</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMijwJBVV95cUxOeXMzZm5OZE1UVUc1NnMya1l0eURMQy1Rb3otV3l4WU1iMDctSUY3VWJ6Y2pva1QxbXlEcU9WbHlUUHlFZnYyZUoydTc4WmhLRnFpQVRHd0Jsb2RWdmdoOTVRNHZZNkJWUDZtcVNDZlQ3NEdrWnluMGtGU0ZJSzhCX3JrOTNCajJfUVVLblVsQU9pdEJhdWdqR2RWNEsxb2RKZ2gzc1I5Mm45STh1X0J0WWtxRjYtWG1NMVR5cm1JOFNTWTZPcmg1TjVORVhFdVRadERpcGVfc3NJNE9BejBiYXRGVTl4MmtPWXN3cERGSlhVSkFHNnN3U3diWGlGMi1ULWstdDdKazZ1QWlFZDdZ?oc=5" target="_blank" rel="noopener nofollow">Trump Tariffs Put Pressure on Hiring and Wages, But $100 Billion in Refunds Is Giving Companies a Chance - Benzinga</a></h2><p class="summary clamp" lang="en">Trump Tariffs Put Pressure on Hiring and Wages, But $100 Billion in Refunds Is Giving Companies a Chance Benzinga</p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · bloomberg.com</span><span class="chip">미국 정책·트럼프</span><span>09-20 01:30</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/bloomberg.com/post/3mvvculy3jg2c" target="_blank" rel="noopener nofollow">President Donald Trump said he would name an artificial intelligence czar as he continued to push tech companies to race ahead with developm…</a></h2><p class="summary clamp" lang="en">President Donald Trump said he would name an artificial intelligence czar as he continued to push tech companies to race ahead with development despite growing fears safety.</p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · theinformation.com</span><span class="chip">일반</span><span>09-20 01:30</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/theinformation.com/post/3mvvcubwukt2n" target="_blank" rel="noopener nofollow">As AI leaders call for slower development, Microsoft’s Mustafa Suleyman is raising a different concern: whether treating AI models as humanl…</a></h2><p class="summary clamp" lang="en">As AI leaders call for slower development, Microsoft’s Mustafa Suleyman is raising a different concern: whether treating AI models as humanlike could make them more likely to defy human commands. Read more: https://thein.fo/4cOGEJD</p></article><article class="card seed"><div class="meta"><span class="chip src">FinancialJuice</span><span class="chip">일반</span><span>09-20 01:25</span></div><h2 class="title" lang="en"><a href="https://www.financialjuice.com/News/9770553/Turkish-foreign-minister-Saudi-Arabia-could-have-military-requirements-to-be-reviewed-in-trilateral-defense-pact-with-Pakistan.aspx" target="_blank" rel="noopener nofollow">Turkish foreign minister: Saudi Arabia could have military requirements, to be reviewed in trilateral defense pact with Pakistan</a></h2><p class="summary clamp" lang="en"></p></article><article class="card seed"><div class="meta"><span class="chip src">Google News · Bitcoin</span><span class="chip">일반</span><span>09-20 01:25</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMipAFBVV95cUxOb0E2bWJYTnB0MjNPT0FjeDBVdGtweUJueTBWVVlNSUFiSVV3U0VwaFN0Z05NeV95T2NiVWtYcGZEMGdJMTVZaHZsQU9NTXBxYW1kR1dQRXJ0OTM1TG9NdU5USlZ4SFJ3dWxZenF2QVRJcG9jTUJkRGtMVHVuRU5vZVZZVHVIeDFUTWMtM3FadHp2V0FmRHZ0OVIxUEZXdGhOQy15Sg?oc=5" target="_blank" rel="noopener nofollow">Austrian Bitcoin sellers must report gains if n... - Pluang</a></h2><p class="summary clamp" lang="en">Austrian Bitcoin sellers must report gains if n... Pluang</p></article><article class="card seed"><div class="meta"><span class="chip src">CoinNess Stock</span><span class="chip">지정학</span><span>09-20 01:24</span></div><h2 class="title" lang="ko"><a href="https://coinness.com/stock-news/127317/quote" target="_blank" rel="noopener nofollow">튀르키예 외무 &quot;사우디, 미·이란 전쟁 연루 용납 불가&quot;</a></h2><p class="summary clamp" lang="ko">튀르키예 외무장관은 사우디아라비아가 미국-이란 전쟁에 휘말리는 것은 용납할 수 없다며, 사우디에는 분쟁에 참여할 의사가 없다고 밝혔다.</p></article><article class="card seed"><div class="meta"><span class="chip src">FinancialJuice</span><span class="chip">지정학</span><span>09-20 01:24</span></div><h2 class="title" lang="en"><a href="https://www.financialjuice.com/News/9770552/Turkish-foreign-minister-unacceptable-for-Saudi-Arabia-to-become-involved-in-US-Iran-war-no-wish-to-join-conflict.aspx" target="_blank" rel="noopener nofollow">Turkish foreign minister: unacceptable for Saudi Arabia to become involved in US-Iran war, no wish to join conflict</a></h2><p class="summary clamp" lang="en"></p></article><article class="card seed"><div class="meta"><span class="chip src">FinancialJuice</span><span class="chip">일반</span><span>09-20 01:23</span></div><h2 class="title" lang="en"><a href="https://www.financialjuice.com/News/9770551/Turkish-foreign-minister-proposals-conveyed-to-all-sides-to-end-Saudi-Houthi-fighting.aspx" target="_blank" rel="noopener nofollow">Turkish foreign minister: proposals conveyed to all sides to end Saudi-Houthi fighting</a></h2><p class="summary clamp" lang="en"></p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · wsj.com</span><span class="chip">거시경제</span><span>09-20 01:21</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/wsj.com/post/3mvvcfm322c2s" target="_blank" rel="noopener nofollow">The president’s first call for federal oversight of the industry comes as opposition grows against AI grows among voters. on.wsj.com/4roF6Mv</a></h2><p class="summary clamp" lang="en">The president’s first call for federal oversight of the industry comes as opposition grows against AI grows among voters. on.wsj.com/4roF6Mv</p></article></div>
+      <div id="feed" class="feed"><article class="card seed"><div class="meta"><span class="chip src">Google News · 스테이블코인</span><span class="chip">Stablecoins</span><span>09-19 23:30</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMijwFBVV95cUxQcFJIX1Bja0VxNXBkQUY2QXl1ZVVtX3NvT0NRdXkwOEQyeV80SWJsS2NQU2JkSDR3ZklTSnZva0tiM25NTUE1RW0yMWo2S3YtdmZ4VV9zbXpmbUlmVWJkR3VwVXQyQzV3Y2dJRWU2YmNKZWtRRi1FRVFocUJfRlhjQmZJanVlOXNqUFNESU5XTQ?oc=5" target="_blank" rel="noopener nofollow">Tether mints $500M USDT on Solana in under an h... - Pluang</a></h2><p class="summary clamp" lang="en">Tether mints $500M USDT on Solana in under an h... Pluang</p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · bloomberg.com</span><span class="chip">General</span><span>09-19 23:30</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/bloomberg.com/post/3mvv464uodf2n" target="_blank" rel="noopener nofollow">Thunderstorms across the Midwest disrupted air traffic through Chicago, causing hundreds of flight cancellations on Saturday</a></h2><p class="summary clamp" lang="en">Thunderstorms across the Midwest disrupted air traffic through Chicago, causing hundreds of flight cancellations on Saturday</p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · wsj.com</span><span class="chip">General</span><span>09-19 23:29</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/wsj.com/post/3mvv44h4csz26" target="_blank" rel="noopener nofollow">After groves were ravaged for decades by a disease, new EPA-approved genetic technologies are giving citrus growers a chance to rebuild. on.…</a></h2><p class="summary clamp" lang="en">After groves were ravaged for decades by a disease, new EPA-approved genetic technologies are giving citrus growers a chance to rebuild. on.wsj.com/4h1c4in</p></article><article class="card seed"><div class="meta"><span class="chip src">Google News · Bitcoin</span><span class="chip">ETF &amp; flows</span><span>09-19 23:28</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMipgFBVV95cUxPUUM0d2tVLXI3dGlJbUhDdnlKM1NvbHlMSWtPOXlpbWlJYnJ1UFliMGJ0SWFLQkcwbldEX2w0TVl3Q3g4RmJkUUZlb0dvaEFJSzNydEM3cWlhRVk2ekhha2tFMEozMHBLb2s0WnZSbGI2T3Nick1QWC00YmVrNHZCYmRZQTF5Z0pXZGVlMG9CVk1qVXRpQnRPMmViQVhUb3hkd0d2d1Jn?oc=5" target="_blank" rel="noopener nofollow">Bitcoin rallies 6%, reclaims $80K as Fidelity s... - Pluang</a></h2><p class="summary clamp" lang="en">Bitcoin rallies 6%, reclaims $80K as Fidelity s... Pluang</p></article><article class="card seed"><div class="meta"><span class="chip src">SBHNews</span><span class="chip">일반</span><span>09-19 23:21</span></div><h2 class="title" lang="ko"><a href="https://www.sbhnews.com/news/college-admission-system-error-fairness-18751cc2-2026-09-19-PM-06-58" target="_blank" rel="noopener nofollow">수시 전산 오류 구제에 반발…&#x27;규칙 지킨 자만 손해&#x27;</a></h2><p class="summary clamp" lang="ko">2026학년도 대학 수시모집에서 전산 오류로 지원하지 못한 수험생 354명이 구제됨. 규정 내 기간에 접수한 수험생들이 형평성 위반을 지적하며 반발하는 중. 마감 후 접수된 원서의 전면 취소를 요구하고 있음.</p></article><article class="card seed"><div class="meta"><span class="chip src">SBHNews</span><span class="chip">일반</span><span>09-19 23:21</span></div><h2 class="title" lang="ko"><a href="https://www.sbhnews.com/news/korea-weekend-heat-temperature-gap-26c8606e-2026-09-19-AM-09-11" target="_blank" rel="noopener nofollow">주말 늦더위 30도 안팎… 낮밤 기온차 15도로 큰 일교차</a></h2><p class="summary clamp" lang="ko">주말 낮 기온 30도 안팎의 늦더위가 이어짐. 낮과 밤의 기온차가 15도 안팎으로 큼. 환절기 건강 관리에 주의 필요.</p></article><article class="card seed"><div class="meta"><span class="chip src">Walter Bloomberg</span><span class="chip">US policy &amp; Trump</span><span>09-19 23:17</span></div><h2 class="title" lang="en"><a href="https://t.me/WalterBloomberg/35660" target="_blank" rel="noopener nofollow">WHITE HOUSE ENFORCES BAN ON CNN, MS NOW AND POLITICO The White House confiscated press passes and denied access to journalists from CNN, MS NOW and Politico, following through on T…</a></h2><p class="summary clamp" lang="en"></p></article><article class="card seed"><div class="meta"><span class="chip src">Walter Bloomberg</span><span class="chip">General</span><span>09-19 23:17</span></div><h2 class="title" lang="en"><a href="https://t.me/WalterBloomberg/35659" target="_blank" rel="noopener nofollow">U.S., DENMARK AND GREENLAND REACH SECURITY DEAL The U.S., Denmark and Greenland have agreed to expand America’s military presence in Greenland, with signing expected next week at t…</a></h2><p class="summary clamp" lang="en"></p></article><article class="card seed"><div class="meta"><span class="chip src">Walter Bloomberg</span><span class="chip">Equities &amp; commodities</span><span>09-19 23:16</span></div><h2 class="title" lang="en"><a href="https://t.me/WalterBloomberg/35658" target="_blank" rel="noopener nofollow">HORMUZ OIL FLOWS HIT SIX-MONTH HIGH Oil and LNG shipments through the Strait of Hormuz have reached their highest level in six months, as U.S. mine-clearing and naval protection ef…</a></h2><p class="summary clamp" lang="en"></p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · reuters.com</span><span class="chip">General</span><span>09-19 23:15</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/reuters.com/post/3mvv3czrhie2g" target="_blank" rel="noopener nofollow">Martin recovers from early setback to win Austrian sprint and retake championship lead reut.rs/4jcWUYH</a></h2><p class="summary clamp" lang="en">Martin recovers from early setback to win Austrian sprint and retake championship lead reut.rs/4jcWUYH</p></article><article class="card seed"><div class="meta"><span class="chip src">CoinNess Stock</span><span class="chip">미국 정책·트럼프</span><span>09-19 23:14</span></div><h2 class="title" lang="ko"><a href="https://coinness.com/stock-news/127298/quote" target="_blank" rel="noopener nofollow">이란, 카타르 통해 워싱턴에 정전 조건 3가지 전달…트럼프 답변 대기</a></h2><p class="summary clamp" lang="ko">이란 최고국가안보위원회 레자이 사무총장은 이란이 카타르와 파키스탄을 통해 중재 교섭을 이어가고 있으며, 관련 중재측에 협상 조건을 전달했다고 밝혔다. 레자이 사무총장은 카타르가 이란의 정전 조건을 워싱턴에 전달했으며, 이란은 현재 트럼프 미국 대통령의 답변을 기다리고 있다고 말했다. 이란이 제시한 종전 조건은 △모든 전선의 전쟁 종식 △동결 자산 해제 △해상 봉쇄 해제 등 세 가지다. 레자이 사무총장은 이란의 조건을 수용하는…</p></article><article class="card seed"><div class="meta"><span class="chip src">Google News · 미국 정책·트럼프</span><span class="chip">US policy &amp; Trump</span><span>09-19 23:13</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMigAFBVV95cUxQRXFEZkxMSTZnNUp3eFRFdVpIQ01DLUJMT2ppTUhTaXY5ZXlBM0I4MXBNT1RSMjJiaWh4QnB4R3VpZk1YRl94RGo4c09MVG11UnRzb0Y3WjROLU0xLTZpYTVLYnp0T2pRSlBKcVQ2R21PVWZoWkRtenV0a3hZWkFuSA?oc=5" target="_blank" rel="noopener nofollow">White House turns away CNN, MS NOW, Politico reporters after Trump announces ban - ca.finance.yahoo.com</a></h2><p class="summary clamp" lang="en">White House turns away CNN, MS NOW, Politico reporters after Trump announces ban ca.finance.yahoo.com</p></article><article class="card seed"><div class="meta"><span class="chip src">Walter Bloomberg</span><span class="chip">General</span><span>09-19 23:10</span></div><h2 class="title" lang="en"><a href="https://t.me/WalterBloomberg/35657" target="_blank" rel="noopener nofollow">$NVDA - NVIDIA’S HUANG REJECTS CALLS TO SLOW AI Nvidia CEO Jensen Huang says AI development should move “as fast as we can,” rejecting calls for the industry to slow down. Hua…</a></h2><p class="summary clamp" lang="en"></p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · reuters.com</span><span class="chip">General</span><span>09-19 23:10</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/reuters.com/post/3mvv324a4qa2x" target="_blank" rel="noopener nofollow">Cycling team performance head Demko banned for 10 years for ethics code breaches reut.rs/46S4cKh</a></h2><p class="summary clamp" lang="en">Cycling team performance head Demko banned for 10 years for ethics code breaches reut.rs/46S4cKh</p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · reuters.com</span><span class="chip">US policy &amp; Trump</span><span>09-19 23:05</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/reuters.com/post/3mvv2r4tq3v23" target="_blank" rel="noopener nofollow">White House turns away CNN, MS NOW, Politico reporters after Trump announces ban reut.rs/4Ajmy48</a></h2><p class="summary clamp" lang="en">White House turns away CNN, MS NOW, Politico reporters after Trump announces ban reut.rs/4Ajmy48</p></article><article class="card seed"><div class="meta"><span class="chip src">Google News · 스테이블코인</span><span class="chip">Stablecoins</span><span>09-19 23:04</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMiaEFVX3lxTFBiOTZSYjNYSjY5dnI0NmZ5NEZvczYybEk4NkN0dS04VzlUaEVYS0Z3VXIwTDcxdnZ0OVFKLURLN182TEEwOTUyZFpET01rODJMZWZudGJ5V0xRLXBMdzEtY0dYdktHYVlv?oc=5" target="_blank" rel="noopener nofollow">Tether mints $500M worth of USDT on Solana in under one hour - Crypto Briefing</a></h2><p class="summary clamp" lang="en">Tether mints $500M worth of USDT on Solana in under one hour Crypto Briefing</p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · decrypt.co</span><span class="chip">Derivatives &amp; liquidations</span><span>09-19 23:04</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/decrypt.co/post/3mvv2phlyiu24" target="_blank" rel="noopener nofollow">Bitcoin&#x27;s Sharpest Rally in Two Years Ran Almost Entirely on Short Liquidations</a></h2><p class="summary clamp" lang="en">Bitcoin&#x27;s Sharpest Rally in Two Years Ran Almost Entirely on Short Liquidations</p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · reuters.com</span><span class="chip">General</span><span>09-19 23:00</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/reuters.com/post/3mvv2jb5w7l2s" target="_blank" rel="noopener nofollow">French finance ministry expects record debt in 2026, reaching nearly 120% of GDP reut.rs/4y6UsaV</a></h2><p class="summary clamp" lang="en">French finance ministry expects record debt in 2026, reaching nearly 120% of GDP reut.rs/4y6UsaV</p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · theinformation.com</span><span class="chip">General</span><span>09-19 23:00</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/theinformation.com/post/3mvv2ijs5ea26" target="_blank" rel="noopener nofollow">We started with more than 150 names and cut the list to 50 by asking a simple question: Who would anyone in tech pick up the phone for?</a></h2><p class="summary clamp" lang="en">We started with more than 150 names and cut the list to 50 by asking a simple question: Who would anyone in tech pick up the phone for? See the full list: https://thein.fo/4ridB7b</p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · bloomberg.com</span><span class="chip">General</span><span>09-19 23:00</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/bloomberg.com/post/3mvv2igcq5x2y" target="_blank" rel="noopener nofollow">Nightlife boomed during the World Cup in US cities. Can policy changes keep the fun alive?</a></h2><p class="summary clamp" lang="en">Nightlife boomed during the World Cup in US cities. Can policy changes keep the fun alive?</p></article><article class="card seed"><div class="meta"><span class="chip src">Google News · Bitcoin</span><span class="chip">ETF &amp; flows</span><span>09-19 23:00</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMiogFBVV95cUxPZnFsclo4Nmc5UmhfVVE2dE5kUElWY0pJM3ZfWUpsYkhONV9WemZ2N2xYQWFlclRvRURZN2lSXzBZMEl0RkNXYTFDSVBvNEJMY2ZKc1E0b3lPdXJpcEV2UTl3a3A2Uk9JNjJqUjFCVFFKMGtNUmVVLUZmcElDVU5WR1RZelpqcWtjdTdjb2RNSDgtdFdrUlJ4dkhycXAtVHBhZkE?oc=5" target="_blank" rel="noopener nofollow">‘Bitcoin winter is over,’ says Fidelity as its predicts a new 4-year bull market - AMBCrypto</a></h2><p class="summary clamp" lang="en">‘Bitcoin winter is over,’ says Fidelity as its predicts a new 4-year bull market AMBCrypto</p></article><article class="card seed"><div class="meta"><span class="chip src">CoinDesk</span><span class="chip">Regulation &amp; policy</span><span>09-19 23:00</span></div><h2 class="title" lang="en"><a href="https://www.coindesk.com/news-analysis/2026/09/18/clarity-act-we-hardly-knew-ye-we-look-at-what-was-in-the-bill-and-what-s-replacing-it" target="_blank" rel="noopener nofollow">Clarity Act, we hardly knew ye: We look at what was in the bill and what&#x27;s replacing it</a></h2><p class="summary clamp" lang="en">U.S. agencies are racing to substitute their regulations for the law that was meant to set crypto markets in governmental bedrock, but will the stand-ins last?</p></article><article class="card seed"><div class="meta"><span class="chip src">Google News · Bitcoin</span><span class="chip">Market &amp; price</span><span>09-19 23:00</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMiwwFBVV95cUxPaVVUaEgweTRnaUlpN2lHTmNQTkV4MV9QQVRLd3ZLaFU4cFU1ZUFoUjByQXdIaXRDX1NpbDVta05TOHpsTTVqUFI3MTdDUUdhM3FFY0dZZ0UxN0RXM2c5YjJQZXMtTHhld2MwMy1GVlpLTTlYYXMxTFQxaWlRN0tvMUFwWXRUUHNXUGtGcUJiN2dBdS1lelFxZWp6enNMWVVScVpFQmhNQks3MktxZFNlRlAzMUt0cDFGWHhEUHNxdmZ6YTA?oc=5" target="_blank" rel="noopener nofollow">CleanSpark Prices $2.276B Secured Notes For Sandersville Data Center - TradingView</a></h2><p class="summary clamp" lang="en">CleanSpark Prices $2.276B Secured Notes For Sandersville Data Center TradingView</p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · wsj.com</span><span class="chip">General</span><span>09-19 22:55</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/wsj.com/post/3mvv2a7axfp2t" target="_blank" rel="noopener nofollow">Renaming the lake could have been an easy sell in northern New York, an area where the president has polled well. Instead, many red-leaning …</a></h2><p class="summary clamp" lang="en">Renaming the lake could have been an easy sell in northern New York, an area where the president has polled well. Instead, many red-leaning residents have come out against it. on.wsj.com/46xm7Ws</p></article><article class="card seed"><div class="meta"><span class="chip src">Google News · Bitcoin</span><span class="chip">Regulation &amp; policy</span><span>09-19 22:53</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMifkFVX3lxTE9mSlhvWFNBVV9EYmNCcXBjVTBJSW5zM29EYmpBVl9QcF91R0hlTnZlQTRQOXBaS3dJSFF4d1VBTVpiX3NubEN2VGNtcnBTXzZBN19zQ0RvSTBraVVvSC03bzJ1TEhScVFVNmttSkZsRV9Rd25vNWFIaWNMU1dQUQ?oc=5" target="_blank" rel="noopener nofollow">Treasury Sanctions Iranian Crypto Exchange BitBank Over Bitcoin Transfers to IRGC - Bitcoin Magazine</a></h2><p class="summary clamp" lang="en">Treasury Sanctions Iranian Crypto Exchange BitBank Over Bitcoin Transfers to IRGC Bitcoin Magazine</p></article></div>
       <span class="sr-only" aria-live="polite" id="live"></span>
       <div class="more-wrap">
-        <button id="more" type="button" hidden>더 보기</button>
-        <button id="totop" type="button">맨 위로</button>
+        <button id="more" type="button" hidden>More</button>
+        <button id="totop" type="button">Back to top</button>
       </div>
     </section>
     
   </div>
 
   <footer class="foot">
-    각 기사의 저작권은 원 매체에 있습니다. 제목과 요약, 그리고 원문 링크만 표시하며 원문 확인은 링크를 통해 해 주세요.<br>
-    자동 수집 결과이므로 표기 오류나 지연이 있을 수 있습니다. 투자 판단의 근거로 사용하지 마세요.
+    Each story belongs to the outlet that published it. Only the headline, the summary and a link are shown; check the original through the link.<br>
+    Collected automatically, so wording or timing may be off. Do not use this as the basis for an investment decision.
   </footer>
 </main>
 
 <script>
-const CFG={"public":true,"datadir":"","wantThai":false,"admin":false,"api":"","calendar":"https://raw.githubusercontent.com/freaky0/teemobkk-live-news/main/docs/calendar.json"};
+const CFG={"public":true,"datadir":"","wantThai":false,"admin":false,"api":"","calendar":"https://raw.githubusercontent.com/freaky0/teemobkk-live-news/main/docs/calendar.json","lang":"en","catLabels":{"일반":"General","유동성·금리":"Liquidity & rates","미국 정책·트럼프":"US policy & Trump","지정학":"Geopolitics","ETF·수급":"ETF & flows","파생상품·청산":"Derivatives & liquidations","온체인·기관":"On-chain & institutions","스테이블코인":"Stablecoins","X 발언":"X posts","주식·원자재":"Equities & commodities","채굴":"Mining","규제·정책":"Regulation & policy","거시경제":"Macro","시장·가격":"Market & price","이더리움·알트":"Ethereum & alts","비자·이민":"Visa & immigration","사고·재난":"Accidents & disasters","태국 생활":"Living, traffic & weather","태국 경제":"Thai economy","태국 정치·사회":"Thai politics & society","태국 관광":"Tourism","태국 보건":"Health"}};
 const PUBLIC=CFG.public, DATADIR=CFG.datadir, API=CFG.api;
 const PAGE=25, BIG=25, STALE_MIN=35, GRACE_MS=3*3600000;
-const GLOBAL_CATS=['유동성·금리','미국 정책·트럼프','지정학','ETF·수급','파생상품·청산','온체인·기관','스테이블코인','X 발언','주식·원자재','채굴','규제·정책','거시경제','시장·가격','이더리움·알트'];
-const THAI_CATS=[['비자·이민','비자·이민'],['사고·재난','사고·재난'],['태국 생활','생활·교통·날씨'],['태국 경제','태국 경제'],['태국 정치·사회','정치·사회'],['태국 관광','관광'],['태국 보건','보건']];
+const GLOBAL_CATS=[["일반","General"],["유동성·금리","Liquidity & rates"],["미국 정책·트럼프","US policy & Trump"],["지정학","Geopolitics"],["ETF·수급","ETF & flows"],["파생상품·청산","Derivatives & liquidations"],["온체인·기관","On-chain & institutions"],["스테이블코인","Stablecoins"],["X 발언","X posts"],["주식·원자재","Equities & commodities"],["채굴","Mining"],["규제·정책","Regulation & policy"],["거시경제","Macro"],["시장·가격","Market & price"],["이더리움·알트","Ethereum & alts"]];
+const THAI_CATS=[["일반","General"],["비자·이민","Visa & immigration"],["사고·재난","Accidents & disasters"],["태국 생활","Living, traffic & weather"],["태국 경제","Thai economy"],["태국 정치·사회","Thai politics & society"],["태국 관광","Tourism"],["태국 보건","Health"]];
 // Source chips. The list is data, not preference: the server matches the source column exactly
 // (source = ?), so each string has to be one that actually appears in the feed. Same-source
 // feeds are listed separately when the collector names them differently (CoinNess / CoinNess
@@ -276,35 +281,35 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const shown=(s,label)=>{const t=String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   return '실제 <b class="'+label+'">'+t+'</b>'};
 
-var V={tab:CFG.wantThai?'thai':'global',filter:'전체',hours:24,q:'',limit:PAGE,tag:null,mode:'all',value:'',offset:0};
+var V={tab:CFG.wantThai?'thai':'global',filter:'All',hours:24,q:'',limit:PAGE,tag:null,mode:'all',value:'',offset:0};
 var MEM={},LATEST={},PENDING={},INDEX={},SEEN={},FULL={},DATA={articles:[],sources:{},total:0,has_more:false};
 var archiveTotal=0,refreshTimer=null,hidden=false,lastRegion={};
-if(CFG.wantThai)document.title=document.title.replace('Live News','Live News · 태국 소식');
+if(CFG.wantThai)document.title=document.title.replace('Live News','Live News · Thailand');
 try{const s=localStorage.getItem(CACHE_KEY);if(s){const p=JSON.parse(s);if(p&&p.articles)DATA=p}}catch(e){}
 
 function region(){return V.tab==='thai'?'태국':'글로벌'}
 function articles(){return PUBLIC?(MEM[region()]||[]):(DATA.articles||[])}
-function age(iso){if(!iso)return '시각 미상';const d=new Date(iso);if(isNaN(d))return '시각 미상';
+function age(iso){if(!iso)return 'time unknown';const d=new Date(iso);if(isNaN(d))return 'time unknown';
   const sec=Math.max(0,(Date.now()-d.getTime())/1000);
-  if(sec<60)return Math.floor(sec)+'초 전';if(sec<3600)return Math.floor(sec/60)+'분 전';
-  if(sec<86400)return Math.floor(sec/3600)+'시간 전';
+  if(sec<60)return Math.floor(sec)+'s ago';if(sec<3600)return Math.floor(sec/60)+'m ago';
+  if(sec<86400)return Math.floor(sec/3600)+'h ago';
   return d.toLocaleString('ko-KR',{timeZone:'Asia/Bangkok',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+' ICT'}
 function bangkokDay(iso){const d=new Date(iso);if(isNaN(d))return '';
   return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(d)}
-function bucket(iso){const t=new Date(iso).getTime();if(!isFinite(t))return '이전';
-  const h=(Date.now()-t)/3600000;if(h<1)return '최근 1시간';
+function bucket(iso){const t=new Date(iso).getTime();if(!isFinite(t))return 'Earlier';
+  const h=(Date.now()-t)/3600000;if(h<1)return 'Last hour';
   const day=bangkokDay(iso),today=bangkokDay(new Date().toISOString());
-  if(day===today)return '오늘';
+  if(day===today)return 'Today';
   const y=new Date(Date.now()-86400000).toISOString();
-  if(day===bangkokDay(y))return '어제';
-  return '이전'}
+  if(day===bangkokDay(y))return 'Yesterday';
+  return 'Earlier'}
 function hl(t){const txt=esc(t);const q=(V.q||'').trim();if(!q)return txt;
   const qe=esc(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   try{return txt.replace(new RegExp('('+qe+')','gi'),'<mark>$1</mark>')}catch(e){return txt}}
 function keep(a){
   const hours=Number(V.hours)||24,t=new Date(a.published_at).getTime();
   if(!isFinite(t)||Date.now()-t>hours*3600000)return false;
-  if(V.filter!=='전체'&&a.category!==V.filter)return false;
+  if(V.filter!=='All'&&a.category!==V.filter)return false;
   if(V.tag&&(V.tag.k==='cat'?a.category!==V.tag.v:a.source!==V.tag.v))return false;
   const q=(V.q||'').trim().toLowerCase();
   if(q&&(((a.title||'')+' '+(a.summary||'')+' '+(a.source||'')+' '+(a.category||'')).toLowerCase().indexOf(q)<0))return false;
@@ -316,10 +321,10 @@ function summaryBlock(a){
   const s=a.summary||'';if(!s)return '';
   const long=s.length>220;
   return '<div class="summary'+(long?' clamp':'')+'">'+hl(s)+'</div>'+
-    (long?'<button class="expand" type="button" aria-expanded="false">펼쳐보기</button>':'')}
+    (long?'<button class="expand" type="button" aria-expanded="false">Show more</button>':'')}
 const SPEAKERS=['트럼프','Trump','TRUMP','머스크','Musk','MUSK','파월','Powell','워시','Warsh','베센트','Bessent','라가르드','Lagarde','푸틴','Putin','시진핑','Xi Jinping','네타냐후','Netanyahu','우에다','Ueda'];
 function speakChip(a){const t=(a.title||'')+' '+(a.summary||'');
-  return SPEAKERS.some(n=>t.indexOf(n)>=0)?'<span class="chip speak">인물 발언</span>':''}
+  return SPEAKERS.some(n=>t.indexOf(n)>=0)?'<span class="chip speak">speaker</span>':''}
 // Verification level, not a second source name. The source chip already says who
 // published it, so only the levels that change how much a line should be trusted are
 // shown, and they are meant to be rare: measured over a day, official is 0.5% and
@@ -329,8 +334,8 @@ function speakChip(a){const t=(a.title||'')+' '+(a.summary||'');
 // annotation on the other site, and this collector sees zero such markers in the
 // wire text it receives.
 function verifChip(a){
-  if(a.source_type==='official')return '<span class="chip verif off" title="공식 기관이 직접 발표한 문서">공식</span>';
-  if(a.source_type==='social')return '<span class="chip verif sns" title="소셜·채널 게시물 — 언론 보도가 아니며 원문 확인이 필요함">SNS</span>';
+  if(a.source_type==='official')return '<span class="chip verif off" title="Published by an official body">Official</span>';
+  if(a.source_type==='social')return '<span class="chip verif sns" title="Social or channel post — not press reporting, verify against the source">Social</span>';
   return ''}
 function card(a,th,lead){
   const tag=V.tag||{};
@@ -342,14 +347,16 @@ function card(a,th,lead){
       verifChip(a)+
       '<button type="button" class="'+srcCls+'" data-k="src" data-v="'+esc(a.source)+'" aria-pressed="'+(srcOn?'true':'false')+'">'+esc(a.source)+'</button>'+
       speakChip(a)+
-      '<button type="button" class="'+catCls+'" data-k="cat" data-v="'+esc(a.category)+'" aria-pressed="'+(catOn?'true':'false')+'">'+esc(a.category)+'</button>'+
+      '<button type="button" class="'+catCls+'" data-k="cat" data-v="'+esc(a.category)+'" aria-pressed="'+(catOn?'true':'false')+'">'+esc(catLabel(a.category))+'</button>'+
       '<span>'+age(a.published_at)+'</span>'+stars(a)+
     '</div>'+
     '<h2 class="title"><a href="'+esc(a.link)+'" target="_blank" rel="noopener nofollow">'+hl(a.title)+'</a></h2>'+
     summaryBlock(a)+
-    (CFG.admin?'<a class="open" href="'+esc(a.link)+'" target="_blank" rel="noopener nofollow">원문 열기</a>':'')+
+    (CFG.admin?'<a class="open" href="'+esc(a.link)+'" target="_blank" rel="noopener nofollow">Open original</a>':'')+
   '</article>'}
 
+function catLabel(value){const map=CFG.catLabels||{};return map[value]||value}
+function fmt(t,n,m){return String(t).replace("{n}",n).replace("{m}",m)}
 function pillCount(cat){return articles().filter(a=>a.category===cat).length}
 function renderPills(){
   const th=V.tab==='thai';
@@ -357,10 +364,10 @@ function renderPills(){
   document.querySelector(th?'#filters-global':'#filters-thai').hidden=true;
   const cats=th?THAI_CATS:GLOBAL_CATS;
   const srcs=th?THAI_SRC:GLOBAL_SRC;
-  const items=[['전체','전체']].concat(cats.map(c=>Array.isArray(c)?c:[c,c]));
+  const items=[['All','All']].concat(cats.map(c=>Array.isArray(c)?c:[c,c]));
   row.innerHTML=items.map(pair=>{
     const n=PUBLIC?pillCount(pair[0]):0;
-    const badge=(PUBLIC&&n&&pair[0]!=='전체')?'<i>'+n+'</i>':'';
+    const badge=(PUBLIC&&n&&pair[0]!=='All')?'<i>'+n+'</i>':'';
     return '<button type="button" class="pill'+(th?' th':'')+(pair[0]===V.filter?' active':'')+
       '" data-cat="'+esc(pair[0])+'">'+esc(pair[1])+badge+'</button>'}).join('')+
     (srcs.length?'<span class="pillsep"></span>':'')+
@@ -378,7 +385,7 @@ function renderPills(){
   row.querySelectorAll('button[data-src]').forEach(b=>b.onclick=()=>{
     const v=b.dataset.src;
     V.tag=(V.tag&&V.tag.k==='src'&&V.tag.v===v)?null:{k:'src',v:v};
-    V.filter='전체';V.mode='all';V.value='';
+    V.filter='All';V.mode='all';V.value='';
     V.limit=PAGE;V.offset=0;renderPills();fetchFeed()});
   const clr=row.querySelector('#clrtag');
   if(clr)clr.onclick=()=>{V.tag=null;V.limit=PAGE;V.offset=0;renderPills();fetchFeed()};
@@ -395,7 +402,7 @@ function renderPills(){
 // Google News titles carry a " - Publisher" tail (1820 of 1833), which is where
 // post/nation/the/yahoo/tradingview noise came from, and social posts embed short links
 // (reut.rs/4Ao...) which produced "reut" and "rs".
-const T_STOP=new Set(("그리고 그러나 또한 이번 지난 오늘 어제 내일 관련 발표 예정 가능 필요 대해 통해 위해 때문 이라 라고 이라고 있다 없다 했다 한다 된다 등등 경우 상황 내용 사실 우리 전체 주요 최근 현재 기록 "
+const T_STOP=new Set(("그리고 그러나 또한 이번 지난 Today Yesterday 내일 관련 released 예정 가능 필요 대해 통해 위해 때문 이라 라고 이라고 있다 없다 했다 한다 된다 등등 경우 상황 내용 사실 우리 All 주요 최근 현재 기록 "
  +"the and for with from that this will said says after over into its his her has have was were are not but you your more than about could would should may might what "
  +"new now out off all one two three how why who when where first last next week month year day time report news update live exclusive "
  +"actual forecast previous consensus revised mom yoy qoq things best top world center "
@@ -480,7 +487,7 @@ function renderTrends(){
   const list=T_CACHE.list||[];
   if(!list.length){el.hidden=true;el.innerHTML='';return}
   el.hidden=false;
-  el.innerHTML='<span class="tlabel">지금 뜨는 키워드</span>'+list.map(function(x){
+  el.innerHTML='<span class="tlabel">Trending now</span>'+list.map(function(x){
     return '<button type="button" class="tbtn" data-trend="'+esc(x.t)+'">'+esc(x.t)+
           '<span class="n">'+x.c+'</span></button>'}).join('');
 }
@@ -495,8 +502,8 @@ function renderFeed(){
   const all=visible(),view=all.slice(0,V.limit),th=V.tab==='thai';
   const feed=document.querySelector('#feed');
   if(!view.length){
-    feed.innerHTML='<div class="empty"><b>조건에 맞는 뉴스가 없습니다</b>검색어를 지우거나 기간을 넓혀 보세요.</div>';
-    document.querySelector('#counts').innerHTML='총 <b>'+all.length+'</b>건';
+    feed.innerHTML='<div class="empty"><b>No stories match these filters</b>Clear the search or widen the period.</div>';
+    document.querySelector('#counts').innerHTML=fmt('총 <b>{n}</b>건',all.length);
     document.querySelector('#more').hidden=true;return}
   // Strictly newest first, with light time headings. An earlier version pinned the
   // highest-priority story of the last three hours to the top; a reader watching a
@@ -510,9 +517,9 @@ function renderFeed(){
     html+=card(a,th,false)});
   feed.innerHTML=html;
   document.querySelector('#counts').innerHTML=(PUBLIC
-    ? '총 <b>'+all.length+'</b>건, <b>'+view.length+'</b>건 표시'
-    : '총 <b>'+(DATA.total==null?all.length:DATA.total)+'</b>건, <b>'+view.length+'</b>건 표시'
-      +(CFG.admin?'<span class="admin">, 보관 <b>'+archiveTotal+'</b>건</span>':''));
+    ? fmt('총 <b>{n}</b>건, <b>{m}</b>건 표시',all.length,view.length)
+    : fmt('총 <b>{n}</b>건, <b>{m}</b>건 표시',DATA.total==null?all.length:DATA.total,view.length)
+      +(CFG.admin?'<span class="admin">'+fmt(', archived <b>{n}</b>건',archiveTotal)+'</span>':''));
   // Local: also require that the last request actually returned the whole window, so the
   // button disappears when the API's own limit caps the page instead of silently doing
   // nothing on every further click.
@@ -520,10 +527,10 @@ function renderFeed(){
     ? all.length>view.length
     : (DATA.has_more&&view.length>=V.limit));
   const pend=PENDING[region()]||0,np=document.querySelector('#newpill');
-  if(pend>0){np.textContent='새 글 '+pend+'건 보기';np.dataset.show='1'}
+  if(pend>0){np.textContent=fmt('새 글 {n}건 보기',pend);np.dataset.show='1'}
   else{np.dataset.show='0';np.textContent=''}
   const live=document.querySelector('#live');
-  if(live)live.textContent=all.length+'건 표시 중'}
+  if(live)live.textContent=fmt('<b>{n}</b>건 표시 중',all.length)}
 function skeleton(){
   const feed=document.querySelector('#feed');
   // The page ships the latest headlines in its own HTML (see seed_feed) so a language
@@ -535,13 +542,14 @@ function skeleton(){
 function setStamp(text,regions){
   const el=document.querySelector('#updated');
   el.textContent=text||'-';
-  if(regions)el.title=Object.keys(regions).map(k=>k+' '+(regions[k].count==null?'':regions[k].count)+'건').join(', ')}
+  if(regions)el.title=Object.keys(regions).map(k=>k+' '+
+    (regions[k].count==null?'':fmt('{n}건',regions[k].count))).join(', ')}
 function flagStale(iso){
   const box=document.querySelector('#stale');
   const t=iso?new Date(iso).getTime():NaN;
   const late=!isFinite(t)||(Date.now()-t)/60000>STALE_MIN;
   box.dataset.show=late?'1':'0';
-  box.textContent=late?'수집이 지연되고 있습니다 — 표시된 시각 이후 새 데이터가 없습니다':''}
+  box.textContent=late?'Collection is behind — no new data since the time shown':''}
 
 async function getJSON(url){
   const r=await fetch(url,{cache:'no-cache'});
@@ -583,10 +591,10 @@ function buildQuery(){
   if(V.mode==='priority')p.set('priority',V.value||'5');
   else if(V.mode==='official')p.set('source_type','official');
   else if(V.mode==='source'&&V.value)p.set('source',V.value);
-  // V.filter is only ever a category name or '전체'. The category pill row sets it without
+  // V.filter is only ever a category name or 'All'. The category pill row sets it without
   // setting V.mode, so gating this branch on the mode left the pill highlighted while the
   // server still returned the unfiltered list.
-  if(V.filter&&V.filter!=='전체')p.set('category',V.filter);
+  if(V.filter&&V.filter!=='All')p.set('category',V.filter);
   // Card chips set V.tag, not V.mode/V.value. Without this the local page sent an
   // unfiltered request, so clicking a chip only highlighted it and the list never moved.
   if(V.tag){if(V.tag.k==='cat')p.set('category',V.tag.v);else p.set('source',V.tag.v)}
@@ -608,24 +616,24 @@ async function loadLocal(){
 
 async function fetchFeed(){
   if(PUBLIC){try{await loadPublic(false)}catch(e){offline()}return}
-  try{await loadLocal()}catch(e){document.querySelector('#state')&&(document.querySelector('#state').textContent='재시도 중');renderFeed()}}
+  try{await loadLocal()}catch(e){document.querySelector('#state')&&(document.querySelector('#state').textContent='Retrying');renderFeed()}}
 function offline(){
   if(!articles().length){
-    setStamp('연결 실패');
-    document.querySelector('#feed').innerHTML='<div class="empty"><b>데이터를 불러오지 못했습니다</b>잠시 후 새로고침해 주세요.</div>'}}
+    setStamp('Connection failed');
+    document.querySelector('#feed').innerHTML='<div class="empty"><b>Could not load the data</b>Refresh in a moment.</div>'}}
 
 function renderSources(){
   const el=document.querySelector('#sources');if(!el)return;
   const rows=Object.entries(DATA.sources||{});
   el.innerHTML=rows.length?rows.map(([name,s])=>
     '<div class="source"><span>'+esc(name)+'</span><span class="'+(s.ok?'ok':'bad')+'">'+
-      (s.ok?'정상 '+(s.count==null?0:s.count):'실패')+'</span></div>').join('')
-    :'<div class="note">대기 중</div>'}
+      (s.ok?'ok '+(s.count==null?0:s.count):'failed')+'</span></div>').join('')
+    :'<div class="note">Waiting</div>'}
 function renderGuide(){
   const el=document.querySelector('#tguide');if(!el)return;
   el.innerHTML=V.tab==='thai'
-    ?'<h2>태국 소식</h2><p class="note">방콕포스트·카오솟·타이인콰이어러·프라차타이(영문), 타이랏·마티촌(태국어), 구글뉴스 태국·방콕·교민 검색을 모읍니다.</p><p class="note">비자·이민과 사고·재난을 우선 표시하며, 확정되지 않은 속보는 원문 확인 전까지 단정하지 않습니다.</p>'
-    :'<h2>관찰 기준</h2><p class="note">유동성·금리, 달러·국채, 미국 정책, 지정학, ETF·기관 수급, 파생상품, 온체인, 스테이블코인, X 발언을 우선 수집합니다.</p><p class="note">뉴스 사실과 시장 해석을 분리합니다. X 게시물과 속보는 공식 발표나 원문 확인 전까지 확정 사실로 취급하지 않습니다.</p>'}
+    ?'<h2>Thailand</h2><p class="note">Bangkok Post, Khaosod, Thai Enquirer and Prachatai in English; Thairath and Matichon in Thai; Google News searches for Thailand, Bangkok and Korean residents.</p><p class="note">Visa and immigration, accidents and disasters come first, and unconfirmed lines are not stated as fact before the source is checked.</p>'
+    :'<h2>What this watches</h2><p class="note">Rates and liquidity, the dollar and Treasuries, US policy, geopolitics, ETF and institutional flows, derivatives, on-chain, stablecoins and speaker remarks are collected first.</p><p class="note">Facts and market interpretation are kept apart. Social posts and breaking lines are not treated as confirmed until an official release or the original text is checked.</p>'}
 
 function setTab(next,silent){
   // The indicator tab toggles: pressing it again closes the panel and returns to the
@@ -633,7 +641,7 @@ function setTab(next,silent){
   // because it was shown with an inline style that the tab class could not undo.
   if(next==='cal'&&V.tab==='cal'&&!silent){setTab(V.lastNews||'global');return}
   if(next!=='cal')V.lastNews=next;
-  V.tab=next;V.filter='전체';V.tag=null;V.limit=PAGE;V.offset=0;V.mode='all';V.value='';
+  V.tab=next;V.filter='All';V.tag=null;V.limit=PAGE;V.offset=0;V.mode='all';V.value='';
   document.body.classList.toggle('tab-cal',next==='cal');
   document.querySelectorAll('.tab').forEach(b=>{
     const on=b.dataset.tab===next;b.classList.toggle('active',on);b.setAttribute('aria-selected',on?'true':'false')});
@@ -654,9 +662,9 @@ function setTab(next,silent){
 function calendarFailure(message){
   document.querySelector('#cal-stamp').textContent='';
   document.querySelector('#cal-body').innerHTML='<div class="cal-err">'+esc(message)+
-    '<button type="button" id="cal-retry">다시 시도</button></div>';
+    '<button type="button" id="cal-retry">Try again</button></div>';
   const b=document.querySelector('#cal-retry');
-  if(b)b.onclick=()=>{document.querySelector('#cal-body').innerHTML='<div class="note">불러오는 중…</div>';loadCalendar()}}
+  if(b)b.onclick=()=>{document.querySelector('#cal-body').innerHTML='<div class="note">Loading…</div>';loadCalendar()}}
 function calEsc(s){return esc(s)}
 function calNum(t){const m=String(t==null?'':t).replace(/,/g,'').match(/-?\d+(\.\d+)?/);return m?parseFloat(m[0]):null}
 function calTone(e){const a=calNum(e.actual),c=calNum(e.consensus);if(a===null||c===null)return 'flat';
@@ -664,24 +672,26 @@ function calTone(e){const a=calNum(e.actual),c=calNum(e.consensus);if(a===null||
 function paintCalendar(data){
   const days=(data&&data.days)||[];
   if(!days.length){document.querySelector('#cal-stamp').textContent='';
-    document.querySelector('#cal-body').innerHTML='<div class="note">표시할 일정이 없습니다.</div>';return}
+    document.querySelector('#cal-body').innerHTML='<div class="note">No events to show.</div>';return}
   let total=0,top=0;
   days.forEach(d=>{total+=d.events.length;d.events.forEach(e=>{if(e.importance>=4)top++})});
   document.querySelector('#cal-stamp').textContent=(data.updated_at_kst||'')+' KST';
-  document.querySelector('#cal-sum').textContent='앞으로 3일 일정 '+total+'건 · 중요도 ★4 이상 '+top+'건 · 출처 나스닥 캘린더 · 연준 · 백악관 · Factba.se'
-    +' · 시각 기준 KST(UTC+9) · 방콕은 여기서 2시간 뒤'
-    +' · 연준 인물 명단 '+(data.fed_roster_as_of||'?')+'년 기준';
+  document.querySelector('#cal-sum').textContent=fmt('Next 3 days {n}건',total)
+    +' · '+fmt('at ★4 or above {n}건',top)
+    +' · '+'Sources: Nasdaq calendar · Federal Reserve · White House · Factba.se'
+    +' · '+'Times are KST (UTC+9) · Bangkok is 2 hours behind'
+    +' · '+fmt('Fed roster as of {n}년 기준',data.fed_roster_as_of||'?');
   document.querySelector('#cal-body').innerHTML=days.map(d=>{
     const rows=d.events.length?d.events.map(e=>{
       const parts=[];
-      if(e.kind==='earnings'){parts.push('실적 발표')}
-      else if(e.kind==='potus'){parts.push('대통령 일정')}
+      if(e.kind==='earnings'){parts.push('Earnings')}
+      else if(e.kind==='potus'){parts.push('Presidential schedule')}
       else{
         if(e.kind==='speech'&&e.fed_vote)parts.push(e.fed_vote);
         if(e.released)parts.push(shown(e.actual,calTone(e)));
-        else if(e.passed)parts.push('발표');
-        if(e.consensus)parts.push('예상 '+calEsc(e.consensus));
-        if(e.previous)parts.push('이전 '+calEsc(e.previous));
+        else if(e.passed)parts.push('released');
+        if(e.consensus)parts.push('expected '+calEsc(e.consensus));
+        if(e.previous)parts.push('previous '+calEsc(e.previous));
       }
       const val=parts.join(' · ');
       const label=calEsc(e.country_code||e.country)+' · ';
@@ -692,12 +702,12 @@ function paintCalendar(data){
         '<span class="cal-t">'+at+'</span>'+
         '<span class="cal-s i'+e.importance+'">'+new Array(e.importance+1).join('*')+'</span>'+
         '<span class="cal-n">'+name+'</span><span class="cal-v">'+val+'</span></div>'}).join('')
-      :'<div class="note">주요 지표 없음</div>';
+      :'<div class="note">No major indicators</div>';
     return '<div class="cal-day"><h3>'+calEsc(d.label)+' <span>'+calEsc(String(d.date).slice(5))+' ('+calEsc(d.weekday)+')</span></h3>'+rows+'</div>'}).join('')}
 function loadCalendar(){
   fetch(CAL_URL,{cache:'no-cache'}).then(r=>{
     if(!r.ok)throw Error(r.status);return r.json()
-  }).then(paintCalendar).catch(()=>calendarFailure('경제지표 데이터를 불러오지 못했습니다.'))}
+  }).then(paintCalendar).catch(()=>calendarFailure('Could not load the indicator data.'))}
 
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 // The category and source rows are built by renderPills(), which binds each button as it
@@ -733,13 +743,13 @@ document.querySelector('#feed').addEventListener('click',ev=>{
     V.tag=(V.tag&&V.tag.k===k&&V.tag.v===v)?null:{k:k,v:v};
     // The category pill row and the card chips are two different filters. Left alone they
     // would be sent together and ANDed on the server, which usually returns nothing.
-    V.filter='전체';V.mode='all';V.value='';
+    V.filter='All';V.mode='all';V.value='';
     V.limit=PAGE;V.offset=0;renderPills();fetchFeed();return}
   const btn=ev.target.closest('.expand');
   if(!btn)return;
   const s=btn.previousElementSibling;
   const open=s.classList.toggle('clamp')===false;
-  btn.textContent=open?'접기':'펼쳐보기';
+  btn.textContent=open?'Show less':'Show more';
   btn.setAttribute('aria-expanded',open?'true':'false')});
 const intervalEl=document.querySelector('#interval');
 if(intervalEl)intervalEl.onchange=async()=>{
@@ -751,7 +761,7 @@ if(intervalEl)intervalEl.onchange=async()=>{
     if(refreshTimer)clearInterval(refreshTimer);
     refreshTimer=setInterval(()=>{if(!hidden)fetchFeed()},value*1000);
     fetchFeed();
-  }catch(e){alert('갱신 간격 변경 실패: '+e.message)}};
+  }catch(e){alert('Refresh interval 변경 failed: '+e.message)}};
 const topEl=document.querySelector('#totop');
 if(topEl)topEl.onclick=()=>scrollTo({top:0,behavior:'smooth'});
 document.addEventListener('keydown',ev=>{

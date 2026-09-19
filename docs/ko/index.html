@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
-<meta name="description" content="비트코인·매크로·태국 뉴스를 5 min마다 모아 보여주는 실시간 대시보드. 경제지표와 주요 일정 포함.">
+<meta name="description" content="비트코인·매크로·태국 뉴스를 5분마다 모아 보여주는 실시간 대시보드. 경제지표와 주요 일정 포함.">
 <meta property="og:title" content="TeemoBKK Live News">
-<meta property="og:description" content="Bitcoin, macro and Thailand news in real time, with the indicator calendar.">
+<meta property="og:description" content="비트코인·매크로·태국 뉴스 실시간 대시보드. 경제지표·연설·실적 일정 포함.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="../og-image.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -14,7 +14,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16.png">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
-<title>TeemoBKK Live News · Thailand</title>
+<title>TeemoBKK Live News</title>
 <style>
 :root{
   --bg:#0a0e1a; --panel:#111a2c; --panel2:#16213a; --text:#eef3ff; --muted:#8b9bbd;
@@ -181,7 +181,7 @@ body.public .side{display:none}
 body.public .layout{grid-template-columns:minmax(0,1fr)}
 /* The stretched title link (whole card clickable) is for readers. The local instance is
    a working copy: text has to stay selectable so a headline can be dragged out, so the
-   overlay is switched off there and a plain Open original link is shown instead. */
+   overlay is switched off there and a plain 원문 열기 link is shown instead. */
 body.local .title a::after{content:none}
 body.local .card{cursor:auto}
 @media (max-width:1000px){.layout{grid-template-columns:minmax(0,1fr)}.side{grid-template-columns:1fr}}
@@ -205,34 +205,34 @@ body.local .card{cursor:auto}
   <div class="bar-in">
     <div>
       <div class="brand">TeemoBKK Live News</div>
-      <h1>Live news dashboard</h1>
+      <h1>실시간 뉴스 대시보드</h1>
     </div>
     <div class="spacer"></div>
-    <nav class="langbar" aria-label="Language"><b aria-current="true">English</b><a href="../ko/thai/index.html" lang="ko">한국어</a></nav>
-    <div class="stamp">Updated <b id="updated">-</b><br><span id="stale" class="stale"></span></div>
+    <nav class="langbar" aria-label="Language"><a href="../index.html" lang="en">English</a><b aria-current="true">한국어</b></nav>
+    <div class="stamp">업데이트 <b id="updated">-</b><br><span id="stale" class="stale"></span></div>
   </div>
 </header>
 
 <main class="wrap">
   <div class="tabs" role="tablist">
-    <button id="tab-global" class="tab active" data-tab="global" role="tab" aria-selected="true">Markets</button>
-    <button id="tab-cal" class="tab" data-tab="cal" role="tab" aria-selected="false">Indicators</button>
-    <button id="tab-thai" class="tab th" data-tab="thai" role="tab" aria-selected="false">Thailand</button>
+    <button id="tab-global" class="tab active" data-tab="global" role="tab" aria-selected="true">경제 소식</button>
+    <button id="tab-cal" class="tab" data-tab="cal" role="tab" aria-selected="false">경제 지표</button>
+    <button id="tab-thai" class="tab th" data-tab="thai" role="tab" aria-selected="false">태국 소식</button>
   </div>
 
   <section class="cal" id="cal">
-    <h2>Indicators · speeches · earnings · presidential schedule <span class="note" id="cal-stamp"></span></h2>
+    <h2>경제지표 · 연설 · 실적 · 대통령 일정 <span class="note" id="cal-stamp"></span></h2>
     <p class="cal-sum" id="cal-sum"></p>
-    <div class="cal-grid" id="cal-body"><div class="note">Loading…</div></div>
+    <div class="cal-grid" id="cal-body"><div class="note">불러오는 중…</div></div>
   </section>
 
   <section class="toolbar">
-    <input id="q" type="search" placeholder="Search title, summary or source ( / )" aria-label="Search news">
-    <select id="hours" aria-label="Period">
-      <option value="1">Last hour</option>
-      <option value="6">Last 6 hours</option>
-      <option value="12">Last 12 hours</option>
-      <option value="24" selected>Last 24 hours</option>
+    <input id="q" type="search" placeholder="제목·요약·출처 검색 ( / )" aria-label="뉴스 검색">
+    <select id="hours" aria-label="기간">
+      <option value="1">최근 1시간</option>
+      <option value="6">최근 6시간</option>
+      <option value="12">최근 12시간</option>
+      <option value="24" selected>최근 24시간</option>
     </select>
     
     <button id="newpill" class="newpill" type="button"></button>
@@ -246,28 +246,28 @@ body.local .card{cursor:auto}
 
   <div class="layout">
     <section>
-      <div id="feed" class="feed"><article class="card seed th"><div class="meta"><span class="chip src">Google News · 방콕</span><span class="chip">General</span><span>09-19 23:13</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMiowFBVV95cUxQblYzNU9wQjZpMURmeWtkUFl6NENMZ2RVUzJKX2taRjhOejM2c0RDUHVqQXFmT3haeVdISXAxNVBYdHQ3Q19YaDY4WTNCNkRMR3J5R2Zlal84eW9oWDdjaVBQNHhrT00wMFFfTFFFMTg0anBidWJkdEF3VDBDZkdTWGlxZEZyeXdhSE1HMUNkTnJucFRCQjFqc1VxRzMxRzFyT05F?oc=5" target="_blank" rel="noopener nofollow">&#x27;Fragile&#x27; Tottenham beaten by Aston Villa despite late rally - Bangkok Post</a></h2><p class="summary clamp" lang="en">&#x27;Fragile&#x27; Tottenham beaten by Aston Villa despite late rally Bangkok Post</p></article><article class="card seed th"><div class="meta"><span class="chip src">Google News · 방콕</span><span class="chip">General</span><span>09-19 23:13</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMikwFBVV95cUxNVGRWTlNJekMtUEFIOGNRY0ZCZHlXZGhHMFU0dTdsQ3NYaVdnenNFQnVrYUtqclhZdm8zdU5Ud0RONlRFbDRNXy1ZZXFkaTBwWndsRTU1Zm1TTWtJa0k1RVdVanR4YldQaV9nMTBjTWU2aHVTazFmOHFtMk9xYTB2VVoyN2JsRzBWRzkwMHlmeWxvQWc?oc=5" target="_blank" rel="noopener nofollow">CNN, MS NOW denied access to White House grounds - Bangkok Post</a></h2><p class="summary clamp" lang="en">CNN, MS NOW denied access to White House grounds Bangkok Post</p></article><article class="card seed th"><div class="meta"><span class="chip src">Matichon</span><span class="chip">일반</span><span>09-19 23:00</span></div><h2 class="title" lang="th"><a href="https://www.matichon.co.th/sport/footballinter/footballinterengland/news_5896822" target="_blank" rel="noopener nofollow">อาร์เซน่อลปราชัยนัดแรก บุกพ่ายไบรท์ตันยับ 0-3</a></h2><p class="summary clamp" lang="th">อาร์เซน่อลปราชัยนัดแรก บุกพ่ายไบรท์ตันยับ 0-3 อาร์เซน่อ […]</p></article><article class="card seed th"><div class="meta"><span class="chip src">Thairath</span><span class="chip">사고·재난</span><span>09-19 22:43</span></div><h2 class="title" lang="th"><a href="https://www.thairath.co.th/news/society/2960734" target="_blank" rel="noopener nofollow">อุทยานฯ เขาใหญ่ ลุยเอาผิดคนขับรถเร็ว หวิดชน &quot;พ่องาทอง-ต้นกล้า&quot; ช้างป่าพ่อลูก</a></h2><p class="summary clamp" lang="th">อุทยานฯ เขาใหญ่ ลุยเอาผิดคนขับรถเร็วในเขตอุทยาน เข้าใกล้ &quot;พ่องาทอง-ต้นกล้า&quot; ช้างป่าพ่อลูกในระยะกระชั้นชิด ทำให้ตกใจและเสี่ยงเกิดอุบัติเหตุ โดยออกหนังสือเข้ารับทราบข้อกล่าวหา</p></article><article class="card seed th"><div class="meta"><span class="chip src">Thairath</span><span class="chip">정치·사회</span><span>09-19 22:39</span></div><h2 class="title" lang="th"><a href="https://www.thairath.co.th/news/foreign/2960735" target="_blank" rel="noopener nofollow">เดนมาร์กโว บรรลุข้อตกลงกับสหรัฐฯ ปกป้องอธิปไตยกรีนแลนด์</a></h2><p class="summary clamp" lang="th">นายกรัฐมนตรีเดนมาร์กยินดี บรรลุข้อตกลงความมั่นคงกรีนแลนด์กับสหรัฐฯ โดยย้ำว่านี่ถือเป็นการในอธิปไตย บูรณภาพแห่งดินแดนของเดนมาร์ก ที่มีต่อดินแดนแห่งนี้</p></article><article class="card seed th"><div class="meta"><span class="chip src">Google News · 태국</span><span class="chip">General</span><span>09-19 22:38</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMixgFBVV95cUxPWlc4aVQ0WF9SeFJ4NFhkSDlVVVpHYl83RXhSZ3FzS245SXkwVXZ3bTN5LUxkZko5OXU1eUtHck1uTzBwd0t2NEE1SWtGcXl2T3l0ZHNJVkZucXpIYnE4RWlkWUV5X1pJZjJqU29yUUhqWnhqekVBVVRRbGc4VVFDUHVfVEx5OWtWS0hCT2dmUzc1QzRWdldzY08ybHJfWG1admtUeVZqdW5MYzB1OHZtMmtfSXZ4b25BQWZla0szcktPeUJMUnc?oc=5" target="_blank" rel="noopener nofollow">Kazakhstan beats Thailand in Davis Cup tie, advances to World Group I Play-offs - Kursiv Media</a></h2><p class="summary clamp" lang="en">Kazakhstan beats Thailand in Davis Cup tie, advances to World Group I Play-offs Kursiv Media</p></article><article class="card seed th"><div class="meta"><span class="chip src">Matichon</span><span class="chip">일반</span><span>09-19 22:09</span></div><h2 class="title" lang="th"><a href="https://www.matichon.co.th/sport/footballlocal/news_5896442" target="_blank" rel="noopener nofollow">โปรดปราน ชื่นชมแข้งเยาวชนไทยอุ่นเครื่องคว้าชัยเหนือ แข้งญี่ปุ่น พร้อมหนุนเต็มที่</a></h2><p class="summary clamp" lang="th">โปรดปราน ชื่นชมแข้งเยาวชนไทยอุ่นเครื่องคว้าชัยเหนือ แข้ […]</p></article><article class="card seed th"><div class="meta"><span class="chip src">Matichon</span><span class="chip">일반</span><span>09-19 21:57</span></div><h2 class="title" lang="th"><a href="https://www.matichon.co.th/politics/news_5896815" target="_blank" rel="noopener nofollow">ณัฐชนน ชวนลบมรดกรัฐประหาร19 พา ‘อานนท์’ ออกมาช่วยเขียนรัฐธรรมนูญประชาชน</a></h2><p class="summary clamp" lang="th">ณัฐชนน ชวนลบมรดกรัฐประหาร ปล่อยเชลยการเมือง พา ‘อ […]</p></article><article class="card seed th"><div class="meta"><span class="chip src">Thairath</span><span class="chip">사고·재난</span><span>09-19 21:56</span></div><h2 class="title" lang="th"><a href="https://www.thairath.co.th/news/local/2960727" target="_blank" rel="noopener nofollow">อุทยานฯ ผาแต้ม เสียใจสุดซึ้ง เหตุนักท่องเที่ยวพลัดตก &quot;น้ำตกกวงโตน&quot; ผาชะนะได</a></h2><p class="summary clamp" lang="th">&quot;อุทยานแห่งชาติผาแต้ม&quot; แสดงความเสียใจอย่างสุดซึ้ง กรณีนักท่องเที่ยวหญิงวัย 48 ปี ประสบอุบัติเหตุพลัดตกจากที่สูง บริเวณน้ำตกกวงโตน ผาชะนะได พร้อมร่วมไว้อาลัยต่อการสูญเสีย</p></article><article class="card seed th"><div class="meta"><span class="chip src">Google News · 태국</span><span class="chip">General</span><span>09-19 21:55</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMiYkFVX3lxTE9tY2I5T0VYakR2MGFRX2pCM25zNDFHRTQtTGNuQzVoajlhLUJGa21MNW4ta3l5WnRlbGhaaXVhYnQ1eEJIeFhKNlo0MU1aR2hnZ0hRSExxT2xSd0FJLWJWWnFn?oc=5" target="_blank" rel="noopener nofollow">Pinglu Canal to provide a strong boost to exchanges between China and ASEAN - Global Times</a></h2><p class="summary clamp" lang="en">Pinglu Canal to provide a strong boost to exchanges between China and ASEAN Global Times</p></article><article class="card seed th"><div class="meta"><span class="chip src">Thairath</span><span class="chip">태국 경제</span><span>09-19 21:53</span></div><h2 class="title" lang="th"><a href="https://www.thairath.co.th/news/foreign/2960732" target="_blank" rel="noopener nofollow">ทรัมป์ลงนามกฎหมายคว่ำบาตรรัสเซียฉบับใหม่แล้ว มุ่งตัดช่องทางรายได้</a></h2><p class="summary clamp" lang="th">โดนัลด์ ทรัมป์ ลงนามกฎหมายคว่ำบาตรรัสเซียฉบับใหม่แล้ว ให้อำนาจตั้งกำแพงภาษี 100% กับประเทศที่ซื้อพลังงานจากรัสเซีย แต่อาจมีข้อยกเว้นหากจำเป็นต่อความมั่นคงของสหรัฐฯ</p></article><article class="card seed th"><div class="meta"><span class="chip src">Google News · 방콕</span><span class="chip">Accidents &amp; disasters</span><span>09-19 21:52</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMiygFBVV95cUxQaEJhbTFRbkxuY2FlSWVXN0ZEU19yQVdLcFlRT0lNV25OSlNuTHowcUp2LWUzTFhwZVJBbnc5dnROTzBoRDJuNGl6LWdFLU5hNmZLZVVDUGxFbW5hbUFCT2RmMUJRbFBSQzVBMmJ2VU42bjVwU0ctcVVURVFaakJFODNFVjNCZTF4WEFXQ2FaeHJBZGZwQkVwbzd1bHg2RTN3OUlrdFZTaTNTTGszRzNzQWhtdGNCRmtzcGdzWGxiUkFwei1vUjJwbGln?oc=5" target="_blank" rel="noopener nofollow">Wagle to tour US, Doha and Bangkok seeking help after climate-triggered Rasuwa floods - The Kathmandu Post</a></h2><p class="summary clamp" lang="en">Wagle to tour US, Doha and Bangkok seeking help after climate-triggered Rasuwa floods The Kathmandu Post</p></article><article class="card seed th"><div class="meta"><span class="chip src">Thairath</span><span class="chip">일반</span><span>09-19 21:51</span></div><h2 class="title" lang="th"><a href="https://www.thairath.co.th/news/politic/2960731" target="_blank" rel="noopener nofollow">“แก้วตา” ฉะ “เท้ง” เลิกโหน 19 กันยา ย้อนปากต้านรัฐประหารแต่โหวต “อนุทิน” นั่งนายกฯ</a></h2><p class="summary clamp" lang="th">“แก้วตา ธิษะณา” ฉะ “เท้ง ณัฐพงษ์” เลิกโหน 19 กันยา ย้อนปากต้านรัฐประหารแต่ยกมือโหวต “อนุทิน” นั่งนายกฯ</p></article><article class="card seed th"><div class="meta"><span class="chip src">Thairath</span><span class="chip">일반</span><span>09-19 21:42</span></div><h2 class="title" lang="th"><a href="https://www.thairath.co.th/news/politic/2960730" target="_blank" rel="noopener nofollow">&quot;วรศิษฎ์&quot; ปลุก อส.รถไฟ ยกระดับความปลอดภัยทุกขบวนชายแดนใต้</a></h2><p class="summary clamp" lang="th">&quot;วรศิษฎ์&quot; รุดลงพื้นที่หาดใหญ่ ปลุกพลัง อส.รถไฟ ยกระดับความปลอดภัยเข้มข้นทุกขบวนชายแดนใต้</p></article><article class="card seed th"><div class="meta"><span class="chip src">Matichon</span><span class="chip">일반</span><span>09-19 21:40</span></div><h2 class="title" lang="th"><a href="https://www.matichon.co.th/politics/news_5896803" target="_blank" rel="noopener nofollow">ภาคประชาชน ‘ทุบกำแพง’ แถลง 4 ข้อ ‘ถา ไอลอว์’ ชี้ ระบอบสีน้ำเงิน ไม่ต่างคสช. กลไกสำคัญสุดคือ ส.ว.</a></h2><p class="summary clamp" lang="th">ทุบกำแพง พังระบอบสีน้ำเงิน – ถา iLaw เตือนภาคประช […]</p></article><article class="card seed th"><div class="meta"><span class="chip src">Matichon</span><span class="chip">일반</span><span>09-19 21:15</span></div><h2 class="title" lang="th"><a href="https://www.matichon.co.th/politics/news_5896794" target="_blank" rel="noopener nofollow">เพนกวิน ชี้ ‘ขวาใหม่’ มาแนว ‘นักเลงบ้านๆ’ ไมค์ ย้อนค่ำคืนปักหมุดคณะราษฎร 19 ก.ย.63</a></h2><p class="summary clamp" lang="th">เมื่อวันที่ 19 กันยายน ที่ห้องประชุมชั้น 1 คณะสังคมสงเค […]</p></article><article class="card seed th"><div class="meta"><span class="chip src">Thairath</span><span class="chip">사고·재난</span><span>09-19 21:13</span></div><h2 class="title" lang="th"><a href="https://www.thairath.co.th/news/local/northeast/2960725" target="_blank" rel="noopener nofollow">นักท่องเที่ยวหญิงวัย 48 ปี พลัดตกหน้าผา &quot;น้ำตกกวงโตน&quot; อช.ผาแต้ม เสียชีวิต</a></h2><p class="summary clamp" lang="th">อุบัติเหตุสลดที่อุทยานแห่งชาติผาแต้ม หญิงนักท่องเที่ยววัย 48 ปี ยืนถ่ายรูปที่ &quot;น้ำตกกวงโตน&quot; ผาชะนะได เกิดลื่นตกหน้าผาสูงกว่า 10 เมตร จนท. ใช้เวลากว่า 2 เดินเท้าเข้าช่วยเหลือ ก่อนพบศพ</p></article><article class="card seed th"><div class="meta"><span class="chip src">Matichon</span><span class="chip">일반</span><span>09-19 21:07</span></div><h2 class="title" lang="th"><a href="https://www.matichon.co.th/sport/boxing/news_5896362" target="_blank" rel="noopener nofollow">เพชรโกศล รับรางวัลนักมวยดีเด่น พร้อมป้องกันแชมป์โลก ที่ญี่ปุ่น 26 ก.ย.นี้</a></h2><p class="summary clamp" lang="th">เพชรโกศล รับรางวัลนักมวยดีเด่น พร้อมป้องกันแชมป์โลก ที่ […]</p></article><article class="card seed th"><div class="meta"><span class="chip src">Matichon</span><span class="chip">일반</span><span>09-19 20:54</span></div><h2 class="title" lang="th"><a href="https://www.matichon.co.th/politics/news_5896785" target="_blank" rel="noopener nofollow">พ.ต.อ.ทวี นำทีมประชาชาติร่วมยินดีงานวาลีมะห์ลูกชาย ‘กมลศักดิ์’ มวลชนนับหมื่นแห่ให้กำลังใจ 6 เดือนคดีลอบยิง</a></h2><p class="summary clamp" lang="th">‘พ.ต.อ.ทวี’ นำทีมประชาชาติร่วมยินดีงานวาลีม […]</p></article><article class="card seed th"><div class="meta"><span class="chip src">Google News · 태국</span><span class="chip">Thai economy</span><span>09-19 20:39</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMirgFBVV95cUxOSV9obS1vRUtick9rXzROaUI0cTNXY1gzMmk5ZzM4THBQWW5oaWpRWEdHNHJLVHZWczlsdDd6dlZaV3hyM0hxWXR1aTRmM3RMdklCQ05YTC0yeEtVMjAxanJLMlpZRU0tWmlsUjBkZ1E2d0dNOVpNN1YxUDFhdFZOV0Y3Z0JmeFl0ZEJkZDFVU0hPaTVscV82TjMzY3c3OHI5LTlRLTQzQVNUdlhiR3c?oc=5" target="_blank" rel="noopener nofollow">Kim Long Motor exports first batch of electric buses to Thailand - Thông tấn xã Việt Nam (TTXVN)</a></h2><p class="summary clamp" lang="en">Kim Long Motor exports first batch of electric buses to Thailand Thông tấn xã Việt Nam (TTXVN)</p></article><article class="card seed th"><div class="meta"><span class="chip src">Google News · 태국</span><span class="chip">General</span><span>09-19 20:39</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMi_gFBVV95cUxNXzJQa3p1WmZtN1RaelNNTEx4bVFYX1pMVFZYOE9maGJUYjFINDkzMzAzWUtfLTlpeEM4Y21sQ0pLOTlGQVhxcDlzcU1UamtDcmlmeVV1YW5zcG4tTGwxcWhvdmU2OGZIODJZWk5UdjliTFZXR0hlNjlPTllNVzJhdzI1eEp1eTY4ajV0VXRFOUJ4Z3RTd1FLY0FIaXpFM0Zwa19mTEh5MjFObXJ5QjR0Q0FIbWQwZ2tmbHJ4X0NQSHhfY1ZwZjAwNDI4NG1IY2J1LU0wRjI2NjcxLURHZjhfWmVHWlNHcV9rVFU2VVVYRlNoY1JUQ0ZsUlNKYVNjUQ?oc=5" target="_blank" rel="noopener nofollow">Better times ahead for Thailand - Fitch revises country&#x27;s outlook to &#x27;stable&#x27; on debt stabilisation - The Star</a></h2><p class="summary clamp" lang="en">Better times ahead for Thailand - Fitch revises country&#x27;s outlook to &#x27;stable&#x27; on debt stabilisation The Star</p></article><article class="card seed th"><div class="meta"><span class="chip src">Matichon</span><span class="chip">일반</span><span>09-19 20:35</span></div><h2 class="title" lang="th"><a href="https://www.matichon.co.th/sport/footballinter/footballinterengland/news_5896776" target="_blank" rel="noopener nofollow">สเปอร์สปลดล็อกยิงประตูแรกในเกมลีกซีซั่นนี้ แต่พ่ายวิลล่าคาบ้าน 2-3</a></h2><p class="summary clamp" lang="th">สเปอร์สปลดล็อกยิงประตูแรกในเกมลีกซีซั่นนี้ แต่พ่ายวิลล่ […]</p></article><article class="card seed th"><div class="meta"><span class="chip src">Matichon</span><span class="chip">정치·사회</span><span>09-19 20:33</span></div><h2 class="title" lang="th"><a href="https://www.matichon.co.th/politics/news_5896770" target="_blank" rel="noopener nofollow">มายด์ ปลุกคนไทยทะลุปวศ. 3 แสนชื่อยื่นสภาฯ เขียน รธน.ประชาชน ‘ถ้าไม่ทำอะไร อาจได้ฉบับแย่กว่า 60’</a></h2><p class="summary clamp" lang="th">‘มายด์’ ปลุกประชาชน ‘รู้ทัน’ ขอ 3 แสนชื่อไป […]</p></article><article class="card seed th"><div class="meta"><span class="chip src">Thairath</span><span class="chip">정치·사회</span><span>09-19 20:31</span></div><h2 class="title" lang="th"><a href="https://www.thairath.co.th/news/society/2960723" target="_blank" rel="noopener nofollow">ไซไป ปอมมา &quot;สภ.เมืองพัทยา&quot; ประกาศตามหาเจ้าของ &quot;น้องปอม&quot; สุนัขพลัดหลงเคสใหม่</a></h2><p class="summary clamp" lang="th">ไซไป ปอมมา &quot;สภ.เมืองพัทยา&quot; เนื้อหอม ประกาศตามหาเจ้าของสุนัขอีกครั้ง พันธุ์ปอมเมอเรเนียน หลังพลเมืองดีไปพบ หวั่นโดนรถเหยียบ จึงนำมาฝากตำรวจไว้</p></article><article class="card seed th"><div class="meta"><span class="chip src">Google News · 태국 교민</span><span class="chip">일반</span><span>09-19 20:29</span></div><h2 class="title" lang="ko"><a href="https://news.google.com/rss/articles/CBMickFVX3lxTE4tZWt5X1Z1WF9aV216SlF4anJKNDNFSngzYjltTFdrbi1fdThkWFd2a2YwRC1VWXhnQXRaV2Z6RjFsd1Ytc2tuX0V4QmJTOFUzX1NyWHRDWThFM1lDS09MRmdxeWNEcFhnZXcwODVET0g5Zw?oc=5" target="_blank" rel="noopener nofollow">BUS 진욱, 태국 화보로 담은 강렬 시선…글로벌 래퍼 존재감 - 톱스타뉴스</a></h2><p class="summary clamp" lang="ko">BUS 진욱, 태국 화보로 담은 강렬 시선…글로벌 래퍼 존재감 톱스타뉴스</p></article></div>
+      <div id="feed" class="feed"><article class="card seed"><div class="meta"><span class="chip src">Google News · 스테이블코인</span><span class="chip">Stablecoins</span><span>09-19 23:30</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMijwFBVV95cUxQcFJIX1Bja0VxNXBkQUY2QXl1ZVVtX3NvT0NRdXkwOEQyeV80SWJsS2NQU2JkSDR3ZklTSnZva0tiM25NTUE1RW0yMWo2S3YtdmZ4VV9zbXpmbUlmVWJkR3VwVXQyQzV3Y2dJRWU2YmNKZWtRRi1FRVFocUJfRlhjQmZJanVlOXNqUFNESU5XTQ?oc=5" target="_blank" rel="noopener nofollow">Tether mints $500M USDT on Solana in under an h... - Pluang</a></h2><p class="summary clamp" lang="en">Tether mints $500M USDT on Solana in under an h... Pluang</p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · bloomberg.com</span><span class="chip">General</span><span>09-19 23:30</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/bloomberg.com/post/3mvv464uodf2n" target="_blank" rel="noopener nofollow">Thunderstorms across the Midwest disrupted air traffic through Chicago, causing hundreds of flight cancellations on Saturday</a></h2><p class="summary clamp" lang="en">Thunderstorms across the Midwest disrupted air traffic through Chicago, causing hundreds of flight cancellations on Saturday</p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · wsj.com</span><span class="chip">General</span><span>09-19 23:29</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/wsj.com/post/3mvv44h4csz26" target="_blank" rel="noopener nofollow">After groves were ravaged for decades by a disease, new EPA-approved genetic technologies are giving citrus growers a chance to rebuild. on.…</a></h2><p class="summary clamp" lang="en">After groves were ravaged for decades by a disease, new EPA-approved genetic technologies are giving citrus growers a chance to rebuild. on.wsj.com/4h1c4in</p></article><article class="card seed"><div class="meta"><span class="chip src">Google News · Bitcoin</span><span class="chip">ETF &amp; flows</span><span>09-19 23:28</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMipgFBVV95cUxPUUM0d2tVLXI3dGlJbUhDdnlKM1NvbHlMSWtPOXlpbWlJYnJ1UFliMGJ0SWFLQkcwbldEX2w0TVl3Q3g4RmJkUUZlb0dvaEFJSzNydEM3cWlhRVk2ekhha2tFMEozMHBLb2s0WnZSbGI2T3Nick1QWC00YmVrNHZCYmRZQTF5Z0pXZGVlMG9CVk1qVXRpQnRPMmViQVhUb3hkd0d2d1Jn?oc=5" target="_blank" rel="noopener nofollow">Bitcoin rallies 6%, reclaims $80K as Fidelity s... - Pluang</a></h2><p class="summary clamp" lang="en">Bitcoin rallies 6%, reclaims $80K as Fidelity s... Pluang</p></article><article class="card seed"><div class="meta"><span class="chip src">SBHNews</span><span class="chip">일반</span><span>09-19 23:21</span></div><h2 class="title" lang="ko"><a href="https://www.sbhnews.com/news/college-admission-system-error-fairness-18751cc2-2026-09-19-PM-06-58" target="_blank" rel="noopener nofollow">수시 전산 오류 구제에 반발…&#x27;규칙 지킨 자만 손해&#x27;</a></h2><p class="summary clamp" lang="ko">2026학년도 대학 수시모집에서 전산 오류로 지원하지 못한 수험생 354명이 구제됨. 규정 내 기간에 접수한 수험생들이 형평성 위반을 지적하며 반발하는 중. 마감 후 접수된 원서의 전면 취소를 요구하고 있음.</p></article><article class="card seed"><div class="meta"><span class="chip src">SBHNews</span><span class="chip">일반</span><span>09-19 23:21</span></div><h2 class="title" lang="ko"><a href="https://www.sbhnews.com/news/korea-weekend-heat-temperature-gap-26c8606e-2026-09-19-AM-09-11" target="_blank" rel="noopener nofollow">주말 늦더위 30도 안팎… 낮밤 기온차 15도로 큰 일교차</a></h2><p class="summary clamp" lang="ko">주말 낮 기온 30도 안팎의 늦더위가 이어짐. 낮과 밤의 기온차가 15도 안팎으로 큼. 환절기 건강 관리에 주의 필요.</p></article><article class="card seed"><div class="meta"><span class="chip src">Walter Bloomberg</span><span class="chip">US policy &amp; Trump</span><span>09-19 23:17</span></div><h2 class="title" lang="en"><a href="https://t.me/WalterBloomberg/35660" target="_blank" rel="noopener nofollow">WHITE HOUSE ENFORCES BAN ON CNN, MS NOW AND POLITICO The White House confiscated press passes and denied access to journalists from CNN, MS NOW and Politico, following through on T…</a></h2><p class="summary clamp" lang="en"></p></article><article class="card seed"><div class="meta"><span class="chip src">Walter Bloomberg</span><span class="chip">General</span><span>09-19 23:17</span></div><h2 class="title" lang="en"><a href="https://t.me/WalterBloomberg/35659" target="_blank" rel="noopener nofollow">U.S., DENMARK AND GREENLAND REACH SECURITY DEAL The U.S., Denmark and Greenland have agreed to expand America’s military presence in Greenland, with signing expected next week at t…</a></h2><p class="summary clamp" lang="en"></p></article><article class="card seed"><div class="meta"><span class="chip src">Walter Bloomberg</span><span class="chip">Equities &amp; commodities</span><span>09-19 23:16</span></div><h2 class="title" lang="en"><a href="https://t.me/WalterBloomberg/35658" target="_blank" rel="noopener nofollow">HORMUZ OIL FLOWS HIT SIX-MONTH HIGH Oil and LNG shipments through the Strait of Hormuz have reached their highest level in six months, as U.S. mine-clearing and naval protection ef…</a></h2><p class="summary clamp" lang="en"></p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · reuters.com</span><span class="chip">General</span><span>09-19 23:15</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/reuters.com/post/3mvv3czrhie2g" target="_blank" rel="noopener nofollow">Martin recovers from early setback to win Austrian sprint and retake championship lead reut.rs/4jcWUYH</a></h2><p class="summary clamp" lang="en">Martin recovers from early setback to win Austrian sprint and retake championship lead reut.rs/4jcWUYH</p></article><article class="card seed"><div class="meta"><span class="chip src">CoinNess Stock</span><span class="chip">미국 정책·트럼프</span><span>09-19 23:14</span></div><h2 class="title" lang="ko"><a href="https://coinness.com/stock-news/127298/quote" target="_blank" rel="noopener nofollow">이란, 카타르 통해 워싱턴에 정전 조건 3가지 전달…트럼프 답변 대기</a></h2><p class="summary clamp" lang="ko">이란 최고국가안보위원회 레자이 사무총장은 이란이 카타르와 파키스탄을 통해 중재 교섭을 이어가고 있으며, 관련 중재측에 협상 조건을 전달했다고 밝혔다. 레자이 사무총장은 카타르가 이란의 정전 조건을 워싱턴에 전달했으며, 이란은 현재 트럼프 미국 대통령의 답변을 기다리고 있다고 말했다. 이란이 제시한 종전 조건은 △모든 전선의 전쟁 종식 △동결 자산 해제 △해상 봉쇄 해제 등 세 가지다. 레자이 사무총장은 이란의 조건을 수용하는…</p></article><article class="card seed"><div class="meta"><span class="chip src">Google News · 미국 정책·트럼프</span><span class="chip">US policy &amp; Trump</span><span>09-19 23:13</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMigAFBVV95cUxQRXFEZkxMSTZnNUp3eFRFdVpIQ01DLUJMT2ppTUhTaXY5ZXlBM0I4MXBNT1RSMjJiaWh4QnB4R3VpZk1YRl94RGo4c09MVG11UnRzb0Y3WjROLU0xLTZpYTVLYnp0T2pRSlBKcVQ2R21PVWZoWkRtenV0a3hZWkFuSA?oc=5" target="_blank" rel="noopener nofollow">White House turns away CNN, MS NOW, Politico reporters after Trump announces ban - ca.finance.yahoo.com</a></h2><p class="summary clamp" lang="en">White House turns away CNN, MS NOW, Politico reporters after Trump announces ban ca.finance.yahoo.com</p></article><article class="card seed"><div class="meta"><span class="chip src">Walter Bloomberg</span><span class="chip">General</span><span>09-19 23:10</span></div><h2 class="title" lang="en"><a href="https://t.me/WalterBloomberg/35657" target="_blank" rel="noopener nofollow">$NVDA - NVIDIA’S HUANG REJECTS CALLS TO SLOW AI Nvidia CEO Jensen Huang says AI development should move “as fast as we can,” rejecting calls for the industry to slow down. Hua…</a></h2><p class="summary clamp" lang="en"></p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · reuters.com</span><span class="chip">General</span><span>09-19 23:10</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/reuters.com/post/3mvv324a4qa2x" target="_blank" rel="noopener nofollow">Cycling team performance head Demko banned for 10 years for ethics code breaches reut.rs/46S4cKh</a></h2><p class="summary clamp" lang="en">Cycling team performance head Demko banned for 10 years for ethics code breaches reut.rs/46S4cKh</p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · reuters.com</span><span class="chip">US policy &amp; Trump</span><span>09-19 23:05</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/reuters.com/post/3mvv2r4tq3v23" target="_blank" rel="noopener nofollow">White House turns away CNN, MS NOW, Politico reporters after Trump announces ban reut.rs/4Ajmy48</a></h2><p class="summary clamp" lang="en">White House turns away CNN, MS NOW, Politico reporters after Trump announces ban reut.rs/4Ajmy48</p></article><article class="card seed"><div class="meta"><span class="chip src">Google News · 스테이블코인</span><span class="chip">Stablecoins</span><span>09-19 23:04</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMiaEFVX3lxTFBiOTZSYjNYSjY5dnI0NmZ5NEZvczYybEk4NkN0dS04VzlUaEVYS0Z3VXIwTDcxdnZ0OVFKLURLN182TEEwOTUyZFpET01rODJMZWZudGJ5V0xRLXBMdzEtY0dYdktHYVlv?oc=5" target="_blank" rel="noopener nofollow">Tether mints $500M worth of USDT on Solana in under one hour - Crypto Briefing</a></h2><p class="summary clamp" lang="en">Tether mints $500M worth of USDT on Solana in under one hour Crypto Briefing</p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · decrypt.co</span><span class="chip">Derivatives &amp; liquidations</span><span>09-19 23:04</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/decrypt.co/post/3mvv2phlyiu24" target="_blank" rel="noopener nofollow">Bitcoin&#x27;s Sharpest Rally in Two Years Ran Almost Entirely on Short Liquidations</a></h2><p class="summary clamp" lang="en">Bitcoin&#x27;s Sharpest Rally in Two Years Ran Almost Entirely on Short Liquidations</p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · reuters.com</span><span class="chip">General</span><span>09-19 23:00</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/reuters.com/post/3mvv2jb5w7l2s" target="_blank" rel="noopener nofollow">French finance ministry expects record debt in 2026, reaching nearly 120% of GDP reut.rs/4y6UsaV</a></h2><p class="summary clamp" lang="en">French finance ministry expects record debt in 2026, reaching nearly 120% of GDP reut.rs/4y6UsaV</p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · theinformation.com</span><span class="chip">General</span><span>09-19 23:00</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/theinformation.com/post/3mvv2ijs5ea26" target="_blank" rel="noopener nofollow">We started with more than 150 names and cut the list to 50 by asking a simple question: Who would anyone in tech pick up the phone for?</a></h2><p class="summary clamp" lang="en">We started with more than 150 names and cut the list to 50 by asking a simple question: Who would anyone in tech pick up the phone for? See the full list: https://thein.fo/4ridB7b</p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · bloomberg.com</span><span class="chip">General</span><span>09-19 23:00</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/bloomberg.com/post/3mvv2igcq5x2y" target="_blank" rel="noopener nofollow">Nightlife boomed during the World Cup in US cities. Can policy changes keep the fun alive?</a></h2><p class="summary clamp" lang="en">Nightlife boomed during the World Cup in US cities. Can policy changes keep the fun alive?</p></article><article class="card seed"><div class="meta"><span class="chip src">Google News · Bitcoin</span><span class="chip">ETF &amp; flows</span><span>09-19 23:00</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMiogFBVV95cUxPZnFsclo4Nmc5UmhfVVE2dE5kUElWY0pJM3ZfWUpsYkhONV9WemZ2N2xYQWFlclRvRURZN2lSXzBZMEl0RkNXYTFDSVBvNEJMY2ZKc1E0b3lPdXJpcEV2UTl3a3A2Uk9JNjJqUjFCVFFKMGtNUmVVLUZmcElDVU5WR1RZelpqcWtjdTdjb2RNSDgtdFdrUlJ4dkhycXAtVHBhZkE?oc=5" target="_blank" rel="noopener nofollow">‘Bitcoin winter is over,’ says Fidelity as its predicts a new 4-year bull market - AMBCrypto</a></h2><p class="summary clamp" lang="en">‘Bitcoin winter is over,’ says Fidelity as its predicts a new 4-year bull market AMBCrypto</p></article><article class="card seed"><div class="meta"><span class="chip src">CoinDesk</span><span class="chip">Regulation &amp; policy</span><span>09-19 23:00</span></div><h2 class="title" lang="en"><a href="https://www.coindesk.com/news-analysis/2026/09/18/clarity-act-we-hardly-knew-ye-we-look-at-what-was-in-the-bill-and-what-s-replacing-it" target="_blank" rel="noopener nofollow">Clarity Act, we hardly knew ye: We look at what was in the bill and what&#x27;s replacing it</a></h2><p class="summary clamp" lang="en">U.S. agencies are racing to substitute their regulations for the law that was meant to set crypto markets in governmental bedrock, but will the stand-ins last?</p></article><article class="card seed"><div class="meta"><span class="chip src">Google News · Bitcoin</span><span class="chip">Market &amp; price</span><span>09-19 23:00</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMiwwFBVV95cUxPaVVUaEgweTRnaUlpN2lHTmNQTkV4MV9QQVRLd3ZLaFU4cFU1ZUFoUjByQXdIaXRDX1NpbDVta05TOHpsTTVqUFI3MTdDUUdhM3FFY0dZZ0UxN0RXM2c5YjJQZXMtTHhld2MwMy1GVlpLTTlYYXMxTFQxaWlRN0tvMUFwWXRUUHNXUGtGcUJiN2dBdS1lelFxZWp6enNMWVVScVpFQmhNQks3MktxZFNlRlAzMUt0cDFGWHhEUHNxdmZ6YTA?oc=5" target="_blank" rel="noopener nofollow">CleanSpark Prices $2.276B Secured Notes For Sandersville Data Center - TradingView</a></h2><p class="summary clamp" lang="en">CleanSpark Prices $2.276B Secured Notes For Sandersville Data Center TradingView</p></article><article class="card seed"><div class="meta"><span class="chip src">Bluesky · wsj.com</span><span class="chip">General</span><span>09-19 22:55</span></div><h2 class="title" lang="en"><a href="https://bsky.app/profile/wsj.com/post/3mvv2a7axfp2t" target="_blank" rel="noopener nofollow">Renaming the lake could have been an easy sell in northern New York, an area where the president has polled well. Instead, many red-leaning …</a></h2><p class="summary clamp" lang="en">Renaming the lake could have been an easy sell in northern New York, an area where the president has polled well. Instead, many red-leaning residents have come out against it. on.wsj.com/46xm7Ws</p></article><article class="card seed"><div class="meta"><span class="chip src">Google News · Bitcoin</span><span class="chip">Regulation &amp; policy</span><span>09-19 22:53</span></div><h2 class="title" lang="en"><a href="https://news.google.com/rss/articles/CBMifkFVX3lxTE9mSlhvWFNBVV9EYmNCcXBjVTBJSW5zM29EYmpBVl9QcF91R0hlTnZlQTRQOXBaS3dJSFF4d1VBTVpiX3NubEN2VGNtcnBTXzZBN19zQ0RvSTBraVVvSC03bzJ1TEhScVFVNmttSkZsRV9Rd25vNWFIaWNMU1dQUQ?oc=5" target="_blank" rel="noopener nofollow">Treasury Sanctions Iranian Crypto Exchange BitBank Over Bitcoin Transfers to IRGC - Bitcoin Magazine</a></h2><p class="summary clamp" lang="en">Treasury Sanctions Iranian Crypto Exchange BitBank Over Bitcoin Transfers to IRGC Bitcoin Magazine</p></article></div>
       <span class="sr-only" aria-live="polite" id="live"></span>
       <div class="more-wrap">
-        <button id="more" type="button" hidden>More</button>
-        <button id="totop" type="button">Back to top</button>
+        <button id="more" type="button" hidden>더 보기</button>
+        <button id="totop" type="button">맨 위로</button>
       </div>
     </section>
     
   </div>
 
   <footer class="foot">
-    Each story belongs to the outlet that published it. Only the headline, the summary and a link are shown; check the original through the link.<br>
-    Collected automatically, so wording or timing may be off. Do not use this as the basis for an investment decision.
+    각 기사의 저작권은 원 매체에 있습니다. 제목과 요약, 그리고 원문 링크만 표시하며 원문 확인은 링크를 통해 해 주세요.<br>
+    자동 수집 결과이므로 표기 오류나 지연이 있을 수 있습니다. 투자 판단의 근거로 사용하지 마세요.
   </footer>
 </main>
 
 <script>
-const CFG={"public":true,"datadir":"../","wantThai":true,"admin":false,"api":"","calendar":"https://raw.githubusercontent.com/freaky0/teemobkk-live-news/main/docs/calendar.json","lang":"en","catLabels":{"일반":"General","유동성·금리":"Liquidity & rates","미국 정책·트럼프":"US policy & Trump","지정학":"Geopolitics","ETF·수급":"ETF & flows","파생상품·청산":"Derivatives & liquidations","온체인·기관":"On-chain & institutions","스테이블코인":"Stablecoins","X 발언":"X posts","주식·원자재":"Equities & commodities","채굴":"Mining","규제·정책":"Regulation & policy","거시경제":"Macro","시장·가격":"Market & price","이더리움·알트":"Ethereum & alts","비자·이민":"Visa & immigration","사고·재난":"Accidents & disasters","태국 생활":"Living, traffic & weather","태국 경제":"Thai economy","태국 정치·사회":"Thai politics & society","태국 관광":"Tourism","태국 보건":"Health"}};
+const CFG={"public":true,"datadir":"../","wantThai":false,"admin":false,"api":"","calendar":"https://raw.githubusercontent.com/freaky0/teemobkk-live-news/main/docs/calendar.json","lang":"ko","catLabels":{"일반":"일반","유동성·금리":"유동성·금리","미국 정책·트럼프":"미국 정책·트럼프","지정학":"지정학","ETF·수급":"ETF·수급","파생상품·청산":"파생상품·청산","온체인·기관":"온체인·기관","스테이블코인":"스테이블코인","X 발언":"X 발언","주식·원자재":"주식·원자재","채굴":"채굴","규제·정책":"규제·정책","거시경제":"거시경제","시장·가격":"시장·가격","이더리움·알트":"이더리움·알트","비자·이민":"비자·이민","사고·재난":"사고·재난","태국 생활":"생활·교통·날씨","태국 경제":"태국 경제","태국 정치·사회":"정치·사회","태국 관광":"관광","태국 보건":"보건"}};
 const PUBLIC=CFG.public, DATADIR=CFG.datadir, API=CFG.api;
 const PAGE=25, BIG=25, STALE_MIN=35, GRACE_MS=3*3600000;
-const GLOBAL_CATS=[["일반","General"],["유동성·금리","Liquidity & rates"],["미국 정책·트럼프","US policy & Trump"],["지정학","Geopolitics"],["ETF·수급","ETF & flows"],["파생상품·청산","Derivatives & liquidations"],["온체인·기관","On-chain & institutions"],["스테이블코인","Stablecoins"],["X 발언","X posts"],["주식·원자재","Equities & commodities"],["채굴","Mining"],["규제·정책","Regulation & policy"],["거시경제","Macro"],["시장·가격","Market & price"],["이더리움·알트","Ethereum & alts"]];
-const THAI_CATS=[["일반","General"],["비자·이민","Visa & immigration"],["사고·재난","Accidents & disasters"],["태국 생활","Living, traffic & weather"],["태국 경제","Thai economy"],["태국 정치·사회","Thai politics & society"],["태국 관광","Tourism"],["태국 보건","Health"]];
+const GLOBAL_CATS=[["일반","일반"],["유동성·금리","유동성·금리"],["미국 정책·트럼프","미국 정책·트럼프"],["지정학","지정학"],["ETF·수급","ETF·수급"],["파생상품·청산","파생상품·청산"],["온체인·기관","온체인·기관"],["스테이블코인","스테이블코인"],["X 발언","X 발언"],["주식·원자재","주식·원자재"],["채굴","채굴"],["규제·정책","규제·정책"],["거시경제","거시경제"],["시장·가격","시장·가격"],["이더리움·알트","이더리움·알트"]];
+const THAI_CATS=[["일반","일반"],["비자·이민","비자·이민"],["사고·재난","사고·재난"],["태국 생활","생활·교통·날씨"],["태국 경제","태국 경제"],["태국 정치·사회","정치·사회"],["태국 관광","관광"],["태국 보건","보건"]];
 // Source chips. The list is data, not preference: the server matches the source column exactly
 // (source = ?), so each string has to be one that actually appears in the feed. Same-source
 // feeds are listed separately when the collector names them differently (CoinNess / CoinNess
@@ -281,35 +281,35 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const shown=(s,label)=>{const t=String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   return '실제 <b class="'+label+'">'+t+'</b>'};
 
-var V={tab:CFG.wantThai?'thai':'global',filter:'All',hours:24,q:'',limit:PAGE,tag:null,mode:'all',value:'',offset:0};
+var V={tab:CFG.wantThai?'thai':'global',filter:'전체',hours:24,q:'',limit:PAGE,tag:null,mode:'all',value:'',offset:0};
 var MEM={},LATEST={},PENDING={},INDEX={},SEEN={},FULL={},DATA={articles:[],sources:{},total:0,has_more:false};
 var archiveTotal=0,refreshTimer=null,hidden=false,lastRegion={};
-if(CFG.wantThai)document.title=document.title.replace('Live News','Live News · Thailand');
+if(CFG.wantThai)document.title=document.title.replace('Live News','Live News · 태국 소식');
 try{const s=localStorage.getItem(CACHE_KEY);if(s){const p=JSON.parse(s);if(p&&p.articles)DATA=p}}catch(e){}
 
 function region(){return V.tab==='thai'?'태국':'글로벌'}
 function articles(){return PUBLIC?(MEM[region()]||[]):(DATA.articles||[])}
-function age(iso){if(!iso)return 'time unknown';const d=new Date(iso);if(isNaN(d))return 'time unknown';
+function age(iso){if(!iso)return '시각 미상';const d=new Date(iso);if(isNaN(d))return '시각 미상';
   const sec=Math.max(0,(Date.now()-d.getTime())/1000);
-  if(sec<60)return Math.floor(sec)+'s ago';if(sec<3600)return Math.floor(sec/60)+'m ago';
-  if(sec<86400)return Math.floor(sec/3600)+'h ago';
+  if(sec<60)return Math.floor(sec)+'초 전';if(sec<3600)return Math.floor(sec/60)+'분 전';
+  if(sec<86400)return Math.floor(sec/3600)+'시간 전';
   return d.toLocaleString('ko-KR',{timeZone:'Asia/Bangkok',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+' ICT'}
 function bangkokDay(iso){const d=new Date(iso);if(isNaN(d))return '';
   return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(d)}
-function bucket(iso){const t=new Date(iso).getTime();if(!isFinite(t))return 'Earlier';
-  const h=(Date.now()-t)/3600000;if(h<1)return 'Last hour';
+function bucket(iso){const t=new Date(iso).getTime();if(!isFinite(t))return '그 이전';
+  const h=(Date.now()-t)/3600000;if(h<1)return '최근 1시간';
   const day=bangkokDay(iso),today=bangkokDay(new Date().toISOString());
-  if(day===today)return 'Today';
+  if(day===today)return '오늘';
   const y=new Date(Date.now()-86400000).toISOString();
-  if(day===bangkokDay(y))return 'Yesterday';
-  return 'Earlier'}
+  if(day===bangkokDay(y))return '어제';
+  return '그 이전'}
 function hl(t){const txt=esc(t);const q=(V.q||'').trim();if(!q)return txt;
   const qe=esc(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   try{return txt.replace(new RegExp('('+qe+')','gi'),'<mark>$1</mark>')}catch(e){return txt}}
 function keep(a){
   const hours=Number(V.hours)||24,t=new Date(a.published_at).getTime();
   if(!isFinite(t)||Date.now()-t>hours*3600000)return false;
-  if(V.filter!=='All'&&a.category!==V.filter)return false;
+  if(V.filter!=='전체'&&a.category!==V.filter)return false;
   if(V.tag&&(V.tag.k==='cat'?a.category!==V.tag.v:a.source!==V.tag.v))return false;
   const q=(V.q||'').trim().toLowerCase();
   if(q&&(((a.title||'')+' '+(a.summary||'')+' '+(a.source||'')+' '+(a.category||'')).toLowerCase().indexOf(q)<0))return false;
@@ -321,10 +321,10 @@ function summaryBlock(a){
   const s=a.summary||'';if(!s)return '';
   const long=s.length>220;
   return '<div class="summary'+(long?' clamp':'')+'">'+hl(s)+'</div>'+
-    (long?'<button class="expand" type="button" aria-expanded="false">Show more</button>':'')}
+    (long?'<button class="expand" type="button" aria-expanded="false">펼쳐보기</button>':'')}
 const SPEAKERS=['트럼프','Trump','TRUMP','머스크','Musk','MUSK','파월','Powell','워시','Warsh','베센트','Bessent','라가르드','Lagarde','푸틴','Putin','시진핑','Xi Jinping','네타냐후','Netanyahu','우에다','Ueda'];
 function speakChip(a){const t=(a.title||'')+' '+(a.summary||'');
-  return SPEAKERS.some(n=>t.indexOf(n)>=0)?'<span class="chip speak">speaker</span>':''}
+  return SPEAKERS.some(n=>t.indexOf(n)>=0)?'<span class="chip speak">인물 발언</span>':''}
 // Verification level, not a second source name. The source chip already says who
 // published it, so only the levels that change how much a line should be trusted are
 // shown, and they are meant to be rare: measured over a day, official is 0.5% and
@@ -334,8 +334,8 @@ function speakChip(a){const t=(a.title||'')+' '+(a.summary||'');
 // annotation on the other site, and this collector sees zero such markers in the
 // wire text it receives.
 function verifChip(a){
-  if(a.source_type==='official')return '<span class="chip verif off" title="Published by an official body">Official</span>';
-  if(a.source_type==='social')return '<span class="chip verif sns" title="Social or channel post — not press reporting, verify against the source">Social</span>';
+  if(a.source_type==='official')return '<span class="chip verif off" title="공식 기관이 직접 발표한 문서">공식</span>';
+  if(a.source_type==='social')return '<span class="chip verif sns" title="소셜·채널 게시물 — 언론 보도가 아니며 원문 확인이 필요함">SNS</span>';
   return ''}
 function card(a,th,lead){
   const tag=V.tag||{};
@@ -352,7 +352,7 @@ function card(a,th,lead){
     '</div>'+
     '<h2 class="title"><a href="'+esc(a.link)+'" target="_blank" rel="noopener nofollow">'+hl(a.title)+'</a></h2>'+
     summaryBlock(a)+
-    (CFG.admin?'<a class="open" href="'+esc(a.link)+'" target="_blank" rel="noopener nofollow">Open original</a>':'')+
+    (CFG.admin?'<a class="open" href="'+esc(a.link)+'" target="_blank" rel="noopener nofollow">원문 열기</a>':'')+
   '</article>'}
 
 function catLabel(value){const map=CFG.catLabels||{};return map[value]||value}
@@ -364,10 +364,10 @@ function renderPills(){
   document.querySelector(th?'#filters-global':'#filters-thai').hidden=true;
   const cats=th?THAI_CATS:GLOBAL_CATS;
   const srcs=th?THAI_SRC:GLOBAL_SRC;
-  const items=[['All','All']].concat(cats.map(c=>Array.isArray(c)?c:[c,c]));
+  const items=[['전체','전체']].concat(cats.map(c=>Array.isArray(c)?c:[c,c]));
   row.innerHTML=items.map(pair=>{
     const n=PUBLIC?pillCount(pair[0]):0;
-    const badge=(PUBLIC&&n&&pair[0]!=='All')?'<i>'+n+'</i>':'';
+    const badge=(PUBLIC&&n&&pair[0]!=='전체')?'<i>'+n+'</i>':'';
     return '<button type="button" class="pill'+(th?' th':'')+(pair[0]===V.filter?' active':'')+
       '" data-cat="'+esc(pair[0])+'">'+esc(pair[1])+badge+'</button>'}).join('')+
     (srcs.length?'<span class="pillsep"></span>':'')+
@@ -385,7 +385,7 @@ function renderPills(){
   row.querySelectorAll('button[data-src]').forEach(b=>b.onclick=()=>{
     const v=b.dataset.src;
     V.tag=(V.tag&&V.tag.k==='src'&&V.tag.v===v)?null:{k:'src',v:v};
-    V.filter='All';V.mode='all';V.value='';
+    V.filter='전체';V.mode='all';V.value='';
     V.limit=PAGE;V.offset=0;renderPills();fetchFeed()});
   const clr=row.querySelector('#clrtag');
   if(clr)clr.onclick=()=>{V.tag=null;V.limit=PAGE;V.offset=0;renderPills();fetchFeed()};
@@ -402,7 +402,7 @@ function renderPills(){
 // Google News titles carry a " - Publisher" tail (1820 of 1833), which is where
 // post/nation/the/yahoo/tradingview noise came from, and social posts embed short links
 // (reut.rs/4Ao...) which produced "reut" and "rs".
-const T_STOP=new Set(("그리고 그러나 또한 이번 지난 Today Yesterday 내일 관련 released 예정 가능 필요 대해 통해 위해 때문 이라 라고 이라고 있다 없다 했다 한다 된다 등등 경우 상황 내용 사실 우리 All 주요 최근 현재 기록 "
+const T_STOP=new Set(("그리고 그러나 또한 이번 지난 오늘 어제 내일 관련 발표 예정 가능 필요 대해 통해 위해 때문 이라 라고 이라고 있다 없다 했다 한다 된다 등등 경우 상황 내용 사실 우리 전체 주요 최근 현재 기록 "
  +"the and for with from that this will said says after over into its his her has have was were are not but you your more than about could would should may might what "
  +"new now out off all one two three how why who when where first last next week month year day time report news update live exclusive "
  +"actual forecast previous consensus revised mom yoy qoq things best top world center "
@@ -487,7 +487,7 @@ function renderTrends(){
   const list=T_CACHE.list||[];
   if(!list.length){el.hidden=true;el.innerHTML='';return}
   el.hidden=false;
-  el.innerHTML='<span class="tlabel">Trending now</span>'+list.map(function(x){
+  el.innerHTML='<span class="tlabel">지금 뜨는 키워드</span>'+list.map(function(x){
     return '<button type="button" class="tbtn" data-trend="'+esc(x.t)+'">'+esc(x.t)+
           '<span class="n">'+x.c+'</span></button>'}).join('');
 }
@@ -502,7 +502,7 @@ function renderFeed(){
   const all=visible(),view=all.slice(0,V.limit),th=V.tab==='thai';
   const feed=document.querySelector('#feed');
   if(!view.length){
-    feed.innerHTML='<div class="empty"><b>No stories match these filters</b>Clear the search or widen the period.</div>';
+    feed.innerHTML='<div class="empty"><b>조건에 맞는 뉴스가 없습니다</b>검색어를 지우거나 기간을 넓혀 보세요.</div>';
     document.querySelector('#counts').innerHTML=fmt('총 <b>{n}</b>건',all.length);
     document.querySelector('#more').hidden=true;return}
   // Strictly newest first, with light time headings. An earlier version pinned the
@@ -519,7 +519,7 @@ function renderFeed(){
   document.querySelector('#counts').innerHTML=(PUBLIC
     ? fmt('총 <b>{n}</b>건, <b>{m}</b>건 표시',all.length,view.length)
     : fmt('총 <b>{n}</b>건, <b>{m}</b>건 표시',DATA.total==null?all.length:DATA.total,view.length)
-      +(CFG.admin?'<span class="admin">'+fmt(', archived <b>{n}</b>건',archiveTotal)+'</span>':''));
+      +(CFG.admin?'<span class="admin">'+fmt(', 보관 <b>{n}</b>건',archiveTotal)+'</span>':''));
   // Local: also require that the last request actually returned the whole window, so the
   // button disappears when the API's own limit caps the page instead of silently doing
   // nothing on every further click.
@@ -549,7 +549,7 @@ function flagStale(iso){
   const t=iso?new Date(iso).getTime():NaN;
   const late=!isFinite(t)||(Date.now()-t)/60000>STALE_MIN;
   box.dataset.show=late?'1':'0';
-  box.textContent=late?'Collection is behind — no new data since the time shown':''}
+  box.textContent=late?'수집이 지연되고 있습니다 — 표시된 시각 이후 새 데이터가 없습니다':''}
 
 async function getJSON(url){
   const r=await fetch(url,{cache:'no-cache'});
@@ -591,10 +591,10 @@ function buildQuery(){
   if(V.mode==='priority')p.set('priority',V.value||'5');
   else if(V.mode==='official')p.set('source_type','official');
   else if(V.mode==='source'&&V.value)p.set('source',V.value);
-  // V.filter is only ever a category name or 'All'. The category pill row sets it without
+  // V.filter is only ever a category name or '전체'. The category pill row sets it without
   // setting V.mode, so gating this branch on the mode left the pill highlighted while the
   // server still returned the unfiltered list.
-  if(V.filter&&V.filter!=='All')p.set('category',V.filter);
+  if(V.filter&&V.filter!=='전체')p.set('category',V.filter);
   // Card chips set V.tag, not V.mode/V.value. Without this the local page sent an
   // unfiltered request, so clicking a chip only highlighted it and the list never moved.
   if(V.tag){if(V.tag.k==='cat')p.set('category',V.tag.v);else p.set('source',V.tag.v)}
@@ -616,24 +616,24 @@ async function loadLocal(){
 
 async function fetchFeed(){
   if(PUBLIC){try{await loadPublic(false)}catch(e){offline()}return}
-  try{await loadLocal()}catch(e){document.querySelector('#state')&&(document.querySelector('#state').textContent='Retrying');renderFeed()}}
+  try{await loadLocal()}catch(e){document.querySelector('#state')&&(document.querySelector('#state').textContent='재시도 중');renderFeed()}}
 function offline(){
   if(!articles().length){
-    setStamp('Connection failed');
-    document.querySelector('#feed').innerHTML='<div class="empty"><b>Could not load the data</b>Refresh in a moment.</div>'}}
+    setStamp('연결 실패');
+    document.querySelector('#feed').innerHTML='<div class="empty"><b>데이터를 불러오지 못했습니다</b>잠시 후 새로고침해 주세요.</div>'}}
 
 function renderSources(){
   const el=document.querySelector('#sources');if(!el)return;
   const rows=Object.entries(DATA.sources||{});
   el.innerHTML=rows.length?rows.map(([name,s])=>
     '<div class="source"><span>'+esc(name)+'</span><span class="'+(s.ok?'ok':'bad')+'">'+
-      (s.ok?'ok '+(s.count==null?0:s.count):'failed')+'</span></div>').join('')
-    :'<div class="note">Waiting</div>'}
+      (s.ok?'정상 '+(s.count==null?0:s.count):'실패')+'</span></div>').join('')
+    :'<div class="note">대기 중</div>'}
 function renderGuide(){
   const el=document.querySelector('#tguide');if(!el)return;
   el.innerHTML=V.tab==='thai'
-    ?'<h2>Thailand</h2><p class="note">Bangkok Post, Khaosod, Thai Enquirer and Prachatai in English; Thairath and Matichon in Thai; Google News searches for Thailand, Bangkok and Korean residents.</p><p class="note">Visa and immigration, accidents and disasters come first, and unconfirmed lines are not stated as fact before the source is checked.</p>'
-    :'<h2>What this watches</h2><p class="note">Rates and liquidity, the dollar and Treasuries, US policy, geopolitics, ETF and institutional flows, derivatives, on-chain, stablecoins and speaker remarks are collected first.</p><p class="note">Facts and market interpretation are kept apart. Social posts and breaking lines are not treated as confirmed until an official release or the original text is checked.</p>'}
+    ?'<h2>태국 소식</h2><p class="note">방콕포스트·카오솟·타이인콰이어러·프라차타이(영문), 타이랏·마티촌(태국어), 구글뉴스 태국·방콕·교민 검색을 모읍니다.</p><p class="note">비자·이민과 사고·재난을 우선 표시하며, 확정되지 않은 속보는 원문 확인 전까지 단정하지 않습니다.</p>'
+    :'<h2>관찰 기준</h2><p class="note">유동성·금리, 달러·국채, 미국 정책, 지정학, ETF·기관 수급, 파생상품, 온체인, 스테이블코인, X 발언을 우선 수집합니다.</p><p class="note">뉴스 사실과 시장 해석을 분리합니다. X 게시물과 속보는 공식 발표나 원문 확인 전까지 확정 사실로 취급하지 않습니다.</p>'}
 
 function setTab(next,silent){
   // The indicator tab toggles: pressing it again closes the panel and returns to the
@@ -641,7 +641,7 @@ function setTab(next,silent){
   // because it was shown with an inline style that the tab class could not undo.
   if(next==='cal'&&V.tab==='cal'&&!silent){setTab(V.lastNews||'global');return}
   if(next!=='cal')V.lastNews=next;
-  V.tab=next;V.filter='All';V.tag=null;V.limit=PAGE;V.offset=0;V.mode='all';V.value='';
+  V.tab=next;V.filter='전체';V.tag=null;V.limit=PAGE;V.offset=0;V.mode='all';V.value='';
   document.body.classList.toggle('tab-cal',next==='cal');
   document.querySelectorAll('.tab').forEach(b=>{
     const on=b.dataset.tab===next;b.classList.toggle('active',on);b.setAttribute('aria-selected',on?'true':'false')});
@@ -662,9 +662,9 @@ function setTab(next,silent){
 function calendarFailure(message){
   document.querySelector('#cal-stamp').textContent='';
   document.querySelector('#cal-body').innerHTML='<div class="cal-err">'+esc(message)+
-    '<button type="button" id="cal-retry">Try again</button></div>';
+    '<button type="button" id="cal-retry">다시 시도</button></div>';
   const b=document.querySelector('#cal-retry');
-  if(b)b.onclick=()=>{document.querySelector('#cal-body').innerHTML='<div class="note">Loading…</div>';loadCalendar()}}
+  if(b)b.onclick=()=>{document.querySelector('#cal-body').innerHTML='<div class="note">불러오는 중…</div>';loadCalendar()}}
 function calEsc(s){return esc(s)}
 function calNum(t){const m=String(t==null?'':t).replace(/,/g,'').match(/-?\d+(\.\d+)?/);return m?parseFloat(m[0]):null}
 function calTone(e){const a=calNum(e.actual),c=calNum(e.consensus);if(a===null||c===null)return 'flat';
@@ -672,26 +672,26 @@ function calTone(e){const a=calNum(e.actual),c=calNum(e.consensus);if(a===null||
 function paintCalendar(data){
   const days=(data&&data.days)||[];
   if(!days.length){document.querySelector('#cal-stamp').textContent='';
-    document.querySelector('#cal-body').innerHTML='<div class="note">No events to show.</div>';return}
+    document.querySelector('#cal-body').innerHTML='<div class="note">표시할 일정이 없습니다.</div>';return}
   let total=0,top=0;
   days.forEach(d=>{total+=d.events.length;d.events.forEach(e=>{if(e.importance>=4)top++})});
   document.querySelector('#cal-stamp').textContent=(data.updated_at_kst||'')+' KST';
-  document.querySelector('#cal-sum').textContent=fmt('Next 3 days {n}건',total)
-    +' · '+fmt('at ★4 or above {n}건',top)
-    +' · '+'Sources: Nasdaq calendar · Federal Reserve · White House · Factba.se'
-    +' · '+'Times are KST (UTC+9) · Bangkok is 2 hours behind'
-    +' · '+fmt('Fed roster as of {n}년 기준',data.fed_roster_as_of||'?');
+  document.querySelector('#cal-sum').textContent=fmt('앞으로 3일 일정 {n}건',total)
+    +' · '+fmt('중요도 ★4 이상 {n}건',top)
+    +' · '+'출처 나스닥 캘린더 · 연준 · 백악관 · Factba.se'
+    +' · '+'시각 기준 KST(UTC+9) · 방콕은 여기서 2시간 뒤'
+    +' · '+fmt('연준 인물 명단 {n}년 기준',data.fed_roster_as_of||'?');
   document.querySelector('#cal-body').innerHTML=days.map(d=>{
     const rows=d.events.length?d.events.map(e=>{
       const parts=[];
-      if(e.kind==='earnings'){parts.push('Earnings')}
-      else if(e.kind==='potus'){parts.push('Presidential schedule')}
+      if(e.kind==='earnings'){parts.push('실적 발표')}
+      else if(e.kind==='potus'){parts.push('대통령 일정')}
       else{
         if(e.kind==='speech'&&e.fed_vote)parts.push(e.fed_vote);
         if(e.released)parts.push(shown(e.actual,calTone(e)));
-        else if(e.passed)parts.push('released');
-        if(e.consensus)parts.push('expected '+calEsc(e.consensus));
-        if(e.previous)parts.push('previous '+calEsc(e.previous));
+        else if(e.passed)parts.push('발표');
+        if(e.consensus)parts.push('예상 '+calEsc(e.consensus));
+        if(e.previous)parts.push('이전 '+calEsc(e.previous));
       }
       const val=parts.join(' · ');
       const label=calEsc(e.country_code||e.country)+' · ';
@@ -702,12 +702,12 @@ function paintCalendar(data){
         '<span class="cal-t">'+at+'</span>'+
         '<span class="cal-s i'+e.importance+'">'+new Array(e.importance+1).join('*')+'</span>'+
         '<span class="cal-n">'+name+'</span><span class="cal-v">'+val+'</span></div>'}).join('')
-      :'<div class="note">No major indicators</div>';
+      :'<div class="note">주요 지표 없음</div>';
     return '<div class="cal-day"><h3>'+calEsc(d.label)+' <span>'+calEsc(String(d.date).slice(5))+' ('+calEsc(d.weekday)+')</span></h3>'+rows+'</div>'}).join('')}
 function loadCalendar(){
   fetch(CAL_URL,{cache:'no-cache'}).then(r=>{
     if(!r.ok)throw Error(r.status);return r.json()
-  }).then(paintCalendar).catch(()=>calendarFailure('Could not load the indicator data.'))}
+  }).then(paintCalendar).catch(()=>calendarFailure('경제지표 데이터를 불러오지 못했습니다.'))}
 
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 // The category and source rows are built by renderPills(), which binds each button as it
@@ -743,13 +743,13 @@ document.querySelector('#feed').addEventListener('click',ev=>{
     V.tag=(V.tag&&V.tag.k===k&&V.tag.v===v)?null:{k:k,v:v};
     // The category pill row and the card chips are two different filters. Left alone they
     // would be sent together and ANDed on the server, which usually returns nothing.
-    V.filter='All';V.mode='all';V.value='';
+    V.filter='전체';V.mode='all';V.value='';
     V.limit=PAGE;V.offset=0;renderPills();fetchFeed();return}
   const btn=ev.target.closest('.expand');
   if(!btn)return;
   const s=btn.previousElementSibling;
   const open=s.classList.toggle('clamp')===false;
-  btn.textContent=open?'Show less':'Show more';
+  btn.textContent=open?'접기':'펼쳐보기';
   btn.setAttribute('aria-expanded',open?'true':'false')});
 const intervalEl=document.querySelector('#interval');
 if(intervalEl)intervalEl.onchange=async()=>{
@@ -761,7 +761,7 @@ if(intervalEl)intervalEl.onchange=async()=>{
     if(refreshTimer)clearInterval(refreshTimer);
     refreshTimer=setInterval(()=>{if(!hidden)fetchFeed()},value*1000);
     fetchFeed();
-  }catch(e){alert('Refresh interval 변경 failed: '+e.message)}};
+  }catch(e){alert('갱신 간격 변경 실패: '+e.message)}};
 const topEl=document.querySelector('#totop');
 if(topEl)topEl.onclick=()=>scrollTo({top:0,behavior:'smooth'});
 document.addEventListener('keydown',ev=>{

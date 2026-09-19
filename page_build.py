@@ -27,6 +27,8 @@ import io
 import json
 from pathlib import Path
 
+import ui_text
+
 ROOT = Path(__file__).resolve().parent
 DOCS = ROOT / "docs"
 
@@ -96,6 +98,10 @@ select{cursor:pointer}
 .pill.src{border-style:dashed}
 .pill.src.th.active{border-color:var(--thai);color:var(--thai)}
 .pillsep{flex:0 0 auto;width:1px;margin:0 3px;background:var(--line2);align-self:stretch}
+.langbar{display:flex;gap:6px;align-items:center;font-size:13px}
+.langbar a,.langbar b{padding:4px 10px;border:1px solid var(--line);border-radius:var(--r-pill);
+  color:var(--muted);font-weight:500;text-decoration:none}
+.langbar b{border-color:var(--accent);color:var(--accent);font-weight:600}
 .pill i{font-style:normal;opacity:.6;margin-left:5px;font-size:11.5px}
 .sec{display:flex;align-items:center;gap:10px;margin:18px 0 8px;color:var(--muted);font-size:12px;font-weight:600}
 .sec::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -215,8 +221,8 @@ SCRIPT = """\
 const CFG=__CONFIG__;
 const PUBLIC=CFG.public, DATADIR=CFG.datadir, API=CFG.api;
 const PAGE=25, BIG=25, STALE_MIN=35, GRACE_MS=3*3600000;
-const GLOBAL_CATS=['유동성·금리','미국 정책·트럼프','지정학','ETF·수급','파생상품·청산','온체인·기관','스테이블코인','X 발언','주식·원자재','채굴','규제·정책','거시경제','시장·가격','이더리움·알트'];
-const THAI_CATS=[['비자·이민','비자·이민'],['사고·재난','사고·재난'],['태국 생활','생활·교통·날씨'],['태국 경제','태국 경제'],['태국 정치·사회','정치·사회'],['태국 관광','관광'],['태국 보건','보건']];
+const GLOBAL_CATS=__CATS_GLOBAL__;
+const THAI_CATS=__CATS_THAI__;
 // Source chips. The list is data, not preference: the server matches the source column exactly
 // (source = ?), so each string has to be one that actually appears in the feed. Same-source
 // feeds are listed separately when the collector names them differently (CoinNess / CoinNess
@@ -245,13 +251,13 @@ function age(iso){if(!iso)return '시각 미상';const d=new Date(iso);if(isNaN(
   return d.toLocaleString('ko-KR',{timeZone:'Asia/Bangkok',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+' ICT'}
 function bangkokDay(iso){const d=new Date(iso);if(isNaN(d))return '';
   return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(d)}
-function bucket(iso){const t=new Date(iso).getTime();if(!isFinite(t))return '이전';
+function bucket(iso){const t=new Date(iso).getTime();if(!isFinite(t))return '그 이전';
   const h=(Date.now()-t)/3600000;if(h<1)return '최근 1시간';
   const day=bangkokDay(iso),today=bangkokDay(new Date().toISOString());
   if(day===today)return '오늘';
   const y=new Date(Date.now()-86400000).toISOString();
   if(day===bangkokDay(y))return '어제';
-  return '이전'}
+  return '그 이전'}
 function hl(t){const txt=esc(t);const q=(V.q||'').trim();if(!q)return txt;
   const qe=esc(q).replace(/[.*+?^${}()|[\\]\\\\]/g,'\\\\$&');
   try{return txt.replace(new RegExp('('+qe+')','gi'),'<mark>$1</mark>')}catch(e){return txt}}
@@ -296,7 +302,7 @@ function card(a,th,lead){
       verifChip(a)+
       '<button type="button" class="'+srcCls+'" data-k="src" data-v="'+esc(a.source)+'" aria-pressed="'+(srcOn?'true':'false')+'">'+esc(a.source)+'</button>'+
       speakChip(a)+
-      '<button type="button" class="'+catCls+'" data-k="cat" data-v="'+esc(a.category)+'" aria-pressed="'+(catOn?'true':'false')+'">'+esc(a.category)+'</button>'+
+      '<button type="button" class="'+catCls+'" data-k="cat" data-v="'+esc(a.category)+'" aria-pressed="'+(catOn?'true':'false')+'">'+esc(catLabel(a.category))+'</button>'+
       '<span>'+age(a.published_at)+'</span>'+stars(a)+
     '</div>'+
     '<h2 class="title"><a href="'+esc(a.link)+'" target="_blank" rel="noopener nofollow">'+hl(a.title)+'</a></h2>'+
@@ -304,6 +310,8 @@ function card(a,th,lead){
     (CFG.admin?'<a class="open" href="'+esc(a.link)+'" target="_blank" rel="noopener nofollow">원문 열기</a>':'')+
   '</article>'}
 
+function catLabel(value){const map=CFG.catLabels||{};return map[value]||value}
+function fmt(t,n,m){return String(t).replace("{n}",n).replace("{m}",m)}
 function pillCount(cat){return articles().filter(a=>a.category===cat).length}
 function renderPills(){
   const th=V.tab==='thai';
@@ -450,7 +458,7 @@ function renderFeed(){
   const feed=document.querySelector('#feed');
   if(!view.length){
     feed.innerHTML='<div class="empty"><b>조건에 맞는 뉴스가 없습니다</b>검색어를 지우거나 기간을 넓혀 보세요.</div>';
-    document.querySelector('#counts').innerHTML='총 <b>'+all.length+'</b>건';
+    document.querySelector('#counts').innerHTML=fmt('총 <b>{n}</b>건',all.length);
     document.querySelector('#more').hidden=true;return}
   // Strictly newest first, with light time headings. An earlier version pinned the
   // highest-priority story of the last three hours to the top; a reader watching a
@@ -464,9 +472,9 @@ function renderFeed(){
     html+=card(a,th,false)});
   feed.innerHTML=html;
   document.querySelector('#counts').innerHTML=(PUBLIC
-    ? '총 <b>'+all.length+'</b>건, <b>'+view.length+'</b>건 표시'
-    : '총 <b>'+(DATA.total==null?all.length:DATA.total)+'</b>건, <b>'+view.length+'</b>건 표시'
-      +(CFG.admin?'<span class="admin">, 보관 <b>'+archiveTotal+'</b>건</span>':''));
+    ? fmt('총 <b>{n}</b>건, <b>{m}</b>건 표시',all.length,view.length)
+    : fmt('총 <b>{n}</b>건, <b>{m}</b>건 표시',DATA.total==null?all.length:DATA.total,view.length)
+      +(CFG.admin?'<span class="admin">'+fmt(', 보관 <b>{n}</b>건',archiveTotal)+'</span>':''));
   // Local: also require that the last request actually returned the whole window, so the
   // button disappears when the API's own limit caps the page instead of silently doing
   // nothing on every further click.
@@ -474,10 +482,10 @@ function renderFeed(){
     ? all.length>view.length
     : (DATA.has_more&&view.length>=V.limit));
   const pend=PENDING[region()]||0,np=document.querySelector('#newpill');
-  if(pend>0){np.textContent='새 글 '+pend+'건 보기';np.dataset.show='1'}
+  if(pend>0){np.textContent=fmt('새 글 {n}건 보기',pend);np.dataset.show='1'}
   else{np.dataset.show='0';np.textContent=''}
   const live=document.querySelector('#live');
-  if(live)live.textContent=all.length+'건 표시 중'}
+  if(live)live.textContent=fmt('<b>{n}</b>건 표시 중',all.length)}
 function skeleton(){
   const feed=document.querySelector('#feed');
   // The page ships the latest headlines in its own HTML (see seed_feed) so a language
@@ -489,7 +497,8 @@ function skeleton(){
 function setStamp(text,regions){
   const el=document.querySelector('#updated');
   el.textContent=text||'-';
-  if(regions)el.title=Object.keys(regions).map(k=>k+' '+(regions[k].count==null?'':regions[k].count)+'건').join(', ')}
+  if(regions)el.title=Object.keys(regions).map(k=>k+' '+
+    (regions[k].count==null?'':fmt('{n}건',regions[k].count))).join(', ')}
 function flagStale(iso){
   const box=document.querySelector('#stale');
   const t=iso?new Date(iso).getTime():NaN;
@@ -622,9 +631,11 @@ function paintCalendar(data){
   let total=0,top=0;
   days.forEach(d=>{total+=d.events.length;d.events.forEach(e=>{if(e.importance>=4)top++})});
   document.querySelector('#cal-stamp').textContent=(data.updated_at_kst||'')+' KST';
-  document.querySelector('#cal-sum').textContent='앞으로 3일 일정 '+total+'건 · 중요도 ★4 이상 '+top+'건 · 출처 나스닥 캘린더 · 연준 · 백악관 · Factba.se'
-    +' · 시각 기준 KST(UTC+9) · 방콕은 여기서 2시간 뒤'
-    +' · 연준 인물 명단 '+(data.fed_roster_as_of||'?')+'년 기준';
+  document.querySelector('#cal-sum').textContent=fmt('앞으로 3일 일정 {n}건',total)
+    +' · '+fmt('중요도 ★4 이상 {n}건',top)
+    +' · '+'출처 나스닥 캘린더 · 연준 · 백악관 · Factba.se'
+    +' · '+'시각 기준 KST(UTC+9) · 방콕은 여기서 2시간 뒤'
+    +' · '+fmt('연준 인물 명단 {n}년 기준',data.fed_roster_as_of||'?');
   document.querySelector('#cal-body').innerHTML=days.map(d=>{
     const rows=d.events.length?d.events.map(e=>{
       const parts=[];
@@ -758,7 +769,7 @@ def _ict_stamp(value) -> str:
     return shifted.strftime("%m-%d %H:%M")
 
 
-def seed_feed(path: str, want_thai: bool, limit: int = 25) -> str:
+def seed_feed(path: str, want_thai: bool, lang: str = "ko", limit: int = 25) -> str:
     """Render the latest headlines into the page itself.
 
     The feed is built by the script from JSON, so when a browser first looks at the page the
@@ -784,7 +795,8 @@ def seed_feed(path: str, want_thai: bool, limit: int = 25) -> str:
         rows.append(
             '<article class="card seed' + (" th" if want_thai else "") + '">'
             '<div class="meta"><span class="chip src">' + html.escape(str(item.get("source") or "")) + '</span>'
-            '<span class="chip">' + html.escape(str(item.get("category") or "")) + '</span>'
+            '<span class="chip">' + html.escape(
+                ui_text.cat_labels(lang).get(str(item.get("category")), str(item.get("category") or ""))) + '</span>'
             '<span>' + html.escape(_ict_stamp(item.get("published_at"))) + '</span></div>'
             '<h2 class="title"' + attr + '><a href="' + html.escape(str(item.get("link") or ""))
             + '" target="_blank" rel="noopener nofollow">' + html.escape(title) + '</a></h2>'
@@ -793,8 +805,42 @@ def seed_feed(path: str, want_thai: bool, limit: int = 25) -> str:
     return "".join(rows)
 
 
+def _langbar(lang: str, alt: str) -> str:
+    """Language links. Plain anchors, so the switcher works with scripts disabled."""
+    if not alt:
+        return ""
+    parts = []
+    for code, label in ((c, ui_text.LANG_LABEL[c]) for c in ui_text.LANGS):
+        if code == lang:
+            parts.append('<b aria-current="true">%s</b>' % label)
+        else:
+            parts.append('<a href="%s" lang="%s">%s</a>' % (alt, code, label))
+    return '<nav class="langbar" aria-label="Language">%s</nav>' % "".join(parts)
+
+
+def _phrase_table(lang: str) -> list[tuple[str, str]]:
+    """Korean phrase -> this language's phrase, longest first so a shorter phrase inside a
+    longer one cannot be replaced first (발표 before 실적 발표 would mangle the label)."""
+    ko, other = ui_text.UI["ko"], ui_text.UI[lang]
+    pairs = {}
+    for key, value in ko.items():
+        if value and value != other[key]:
+            pairs.setdefault(value, other[key])
+    return sorted(pairs.items(), key=lambda kv: -len(kv[0]))
+
+
+def localize(page: str, lang: str) -> str:
+    """Rewrite interface text into `lang`. Category values, region names and the trend word
+    lists are deliberately absent from the table: they are data, not interface."""
+    if lang == "ko":
+        return page
+    for source, target in _phrase_table(lang):
+        page = page.replace(source, target)
+    return page
+
+
 def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, admin: bool,
-           html_lang: str = "en", seed_path: str = "") -> str:
+           lang: str = "ko", alt: str = "", seed_path: str = "") -> str:
     config = {
         "public": public,
         "datadir": datadir,
@@ -802,6 +848,8 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
         "admin": admin,
         "api": "",
         "calendar": "https://raw.githubusercontent.com/freaky0/teemobkk-live-news/main/docs/calendar.json",
+        "lang": lang,
+        "catLabels": ui_text.cat_labels(lang),
     }
     stamp = ('<div class="stamp"><span id="state">연결 중</span> <b id="updated">-</b>'
              if admin else '<div class="stamp">업데이트 <b id="updated">-</b>')
@@ -822,10 +870,15 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
           '<meta property="og:image" content="' + icon_prefix + 'og-image.png">\n'
           '<meta name="twitter:card" content="summary_large_image">\n')
     title = "TeemoBKK Live News" + (" · 태국 소식" if want_thai else "")
+    langbar = _langbar(lang, alt)
     script = SCRIPT.replace("__CONFIG__", json.dumps(config, ensure_ascii=False, separators=(",", ":")))
-    seed = seed_feed(seed_path, want_thai) if seed_path else ""
-    return f"""<!doctype html>
-<html lang="{html_lang}">
+    script = script.replace("__CATS_GLOBAL__", json.dumps(
+        ui_text.cats(lang)["global"], ensure_ascii=False, separators=(",", ":")))
+    script = script.replace("__CATS_THAI__", json.dumps(
+        ui_text.cats(lang)["thai"], ensure_ascii=False, separators=(",", ":")))
+    seed = seed_feed(seed_path, want_thai, lang) if seed_path else ""
+    page = f"""<!doctype html>
+<html lang="{lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -846,6 +899,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
       <h1>실시간 뉴스 대시보드</h1>
     </div>
     <div class="spacer"></div>
+    {langbar}
     {stamp}<br><span id="stale" class="stale"></span></div>
   </div>
 </header>
@@ -883,7 +937,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
 
   <div class="layout">
     <section>
-      <div id="feed" class="feed">{seed}</div>
+      <div id="feed" class="feed">__SEED__</div>
       <span class="sr-only" aria-live="polite" id="live"></span>
       <div class="more-wrap">
         <button id="more" type="button" hidden>더 보기</button>
@@ -903,6 +957,8 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
 {script}</script>
 </body></html>
 """
+    page = localize(page, lang).replace("__SEED__", seed)
+    return page
 
 
 def write(path: Path, text: str) -> int:
@@ -923,12 +979,23 @@ def build_public() -> dict[str, int]:
     stopped updating while the workflow still reported a run every five minutes.
     """
     sizes = {}
+    global_seed = str(DOCS / "global-recent.json")
+    thai_seed = str(DOCS / "thai-recent.json")
+    # English is the default: the headlines are mostly English, and a page whose only text at
+    # load time is Korean interface makes a browser treat it as a Korean page and offer to
+    # translate it into English. The Korean pages exist for readers who want that interface.
     sizes["docs/index.html"] = write(DOCS / "index.html", render(
         public=True, datadir="", want_thai=False, icon_prefix="", admin=False,
-        seed_path=str(DOCS / "global-recent.json")))
+        lang="en", alt="ko/index.html", seed_path=global_seed))
+    sizes["docs/ko/index.html"] = write(DOCS / "ko" / "index.html", render(
+        public=True, datadir="../", want_thai=False, icon_prefix="../", admin=False,
+        lang="ko", alt="../index.html", seed_path=global_seed))
     sizes["docs/thai/index.html"] = write(DOCS / "thai" / "index.html", render(
         public=True, datadir="../", want_thai=True, icon_prefix="../", admin=False,
-        seed_path=str(DOCS / "thai-recent.json")))
+        lang="en", alt="../ko/thai/index.html", seed_path=thai_seed))
+    sizes["docs/ko/thai/index.html"] = write(DOCS / "ko" / "thai" / "index.html", render(
+        public=True, datadir="../../", want_thai=True, icon_prefix="../../", admin=False,
+        lang="ko", alt="../../thai/index.html", seed_path=thai_seed))
     return sizes
 
 
@@ -936,7 +1003,7 @@ def build_all() -> dict[str, int]:
     """Rewrite the local page and both published pages (used when building by hand)."""
     sizes = {"index.html": write(ROOT / "index.html", render(
         public=False, datadir="", want_thai=False, icon_prefix="", admin=True,
-        seed_path=str(DOCS / "global-recent.json")))}
+        lang="ko", seed_path=str(DOCS / "global-recent.json")))}
     sizes.update(build_public())
     return sizes
 
