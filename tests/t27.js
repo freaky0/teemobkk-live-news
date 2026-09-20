@@ -164,7 +164,11 @@ const check = (name, ok, detail) => {
   await sleep(WAIT);
   let multiSource = null;
   try {
-    const listed = await (await fetch(URL_ + 'api/news?limit=300', { cache: 'no-cache' })).json();
+    // The global tab, because that is the tab being tested: the first multi-label story in the whole
+    // stored window was a Thailand one, and a Thailand story never appears in this tab's list, so
+    // the search below could not have found it.
+    const listed = await (await fetch(URL_ + 'api/news?limit=300&region=' + encodeURIComponent('글로벌'),
+      { cache: 'no-cache' })).json();
     multiSource = ((listed && listed.articles) || listed || [])
       .find((a) => (a.categories || []).length > 1) || null;
   } catch (e) { /* reported by the check below */ }
