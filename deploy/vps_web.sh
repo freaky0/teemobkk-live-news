@@ -37,6 +37,13 @@ cat > /etc/caddy/Caddyfile <<CADDY
 $DOMAIN, www.$DOMAIN {
 	encode zstd gzip
 
+	# Bare section paths. The /thai/* style matcher only covers what sits under it, so a link
+	# like teemobkk.io/thai falls through to the collector, which only serves the root, and 404s.
+	redir /news /news/ permanent
+	redir /thai /thai/ permanent
+	redir /news/ko /news/ko/ permanent
+	redir /thai/ko /thai/ko/ permanent
+
 	handle /news/* {
 		root * $APP_DIR
 		file_server
