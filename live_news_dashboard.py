@@ -443,6 +443,13 @@ def init_db() -> None:
         # No index on `categories`: the filter is a contains-match, which no index can serve.
         for column in ("published_at", "region", "category", "source", "priority"):
             connection.execute(f"CREATE INDEX IF NOT EXISTS idx_articles_{column} ON articles({column})")
+        # Hiding is a filter on every read path, not a delete: the row stays, so the same story
+        # cannot come back through a different filter, and a wrong call can be undone. The link is
+        # the key because that is what the collector and the reader both treat as the story.
+        connection.execute(
+            "CREATE TABLE IF NOT EXISTS hidden_links ("
+            "link TEXT PRIMARY KEY, title TEXT, hidden_at TEXT)"
+        )
 
 
 def insert_articles(articles: list[dict[str, Any]]) -> int:
@@ -490,7 +497,56 @@ def archive_stats() -> dict[str, Any]:
         total = connection.execute("SELECT COUNT(*) FROM articles").fetchone()[0] or 0
         recent = connection.execute("SELECT COUNT(*) FROM articles WHERE published_at >= ?", (cutoff,)).fetchone()[0] or 0
         oldest = connection.execute("SELECT MIN(published_at) FROM articles").fetchone()[0]
-    return {"archived_total": int(total), "window_total": int(recent), "oldest_published_at": oldest, "archive_days": ARCHIVE_DAYS}
+        # Stored and hidden are two different numbers on purpose: the operator's archive count is
+        # what the database holds, and the hidden count is what readers are not being shown.
+        hidden = connection.execute("SELECT COUNT(*) FROM hidden_links").fetchone()[0] or 0
+    return {"archived_total": int(total), "window_total": int(recent), "oldest_published_at": oldest,
+            "archive_days": ARCHIVE_DAYS, "hidden_total": int(hidden)}
+
+
+def _looks_like_link(value: str) -> bool:
+    """Whether a string can be the key of a stored story.
+
+    The link is the primary key on both tables, so this keeps a typo or a stray string from
+    becoming a permanent hidden entry that nothing matches - and the same guard runs before an
+    unhide, so a wrong call cannot silently do nothing.
+    """
+    if not value.startswith(("http://", "https://")) or len(value) > 2000:
+        return False
+    # A scheme with nothing behind it, or nothing that could be a host, is not a link.
+    return len(value.split("://", 1)[1]) >= 4
+
+
+def hide_link(link: str, title: str = "") -> int:
+    """Stop showing one story. The row stays; every read path skips it."""
+    when = datetime.now(timezone.utc).isoformat()
+    with DB_LOCK, db_connect() as connection:
+        connection.execute(
+            "INSERT INTO hidden_links (link, title, hidden_at) VALUES (?, ?, ?) "
+            "ON CONFLICT(link) DO UPDATE SET title = excluded.title, hidden_at = excluded.hidden_at",
+            (link, title, when))
+        return connection.execute("SELECT COUNT(*) FROM hidden_links").fetchone()[0] or 0
+
+
+def unhide_link(link: str) -> int:
+    with DB_LOCK, db_connect() as connection:
+        connection.execute("DELETE FROM hidden_links WHERE link = ?", (link,))
+        return connection.execute("SELECT COUNT(*) FROM hidden_links").fetchone()[0] or 0
+
+
+def hidden_links(limit: int = 200) -> list[dict[str, Any]]:
+    """What is hidden, newest first, with the title from the article row when it is still there.
+
+    The archived row is kept, so a hidden story is usually still joinable back to its headline -
+    which is what makes the restore list readable instead of a list of URLs.
+    """
+    with DB_LOCK, db_connect() as connection:
+        rows = connection.execute(
+            "SELECT h.link, COALESCE(NULLIF(h.title, ''), a.title, ''), a.source, a.published_at, h.hidden_at "
+            "FROM hidden_links h LEFT JOIN articles a ON a.link = h.link "
+            "ORDER BY h.hidden_at DESC LIMIT ?", (int(limit),)).fetchall()
+    return [{"link": row[0], "title": row[1] or "", "source": row[2] or "", "published_at": row[3] or "",
+             "hidden_at": row[4] or ""} for row in rows]
 
 
 def _as_list(value: Any) -> list[str]:
@@ -517,6 +573,10 @@ def query_articles(hours: int = RETENTION_HOURS, region: str = "", category: Any
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=max(1, min(int(hours), 24 * ARCHIVE_DAYS)))).isoformat()
     where = ["published_at >= ?"]
     params: list[Any] = [cutoff]
+    # A hidden story is skipped on every read path, with no opt-out: the operator's own filters must
+    # not be able to bring back the row that was hidden, or hiding would only work on the screen it
+    # was done from. The restore path reads hidden_links directly instead.
+    where.append("link NOT IN (SELECT link FROM hidden_links)")
     if region:
         where.append("region = ?")
         params.append(region)
@@ -787,10 +847,22 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def serve_hidden(self) -> None:
+        """What has been hidden, for the restore list. The operator's view, so a session is needed."""
+        if PUBLIC_MODE and not self.is_admin():
+            self.send_error(404)
+            return
+        rows = hidden_links()
+        self.send_json({"hidden": rows, "total": len(rows),
+                        "hidden_total": archive_stats().get("hidden_total", 0)})
+
     def do_GET(self) -> None:
         request_path = urllib.parse.urlsplit(self.path).path
         if request_path in ("/admin", "/admin/"):
             self.serve_admin()
+            return
+        if request_path == "/api/hidden":
+            self.serve_hidden()
             return
         if request_path == "/api/news":
             params = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
@@ -918,6 +990,20 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_error(400, "Invalid interval")
                 return
             response = {"ok": True, "interval_seconds": interval}
+        elif request_path in ("/api/hide", "/api/unhide"):
+            # Hide or restore one story. The link is what identifies it, so it is the only thing
+            # this needs; the title is stored alongside so the restore list reads as headlines.
+            link = str(payload.get("link") or "").strip()
+            if not _looks_like_link(link):
+                self.send_error(400, "Invalid link")
+                return
+            if request_path == "/api/hide":
+                total = hide_link(link, str(payload.get("title") or "")[:500])
+                logging.info("admin hide %s ip=%s", link, admin_auth.client_ip(self))
+            else:
+                total = unhide_link(link)
+                logging.info("admin unhide %s ip=%s", link, admin_auth.client_ip(self))
+            response = {"ok": True, "hidden_total": total}
         else:
             self.send_error(404)
             return

@@ -24,6 +24,12 @@ import admin_auth  # noqa: E402
 import live_news_dashboard as core  # noqa: E402
 
 SECRET = "correct horse battery staple"
+LINK = "https://example.com/http-test-story"
+
+
+def now_iso():
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).isoformat()
 
 
 class Gate(unittest.TestCase):
@@ -219,6 +225,51 @@ class Gate(unittest.TestCase):
         self.assertIn("/api/login", page)
         self.assertIn('type="password"', page)
         self.assertIn("noindex", page)
+
+    # --- hiding a story ---
+    def test_a_stranger_cannot_hide_or_see_what_is_hidden(self):
+        self.assertEqual(self.call("/api/hide", "POST", {"link": LINK})[0], 401)
+        self.assertEqual(self.call("/api/unhide", "POST", {"link": LINK})[0], 401)
+        self.assertEqual(self.call("/api/hidden")[0], 404, "the restore list is the operator's")
+
+    def test_hiding_needs_the_header_as_well_as_a_session(self):
+        cookie = self.session()
+        self.assertEqual(self.call("/api/hide", "POST", {"link": LINK}, cookie=cookie)[0], 401)
+
+    def test_an_impossible_link_is_refused(self):
+        cookie = self.session()
+        for bad in ("", "nonsense", "ftp://example.com/x", "https://"):
+            self.assertEqual(self.call("/api/hide", "POST", {"link": bad},
+                                       cookie=cookie, header=True)[0], 400, repr(bad))
+
+    def test_hiding_through_the_api_removes_it_and_puts_it_back(self):
+        core.init_db()
+        core.insert_articles([{"link": LINK, "title": "가려질 기사", "summary": "본문",
+                               "source": "Example", "source_type": "news", "region": "글로벌",
+                               "category": "시장·가격", "categories": ["시장·가격"], "priority": 3,
+                               "published_at": now_iso(), "collected_at": now_iso()}])
+        self.assertIn(LINK, self.links(), "the row has to be visible before it is hidden")
+        cookie = self.session()
+
+        status, _, payload = self.call("/api/hide", "POST", {"link": LINK, "title": "가려질 기사"},
+                                       cookie=cookie, header=True)
+        self.assertEqual(status, 200)
+        self.assertEqual(payload.get("hidden_total"), 1)
+        self.assertNotIn(LINK, self.links(), "the feed must not answer with it any more")
+
+        status, _, payload = self.call("/api/hidden", cookie=cookie)
+        self.assertEqual(status, 200)
+        self.assertEqual([row["link"] for row in payload["hidden"]], [LINK])
+        self.assertEqual(payload["hidden"][0]["title"], "가려질 기사")
+
+        status, _, payload = self.call("/api/unhide", "POST", {"link": LINK}, cookie=cookie, header=True)
+        self.assertEqual(status, 200)
+        self.assertEqual(payload.get("hidden_total"), 0)
+        self.assertIn(LINK, self.links(), "restoring has to bring it back")
+
+    def links(self, path="/api/news?hours=24&limit=50"):
+        payload = self.call(path)[2]
+        return [row.get("link") for row in payload.get("articles", [])]
 
     def test_logout_clears_the_cookie(self):
         cookie = self.session()

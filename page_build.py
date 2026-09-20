@@ -121,6 +121,25 @@ select{cursor:pointer}
   border-radius:var(--r-pill);padding:4px 10px;font-size:12px;cursor:pointer}
 .qadd{border:1px solid var(--line);background:none;color:var(--muted);border-radius:var(--r-pill);
   padding:5px 10px;font-size:12px;white-space:nowrap;cursor:pointer}
+/* The operator's way out of a story, and the strip that says what just went away. Hiding is not a
+   delete, so the undo stays until the next action: the way back has to be where the click was. */
+.acts{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.acts .hide{background:none;border:0;cursor:pointer;font-family:inherit;padding:0}
+.acts .hide:hover{color:var(--warn)}
+.undobar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;padding:8px 12px;
+  border:1px solid var(--warn);border-radius:var(--r-card)}
+.undobar[hidden]{display:none!important}
+.undobar .clabel{color:var(--warn);font-size:12px;font-weight:600;white-space:nowrap}
+.undobar .utext{color:var(--muted);font-size:12.5px;max-width:52ch;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.hidrow{display:flex;gap:10px;align-items:baseline;justify-content:space-between;padding:5px 0;
+  border-bottom:1px solid var(--line);font-size:12.5px}
+.hidrow:last-child{border-bottom:0}
+.hidrow a{color:#c3cfe6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hidrow a:hover{color:var(--accent)}
+.unhide{background:none;border:1px solid var(--line);border-radius:var(--r-pill);padding:3px 10px;
+  color:var(--muted);cursor:pointer;font-size:11.5px;flex:0 0 auto}
+.unhide:hover{border-color:var(--accent);color:var(--accent)}
 @media (hover:hover){.qadd:hover{border-color:var(--accent);color:var(--accent)}}
 /* Own class rather than the filter chips' ".chip.tap": those are toggles carrying
    aria-pressed, while a trend button is a one-shot search action. Reusing the class
@@ -386,7 +405,7 @@ function card(a,th,lead){
     '</div>'+
     '<h2 class="title"><a href="'+esc(a.link)+'" target="_blank" rel="noopener nofollow">'+hl(a.title)+'</a></h2>'+
     summaryBlock(a)+
-    (CFG.admin?'<a class="open" href="'+esc(a.link)+'" target="_blank" rel="noopener nofollow">원문 열기</a>':'')+
+    (CFG.admin?cardActs(a):'')+
   '</article>'}
 
 function catLabel(value){const map=CFG.catLabels||{};return map[value]||value}
@@ -740,6 +759,57 @@ function dropCond(key){
   else if(V.tag&&V.tag.v===value)V.tag=null;
   V.limit=PAGE;V.offset=0;renderTrends();fetchFeed()}
 
+async function writeJSON(path,body){
+  const r=await fetch(API+path,{method:'POST',headers:writeHeaders(),body:JSON.stringify(body||{})});
+  if(!r.ok)throw Error(r.status);
+  return r.json()}
+// >>> operator-only
+// --- hiding a story (operator only) --------------------------------------------------
+// Hiding is a filter, not a delete: the row stays in the archive and the restore list is the way
+// back. That is why the strip after a click matters - without it, a row that leaves the list looks
+// like a lost story rather than a decision.
+//
+// The markers around this block are read by tools/probe_english_text.py: these labels are Korean on
+// every page, because the operator's document is Korean, and they never render for a reader. Marked
+// code that a reader can reach would hide a real gap from that check, so nothing else belongs here.
+let HIDE_UNDO=null;
+// The operator's controls on a card. Kept here, inside the marked block, because the labels are
+// Korean and a reader's document carries this same script: the call site is one condition away.
+function cardActs(a){
+  return '<div class="acts"><a class="open" href="'+esc(a.link)+'" target="_blank" rel="noopener nofollow">원문 열기</a>'+
+    '<button type="button" class="open hide" data-hide="'+esc(a.link)+'" data-title="'+esc(a.title||'')+'">숨기기</button></div>'}
+function renderUndo(){
+  const el=document.querySelector('#undobar');if(!el)return;
+  if(!HIDE_UNDO){el.hidden=true;el.innerHTML='';return}
+  el.hidden=false;
+  el.innerHTML='<span class="clabel">숨겼습니다</span><span class="utext">'+esc(HIDE_UNDO.title)+'</span>'+
+    '<button type="button" class="cbtn" data-undo="1">되돌리기</button>';
+  el.querySelector('[data-undo]').onclick=async()=>{
+    const undone=HIDE_UNDO;HIDE_UNDO=null;renderUndo();
+    try{await writeJSON('/api/unhide',{link:undone.link})}catch(e){alert('되돌리기 실패: '+e.message)}
+    loadHidden();fetchFeed()}}
+async function hideStory(link,title){
+  try{await writeJSON('/api/hide',{link:link,title:title||''})}
+  catch(e){alert('숨기기 실패: '+e.message);return}
+  HIDE_UNDO={link:link,title:title||link};renderUndo();loadHidden();fetchFeed()}
+async function loadHidden(){
+  const el=document.querySelector('#hidden');if(!el)return;
+  try{
+    const d=await (await fetch(API+'/api/hidden',{cache:'no-cache'})).json();
+    const rows=d.hidden||[];
+    el.innerHTML=rows.length?rows.map(h=>'<div class="hidrow"><a href="'+esc(h.link)+
+      '" target="_blank" rel="noopener nofollow">'+esc(h.title||h.link)+'</a>'+
+      '<button type="button" class="unhide" data-unhide="'+esc(h.link)+'">되돌리기</button></div>').join('')
+      :'<div class="note">숨긴 기사가 없습니다</div>';
+    el.querySelectorAll('[data-unhide]').forEach(b=>b.onclick=async()=>{
+      try{await writeJSON('/api/unhide',{link:b.dataset.unhide})}
+      catch(e){alert('되돌리기 실패: '+e.message);return}
+      if(HIDE_UNDO&&HIDE_UNDO.link===b.dataset.unhide){HIDE_UNDO=null;renderUndo()}
+      loadHidden();fetchFeed()});
+  }catch(e){el.innerHTML='<div class="note">목록을 불러오지 못했습니다</div>'}
+}
+// <<< operator-only
+
 async function loadLocal(){
   const r=await fetch(API+'/api/news?'+buildQuery(),{cache:'no-cache'});
   if(!r.ok)throw Error(r.status);
@@ -888,6 +958,8 @@ document.querySelector('#newpill').onclick=()=>{const t=region();
     MEM[t]=LATEST[t]}
   PENDING[t]=0;V.limit=PAGE;renderFeed()};
 document.querySelector('#feed').addEventListener('click',ev=>{
+  const hide=ev.target.closest('[data-hide]');
+  if(hide){hideStory(hide.dataset.hide,hide.dataset.title);return}
   const chip=ev.target.closest('.chip.tap');
   if(chip){const k=chip.dataset.k,v=chip.dataset.v;
     V.tag=(V.tag&&V.tag.k===k&&V.tag.v===v)?null:{k:k,v:v};
@@ -940,6 +1012,7 @@ document.addEventListener('visibilitychange',()=>{hidden=document.hidden;
   // The search box starts empty on every load. Restoring the last query meant a reload
   // silently kept filtering the list, which reads as the dashboard being stuck.
   skeleton();
+  if(CFG.admin)loadHidden();
   if(PUBLIC){fetchFeed();setInterval(()=>{if(!hidden&&V.tab!=='cal')fetchFeed()},300000)}
   else{fetchFeed();refreshTimer=setInterval(()=>{if(!hidden)fetchFeed()},30000)}
   if(V.tab==='cal')loadCalendar();
@@ -1010,24 +1083,47 @@ def seed_from_db(db_path: str, region: str, want_thai: bool, lang: str,
     selects = (
         "SELECT title, summary, source, category, categories, link, published_at FROM articles "
         "WHERE region = ? AND title IS NOT NULL AND title != '' "
-        "ORDER BY published_at DESC LIMIT ?",
+        "{hidden}ORDER BY published_at DESC LIMIT ?",
         "SELECT title, summary, source, category, NULL AS categories, link, published_at FROM articles "
         "WHERE region = ? AND title IS NOT NULL AND title != '' "
-        "ORDER BY published_at DESC LIMIT ?",
+        "{hidden}ORDER BY published_at DESC LIMIT ?",
     )
     rows = []
+    hidden = "" if not _has_hidden_table(db_path) else "AND link NOT IN (SELECT link FROM hidden_links) "
     for query in selects:
         try:
             connection = sqlite3.connect("file:%s?mode=ro" % db_path, uri=True)
             connection.row_factory = sqlite3.Row
             try:
-                rows = connection.execute(query, (region, limit)).fetchall()
+                rows = connection.execute(query.format(hidden=hidden), (region, limit)).fetchall()
                 break
             finally:
                 connection.close()
         except sqlite3.Error:
             continue
     return _seed_cards([dict(r) for r in rows], want_thai, lang, limit)
+
+
+def _has_hidden_table(db_path: str) -> bool:
+    """Whether this database knows about hidden stories yet.
+
+    The page is built before the collector restarts, and that is what adds the table, so a build
+    against a database from just before this change must not fail - it seeds without the clause for
+    one run, and the next build (after the collector has started) skips the hidden rows again.
+    """
+    import sqlite3
+    try:
+        connection = sqlite3.connect("file:%s?mode=ro" % db_path, uri=True)
+    except sqlite3.Error:
+        return False
+    try:
+        found = connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'hidden_links'").fetchone()
+        return bool(found)
+    except sqlite3.Error:
+        return False
+    finally:
+        connection.close()
 
 
 def _seed_labels(item: dict) -> list:
@@ -1130,7 +1226,13 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
                      + LOGOUT_CONTROL)
     side = ('' if not admin else
             '<aside class="side admin"><div class="box"><h2>수집 상태</h2><div id="sources">'
-            '<div class="note">대기 중</div></div></div><div class="box" id="tguide"></div></aside>')
+            '<div class="note">대기 중</div></div></div>'
+            # The restore list lives with the other operator panels. A hidden story is never in the
+            # feed again, so this is the only place it can be brought back from.
+            '<div class="box"><h2>숨긴 기사</h2><div id="hidden"><div class="note">불러오는 중</div></div></div>'
+            '<div class="box" id="tguide"></div></aside>')
+    undobar = ('' if not admin else
+               '<section class="undobar" id="undobar" hidden></section>')
     og = ('' if admin else
           '<meta name="description" content="비트코인·매크로·태국 뉴스를 5분마다 모아 보여주는 실시간 대시보드. 경제지표와 주요 일정 포함.">\n'
           '<meta property="og:title" content="TeemoBKK Live News">\n'
@@ -1206,6 +1308,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
 
   <section class="trend" id="trend" hidden></section>
   <section class="conds" id="conds" hidden></section>
+{undobar}
 
   <section id="filters-global" class="pills"></section>
   <section id="filters-thai" class="pills th" hidden></section>

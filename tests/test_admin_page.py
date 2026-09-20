@@ -23,7 +23,8 @@ sys.path.insert(0, ROOT)
 import admin_page  # noqa: E402
 import page_build  # noqa: E402
 
-OPERATOR_MARKERS = ('id="interval"', 'id="logout"', 'id="sources"')
+OPERATOR_MARKERS = ('id="interval"', 'id="logout"', 'id="sources"', 'id="hidden"', 'id="undobar"',
+                    'data-hide=')
 
 SEED = ('<article class="card seed"><h2 class="t"><a href="https://example.com/x">Example story</a>'
         '</h2><p class="s">A seeded story.</p></article>')
@@ -35,13 +36,24 @@ def public_document(lang="en", want_thai=False):
                              admin=False, lang=lang, alt="ko/index.html", seed_html=SEED)
 
 
+def markup_only(page: str) -> str:
+    """The document without its scripts.
+
+    The script carries the code for controls that the markup renders only for an operator - a hide
+    button, the restore list - so "does this document carry that control" is a question about the
+    markup. Asking it of the whole file would fail on the code that builds the control, which every
+    document needs because the same script serves both.
+    """
+    return re.sub(r"<script>.*?</script>", "", page, flags=re.S)
+
+
 class PublicDocument(unittest.TestCase):
     def test_the_public_document_has_no_operator_controls(self):
-        page = public_document()
+        page = markup_only(public_document())
         for marker in OPERATOR_MARKERS:
             self.assertNotIn(marker, page, "the public dashboard must not carry " + marker)
         self.assertNotIn("보관", page, "the retention count is the operator's")
-        self.assertNotIn("window.__ADMIN__=true", page, "no session flag is set for a stranger")
+        self.assertNotIn("숨긴 기사", page, "the restore list is the operator's")
         self.assertNotIn("관리자", page, "the public document must not advertise the admin area")
 
     def test_the_public_document_still_carries_the_reader_page(self):
@@ -61,8 +73,20 @@ class PublicDocument(unittest.TestCase):
     def test_the_thai_document_is_the_same_shape(self):
         page = public_document(want_thai=True)
         for marker in OPERATOR_MARKERS:
-            self.assertNotIn(marker, page)
+            self.assertNotIn(marker, markup_only(page))
         self.assertIn('id="feed"', page)
+
+    def test_the_operator_only_block_is_marked_and_balanced(self):
+        # tools/probe_english_text.py skips this block, so the markers are part of the contract: an
+        # opening marker with no closing one would leave the whole rest of the script unscanned.
+        page = public_document()
+        self.assertEqual(page.count("// >>> operator-only"), 1)
+        self.assertEqual(page.count("// <<< operator-only"), 1)
+
+    def test_no_document_sets_the_session_flag_by_itself(self):
+        # The flag is injected by the server on the document it answers /admin with, never built in.
+        for page in (public_document(), public_document(want_thai=True)):
+            self.assertNotIn("window.__ADMIN__=true", page)
 
 
 class LoginDocument(unittest.TestCase):

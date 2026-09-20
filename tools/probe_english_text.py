@@ -31,6 +31,12 @@ HANGUL = re.compile(r"[\uac00-\ud7a3]+")
 ELEMENT_TEXT = re.compile(r">([^<>{}]+)<")
 QUOTED = re.compile(r"'([^'\n\\]{2,90})'")
 CONFIG_LINE = re.compile(r"const CFG=\{[^\n]*\};")
+# Code the page marks as the operator's only. Those labels are Korean on every page because the
+# operator's document is Korean, and they never render for a reader - so scanning them here would
+# report a gap that no reader can see. The page says which parts those are, in the source, where a
+# reviewer can see what has been exempted; a reader-reachable string inside these markers would be a
+# real gap hidden from this check, which is why nothing else may go between them.
+OPERATOR_BLOCK = re.compile(r"// >>> operator-only.*?// <<< operator-only", re.S)
 
 
 def has_hangul(text: str) -> bool:
@@ -58,7 +64,7 @@ def skip_words() -> set[str]:
 
 
 def fragments(page: str, allowed: set[str]) -> dict[str, int]:
-    body = CONFIG_LINE.sub("", page)
+    body = OPERATOR_BLOCK.sub("", CONFIG_LINE.sub("", page))
     found: dict[str, int] = {}
     for text in ELEMENT_TEXT.findall(body) + QUOTED.findall(body):
         if not has_hangul(text):

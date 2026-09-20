@@ -58,7 +58,11 @@ class Sessions(unittest.TestCase):
         token = admin_auth.issue_token()
         self.assertTrue(admin_auth.verify_token(token))
         expiry, nonce, signature = token.split(".")
-        self.assertFalse(admin_auth.verify_token("%s.%s.%s" % (expiry, nonce, signature[:-1] + "0")))
+        # Flip the last character to a different one: replacing it with a fixed digit left the token
+        # untouched one time in sixteen, and the check failed on itself.
+        flipped = "1" if signature[-1] != "1" else "2"
+        self.assertFalse(admin_auth.verify_token("%s.%s.%s" % (expiry, nonce, signature[:-1] + flipped)),
+                         "a changed signature must not verify")
         self.assertFalse(admin_auth.verify_token("%s.%s.%s" % (int(expiry) + 60, nonce, signature)),
                          "moving the expiry out must break the signature")
         self.assertFalse(admin_auth.verify_token("%s.%s.%s" % (expiry, "0" * 16, signature)),
