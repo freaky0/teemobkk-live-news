@@ -36,7 +36,8 @@ const check = (n, ok, d) => { pass.push(ok); console.log('  %s %s%s', ok ? 'PASS
   check('탭이 영어', tabs.join('/') === 'Markets/Indicators/Thailand', tabs.join('/'));
   const seeds = sd.querySelectorAll('#feed .card.seed').length;
   check('시드 카드 실려 있음', seeds >= 20, seeds + '개');
-  const koreanUi = ['더 보기', ' 위로', '경제 소식', '연결 중', '지금 뜨는', '원문 열기', '펼쳐보기'];
+  const koreanUi = ['더 보기', ' 위로', '경제 소식', '연결 중', '지금 뜨는', '원문 열기', '펼쳐보기',
+    '선택한 조건', '가장 좁은 조건', '더 긴 기간에서 찾기'];
   const left = koreanUi.filter((w) => page.indexOf(w) >= 0);
   check('한국어 UI가 남아 있지 않음', left.length === 0, left.join(', ') || 'none');
 

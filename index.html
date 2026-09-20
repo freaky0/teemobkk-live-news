@@ -81,6 +81,10 @@ select{cursor:pointer}
   background:var(--accent);color:#08111f;font-weight:600;font-size:12px;
   border-radius:var(--r-pill);padding:4px 10px;cursor:pointer}
 .conds .cbtn .n{color:#08111f;opacity:.7;font-size:11px}
+/* A keyword condition is outlined, a category or source condition is filled: the difference has to
+   be visible without a word, because a word here would need translating. */
+.conds .cbtn.kw{background:none;color:var(--accent);border-color:var(--accent)}
+.conds .cbtn.kw .n{color:var(--accent);opacity:.75}
 .conds .sum{color:var(--muted);font-size:12px;margin-left:4px}
 .conds .warn{color:var(--warn);font-weight:600}
 .conds button.wide{border:1px dashed var(--accent);background:none;color:var(--accent);
@@ -743,8 +747,11 @@ function renderConditions(){
   el.innerHTML='<span class="clabel">선택한 조건</span>'+
     list.map(function(c){
       const key=condKey(c[0],c[1]),n=counts[key];
-      return '<button type="button" class="cbtn" data-cond-off="'+esc(key)+'" '+
-        'title="이 조건을 풉니다">'+(c[0]==='term'?'키워드 ':'')+esc(c[1])+
+      // The kind is shown by the chip's style, not by a word: a keyword chip is outlined and a
+      // category chip is filled. A text prefix would have to be translated, and a fragment like
+      // "키워드 " also matches inside "지금 뜨는 키워드" in the translation pass.
+      return '<button type="button" class="cbtn'+(c[0]==='term'?' kw':'')+
+        '" data-cond-off="'+esc(key)+'" title="이 조건을 풉니다">'+esc(c[1])+
         (n==null?'':'<span class="n">'+n+'</span>')+'<span aria-hidden="true">✕</span></button>'}).join('')+
     '<span class="sum">'+(total==null?'':'→ '+total+'건')+
       (narrow&&total===0?' · <span class="warn">가장 좁은 조건: '+esc(narrow[1])+' ('+

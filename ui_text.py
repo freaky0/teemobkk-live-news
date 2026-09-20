@@ -104,6 +104,12 @@ UI_EN = {
     "guideThaiP2": ("Visa and immigration, accidents and disasters come first, and unconfirmed "
                     "lines are not stated as fact before the source is checked."),
     "trendLabel": "Trending now",
+    "condLabel": "Selected conditions",
+    "condNarrow": "Narrowest condition",
+    "condWide": "Search a longer period",
+    "condRelease": "Release this condition",
+    "emptyAll": "No story matches every selected condition",
+    "emptyAllHint": "Release the narrowest condition above, or search a longer period.",
     "footer1": ("Each story belongs to the outlet that published it. Only the headline, the "
                 "summary and a link are shown; check the original through the link."),
     "footer2": ("Collected automatically, so wording or timing may be off. Do not use this as "
@@ -192,6 +198,12 @@ UI_KO = {
     "guideThaiP2": ("비자·이민과 사고·재난을 우선 표시하며, 확정되지 않은 속보는 원문 확인 "
                     "전까지 단정하지 않습니다."),
     "trendLabel": "지금 뜨는 키워드",
+    "condLabel": "선택한 조건",
+    "condNarrow": "가장 좁은 조건",
+    "condWide": "더 긴 기간에서 찾기",
+    "condRelease": "이 조건을 풉니다",
+    "emptyAll": "선택한 조건을 모두 만족하는 뉴스가 없습니다",
+    "emptyAllHint": "위 조건 줄에서 가장 좁은 조건을 풀거나 기간을 넓혀 보세요.",
     "footer1": ("각 기사의 저작권은 원 매체에 있습니다. 제목과 요약, 그리고 원문 링크만 "
                 "표시하며 원문 확인은 링크를 통해 해 주세요."),
     "footer2": ("자동 수집 결과이므로 표기 오류나 지연이 있을 수 있습니다. 투자 판단의 "
