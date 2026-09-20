@@ -784,6 +784,35 @@ def seed_feed(path: str, want_thai: bool, lang: str = "ko", limit: int = 25) -> 
             items = json.load(handle).get("articles") or []
     except (OSError, ValueError):
         return ""
+    return _seed_cards(items, want_thai, lang, limit)
+
+
+def seed_from_db(db_path: str, region: str, want_thai: bool, lang: str,
+                 limit: int = 25) -> str:
+    """The same seed, read from a collector database instead of a generated JSON file.
+
+    A deployed server collects into its own news.db and never runs the publishing step, so the
+    JSON the static pages seed from does not exist there.
+    """
+    import sqlite3
+    try:
+        connection = sqlite3.connect("file:%s?mode=ro" % db_path, uri=True)
+        connection.row_factory = sqlite3.Row
+        rows = connection.execute(
+            "SELECT title, summary, source, category, link, published_at FROM articles "
+            "WHERE region = ? AND title IS NOT NULL AND title != '' "
+            "ORDER BY published_at DESC LIMIT ?", (region, limit)).fetchall()
+    except sqlite3.Error:
+        return ""
+    finally:
+        try:
+            connection.close()
+        except Exception:
+            pass
+    return _seed_cards([dict(r) for r in rows], want_thai, lang, limit)
+
+
+def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str:
     rows = []
     for item in items[:limit]:
         title = str(item.get("title") or "")
@@ -840,7 +869,8 @@ def localize(page: str, lang: str) -> str:
 
 
 def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, admin: bool,
-           lang: str = "ko", alt: str = "", seed_path: str = "") -> str:
+           lang: str = "ko", alt: str = "", seed_path: str = "",
+           seed_html: str = "") -> str:
     config = {
         "public": public,
         "datadir": datadir,
@@ -876,7 +906,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
         ui_text.cats(lang)["global"], ensure_ascii=False, separators=(",", ":")))
     script = script.replace("__CATS_THAI__", json.dumps(
         ui_text.cats(lang)["thai"], ensure_ascii=False, separators=(",", ":")))
-    seed = seed_feed(seed_path, want_thai, lang) if seed_path else ""
+    seed = seed_html or (seed_feed(seed_path, want_thai, lang) if seed_path else "")
     page = f"""<!doctype html>
 <html lang="{lang}">
 <head>
@@ -996,6 +1026,25 @@ def build_public() -> dict[str, int]:
     sizes["docs/ko/thai/index.html"] = write(DOCS / "ko" / "thai" / "index.html", render(
         public=True, datadir="../../", want_thai=True, icon_prefix="../../", admin=False,
         lang="ko", alt="../../thai/index.html", seed_path=thai_seed))
+    return sizes
+
+
+def build_server(db_path: str = "news.db") -> dict[str, int]:
+    """The pages a deployed server serves: dynamic API data, no operator panels.
+
+    `public=True` (the published static pages) means the script reads pre-generated JSON;
+    `public=False` means it reads the API, which is what a server wants so that filtering and
+    paging cover the whole stored window. `admin=False` drops the collection panel, the archive
+    count and the original-link control, which are the operator's view.
+    """
+    sizes = {}
+    global_seed = seed_from_db(db_path, "\uae00\ub85c\ubc8c", False, "en")
+    sizes["index.html"] = write(ROOT / "index.html", render(
+        public=False, datadir="", want_thai=False, icon_prefix="", admin=False,
+        lang="en", alt="ko/index.html", seed_html=global_seed))
+    sizes["ko/index.html"] = write(ROOT / "ko" / "index.html", render(
+        public=False, datadir="", want_thai=False, icon_prefix="../", admin=False,
+        lang="ko", alt="../index.html", seed_html=global_seed))
     return sizes
 
 
