@@ -32,10 +32,17 @@ function stubFetch(realFetch) {
     if (url.pathname === '/api/hidden') {
       return { ok: true, json: async () => ({ hidden: [], total: 0 }) };
     }
-    const real = await realFetch(url.href, { headers: { 'User-Agent': 'Mozilla/5.0 jsdom' }, cache: 'no-store' });
+    const picked = url.searchParams.get('picked') === '1';
+    // The stub owns the pick state, so it asks the real server for the unfiltered list and applies
+    // the pick itself. Letting the server filter would be asking the real archive about a pick that
+    // only exists here - and the answer would be "none", which is what this check saw once the
+    // server learned the parameter.
+    const ask = new URL(url.href);
+    ask.searchParams.delete('picked');
+    const real = await realFetch(ask.href, { headers: { 'User-Agent': 'Mozilla/5.0 jsdom' }, cache: 'no-store' });
     if (url.pathname !== '/api/news') return { ok: real.ok, json: async () => real.json() };
     const payload = await real.json();
-    if (url.searchParams.get('picked') === '1') {
+    if (picked) {
       payload.articles = (payload.articles || []).slice(0, 1);
       payload.total = payload.articles.length;
     }

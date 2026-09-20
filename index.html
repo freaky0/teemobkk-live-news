@@ -912,6 +912,10 @@ function applyLocal(fresh){
   archiveTotal=(fresh.archived_total!=null?fresh.archived_total:archiveTotal);
   try{localStorage.setItem(CACHE_KEY,JSON.stringify(DATA))}catch(e){}
   setStamp((fresh.updated_at_ict||'')+' · '+hoursLabel()+' · '+(fresh.total||0)+'건',fresh.region_counts);
+  // The interval control shows what the collector is doing, restored value included, so the operator
+  // never wonders whether the 5분 they chose is still in force after the next restart.
+  const iv=document.querySelector('#interval');
+  if(iv&&fresh.interval_seconds!=null)iv.value=String(fresh.interval_seconds);
   flagStale(fresh.updated_at);
   renderSources();renderPills();renderFeed()}
 

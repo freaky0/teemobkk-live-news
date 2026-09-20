@@ -458,6 +458,13 @@ def init_db() -> None:
             "CREATE TABLE IF NOT EXISTS picked_links ("
             "link TEXT PRIMARY KEY, note TEXT, picked_at TEXT)"
         )
+        # Operator settings that have to survive a restart. The collector holds the refresh interval
+        # in memory and an update restarts it, so a change made from /admin used to be forgotten the
+        # next time the service came up - the operator had to notice and set it again.
+        connection.execute(
+            "CREATE TABLE IF NOT EXISTS settings ("
+            "name TEXT PRIMARY KEY, value TEXT, changed_at TEXT)"
+        )
 
 
 def insert_articles(articles: list[dict[str, Any]]) -> int:
@@ -547,6 +554,23 @@ def unpick_link(link: str) -> int:
     with DB_LOCK, db_connect() as connection:
         connection.execute("DELETE FROM picked_links WHERE link = ?", (link,))
         return connection.execute("SELECT COUNT(*) FROM picked_links").fetchone()[0] or 0
+
+
+def setting_get(name: str) -> str | None:
+    """A stored operator setting, or None when it has never been set."""
+    with DB_LOCK, db_connect() as connection:
+        row = connection.execute("SELECT value FROM settings WHERE name = ?", (name,)).fetchone()
+    return None if row is None else row[0]
+
+
+def setting_set(name: str, value: str) -> None:
+    when = datetime.now(timezone.utc).isoformat()
+    with DB_LOCK, db_connect() as connection:
+        connection.execute(
+            "INSERT INTO settings (name, value, changed_at) VALUES (?, ?, ?) "
+            "ON CONFLICT(name) DO UPDATE SET value = excluded.value, changed_at = excluded.changed_at",
+            (name, str(value), when))
+    logging.info("setting %s = %s", name, value)
 
 
 def _looks_like_link(value: str) -> bool:
@@ -755,6 +779,12 @@ class NewsState:
         self.data: dict[str, Any] = {"updated_at": None, "updated_at_ict": None, "window_hours": RETENTION_HOURS, "article_count": 0, "region_counts": {}, "sources": {}, "archive": {}}
         try:
             init_db()
+            # A stored interval wins over the command line: the operator changed it from the page,
+            # and the flag is only the default a fresh install starts from.
+            stored = setting_get("interval_seconds")
+            if stored:
+                self.interval = max(10, min(600, int(stored)))
+                logging.info("Refresh interval restored from settings: %ds", self.interval)
             _, total, counts = query_articles(hours=RETENTION_HOURS, limit=1)
             self.data.update({"article_count": total, "region_counts": counts, "archive": archive_stats(), "updated_at_ict": "restored from archive"})
             logging.info("Archive restored: %d articles inside %dh window", total, RETENTION_HOURS)
@@ -763,6 +793,9 @@ class NewsState:
 
     def set_interval(self, interval: int) -> int:
         self.interval = max(10, min(600, int(interval)))
+        # Written down as well as held: the service is restarted by every update, and an interval the
+        # operator chose should not quietly revert to the command-line default when that happens.
+        setting_set("interval_seconds", str(self.interval))
         return self.interval
 
     def refresh(self) -> None:
@@ -972,6 +1005,9 @@ class Handler(BaseHTTPRequestHandler):
                 "archived_total": payload.get("archive", {}).get("archived_total", 0),
                 # Echoed joined by commas: the response shape stays what a reader of the API already
                 # expects, and several values are visible instead of silently dropped.
+                # The operator's page shows this in its interval control, so the control reflects
+                # what the collector is actually doing rather than what the page was built with.
+                "interval_seconds": self.state.interval,
                 "filter": {"region": filters["region"], "category": ",".join(filters["category"]),
                            "source": ",".join(filters["source"]), "source_type": filters["source_type"],
                            "priority": minimum_priority, "q": ",".join(filters["text"])},
@@ -979,7 +1015,8 @@ class Handler(BaseHTTPRequestHandler):
                 "articles": articles,
             })
             if PUBLIC_MODE and not self.is_admin():
-                for key in ("sources", "archive", "archived_total", "fresh_article_count", "inserted_article_count"):
+                for key in ("sources", "archive", "archived_total", "fresh_article_count", "inserted_article_count",
+                            "interval_seconds"):
                     payload.pop(key, None)
             self.send_json(payload)
             return

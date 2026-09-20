@@ -312,6 +312,27 @@ class Gate(unittest.TestCase):
         cookie = self.session()
         self.assertEqual(self.call("/api/pick", "POST", {"link": PICK_LINK}, cookie=cookie)[0], 401)
 
+    # --- the refresh interval ---
+    def test_the_interval_is_the_operators_business(self):
+        self.assertNotIn("interval_seconds", self.call("/api/news?hours=24&limit=1")[2],
+                         "an anonymous reader does not need to know how often we collect")
+        cookie = self.session()
+        payload = self.call("/api/news?hours=24&limit=1", cookie=cookie)[2]
+        self.assertIn("interval_seconds", payload)
+
+    def test_a_chosen_interval_survives_a_restart(self):
+        cookie = self.session()
+        status, _, payload = self.call("/api/settings", "POST", {"interval": 120},
+                                       cookie=cookie, header=True)
+        self.assertEqual(status, 200)
+        self.assertEqual(payload.get("interval_seconds"), 120)
+        self.assertEqual(core.setting_get("interval_seconds"), "120")
+        # What a restart does: the service starts again with the command-line default, and the stored
+        # value is what wins.
+        restarted = core.NewsState(interval=60)
+        self.assertEqual(restarted.interval, 120)
+        self.assertEqual(core.Handler.state.interval, 120, "and the running one still has it")
+
     def links(self, path="/api/news?hours=24&limit=50"):
         payload = self.call(path)[2]
         return [row.get("link") for row in payload.get("articles", [])]
