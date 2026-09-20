@@ -46,6 +46,9 @@ input[type=search],select{background:var(--panel2);border:1px solid var(--line);
 input[type=search]{flex:1 1 220px}
 input[type=search]::placeholder{color:var(--muted)}
 select{cursor:pointer}
+#logout{cursor:pointer;background:none;border:1px solid var(--line);color:var(--muted);
+  border-radius:var(--r-ctl);padding:8px 12px}
+#logout:hover{border-color:var(--accent);color:var(--accent)}
 .count{color:var(--muted);font-size:12px;margin-left:auto}
 .newpill{display:none;align-items:center;background:#123047;border:1px solid var(--accent);color:var(--accent);
   border-radius:var(--r-pill);padding:7px 14px;cursor:pointer;font-size:12.5px;font-weight:600}
@@ -264,7 +267,7 @@ body.local .card{cursor:auto}
       <option value="168">최근 7일</option>
       <option value="2160">전체 기간</option>
     </select>
-    <label class="note admin" for="interval">갱신</label><select id="interval" class="admin" aria-label="갱신 간격"><option value="10">10초</option><option value="30">30초</option><option value="60" selected>1분</option><option value="120">2분</option><option value="300">5분</option></select>
+    <label class="note admin" for="interval">갱신</label><select id="interval" class="admin" aria-label="갱신 간격"><option value="10">10초</option><option value="30">30초</option><option value="60" selected>1분</option><option value="120">2분</option><option value="300">5분</option></select><button type="button" id="logout" class="admin" aria-label="로그아웃">로그아웃</button>
     <button id="newpill" class="newpill" type="button"></button>
     <span class="count" id="counts"></span>
   </section>
@@ -296,6 +299,11 @@ body.local .card{cursor:auto}
 <script>
 const CFG={"public":false,"datadir":"","wantThai":false,"admin":true,"api":"","calendar":"https://raw.githubusercontent.com/freaky0/teemobkk-live-news/main/docs/calendar.json","lang":"ko","catLabels":{"일반":"일반","금리":"금리","미국 정책":"미국 정책","트럼프":"트럼프","지정학":"지정학","ETF·수급":"ETF·수급","파생상품·청산":"파생상품·청산","온체인·기관":"온체인·기관","스테이블코인":"스테이블코인","X 발언":"X 발언","주식·원자재":"주식·원자재","채굴":"채굴","규제·정책":"규제·정책","거시경제":"거시경제","시장·가격":"시장·가격","이더리움·알트":"이더리움·알트","비자·이민":"비자·이민","사고·재난":"사고·재난","태국 생활":"생활·교통·날씨","태국 경제":"태국 경제","태국 정치·사회":"정치·사회","태국 관광":"관광","태국 보건":"보건"}};
 const PUBLIC=CFG.public, DATADIR=CFG.datadir, API=CFG.api;
+// A session lives in a cookie this script cannot read, so the server says whether there is one by
+// setting this flag on the document it answers /admin with.
+const ADMIN=window.__ADMIN__===true;
+function writeHeaders(){const h={'Content-Type':'application/json'};
+  if(ADMIN)h['X-Requested-With']='teemo-admin';return h}
 const PAGE=25, BIG=25, STALE_MIN=35, GRACE_MS=3*3600000;
 const GLOBAL_CATS=[["일반","일반"],["금리","금리"],["미국 정책","미국 정책"],["트럼프","트럼프"],["지정학","지정학"],["ETF·수급","ETF·수급"],["파생상품·청산","파생상품·청산"],["온체인·기관","온체인·기관"],["스테이블코인","스테이블코인"],["X 발언","X 발언"],["주식·원자재","주식·원자재"],["채굴","채굴"],["규제·정책","규제·정책"],["거시경제","거시경제"],["시장·가격","시장·가격"],["이더리움·알트","이더리움·알트"]];
 const THAI_CATS=[["일반","일반"],["비자·이민","비자·이민"],["사고·재난","사고·재난"],["태국 생활","생활·교통·날씨"],["태국 경제","태국 경제"],["태국 정치·사회","정치·사회"],["태국 관광","관광"],["태국 보건","보건"]];
@@ -852,7 +860,7 @@ function paintCalendar(data){
     +' · '+fmt('중요도 ★4 이상 {n}건',top)
     +' · '+'출처 나스닥 캘린더 · 연준 · 백악관 · Factba.se'
     +' · '+'시각 기준 KST(UTC+9) · 방콕은 여기서 2시간 뒤'
-    +' · '+fmt('연준 인물 명단 {n}년 기준',data.fed_roster_as_of||'?');
+    +' · '+fmt('연준 인사 기준일 {n}',data.fed_roster_as_of||'?');
   document.querySelector('#cal-body').innerHTML=days.map(d=>{
     const rows=d.events.length?d.events.map(e=>{
       const parts=[];
@@ -936,13 +944,18 @@ const intervalEl=document.querySelector('#interval');
 if(intervalEl)intervalEl.onchange=async()=>{
   const value=Number(intervalEl.value);
   try{
-    const r=await fetch(API+'/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},
+    const r=await fetch(API+'/api/settings',{method:'POST',headers:writeHeaders(),
       body:JSON.stringify({interval:value})});
     if(!r.ok)throw Error(r.status);
     if(refreshTimer)clearInterval(refreshTimer);
     refreshTimer=setInterval(()=>{if(!hidden)fetchFeed()},value*1000);
     fetchFeed();
   }catch(e){alert('갱신 간격 변경 실패: '+e.message)}};
+const logoutEl=document.querySelector('#logout');
+if(logoutEl)logoutEl.onclick=async()=>{
+  logoutEl.disabled=true;
+  try{await fetch(API+'/api/logout',{method:'POST',headers:writeHeaders(),body:'{}'})}catch(e){}
+  location.replace('/');};
 const topEl=document.querySelector('#totop');
 if(topEl)topEl.onclick=()=>scrollTo({top:0,behavior:'smooth'});
 document.addEventListener('keydown',ev=>{

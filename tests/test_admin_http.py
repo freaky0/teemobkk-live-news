@@ -162,6 +162,64 @@ class Gate(unittest.TestCase):
         finally:
             core.PUBLIC_MODE = True
 
+    # --- the operator page ---
+    def test_a_stranger_asking_for_admin_gets_only_a_password_box(self):
+        with urllib.request.urlopen(self.base + "/admin", timeout=10) as response:
+            page = response.read().decode("utf-8")
+            headers = dict(response.headers)
+        self.assertEqual(response.status, 200)
+        self.assertIn('id="pw"', page, "the login box")
+        for marker in ('id="interval"', 'id="logout"', 'id="feed"', "window.__ADMIN__"):
+            self.assertNotIn(marker, page, "a stranger must not receive dashboard markup: " + marker)
+        self.assertIn("no-store", headers.get("Cache-Control", ""),
+                      "a page that depends on a session must never be cached")
+
+    def test_a_session_gets_the_operator_page(self):
+        cookie = self.session()
+        with urllib.request.urlopen(urllib.request.Request(
+                self.base + "/admin/", headers={"Cookie": cookie}), timeout=10) as response:
+            page = response.read().decode("utf-8")
+        self.assertIn("window.__ADMIN__=true", page, "the script has to know before it writes")
+        self.assertIn('id="interval"', page)
+        self.assertIn('id="logout"', page)
+        self.assertIn("X-Requested-With", page, "writes carry the header the server wants")
+        self.assertIn('id="feed"', page)
+
+    def test_the_operator_document_is_not_a_file(self):
+        self.assertFalse((Path(ROOT) / "_admin.html").exists(),
+                         "the page must not sit where the reverse proxy serves from disk")
+        # Nothing answers it either: it is not a route and not in the static whitelist.
+        self.assertEqual(self.call("/_admin.html")[0], 404)
+
+    def test_signing_out_ends_the_session_and_not_only_the_cookie(self):
+        cookie = self.session()
+        self.assertIn("window.__ADMIN__=true", self.admin_body(cookie))
+        status, headers, _ = self.call("/api/logout", "POST", {}, cookie=cookie)
+        self.assertEqual(status, 200)
+        self.assertIn("Max-Age=0", headers.get("Set-Cookie", ""))
+        # A copy of the cookie kept elsewhere must stop working too: otherwise logging out would
+        # only clear the browser it happened in.
+        self.assertEqual(self.call("/api/settings", "POST", {"interval": 300},
+                                   cookie=cookie, header=True)[0], 401)
+        self.assertNotIn("window.__ADMIN__=true", self.admin_body(cookie))
+
+    def test_an_expired_session_gets_the_login_box_again(self):
+        # Signed with the right key, but its expiry is long past: the signature is not the whole
+        # check, the clock is part of it.
+        cookie = "teemo_admin=" + admin_auth.issue_token(now=10 ** 6)
+        self.assertNotIn("window.__ADMIN__=true", self.admin_body(cookie))
+
+    def admin_body(self, cookie):
+        with urllib.request.urlopen(urllib.request.Request(
+                self.base + "/admin", headers={"Cookie": cookie}), timeout=10) as response:
+            return response.read().decode("utf-8")
+
+    def test_the_login_page_points_at_the_login_endpoint(self):
+        page = self.admin_body("")
+        self.assertIn("/api/login", page)
+        self.assertIn('type="password"', page)
+        self.assertIn("noindex", page)
+
     def test_logout_clears_the_cookie(self):
         cookie = self.session()
         status, headers, _ = self.call("/api/logout", "POST", {}, cookie=cookie)

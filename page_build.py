@@ -73,6 +73,9 @@ input[type=search],select{background:var(--panel2);border:1px solid var(--line);
 input[type=search]{flex:1 1 220px}
 input[type=search]::placeholder{color:var(--muted)}
 select{cursor:pointer}
+#logout{cursor:pointer;background:none;border:1px solid var(--line);color:var(--muted);
+  border-radius:var(--r-ctl);padding:8px 12px}
+#logout:hover{border-color:var(--accent);color:var(--accent)}
 .count{color:var(--muted);font-size:12px;margin-left:auto}
 .newpill{display:none;align-items:center;background:#123047;border:1px solid var(--accent);color:var(--accent);
   border-radius:var(--r-pill);padding:7px 14px;cursor:pointer;font-size:12.5px;font-weight:600}
@@ -257,6 +260,11 @@ body.local .card{cursor:auto}
 SCRIPT = """\
 const CFG=__CONFIG__;
 const PUBLIC=CFG.public, DATADIR=CFG.datadir, API=CFG.api;
+// A session lives in a cookie this script cannot read, so the server says whether there is one by
+// setting this flag on the document it answers /admin with.
+const ADMIN=window.__ADMIN__===true;
+function writeHeaders(){const h={'Content-Type':'application/json'};
+  if(ADMIN)h['X-Requested-With']='teemo-admin';return h}
 const PAGE=25, BIG=25, STALE_MIN=35, GRACE_MS=3*3600000;
 const GLOBAL_CATS=__CATS_GLOBAL__;
 const THAI_CATS=__CATS_THAI__;
@@ -813,7 +821,7 @@ function paintCalendar(data){
     +' · '+fmt('중요도 ★4 이상 {n}건',top)
     +' · '+'출처 나스닥 캘린더 · 연준 · 백악관 · Factba.se'
     +' · '+'시각 기준 KST(UTC+9) · 방콕은 여기서 2시간 뒤'
-    +' · '+fmt('연준 인물 명단 {n}년 기준',data.fed_roster_as_of||'?');
+    +' · '+fmt('연준 인사 기준일 {n}',data.fed_roster_as_of||'?');
   document.querySelector('#cal-body').innerHTML=days.map(d=>{
     const rows=d.events.length?d.events.map(e=>{
       const parts=[];
@@ -897,13 +905,18 @@ const intervalEl=document.querySelector('#interval');
 if(intervalEl)intervalEl.onchange=async()=>{
   const value=Number(intervalEl.value);
   try{
-    const r=await fetch(API+'/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},
+    const r=await fetch(API+'/api/settings',{method:'POST',headers:writeHeaders(),
       body:JSON.stringify({interval:value})});
     if(!r.ok)throw Error(r.status);
     if(refreshTimer)clearInterval(refreshTimer);
     refreshTimer=setInterval(()=>{if(!hidden)fetchFeed()},value*1000);
     fetchFeed();
   }catch(e){alert('갱신 간격 변경 실패: '+e.message)}};
+const logoutEl=document.querySelector('#logout');
+if(logoutEl)logoutEl.onclick=async()=>{
+  logoutEl.disabled=true;
+  try{await fetch(API+'/api/logout',{method:'POST',headers:writeHeaders(),body:'{}'})}catch(e){}
+  location.replace('/');};
 const topEl=document.querySelector('#totop');
 if(topEl)topEl.onclick=()=>scrollTo({top:0,behavior:'smooth'});
 document.addEventListener('keydown',ev=>{
@@ -1111,7 +1124,10 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
                      '<select id="interval" class="admin" aria-label="갱신 간격">'
                      '<option value="10">10초</option><option value="30">30초</option>'
                      '<option value="60" selected>1분</option><option value="120">2분</option>'
-                     '<option value="300">5분</option></select>')
+                     '<option value="300">5분</option></select>'
+                     # The way out of a session belongs with the other operator controls, and only
+                     # on the page that was served to a session in the first place.
+                     + LOGOUT_CONTROL)
     side = ('' if not admin else
             '<aside class="side admin"><div class="box"><h2>수집 상태</h2><div id="sources">'
             '<div class="note">대기 중</div></div></div><div class="box" id="tguide"></div></aside>')
@@ -1358,11 +1374,28 @@ def build_server(db_path: str = "news.db") -> dict[str, int]:
 
 def build_all() -> dict[str, int]:
     """Rewrite the local page and both published pages (used when building by hand)."""
-    sizes = {"index.html": write(ROOT / "index.html", render(
-        public=False, datadir="", want_thai=False, icon_prefix="", admin=True,
-        lang="ko", seed_path=str(DOCS / "global-recent.json")))}
+    sizes = {"index.html": write(ROOT / "index.html", admin_page())}
     sizes.update(build_public())
     return sizes
+
+
+LOGOUT_CONTROL = ('<button type="button" id="logout" class="admin" '
+                  'aria-label="로그아웃">로그아웃</button>')
+
+
+def admin_page(icon_prefix: str = "") -> str:
+    """The operator's dashboard as a string, for the collector to answer /admin with.
+
+    Same document the public sees, built with the operator panels and configured to read the API
+    rather than a pre-generated JSON file. It is returned rather than written: the deployment serves
+    its section pages from disk, so a file like this placed among them would be public, and the
+    collector is the only thing that should ever hand it out - and only to a session.
+
+    `icon_prefix` stays relative by default, which is what the page opened from disk needs; the
+    collector passes "/" because it answers a path with a directory in it.
+    """
+    return render(public=False, datadir="", want_thai=False, icon_prefix=icon_prefix, admin=True,
+                  lang="ko", seed_path=str(DOCS / "global-recent.json"))
 
 
 if __name__ == "__main__":

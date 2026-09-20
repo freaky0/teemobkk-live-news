@@ -25,6 +25,7 @@ import hashlib
 import hmac
 import logging
 import os
+import secrets
 import threading
 import time
 from pathlib import Path
@@ -41,6 +42,7 @@ PASSWORD_FILE = ROOT / ".admin_password"
 
 _lock = threading.Lock()
 _failures: dict[str, list[float]] = {}
+_revoked: set[str] = set()
 
 
 def password_bytes() -> bytes | None:
@@ -76,23 +78,35 @@ def issue_token(now: float | None = None) -> str:
     if not key:
         return ""
     expiry = int((now if now is not None else time.time()) + TTL_SECONDS)
-    stamp = str(expiry).encode("ascii")
-    return "%d.%s" % (expiry, hmac.new(key, stamp, hashlib.sha256).hexdigest())
+    # The nonce is not decoration: without it two logins in the same second produce the same token
+    # (the expiry has one-second resolution), so signing one out would sign the other out too.
+    nonce = secrets.token_hex(8)
+    return "%d.%s.%s" % (expiry, nonce, _sign(key, expiry, nonce))
+
+
+def _sign(key: bytes, expiry: int, nonce: str) -> str:
+    return hmac.new(key, ("%d.%s" % (expiry, nonce)).encode("ascii"), hashlib.sha256).hexdigest()
 
 
 def verify_token(token: str, now: float | None = None) -> bool:
     key = _key()
-    if not key or not token or "." not in token:
+    if not key or not token:
         return False
-    expiry_text, signature = token.split(".", 1)
+    if token in _revoked:
+        # A signed cookie cannot be taken back without a list like this. Logging out has to mean
+        # something, so a signed-out token is remembered here until it would have expired anyway.
+        return False
+    parts = token.split(".")
+    if len(parts) != 3:
+        return False
+    expiry_text, nonce, signature = parts
     try:
         expiry = int(expiry_text)
     except ValueError:
         return False
     if expiry <= (now if now is not None else time.time()):
         return False
-    expected = hmac.new(key, expiry_text.encode("ascii"), hashlib.sha256).hexdigest()
-    return hmac.compare_digest(signature, expected)
+    return hmac.compare_digest(signature, _sign(key, expiry, nonce))
 
 
 def token_from_cookie(header: str) -> str:
@@ -141,6 +155,25 @@ def note_failure(ip: str, now: float | None = None) -> None:
 def note_success(ip: str) -> None:
     with _lock:
         _failures.pop(ip, None)
+
+
+def revoke(token: str) -> None:
+    """Forget a token, so signing out ends that session and not only its cookie."""
+    if not token:
+        return
+    with _lock:
+        _revoked.add(token)
+        # Anything already expired would be refused on its own, so the list stays small.
+        now = time.time()
+        for stale in [item for item in _revoked if "." in item and _expiry_of(item) <= now]:
+            _revoked.discard(stale)
+
+
+def _expiry_of(token: str) -> float:
+    try:
+        return float(token.split(".", 1)[0])
+    except (ValueError, AttributeError):
+        return 0.0
 
 
 def authenticated(handler) -> bool:

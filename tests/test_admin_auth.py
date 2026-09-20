@@ -57,12 +57,30 @@ class Sessions(unittest.TestCase):
         self.set_password()
         token = admin_auth.issue_token()
         self.assertTrue(admin_auth.verify_token(token))
-        expiry, signature = token.split(".", 1)
-        self.assertFalse(admin_auth.verify_token("%s.%s" % (expiry, signature[:-1] + "0")))
-        self.assertFalse(admin_auth.verify_token("%s.%s" % (int(expiry) + 60, signature)),
+        expiry, nonce, signature = token.split(".")
+        self.assertFalse(admin_auth.verify_token("%s.%s.%s" % (expiry, nonce, signature[:-1] + "0")))
+        self.assertFalse(admin_auth.verify_token("%s.%s.%s" % (int(expiry) + 60, nonce, signature)),
                          "moving the expiry out must break the signature")
+        self.assertFalse(admin_auth.verify_token("%s.%s.%s" % (expiry, "0" * 16, signature)),
+                         "swapping the nonce must break it too")
         self.assertFalse(admin_auth.verify_token(expiry))
         self.assertFalse(admin_auth.verify_token(""))
+        self.assertFalse(admin_auth.verify_token("1.2"))
+
+    def test_two_logins_in_the_same_second_are_different_tokens(self):
+        # The expiry has one-second resolution, so without the nonce these two strings would be
+        # identical and signing one out would sign the other out.
+        self.set_password()
+        self.assertNotEqual(admin_auth.issue_token(now=1000), admin_auth.issue_token(now=1000))
+
+    def test_a_signed_out_token_stops_verifying(self):
+        self.set_password()
+        token = admin_auth.issue_token()
+        self.assertTrue(admin_auth.verify_token(token))
+        admin_auth.revoke(token)
+        self.assertFalse(admin_auth.verify_token(token))
+        self.assertTrue(admin_auth.verify_token(admin_auth.issue_token()),
+                        "and only that token: the next login still works")
 
     def test_an_expired_token_stops_working(self):
         self.set_password()

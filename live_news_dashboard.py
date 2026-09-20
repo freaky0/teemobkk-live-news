@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import admin_auth
+import admin_page
 import category_rules as taxonomy
 import bluesky_source
 import sbh_open_news
@@ -670,6 +671,9 @@ class NewsState:
 
 
 class Handler(BaseHTTPRequestHandler):
+    # The operator document, rendered once per process on the first request that asks for it.
+    _admin_html: str = ""
+
     state: NewsState
 
     def end_headers(self) -> None:
@@ -728,6 +732,7 @@ class Handler(BaseHTTPRequestHandler):
         """
         ip = admin_auth.client_ip(self)
         if request_path == "/api/logout":
+            admin_auth.revoke(admin_auth.token_from_cookie(self.headers.get("Cookie", "")))
             logging.info("admin logout ip=%s", ip)
             self.send_json({"ok": True}, cookie=self.clear_session_cookie())
             return
@@ -759,8 +764,34 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(204)
         self.end_headers()
 
+    def serve_admin(self) -> None:
+        """Answer /admin: the login box, or the operator's dashboard for a session.
+
+        This is the only place the operator page is handed out. It is not on disk, so it is not part
+        of what the reverse proxy serves to everybody, and the anonymous answer carries no dashboard
+        markup at all - a stranger reading the response learns nothing about the page behind it.
+        """
+        if not self.is_admin():
+            body = admin_page.login_page().encode("utf-8")
+        else:
+            # Built once and kept: the document changes only when the code does, and every request
+            # would otherwise re-render the whole page.
+            if not Handler._admin_html:
+                Handler._admin_html = admin_page.operator_page()
+            body = Handler._admin_html.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Robots-Tag", "noindex, nofollow")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self) -> None:
         request_path = urllib.parse.urlsplit(self.path).path
+        if request_path in ("/admin", "/admin/"):
+            self.serve_admin()
+            return
         if request_path == "/api/news":
             params = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
 
