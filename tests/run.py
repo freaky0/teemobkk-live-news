@@ -198,8 +198,14 @@ def main():
                 continue
             p = subprocess.run(["node", os.path.join(HERE, name)] + args,
                                capture_output=True, text=True, env=env, cwd=HERE, timeout=600)
-            line = tail(p.stdout)
-            results.append((name + " " + what, p.returncode == 0, line))
+            ok = p.returncode == 0
+            results.append((name + " " + what, ok, "OK" if ok else tail(p.stdout)))
+            if not ok:
+                # A failing page check used to report only its own summary line, which says a count
+                # and not which assertion failed. The check names are the useful part.
+                for line in p.stdout.splitlines():
+                    if "FAIL" in line:
+                        print("      " + line.strip())
         for name, args, what, kind in PYTHON_CHECKS:
             if kind not in want:
                 continue
@@ -208,6 +214,10 @@ def main():
             ok = p.returncode == 0
             results.append((os.path.basename(name) + " " + what, ok,
                             "OK" if ok else tail(p.stderr)))
+            if not ok:
+                for line in p.stderr.splitlines():
+                    if line.startswith(("FAIL", "ERROR", "AssertionError")):
+                        print("      " + line.strip()[:150])
     finally:
         if started is not None:
             freed = stop_local_server(started)

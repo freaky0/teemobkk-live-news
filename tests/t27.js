@@ -163,39 +163,57 @@ const check = (name, ok, detail) => {
   g('button[data-cat="전체"]').click();
   await sleep(WAIT);
   let multiSource = null;
-  try {
-    // The global tab, because that is the tab being tested: the first multi-label story in the whole
-    // stored window was a Thailand one, and a Thailand story never appears in this tab's list, so
-    // the search below could not have found it.
-    const listed = await (await fetch(URL_ + 'api/news?limit=300&region=' + encodeURIComponent('글로벌'),
-      { cache: 'no-cache' })).json();
-    multiSource = ((listed && listed.articles) || listed || [])
-      .find((a) => (a.categories || []).length > 1) || null;
-  } catch (e) { /* reported by the check below */ }
+  let lookError = '';
+  // Three attempts: the API is the same process that may be running a collection cycle, and a single
+  // slow answer used to be reported as "the taxonomy produced no multi-label story", which is a
+  // different and much more alarming claim than "the request failed".
+  for (let attempt = 0; attempt < 3 && !multiSource; attempt += 1) {
+    try {
+      // The global tab, because that is the tab being tested: the first multi-label story in the whole
+      // stored window was a Thailand one, and a Thailand story never appears in this tab's list, so
+      // the search below could not have found it.
+      const listed = await (await fetch(URL_ + 'api/news?limit=300&region=' + encodeURIComponent('글로벌'),
+        { cache: 'no-cache' })).json();
+      multiSource = ((listed && listed.articles) || listed || [])
+        .find((a) => (a.categories || []).length > 1) || null;
+      if (!multiSource) lookError = '기사는 받았는데 두 축에 걸린 기사가 없음';
+    } catch (e) {
+      lookError = 'API 조회 실패: ' + e.message;
+      await sleep(2000);
+    }
+  }
   check('⑥ 창 안에 두 축에 걸린 기사가 있음', !!multiSource,
     multiSource ? multiSource.title.slice(0, 38) + ' · ' + multiSource.categories.join(' + ')
-                : '없음 - 분류가 겹치는 기사를 하나도 만들지 못했습니다');
+                : (lookError || '없음 - 분류가 겹치는 기사를 하나도 만들지 못했습니다'));
   if (multiSource) {
     // The label order is the taxonomy's, so the page is asked for the whole set, not for one name.
     const wanted = multiSource.categories.slice().sort().join(' + ');
     // The search box matches the typed words as one phrase, so a made-up phrase from four title
-    // words finds nothing (measured: "Forecast Fed" 0 rows while "Fed" finds 12). Words are tried
-    // longest first instead, which is also how a reader would hunt for one story.
+    // words finds nothing (measured: "Forecast Fed" 0 rows while "Fed" finds 12). The longest single
+    // word is tried instead, which is also how a reader would hunt for one story.
+    //
+    // Longest first with no length cut-off. An earlier version only accepted words longer than five
+    // characters, which is an English assumption: the first multi-label story in the global window
+    // can be a Korean one ("이스라엘군, 총격범 수색을 위해...") whose words are all shorter, so the
+    // try-list came out empty and the check failed without ever searching.
     const tries = Array.from(new Set(String(multiSource.title)
       .replace(/[^\w\s\uac00-\ud7a3]/g, ' ').split(/\s+/)
-      .filter((x) => x.length > 5))).sort((a, b) => b.length - a.length).slice(0, 3);
+      .filter((x) => x.length > 1))).sort((a, b) => b.length - a.length).slice(0, 4);
     let hit = null;
     const attempts = [];
     for (const word of tries) {
       q.value = word;
       q.oninput();
-      await sleep(WAIT + 2000);
-      const shown = cards();
-      hit = shown.find((c) => {
-        const a = c.querySelector('.title a');
-        return a && a.getAttribute('href') === multiSource.link;
-      }) || null;
-      attempts.push(word + '=' + shown.length);
+      // Polled instead of a fixed wait: the search is a round trip to a server that may be mid-cycle,
+      // and a fixed sleep turned "the answer is late" into "the card is not there".
+      for (let wait = 0; wait < 10 && !hit; wait += 1) {
+        await sleep(wait === 0 ? 2000 : 1500);
+        hit = cards().find((c) => {
+          const a = c.querySelector('.title a');
+          return a && a.getAttribute('href') === multiSource.link;
+        }) || null;
+      }
+      attempts.push(word + '=' + cards().length + (hit ? '✓' : ''));
       if (hit) break;
     }
     check('⑥ 두 축에 걸린 카드는 알약을 두 개 보여줌',
