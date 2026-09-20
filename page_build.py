@@ -921,6 +921,7 @@ async function switchSource(name){
     srcNote('저장하지 못했습니다 — '+e.message);
   }
 }
+// <<< operator-only
 
 
 async function fetchLocal(){

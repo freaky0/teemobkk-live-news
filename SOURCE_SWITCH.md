@@ -6,7 +6,9 @@
 ## 쓰는 법
 
 1. `https://teemobkk.io/admin` 에 로그인한다(비밀번호는 `tools/set_admin_password.py` 로 관리).
-2. 오른쪽 **소스 공개** 상자에서 소스마다 스위치를 누른다. 켜짐 = 배포, 꺼짐 = 숨김.
+2. 오른쪽 **수집 상태** 패널에서 소스 이름 왼쪽 스위치를 누른다. 켜짐 = 배포, 꺼짐 = 숨김.
+   감춘 소스는 이름에 취소선이 그어지고, 그 소스의 **알약도 사라진다**(눌러도 0건인 필터를
+   남기지 않는다).
 3. 누르면 바로 저장되고 목록이 다시 그려진다. 배포 페이지는 새로고침하면 반영된다.
 
 ## 어떻게 도는가
@@ -14,6 +16,7 @@
 ```
 저장   settings 표의 hidden_sources 키에 JSON 배열로 (서버 DB). 재시작에도 남는다
 필터   query_articles 의 where 절 하나 — 숨긴 기사(hidden_links) 바로 옆
+화면   수집 상태 패널 행 왼쪽의 스위치(별도 패널 없음) · 감춘 소스는 알약에서도 빠진다
        그래서 피드·건수·알약·랜딩·태국 섹션이 한 번에 같이 빠진다
 쓰기   POST /api/source — 기존 관리자 세션 검사 뒤에 있다
 읽기   /api/status 의 hidden_sources — 세션이 있을 때만 실린다(익명 응답에는 소스 상세를
@@ -35,7 +38,7 @@
 
 ```
 python tests/test_source_switch.py     # 설정·필터·엔드포인트 (12건)
-node tests/t38.js http://127.0.0.1:8765/   # 스위치 UI (8건)
+node tests/t39.js http://127.0.0.1:8765/   # 스위치 UI·알약 (12건)
 python tests/run.py --local            # 전체 (25건)
 python tools/probe_source_switch.py    # 운영 실측 — 익명 401, 필터, 되돌림까지
 ```

@@ -80,7 +80,7 @@ def main():
 
     # 2. the operator page carries the switch
     code, out, err = ssh("cd /opt/teemo-live-news && python3 -c \"import page_build;"
-                         " p=page_build.admin_page(); print('srcpanel' in p, 'switchSource' in p)\"")
+                         " p=page_build.admin_page(); print('sourceSwitch' in p, 'switchSource' in p)\"")
     check("운영자 문서에 스위치가 있음", code == 0 and out.split() == ["True", "True"], out or err[:60])
 
     before_all, _ = count()
