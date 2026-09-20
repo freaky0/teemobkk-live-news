@@ -97,8 +97,11 @@ def main():
         after_all, _ = count()
         after_src, returned = count(source=source)
         check("꺼진 소스는 조회되지 않음", after_src == 0, "before %s → after %s" % (before_src, after_src))
-        check("전체 건수도 그만큼 줄어듦", after_all == before_all - before_src,
-              "%s → %s (기대 %s)" % (before_all, after_all, before_all - before_src))
+        # The overall total cannot be asserted exactly: the collector keeps running while this is
+        # measured, so the window grows (measured once: 691 → 758 while a source of 17 was dropped).
+        # What is deterministic is the source's own count and the absence of its rows in the feed.
+        print("      전체: %s → %s (숨긴 소스 %s건 · 그 사이 수집으로 늘어난 몫 포함)"
+              % (before_all, after_all, before_src))
         feed = api("/api/news?region=%s&hours=24&limit=100" % urllib.parse.quote("글로벌"))
         leaked = [a for a in feed.get("articles", []) if a.get("source") == source]
         check("피드에도 남아 있지 않음", not leaked, "%d건 남음" % len(leaked))
