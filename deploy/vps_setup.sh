@@ -31,11 +31,22 @@ fi
 
 if [ -d "$APP_DIR/.git" ]; then
   say "update checkout in $APP_DIR"
-  git -C "$APP_DIR" fetch --quiet origin main
-  git -C "$APP_DIR" reset --hard --quiet origin/main
+  if git -C "$APP_DIR" -c credential.helper= fetch --quiet origin main 2>/dev/null; then
+    git -C "$APP_DIR" reset --hard --quiet origin/main
+  else
+    say "remote not reachable without a credential; keeping the current checkout"
+  fi
+elif [ -f "$APP_DIR/live_news_dashboard.py" ]; then
+  # The repository is private, so a host may receive the files by upload instead of a clone.
+  # A deploy key can be added later to turn the checkout into a git one; until then this is a
+  # plain directory and the setup is otherwise identical.
+  say "using the files already in $APP_DIR (no .git)"
 else
   say "clone $REPO into $APP_DIR"
-  git clone --quiet "$REPO" "$APP_DIR"
+  if ! git clone --quiet "$REPO" "$APP_DIR" 2>/dev/null; then
+    echo "clone failed - the repository is private. Upload the files, or add a deploy key." >&2
+    exit 1
+  fi
 fi
 chown -R "$APP_USER:$APP_USER" "$APP_DIR"
 
