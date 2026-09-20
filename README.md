@@ -235,6 +235,39 @@ python -c "import page_build; page_build.build_server('news.db')"
 
 쌓아둔 기사를 옮길 때는 **돌아가는 SQLite 파일을 그대로 복사하지 않는다.** WAL 모드라 본 파일만 복사하면 받은 쪽이 손상된다. `deploy/vps_merge_db.py` 가 백업 API로 뜬 사본을 바탕으로 새 호스트의 최근 분을 `INSERT OR IGNORE` 로 얹고, 교체 전후에 `PRAGMA integrity_check` 로 확인한다.
 
+### 첫 페이지와 섹션 나누기
+
+도메인 루트는 목차 페이지다. 대시보드가 루트를 점유하면 블로그·지표 페이지가 붙을 자리가 없어서, 경로를 섹션별로 나누고 루트에는 짧은 안내만 둔다.
+
+```
+/            목차 — 랜딩(landing.py). 섹션 링크와 살아있는 통계·헤드라인만
+/news/       뉴스 대시보드        /news/ko/    한국어
+/thai/       태국 소식           /thai/ko/    한국어
+/ko/ → /news/ko/              301 (옛 주소)
+```
+
+랜딩은 `landing.py` 에 따로 있다. 대시보드와 공유하는 것이 없어서(탭·피드·필터 없음) 한 모듈에 섞어 두면 서로를 건드리게 된다. 유일하게 살아있는 부분은 통계 줄과 헤드라인 티커로, 대시보드와 같은 `/api/news` 를 읽는다 — 그래서 오래된 숫자가 남지 않고 운영 화면에 있는 것도 드러나지 않는다.
+
+```
+타이포      clamp() 로 폭에 따라 커지는 제목, 마스크 리빌, 아웃라인 대형 활자 마퀴
+움직임      스크롤 진입 공개, 포인터 추적 광, 배경 드리프트, 티커, 호버 시트
+정지        prefers-reduced-motion 이면 모든 애니메이션을 끄고 최종 상태로 그린다
+아이콘      절대 경로(/favicon.ico) — 하위 디렉터리 페이지와 같은 자산을 쓴다
+```
+
+### 배포본(깃헙 페이지스)은 포인터다
+
+공개 배포본 `docs/` 는 이제 대시보드가 아니라 **살아있는 주소로 넘기는 안내 페이지**다. 수집 서버가 따로 돌기 때문에 여기에 대시보드 사본을 두면 서버가 갱신될 때마다 조용히 낡아가고, 그걸 본 사람은 낡은 줄 모른다.
+
+```
+docs/index.html         → https://teemobkk.io/
+docs/ko/index.html      → https://teemobkk.io/news/ko/
+docs/thai/index.html    → https://teemobkk.io/thai/
+docs/ko/thai/index.html → https://teemobkk.io/thai/ko/
+
+meta refresh + 실제 링크 + noindex  (refresh 를 막아둔 브라우저에서도 갈 곳이 있게)
+```
+
 ### 같은 네트워크(LAN)에서 보기
 ```bash
 python live_news_dashboard.py --public --interval 300 --port 8766 --host 0.0.0.0
