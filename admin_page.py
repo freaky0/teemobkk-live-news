@@ -95,9 +95,3 @@ def operator_page() -> str:
     if "<script>" in html:
         return html.replace("<script>", "<script>window.__ADMIN__=true;", 1)
     return html
-
-
-def logout_control(lang: str = "ko") -> str:
-    """The control that ends a session, for the page toolbar."""
-    text = "로그아웃" if lang == "ko" else "Log out"
-    return ('<button type="button" id="logout" class="admin" aria-label="%s">%s</button>' % (text, text))
