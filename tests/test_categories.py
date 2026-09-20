@@ -140,6 +140,38 @@ class MultiLabel(unittest.TestCase):
         self.assertEqual(inside[1], 1, "AI as a word must match")
         self.assertEqual(noise[1], 0, "a term inside another word must not match")
 
+    def test_several_conditions_must_all_be_present(self):
+        """Selecting two things means both of them.
+
+        Categories and terms AND; sources OR, because a row has exactly one source and requiring two
+        would always return nothing. The axes are ANDed with each other, which is what a reader gets
+        from "FinancialJuice + Trump".
+        """
+        rows = [
+            ("Trump signs tariff bill on China", "white house tariff", "SrcA"),
+            ("Trump rally in Ohio", "campaign event", "SrcA"),
+            ("Tariff decision due on Friday", "trade review", "SrcB"),
+        ]
+        for index, (title, summary, source) in enumerate(rows):
+            core.insert_articles([core.make_article(title, "https://e.test/and%d" % index, summary,
+                                                    self.fresh(), source, "media")])
+        _, two_terms, _ = core.query_articles(hours=24, text=["trump", "tariff"], limit=10)
+        self.assertEqual(two_terms, 1, "two terms must both be in the story")
+        _, one_term, _ = core.query_articles(hours=24, text="tariff", limit=10)
+        self.assertEqual(one_term, 2, "one term is one term")
+        _, two_cats, _ = core.query_articles(hours=24, category=[POLICY, TRUMP], limit=10)
+        self.assertEqual(two_cats, 1, "only the story carrying both labels")
+        _, one_cat, _ = core.query_articles(hours=24, category=POLICY, limit=10)
+        self.assertEqual(one_cat, 2)
+        _, either_source, _ = core.query_articles(hours=24, source=["SrcA", "SrcB"], limit=10)
+        self.assertEqual(either_source, 3, "several sources match any of them")
+        _, cross_axis, _ = core.query_articles(hours=24, source=["SrcB"], text=["trump"], limit=10)
+        self.assertEqual(cross_axis, 0, "axes are ANDed: no SrcB story mentions Trump")
+        _, three_ways, _ = core.query_articles(hours=24, source=["SrcA"], text=["trump"], category=[TRUMP], limit=10)
+        self.assertEqual(three_ways, 2, "source + term + category together")
+        _, impossible, _ = core.query_articles(hours=24, text=["trump"], category=[POLICY, TRUMP], limit=10)
+        self.assertEqual(impossible, 1)
+
     def test_the_published_files_carry_only_real_category_names(self):
         """The generated JSON is data on the public site: a name that is not in the table is a chip
         that filters nothing. Skips when the files have not been generated in this checkout.

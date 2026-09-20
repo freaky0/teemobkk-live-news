@@ -65,7 +65,9 @@ def matches(rows, condition):
     kind, value = condition
     value = value.lower()
     if kind == "source":
-        return {row["link"] for row in rows if (row.get("source") or "").lower().startswith(value)}
+        # Exact, like the API: `source IN (...)` does not match a prefix, and a measurement that
+        # matched one would disagree with the product for a reason that is not about the product.
+        return {row["link"] for row in rows if (row.get("source") or "").lower() == value}
     if kind == "category":
         return {row["link"] for row in rows
                 if value in [str(c).lower() for c in (row.get("categories") or [row.get("category")])]}
@@ -92,21 +94,42 @@ def api_total(base, conditions):
 
 
 def compare_with_api(base, rows):
-    """Check the server applies the same rule this script measures client-side.
+    """Check the server applies the same rules this script measures client-side.
 
-    Without this the measurement and the product can drift apart silently: the numbers below are
-    computed here, and the server has its own implementation of the same rule.
+    Without this the measurement and the product drift apart silently: the numbers here are computed
+    in Python, and the server has its own implementation in SQL. The AND rows matter most - they are
+    the ones a reader gets from selecting several conditions, and an axis that quietly ORs instead
+    would look like a filter that does nothing.
     """
-    print("--- the API's own count vs this script's whole-word count (24h) ---")
-    for value in ("ai", "tariff", "etf", "trump"):
+    print("--- the API's own count vs this script's count (24h) ---")
+    combos = [
+        ("q=ai", [("q", "ai")], [("word", "ai")]),
+        ("q=tariff", [("q", "tariff")], [("word", "tariff")]),
+        ("q=etf", [("q", "etf")], [("word", "etf")]),
+        ("q=trump", [("q", "trump")], [("word", "trump")]),
+        ("q=trump + q=tariff", [("q", "trump"), ("q", "tariff")],
+         [("word", "trump"), ("word", "tariff")]),
+        ("q=trump + q=ai", [("q", "trump"), ("q", "ai")], [("word", "trump"), ("word", "ai")]),
+        ("q=bitcoin + q=etf", [("q", "bitcoin"), ("q", "etf")],
+         [("word", "bitcoin"), ("word", "etf")]),
+        ("source=FinancialJuice", [("source", "FinancialJuice")], [("source", "FinancialJuice")]),
+        ("source=FinancialJuice + q=trump", [("source", "FinancialJuice"), ("q", "trump")],
+         [("source", "FinancialJuice"), ("word", "trump")]),
+        ("category=트럼프", [("category", "트럼프")], [("category", "트럼프")]),
+        ("category=트럼프 + category=미국 정책",
+         [("category", "트럼프"), ("category", "미국 정책")],
+         [("category", "트럼프"), ("category", "미국 정책")]),
+    ]
+    for label, params, conditions in combos:
         try:
-            served = api_total(base, [("q", value)])
+            served = api_total(base, params)
         except Exception as exc:  # noqa: BLE001 - a measurement tool reports, it does not raise
-            print("  %-8s API error: %s" % (value, exc))
+            print("  %-38s API error: %s" % (label, exc))
             continue
-        mine = len(matches(rows, ("word", value)))
-        flag = "match" if served == mine else "DIFFERENT"
-        print("  %-8s api=%5s  whole-word=%5d  -> %s" % (value, served, mine, flag))
+        sets = [matches(rows, c) for c in conditions]
+        mine = len(set.intersection(*sets)) if sets else 0
+        print("  %-38s api=%5s  here=%5d  -> %s"
+              % (label, served, mine, "match" if served == mine else "DIFFERENT"))
 
 
 def main():

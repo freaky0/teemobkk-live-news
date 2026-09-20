@@ -491,36 +491,61 @@ def archive_stats() -> dict[str, Any]:
     return {"archived_total": int(total), "window_total": int(recent), "oldest_published_at": oldest, "archive_days": ARCHIVE_DAYS}
 
 
-def query_articles(hours: int = RETENTION_HOURS, region: str = "", category: str = "", source: str = "",
-                   source_type: str = "", minimum_priority: int = 0, text: str = "",
+def _as_list(value: Any) -> list[str]:
+    """One value or several, always as a list of non-empty strings.
+
+    The API takes a repeated parameter for the axes that AND (`q`, `category`) and for the one that
+    ORs (`source`): a query string can carry one value or many, so both shapes land here.
+    """
+    if isinstance(value, (list, tuple)):
+        return [str(v).strip() for v in value if str(v).strip()]
+    text = str(value or "").strip()
+    return [text] if text else []
+
+
+def query_articles(hours: int = RETENTION_HOURS, region: str = "", category: Any = "", source: Any = "",
+                   source_type: str = "", minimum_priority: int = 0, text: Any = "",
                    limit: int = DEFAULT_LIMIT, offset: int = 0) -> tuple[list[dict[str, Any]], int, dict[str, int]]:
+    """Articles in the window, with every selected condition applied.
+
+    `category` and `text` accept one value or a list, and a list means ALL of them: that is what a
+    reader means by selecting several things. `source` accepts a list too but matches ANY of them,
+    because a row has exactly one source and requiring two would always return nothing.
+    """
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=max(1, min(int(hours), 24 * ARCHIVE_DAYS)))).isoformat()
     where = ["published_at >= ?"]
     params: list[Any] = [cutoff]
     if region:
         where.append("region = ?")
         params.append(region)
-    if category:
-        # A story can carry several categories, so the filter matches the list, not the first
-        # value: a tariff bill filed under 미국 정책 must still answer a 트럼프 filter. The stored
-        # string is wrapped in commas and the needle carries them too, so 금리 cannot match inside
-        # a longer name. ESCAPE keeps a % or _ in a category name from acting as a wildcard.
+    for value in _as_list(category):
+        # A story can carry several categories, so the filter matches the list, not the first value:
+        # a tariff bill filed under 미국 정책 must still answer a 트럼프 filter. The stored string is
+        # wrapped in commas and the needle carries them too, so 금리 cannot match inside a longer
+        # name. ESCAPE keeps a % or _ in a category name from acting as a wildcard. Several selected
+        # categories are separate clauses, so they are ANDed.
         where.append("(',' || COALESCE(NULLIF(categories, ''), category) || ',') LIKE ? ESCAPE '\\'")
-        params.append("%," + category.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + ",%")
-    if source:
-        where.append("source = ?")
-        params.append(source)
+        params.append("%," + value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + ",%")
+    sources = _as_list(source)
+    if sources:
+        where.append("source IN (%s)" % ", ".join("?" * len(sources)))
+        params.extend(sources)
     if source_type:
         where.append("source_type = ?")
         params.append(source_type)
     if minimum_priority:
         where.append("priority >= ?")
         params.append(int(minimum_priority))
-    if text:
-        # The shared term rule, inside the query: a Latin term matches as a whole word, Korean and
-        # Thai as a substring (see category_rules.text_matches for the measurement behind it).
-        where.append("(kwmatch(title, ?) OR kwmatch(summary, ?))")
-        params.extend([text, text])
+    for term in _as_list(text):
+        # Two conditions per term on purpose. LIKE is a byte-level prefilter SQLite can reject a row
+        # with, and kwmatch then applies the real rule only to the rows that survive it. Measured on
+        # the whole archive (13,264 rows, three terms): 498 ms with kwmatch alone, because every row
+        # called into Python for every term.
+        # A % or _ inside the term only makes the prefilter more permissive, which is safe: it can
+        # let a row through to the real rule, never reject one that rule would accept.
+        where.append("(title LIKE ? OR summary LIKE ?) AND (kwmatch(title, ?) OR kwmatch(summary, ?))")
+        needle = f"%{term}%"
+        params.extend([needle, needle, term, term])
     clause = " AND ".join(where)
     with DB_LOCK, db_connect() as connection:
         total = connection.execute(f"SELECT COUNT(*) FROM articles WHERE {clause}", params).fetchone()[0] or 0
@@ -674,6 +699,15 @@ class Handler(BaseHTTPRequestHandler):
             def pick(name: str) -> str:
                 return (params.get(name, [""])[0] or "").strip()
 
+            def pick_all(name: str) -> list[str]:
+                """Every value of a repeatable parameter, in order.
+
+                `?q=trump&q=tariff` means both terms, and `?category=A&category=B` means both
+                categories - that is the AND a reader expects from selecting several things. The
+                axes keep their own meaning: several sources match any of them.
+                """
+                return [str(value).strip() for value in params.get(name, []) if str(value).strip()]
+
             def number(name: str, default: int) -> int:
                 try:
                     return int(pick(name) or default)
@@ -685,8 +719,9 @@ class Handler(BaseHTTPRequestHandler):
             offset = max(0, number("offset", 0))
             minimum_priority = max(0, min(number("priority", 0), 5))
             filters = {
-                "hours": hours, "region": pick("region"), "category": pick("category"), "source": pick("source"),
-                "source_type": pick("source_type"), "minimum_priority": minimum_priority, "text": pick("q"),
+                "hours": hours, "region": pick("region"), "category": pick_all("category"),
+                "source": pick_all("source"), "source_type": pick("source_type"),
+                "minimum_priority": minimum_priority, "text": pick_all("q"),
             }
             articles, total, region_counts = self.state.query(**filters, limit=limit, offset=offset)
             payload = dict(self.state.snapshot())
@@ -694,8 +729,11 @@ class Handler(BaseHTTPRequestHandler):
                 "hours": hours, "limit": limit, "offset": offset, "total": total, "returned": len(articles),
                 "has_more": offset + len(articles) < total,
                 "archived_total": payload.get("archive", {}).get("archived_total", 0),
-                "filter": {"region": filters["region"], "category": filters["category"], "source": filters["source"],
-                           "source_type": filters["source_type"], "priority": minimum_priority, "q": filters["text"]},
+                # Echoed joined by commas: the response shape stays what a reader of the API already
+                # expects, and several values are visible instead of silently dropped.
+                "filter": {"region": filters["region"], "category": ",".join(filters["category"]),
+                           "source": ",".join(filters["source"]), "source_type": filters["source_type"],
+                           "priority": minimum_priority, "q": ",".join(filters["text"])},
                 "region_counts": region_counts or payload.get("region_counts", {}),
                 "articles": articles,
             })
