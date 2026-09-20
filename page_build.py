@@ -1029,6 +1029,70 @@ def build_public() -> dict[str, int]:
     return sizes
 
 
+LANDING = """<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TeemoBKK</title>
+<meta name="description" content="방콕에서 보는 비트코인·매크로·태국 뉴스와 경제지표">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<style>
+__CSS__
+.landing{max-width:820px;margin:9vh auto 40px;padding:0 20px}
+.landing h1{font-size:32px;letter-spacing:-.02em;margin:0 0 8px}
+.landing .lead{color:var(--muted);font-size:15px;line-height:1.75;margin:0 0 28px;max-width:62ch}
+.landing h2{font-size:13px;color:var(--muted);font-weight:600;margin:30px 0 10px}
+.sects{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.sect{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-card);padding:18px}
+.sect b{display:block;font-size:17px;margin-bottom:7px}
+.sect span{display:block;color:var(--muted);font-size:13.5px;line-height:1.65;margin-bottom:12px}
+.sect .go{display:flex;gap:10px;font-size:13px}
+.sect .go a{border:1px solid var(--line);border-radius:var(--r-pill);padding:5px 12px;color:var(--muted)}
+.sect .go a:hover{border-color:var(--accent);color:var(--accent)}
+.sect.soon{opacity:.5}
+.sect.soon b::after{content:" 준비 중";font-size:12px;color:var(--muted);font-weight:400}
+</style>
+</head>
+<body>
+<main class="landing">
+  <h1>TeemoBKK</h1>
+  <p class="lead">방콕에서 보는 시장과 생활. 뉴스 대시보드와 태국 소식을 지금 볼 수 있고,
+  블로그와 경제지표 공유는 이곳에 차례로 붙습니다.</p>
+
+  <h2>지금 볼 수 있는 것</h2>
+  <div class="sects">
+    <div class="sect">
+      <b>뉴스 대시보드</b>
+      <span>비트코인·매크로 헤드라인과 경제지표 일정. 수집한 기사를 분류·기간·출처로 걸러 볼 수 있습니다.</span>
+      <div class="go"><a href="/news/">English</a><a href="/news/ko/">한국어</a></div>
+    </div>
+    <div class="sect">
+      <b>태국 소식</b>
+      <span>비자·이민, 사고·재난, 생활·경제, 관광·보건. 방콕에 사는 사람이 먼저 볼 소식 위주입니다.</span>
+      <div class="go"><a href="/thai/">English</a><a href="/thai/ko/">한국어</a></div>
+    </div>
+  </div>
+
+  <h2>준비 중</h2>
+  <div class="sects">
+    <div class="sect soon"><b>블로그</b><span>시장과 생활에 대한 글을 이곳에 올릴 예정입니다.</span></div>
+    <div class="sect soon"><b>지표 공유</b><span>경제지표와 차트를 정리해 공유할 예정입니다.</span></div>
+  </div>
+</main>
+</body></html>
+"""
+
+
+def render_landing() -> str:
+    """The site root. Not the dashboard: this domain will also carry a blog and indicator pages,
+    so each section keeps its own path and the root stays a short index."""
+    return LANDING.replace("__CSS__", CSS)
+
+
 def build_server(db_path: str = "news.db") -> dict[str, int]:
     """The pages a deployed server serves: dynamic API data, no operator panels.
 
@@ -1036,15 +1100,22 @@ def build_server(db_path: str = "news.db") -> dict[str, int]:
     `public=False` means it reads the API, which is what a server wants so that filtering and
     paging cover the whole stored window. `admin=False` drops the collection panel, the archive
     count and the original-link control, which are the operator's view.
+
+    Sections are separate documents - /news and /thai - so the domain can also host a blog and
+    indicator pages later. Each has an English default and a Korean copy one directory down,
+    which keeps the language switcher a plain relative link.
     """
     sizes = {}
     global_seed = seed_from_db(db_path, "\uae00\ub85c\ubc8c", False, "en")
-    sizes["index.html"] = write(ROOT / "index.html", render(
-        public=False, datadir="", want_thai=False, icon_prefix="", admin=False,
-        lang="en", alt="ko/index.html", seed_html=global_seed))
-    sizes["ko/index.html"] = write(ROOT / "ko" / "index.html", render(
-        public=False, datadir="", want_thai=False, icon_prefix="../", admin=False,
-        lang="ko", alt="../index.html", seed_html=global_seed))
+    thai_seed = seed_from_db(db_path, "\ud0dc\uad6d", True, "en")
+    sizes["index.html"] = write(ROOT / "index.html", render_landing())
+    for section, want_thai, seed in (("news", False, global_seed), ("thai", True, thai_seed)):
+        for target, code, alt in ((section, "en", "ko/index.html"),
+                                  (section + "/ko", "ko", "../index.html")):
+            sizes["%s/index.html" % target] = write(
+                ROOT / target / "index.html",
+                render(public=False, datadir="", want_thai=want_thai, icon_prefix="/",
+                       admin=False, lang=code, alt=alt, seed_html=seed))
     return sizes
 
 

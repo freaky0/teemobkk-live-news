@@ -28,18 +28,25 @@ say "caddy: $(caddy version)"
 
 say "writing /etc/caddy/Caddyfile for $DOMAIN"
 cat > /etc/caddy/Caddyfile <<CADDY
-# TeemoBKK Live News. The collector listens on loopback; this is the only public door.
+# TeemoBKK. The collector listens on loopback; this is the only public door.
+#
+# The site root is a landing page (the domain will also carry a blog and indicator pages), so
+# the dashboard lives under its own path. The section pages are generated files and the
+# collector's routing only covers the root index, so Caddy serves them from disk; the landing
+# page, /api/* and the icons are proxied to the collector.
 $DOMAIN, www.$DOMAIN {
 	encode zstd gzip
 
-	# The Korean page is generated at $APP_DIR/ko/index.html and the collector's routing
-	# does not reach nested paths, so it is served from disk here.
-	handle /ko/* {
+	handle /news/* {
 		root * $APP_DIR
 		file_server
 	}
 
-	# The page, /api/*, the icons: everything else goes to the collector.
+	handle /thai/* {
+		root * $APP_DIR
+		file_server
+	}
+
 	handle {
 		reverse_proxy 127.0.0.1:$APP_PORT
 	}
