@@ -28,6 +28,7 @@ import json
 from pathlib import Path
 
 import landing
+import landing_thai
 import ui_text
 
 ROOT = Path(__file__).resolve().parent
@@ -730,6 +731,14 @@ document.addEventListener('visibilitychange',()=>{hidden=document.hidden;
   renderGuide();
   if(CFG.wantThai||hash.indexOf('tab=thai')>=0)setTab('thai',true);
   else if(hash.indexOf('tab=cal')>=0)setTab('cal',true);
+  // A section landing links straight to a category: #cat=<stored value>. The filter state is
+  // set before the first fetch rather than by pressing a pill, because the pills are only
+  // built once data arrives and a click at this point would land on nothing.
+  const catMatch=hash.match(/[#&]cat=([^&]+)/);
+  if(catMatch){
+    const wantFilter=decodeURIComponent(catMatch[1]);
+    if(wantFilter&&wantFilter!=='전체'){V.filter=wantFilter;V.tag=null;V.mode='all';V.value=''}
+  }
   // The search box starts empty on every load. Restoring the last query meant a reload
   // silently kept filtering the list, which reads as the dashboard being stuck.
   skeleton();
@@ -901,6 +910,8 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
           '<meta property="og:image" content="' + icon_prefix + 'og-image.png">\n'
           '<meta name="twitter:card" content="summary_large_image">\n')
     title = "TeemoBKK Live News" + (" · 태국 소식" if want_thai else "")
+    # Back to the section that introduced this dashboard.
+    home = "/thai/" if want_thai else "/"
     langbar = _langbar(lang, alt)
     script = SCRIPT.replace("__CONFIG__", json.dumps(config, ensure_ascii=False, separators=(",", ":")))
     script = script.replace("__CATS_GLOBAL__", json.dumps(
@@ -926,7 +937,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
 <header class="bar">
   <div class="bar-in">
     <div>
-      <div class="brand">TeemoBKK Live News</div>
+      <a class="brand" href="{home}">TeemoBKK Live News</a>
       <h1>실시간 뉴스 대시보드</h1>
     </div>
     <div class="spacer"></div>
@@ -1005,7 +1016,7 @@ MOVED = {
     "docs/index.html": "https://teemobkk.io/",
     "docs/ko/index.html": "https://teemobkk.io/news/ko/",
     "docs/thai/index.html": "https://teemobkk.io/thai/",
-    "docs/ko/thai/index.html": "https://teemobkk.io/thai/ko/",
+    "docs/ko/thai/index.html": "https://teemobkk.io/thai/news/ko/",
 }
 
 REDIRECT = """<!doctype html>
@@ -1081,13 +1092,21 @@ def build_server(db_path: str = "news.db") -> dict[str, int]:
     global_seed = seed_from_db(db_path, "\uae00\ub85c\ubc8c", False, "en")
     thai_seed = seed_from_db(db_path, "\ud0dc\uad6d", True, "en")
     sizes["index.html"] = write(ROOT / "index.html", landing.render_landing())
-    for section, want_thai, seed in (("news", False, global_seed), ("thai", True, thai_seed)):
-        for target, code, alt in ((section, "en", "ko/index.html"),
-                                  (section + "/ko", "ko", "../index.html")):
-            sizes["%s/index.html" % target] = write(
-                ROOT / target / "index.html",
-                render(public=False, datadir="", want_thai=want_thai, icon_prefix="/",
-                       admin=False, lang=code, alt=alt, seed_html=seed))
+    sizes["thai/index.html"] = write(ROOT / "thai" / "index.html",
+                                     landing_thai.render_thai_landing())
+    # Sections: /news is the market dashboard, /thai introduces the Thailand material and
+    # /thai/news is its dashboard. Each has an English default and a Korean copy one level
+    # down, so the language switcher stays a plain relative link.
+    for section, want_thai, seed in (("news", False, global_seed),
+                                     ("news/ko", False, global_seed),
+                                     ("thai/news", True, thai_seed),
+                                     ("thai/news/ko", True, thai_seed)):
+        code = "ko" if section.endswith("/ko") else "en"
+        alt = "../index.html" if code == "ko" else "ko/index.html"
+        sizes["%s/index.html" % section] = write(
+            ROOT / section / "index.html",
+            render(public=False, datadir="", want_thai=want_thai, icon_prefix="/",
+                   admin=False, lang=code, alt=alt, seed_html=seed))
     return sizes
 
 
