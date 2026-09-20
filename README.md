@@ -208,6 +208,33 @@ docs/ko/thai/index.html 한국어 · 태국 탭
 
 부수 효과로 스크립트가 꺼진 브라우저와 읽기 모드에서도 최신 목록이 보인다.
 
+### 서버에 올려 24시간 돌리기
+
+내 PC가 꺼져 있어도 돌게 하려면 VPS에 올린다. 서버가 내보내는 페이지는 **동적 API**를 읽으므로 필터·검색이 보관된 전 창에 걸리고, 운영 패널(수집 상태·보관 건수·갱신 제어)은 빠진다.
+
+```
+/                      목차 — 섹션 링크만. 블로그·지표 페이지가 나중에 붙을 자리
+/news/  /news/ko/      뉴스 대시보드 (영어 / 한국어)
+/thai/  /thai/ko/      태국 소식 (영어 / 한국어)
+/api/*                 수집 서버로 프록시
+```
+
+페이지는 `page_build.build_server()` 가 만든다. 언어별 사본이 한 단계 아래에 있어 전환기가 상대 링크로 끝나고, 아이콘 경로는 하위 디렉터리에서도 맞도록 절대 경로를 쓴다.
+
+```bash
+python -c "import page_build; page_build.build_server('news.db')"
+```
+
+서버 라우팅은 루트 `index.html` 만 처리하므로 섹션 페이지는 Caddy가 디스크에서 직접 서빙한다(코어 무수정). 설치는 `deploy/vps_setup.sh`, 웹·TLS·방화벽은 `deploy/vps_web.sh`, 갱신은 `deploy/vps_update.sh` 한 명령이다.
+
+```
+갱신 순서   소유권 복구 → git pull → 페이지 재생성 → 재시작
+            재생성을 건너뛰면 저장소에 커밋된 운영용 index.html이 잠깐 공개로 나간다
+            (서버는 요청마다 디스크에서 읽는다)
+```
+
+쌓아둔 기사를 옮길 때는 **돌아가는 SQLite 파일을 그대로 복사하지 않는다.** WAL 모드라 본 파일만 복사하면 받은 쪽이 손상된다. `deploy/vps_merge_db.py` 가 백업 API로 뜬 사본을 바탕으로 새 호스트의 최근 분을 `INSERT OR IGNORE` 로 얹고, 교체 전후에 `PRAGMA integrity_check` 로 확인한다.
+
 ### 같은 네트워크(LAN)에서 보기
 ```bash
 python live_news_dashboard.py --public --interval 300 --port 8766 --host 0.0.0.0
