@@ -9,6 +9,9 @@
 #    between the update and the restart.
 #  * An upload runs as root, and root-owned files make both the rebuild and a later git reset
 #    fail with a permission error, so ownership is restored before either happens.
+#  * The page builder reads the stored rows, so the schema is migrated before it runs. A page
+#    built against a database that has not been migrated yet is served without its first screen
+#    (measured: a rebuild that ran before the column existed produced a seeded page with 0 cards).
 #  * Git is tried first. The upload is only a fallback for a host with no checkout, or one that
 #    cannot reach the repository.
 set -euo pipefail
@@ -70,6 +73,7 @@ fi
 say "rebuilding the served page, then restarting"
 remote "cd $APP_DIR &&
         chown -R $APP_USER:$APP_USER $APP_DIR &&
+        runuser -u $APP_USER -- python3 -c 'import live_news_dashboard as core; core.init_db()' >/dev/null &&
         runuser -u $APP_USER -- python3 -c 'import page_build; page_build.build_server()' >/dev/null &&
         systemctl restart $SERVICE.service &&
         sleep 5 &&

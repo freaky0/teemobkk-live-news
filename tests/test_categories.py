@@ -147,6 +147,31 @@ class MultiLabel(unittest.TestCase):
             for name in taxonomy.split_categories(shape):
                 self.assertIn(name, taxonomy.valid_names())
 
+    def test_a_page_seed_survives_a_database_without_the_list_column(self):
+        """A rebuild can run before the collector has restarted and added the column.
+
+        Losing the seed is not a crash: the page still works from its script, but the first screen
+        a browser sees (and the one a translation offer is decided on) is empty. Measured once on
+        the deployed site: 0 seeded cards because the rebuild happened before the migration.
+        """
+        import page_build
+        old_db = os.path.join(self.dir, "old.db")
+        connection = sqlite3.connect(old_db)
+        connection.execute(
+            "CREATE TABLE articles (link TEXT PRIMARY KEY, title TEXT NOT NULL, summary TEXT, "
+            "source TEXT, source_type TEXT, region TEXT, category TEXT, asset TEXT, priority INTEGER, "
+            "published_at TEXT NOT NULL, collected_at TEXT)")
+        connection.execute(
+            "INSERT INTO articles (link, title, summary, source, source_type, region, category, "
+            "asset, priority, published_at, collected_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            ("https://e.test/seed", "a headline", "", "Src", "media", core.GLOBAL_REGION, POLICY,
+             "BTC", 3, self.fresh(), self.fresh()))
+        connection.commit()
+        connection.close()
+        html = page_build.seed_from_db(old_db, core.GLOBAL_REGION, False, "ko", limit=5)
+        self.assertIn("a headline", html, "the seed must still be read without the list column")
+        self.assertEqual(html.count("card seed"), 1)
+
     def test_every_name_this_module_returns_is_a_real_category(self):
         for shape in ("", None, [POLICY], "unknown·" + RATES, [POLICY, POLICY]):
             for name in taxonomy.split_categories(shape):

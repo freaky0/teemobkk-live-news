@@ -887,22 +887,32 @@ def seed_from_db(db_path: str, region: str, want_thai: bool, lang: str,
 
     A deployed server collects into its own news.db and never runs the publishing step, so the
     JSON the static pages seed from does not exist there.
+
+    The list column is optional here. A page is rebuilt as part of an update, and that can happen
+    before the collector has restarted and added the column, so a database without it still seeds
+    from the single stored value - a page with no seed is a first screen that only scripts fill in.
     """
     import sqlite3
-    try:
-        connection = sqlite3.connect("file:%s?mode=ro" % db_path, uri=True)
-        connection.row_factory = sqlite3.Row
-        rows = connection.execute(
-            "SELECT title, summary, source, category, categories, link, published_at FROM articles "
-            "WHERE region = ? AND title IS NOT NULL AND title != '' "
-            "ORDER BY published_at DESC LIMIT ?", (region, limit)).fetchall()
-    except sqlite3.Error:
-        return ""
-    finally:
+    selects = (
+        "SELECT title, summary, source, category, categories, link, published_at FROM articles "
+        "WHERE region = ? AND title IS NOT NULL AND title != '' "
+        "ORDER BY published_at DESC LIMIT ?",
+        "SELECT title, summary, source, category, NULL AS categories, link, published_at FROM articles "
+        "WHERE region = ? AND title IS NOT NULL AND title != '' "
+        "ORDER BY published_at DESC LIMIT ?",
+    )
+    rows = []
+    for query in selects:
         try:
-            connection.close()
-        except Exception:
-            pass
+            connection = sqlite3.connect("file:%s?mode=ro" % db_path, uri=True)
+            connection.row_factory = sqlite3.Row
+            try:
+                rows = connection.execute(query, (region, limit)).fetchall()
+                break
+            finally:
+                connection.close()
+        except sqlite3.Error:
+            continue
     return _seed_cards([dict(r) for r in rows], want_thai, lang, limit)
 
 
