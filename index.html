@@ -311,6 +311,15 @@ function bucket(iso){const t=new Date(iso).getTime();if(!isFinite(t))return '그
 function hl(t){const txt=esc(t);const q=(V.q||'').trim();if(!q)return txt;
   const qe=esc(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   try{return txt.replace(new RegExp('('+qe+')','gi'),'<mark>$1</mark>')}catch(e){return txt}}
+// The same rule the server applies, so the static copy and the API agree on what a term matches.
+// A Latin term is a whole word (with the plural s), a Korean or Thai term is a substring: measured,
+// 'ai' as a substring matched 3,720 rows where the whole word matched 599 ("said", "Thailand").
+const LATIN=/^[\x00-\u2E7F]*$/;
+function termMatch(text,needle){
+  const t=String(text==null?'':text).toLowerCase(), n=String(needle==null?'':needle).trim().toLowerCase();
+  if(!n)return false;
+  if(!LATIN.test(n))return t.indexOf(n)>=0;
+  return new RegExp('(^|[^a-z0-9])'+n.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+(n.indexOf(' ')<0?'s?':'')+'([^a-z0-9]|$)').test(t)}
 function catList(a){const c=a.categories;return (Array.isArray(c)&&c.length)?c:(a.category?[a.category]:[])}
 function keep(a){
   const hours=Number(V.hours)||24,t=new Date(a.published_at).getTime();
@@ -320,8 +329,8 @@ function keep(a){
   const labels=catList(a);
   if(V.cats.length&&!V.cats.some(c=>labels.indexOf(c)>=0))return false;
   if(V.tag&&(V.tag.k==='cat'?labels.indexOf(V.tag.v)<0:a.source!==V.tag.v))return false;
-  const q=(V.q||'').trim().toLowerCase();
-  if(q&&(((a.title||'')+' '+(a.summary||'')+' '+(a.source||'')+' '+labels.join(' ')).toLowerCase().indexOf(q)<0))return false;
+  const q=(V.q||'').trim();
+  if(q&&!termMatch((a.title||'')+' '+(a.summary||'')+' '+(a.source||'')+' '+labels.join(' '),q))return false;
   return true}
 function visible(){return PUBLIC?articles().filter(keep):articles()}
 function stars(a){const n=Number(a.priority)||0;

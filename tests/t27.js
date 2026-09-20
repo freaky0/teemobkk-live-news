@@ -33,6 +33,8 @@ const check = (name, ok, detail) => {
   const w = dom.window, d = w.document;
   const cards = () => Array.from(d.querySelectorAll('#feed .card'));
   const counts = () => (d.querySelector('#counts') || {}).textContent || '';
+  // The first number in the summary line, e.g. "총 758건, 25건 표시, 보관 13245건" -> 758.
+  const totalOf = (t) => { const m = String(t).match(/\d[\d,]*/); return m ? parseInt(m[0].replace(/,/g, ''), 10) : -1; };
   const srcOf = (c) => { const e = c.querySelector('.chip.src'); return e ? e.textContent.trim() : ''; };
   const catOf = (c) => { const e = c.querySelector('.chip.tap:not(.src)'); return e ? e.textContent.trim() : ''; };
   // A story can carry more than one axis, so a card can show several labels and the one that was
@@ -108,11 +110,34 @@ const check = (name, ok, detail) => {
   // --- 5. the Thai tab has its own category row ---
   d.querySelector('#tab-thai').click();
   await sleep(WAIT + 3000);
-  t('button[data-cat="비자·이민"]').click();
-  await sleep(WAIT + 3000);
+  // The Thai category is read off a card on screen instead of being named here. Naming 비자·이민
+  // made this check depend on the data: it is a rare axis and the window has held zero of them
+  // (measured: 0 rows in 24 hours, last one 25 hours old), which failed the check for a reason that
+  // had nothing to do with the filter.
+  const thCards = cards();
+  const thTotalBefore = totalOf(counts());
+  // Pick the label that appears on the fewest cards: that is a real category rather than the
+  // generic one every story falls back to, and the filter then has to prove it narrows the list.
+  const freq = {};
+  thCards.forEach((c) => labelsOf(c).forEach((l) => { freq[l] = (freq[l] || 0) + 1; }));
+  const thFirst = Object.keys(freq).sort((a, b) => freq[a] - freq[b] || a.localeCompare(b))[0] || '';
+  // Matched by the pill's text, not by data-cat: on the Thai tab a chip shows a short label
+  // (생활·교통·날씨) while the stored value is the longer full name, so a label cannot be looked up
+  // as a stored value. On the global tab those two happen to be identical, which is why the same
+  // lookup works a few lines above.
+  const thPill = Array.from(d.querySelectorAll('#filters-thai button[data-cat]'))
+    .find((b) => b.textContent.replace(/\d+$/, '').trim() === thFirst);
+  check('⑤ 태국 탭에 카드가 있음', thCards.length > 0, thCards.length + '건');
+  check('⑤ 그 분류의 알약이 있음', !!thPill, thFirst || '(없음)');
+  if (thPill) { thPill.click(); await sleep(WAIT + 3000); }
   const th = cards();
-  check('⑤ 태국 탭 비자·이민 → 그 분류를 가진 카드', allHave(th, '비자·이민'),
-    Array.from(new Set(th.flatMap(labelsOf))).join(', ') || '(없음)');
+  const thTotalAfter = totalOf(counts());
+  // Compared on the reported total, not on the number of cards drawn: the list draws at most one
+  // page (25), so a category holding more rows than that shows 25 cards before and after and only
+  // the total moves.
+  check('⑤ 태국 탭 분류 알약 → 그 분류가 남고 총계가 줄어듦',
+    !!thPill && allHave(th, thFirst) && thTotalAfter >= 0 && thTotalAfter < thTotalBefore,
+    thFirst + ' · ' + th.length + '건 표시 · 총 ' + thTotalAfter + ' (전 ' + thTotalBefore + ') · 표본 ' + (freq[thFirst] || 0) + '건');
 
   // --- 6. a story that matched two axes shows both labels ---
   d.querySelector('#tab-global').click();

@@ -98,6 +98,39 @@ def term_hits(text: str, term: str) -> bool:
     return term in text
 
 
+def is_latin_term(term: str) -> bool:
+    """True when every character is Latin/punctuation/digit - i.e. the term has word breaks.
+
+    Korean and Thai runs have no reliable word breaks, so a boundary rule cannot be applied to
+    them; a mixed term is treated as one of those, because it contains one.
+    """
+    return all(ord(char) < 0x2E80 for char in term)
+
+
+def text_matches(text: str, needle: str) -> bool:
+    """The one rule for a term the reader typed, shared by the server and the page script.
+
+    A Latin term matches as a whole word (with the optional plural s the taxonomy already uses), so
+    "AI" stops matching "said" and "Thailand". Measured: 'ai' as a plain substring matched 3,720
+    rows in one window where the whole word matched 599. A Korean or Thai term stays a substring:
+    their writing has no spaces between words, so a boundary test would drop real matches.
+
+    A multi-word phrase is matched as a phrase, with boundaries only at its ends - the trend strip
+    only offers a phrase when it appears joined in the title, because a clicked term that is not
+    literally there returns nothing.
+    """
+    import re
+    text = str(text or "").lower()
+    needle = str(needle or "").strip().lower()
+    if not needle:
+        return False
+    if not is_latin_term(needle):
+        return needle in text
+    body = re.escape(needle)
+    tail = "s?" if " " not in needle else ""
+    return re.search(r"(?<![a-z0-9])" + body + tail + r"(?![a-z0-9])", text) is not None
+
+
 def match_all(text: str, rules: list[tuple[str, list[str]]]) -> list[str]:
     """Every matching category, in the table's priority order. Empty when nothing matches."""
     return [name for name, terms in rules if any(term_hits(text, term) for term in terms)]

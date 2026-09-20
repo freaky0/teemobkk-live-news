@@ -105,6 +105,41 @@ class MultiLabel(unittest.TestCase):
             for value, name in ui_text.CATS["global"] + ui_text.CATS["thai"]:
                 self.assertIn(value, labels, "%s is missing a %s label" % (name, lang))
 
+    def test_the_reader_term_rule(self):
+        """Latin terms are whole words, Korean and Thai are substrings.
+
+        The rule exists because 'ai' as a plain substring matched 3,720 rows in one window where the
+        whole word matched 599 - it fires inside "said", "Thailand" and "chain", which a filter that
+        ANDs several conditions cannot survive.
+        """
+        m = taxonomy.text_matches
+        self.assertFalse(m("he said it was time", "ai"))
+        self.assertTrue(m("an AI model rallied", "ai"))
+        self.assertTrue(m("AI-driven rally", "ai"))
+        self.assertTrue(m("An Ai Model", "AI"))
+        self.assertTrue(m("spot ETFs saw inflows", "etf"), "the taxonomy's plural s carries over")
+        self.assertFalse(m("etfsx noise", "etf"))
+        self.assertFalse(m("ethereal talk", "eth"))
+        self.assertTrue(m("the asian games opened", "asian games"))
+        self.assertFalse(m("asian regional games", "asian games"),
+                         "a phrase matches only when it is there")
+        self.assertFalse(m("", "ai"))
+        self.assertFalse(m("anything", ""))
+        ko = "트럼프 관세"
+        self.assertTrue(m(ko, ko[:2]), "Korean has no word breaks, so it stays a substring")
+        thai = "น้ำท่วมกรุงเทพ"
+        self.assertTrue(m(thai, thai[:4]), "Thai keeps substring matching too")
+
+    def test_the_api_uses_the_same_rule_as_the_module(self):
+        """The server's filter must be the rule this module defines, not a second implementation."""
+        article = core.make_article("An AI model said the Thai baht rose", "https://e.test/rule", "",
+                                    self.fresh(), "Src", "media")
+        core.insert_articles([article])
+        inside = core.query_articles(hours=24, text="ai", limit=10)          # whole word: "AI"
+        noise = core.query_articles(hours=24, text="hai", limit=10)          # only inside "Thai"
+        self.assertEqual(inside[1], 1, "AI as a word must match")
+        self.assertEqual(noise[1], 0, "a term inside another word must not match")
+
     def test_the_published_files_carry_only_real_category_names(self):
         """The generated JSON is data on the public site: a name that is not in the table is a chip
         that filters nothing. Skips when the files have not been generated in this checkout.

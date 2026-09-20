@@ -406,11 +406,21 @@ def keep_recent(articles: list[dict[str, Any]], hours: int = RETENTION_HOURS) ->
 DB_LOCK = threading.Lock()
 
 
+def _kwmatch(text: str, needle: str) -> int:
+    """SQL-callable wrapper for the shared term rule, so the filter runs inside the query.
+
+    Filtering in Python after the query would break LIMIT/OFFSET: the page count comes from a COUNT
+    over the same WHERE clause.
+    """
+    return 1 if taxonomy.text_matches(text, needle) else 0
+
+
 def db_connect() -> sqlite3.Connection:
     connection = sqlite3.connect(DB_FILE, timeout=15)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA journal_mode=WAL")
     connection.execute("PRAGMA synchronous=NORMAL")
+    connection.create_function("kwmatch", 2, _kwmatch, deterministic=True)
     return connection
 
 
@@ -507,9 +517,10 @@ def query_articles(hours: int = RETENTION_HOURS, region: str = "", category: str
         where.append("priority >= ?")
         params.append(int(minimum_priority))
     if text:
-        where.append("(title LIKE ? OR summary LIKE ?)")
-        needle = f"%{text}%"
-        params.extend([needle, needle])
+        # The shared term rule, inside the query: a Latin term matches as a whole word, Korean and
+        # Thai as a substring (see category_rules.text_matches for the measurement behind it).
+        where.append("(kwmatch(title, ?) OR kwmatch(summary, ?))")
+        params.extend([text, text])
     clause = " AND ".join(where)
     with DB_LOCK, db_connect() as connection:
         total = connection.execute(f"SELECT COUNT(*) FROM articles WHERE {clause}", params).fetchone()[0] or 0

@@ -13,10 +13,17 @@ Two matching semantics are measured side by side, because the API's `q` is a pla
 """
 import argparse
 import json
+import os
 import re
+import sys
 import urllib.parse
 import urllib.request
 from collections import Counter
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
+
+import category_rules as taxonomy  # noqa: E402
 
 UA = {"User-Agent": "Mozilla/5.0 (teemo-measure)"}
 
@@ -48,7 +55,13 @@ def text_of(row):
 
 
 def matches(rows, condition):
-    """condition: ('source', name) | ('category', name) | ('word', text) | ('substr', text)"""
+    """condition: ('source', name) | ('category', name) | ('word', text) | ('substr', text)
+
+    The 'word' kind calls the product's own rule (category_rules.text_matches) instead of a copy of
+    it. A copy drifts: the first version of this tool omitted the plural s the product allows, so
+    'tariff' measured 1 here while the server answered 11 ("tariffs") and the difference looked like
+    a server bug.
+    """
     kind, value = condition
     value = value.lower()
     if kind == "source":
@@ -59,8 +72,7 @@ def matches(rows, condition):
     if kind == "substr":
         return {row["link"] for row in rows if value in text_of(row)}
     if kind == "word":
-        pattern = re.compile(r"(?<![a-z0-9])" + re.escape(value) + r"(?![a-z0-9])")
-        return {row["link"] for row in rows if pattern.search(text_of(row))}
+        return {row["link"] for row in rows if taxonomy.text_matches(text_of(row), value)}
     raise ValueError(kind)
 
 
@@ -69,6 +81,32 @@ def show(rows, label, conditions):
     each = " · ".join("%s=%d" % (c[1], len(s)) for c, s in zip(conditions, sets))
     every = set.intersection(*sets) if sets else set()
     print("  %-58s %s  ->  AND=%d" % (label, each, len(every)))
+
+
+def api_total(base, conditions):
+    """The API's own count for a filter - the server's rule, not this script's."""
+    query = [("hours", 24), ("limit", 1)] + conditions
+    request = urllib.request.Request("%s/api/news?%s" % (base, urllib.parse.urlencode(query)), headers=UA)
+    with urllib.request.urlopen(request, timeout=30) as response:
+        return json.load(response).get("total")
+
+
+def compare_with_api(base, rows):
+    """Check the server applies the same rule this script measures client-side.
+
+    Without this the measurement and the product can drift apart silently: the numbers below are
+    computed here, and the server has its own implementation of the same rule.
+    """
+    print("--- the API's own count vs this script's whole-word count (24h) ---")
+    for value in ("ai", "tariff", "etf", "trump"):
+        try:
+            served = api_total(base, [("q", value)])
+        except Exception as exc:  # noqa: BLE001 - a measurement tool reports, it does not raise
+            print("  %-8s API error: %s" % (value, exc))
+            continue
+        mine = len(matches(rows, ("word", value)))
+        flag = "match" if served == mine else "DIFFERENT"
+        print("  %-8s api=%5s  whole-word=%5d  -> %s" % (value, served, mine, flag))
 
 
 def main():
@@ -83,6 +121,9 @@ def main():
         rows, total = fetch_window(args.url, hours)
         print("=== window %sh: fetched %d of %s rows ===\n" % (hours, len(rows), total))
         report(rows)
+    rows, _total = fetch_window(args.url, 24)
+    print()
+    compare_with_api(args.url, rows)
     return 0
 
 

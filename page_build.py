@@ -276,6 +276,28 @@ function bucket(iso){const t=new Date(iso).getTime();if(!isFinite(t))return '그
 function hl(t){const txt=esc(t);const q=(V.q||'').trim();if(!q)return txt;
   const qe=esc(q).replace(/[.*+?^${}()|[\\]\\\\]/g,'\\\\$&');
   try{return txt.replace(new RegExp('('+qe+')','gi'),'<mark>$1</mark>')}catch(e){return txt}}
+// The same rule the server applies, so the static copy and the API agree on what a term matches.
+// A Latin term is a whole word (with the plural s), a Korean or Thai term is a substring: measured,
+// 'ai' as a substring matched 3,720 rows where the whole word matched 599 ("said", "Thailand").
+// Written with indexOf instead of a RegExp on purpose: this script lives inside a Python string, and
+// a regex character class written here arrives with its backslashes doubled - it still parses and
+// then silently matches the wrong thing.
+function isLatinTerm(n){for(let i=0;i<n.length;i++){if(n.charCodeAt(i)>0x2E7F)return false}return true}
+function termMatch(text,needle){
+  const t=String(text==null?'':text).toLowerCase(), n=String(needle==null?'':needle).trim().toLowerCase();
+  if(!n)return false;
+  if(!isLatinTerm(n))return t.indexOf(n)>=0;
+  const plural=n.indexOf(' ')<0;
+  for(let at=t.indexOf(n);at>=0;at=t.indexOf(n,at+1)){
+    const before=t.charAt(at-1), after=t.charAt(at+n.length);
+    if(before&&/[a-z0-9]/.test(before))continue;
+    if(after&&/[a-z0-9]/.test(after)){
+      if(!plural||after!=='s')continue;
+      const next=t.charAt(at+n.length+1);
+      if(next&&/[a-z0-9]/.test(next))continue;
+    }
+    return true}
+  return false}
 function catList(a){const c=a.categories;return (Array.isArray(c)&&c.length)?c:(a.category?[a.category]:[])}
 function keep(a){
   const hours=Number(V.hours)||24,t=new Date(a.published_at).getTime();
@@ -285,8 +307,8 @@ function keep(a){
   const labels=catList(a);
   if(V.cats.length&&!V.cats.some(c=>labels.indexOf(c)>=0))return false;
   if(V.tag&&(V.tag.k==='cat'?labels.indexOf(V.tag.v)<0:a.source!==V.tag.v))return false;
-  const q=(V.q||'').trim().toLowerCase();
-  if(q&&(((a.title||'')+' '+(a.summary||'')+' '+(a.source||'')+' '+labels.join(' ')).toLowerCase().indexOf(q)<0))return false;
+  const q=(V.q||'').trim();
+  if(q&&!termMatch((a.title||'')+' '+(a.summary||'')+' '+(a.source||'')+' '+labels.join(' '),q))return false;
   return true}
 function visible(){return PUBLIC?articles().filter(keep):articles()}
 function stars(a){const n=Number(a.priority)||0;
