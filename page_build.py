@@ -25,6 +25,8 @@ import datetime
 import html
 import io
 import json
+import os
+import shutil
 from pathlib import Path
 
 import landing
@@ -1076,6 +1078,29 @@ def build_public() -> dict[str, int]:
     return sizes
 
 
+def _prune_sections(keep) -> list:
+    """Delete generated section directories that are not part of the current layout.
+
+    A section path can change - the Thailand dashboard moved from /thai/ to /thai/news/ when the
+    section gained a front page - and the old directory stays on the host. A directory that still
+    holds an index.html keeps answering at its old address, so the redirect written for that
+    address never runs and readers keep getting the previous layout out of a stale file.
+    Only the section trees are walked; docs/ and the repository root are never touched.
+    """
+    keep = {Path(p) for p in keep}
+    removed = []
+    for section in ("news", "thai"):
+        base = ROOT / section
+        if not base.is_dir():
+            continue
+        for dirpath, _dirnames, filenames in os.walk(base, topdown=False):
+            here = Path(dirpath)
+            if "index.html" in filenames and here not in keep:
+                shutil.rmtree(here)
+                removed.append(here.relative_to(ROOT).as_posix())
+    return removed
+
+
 def build_server(db_path: str = "news.db") -> dict[str, int]:
     """The pages a deployed server serves: dynamic API data, no operator panels.
 
@@ -1091,6 +1116,10 @@ def build_server(db_path: str = "news.db") -> dict[str, int]:
     sizes = {}
     global_seed = seed_from_db(db_path, "\uae00\ub85c\ubc8c", False, "en")
     thai_seed = seed_from_db(db_path, "\ud0dc\uad6d", True, "en")
+    targets = ("news", "news/ko", "thai/news", "thai/news/ko")
+    pruned = _prune_sections(ROOT / t for t in targets)
+    for gone in pruned:
+        print("removed stale section %s (its address now redirects)" % gone)
     sizes["index.html"] = write(ROOT / "index.html", landing.render_landing())
     sizes["thai/index.html"] = write(ROOT / "thai" / "index.html",
                                      landing_thai.render_thai_landing())

@@ -42,7 +42,10 @@ $DOMAIN, www.$DOMAIN {
 	redir /news /news/ permanent
 	redir /thai /thai/ permanent
 	redir /news/ko /news/ko/ permanent
-	redir /thai/ko /thai/ko/ permanent
+	# The Korean Thailand dashboard moved one level in when the section gained a front page.
+	redir /thai/ko /thai/news/ko/ permanent
+	redir /thai/ko/ /thai/news/ko/ permanent
+	redir /thai/news /thai/news/ permanent
 
 	handle /news/* {
 		root * $APP_DIR
