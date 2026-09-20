@@ -82,7 +82,10 @@ with sync_playwright() as p:
     # 3. categories multi-select, and they compose with keywords
     page.set_viewport_size({"width": 1200, "height": 1000})
     page.wait_for_timeout(600)
-    pills = page.locator("#filters-global button[data-cat]")
+    rows = page.evaluate("""() => [...document.querySelectorAll('#filters-global,#filters-thai')]
+        .filter(r=>!r.hidden).map(r=>'#'+r.id)""")
+    print("      알약 줄: %s" % (rows[0] if rows else "없음"))
+    pills = page.locator("%s button[data-cat]" % rows[0])
     names = [pills.nth(i).get_attribute("data-cat") for i in range(3)]
     c1, c2 = names[1], names[2]
     reqs.clear()
@@ -90,8 +93,9 @@ with sync_playwright() as p:
     page.wait_for_timeout(1800)
     pills.nth(2).click()
     page.wait_for_timeout(2200)
-    active = page.evaluate("""() => [...document.querySelectorAll('#filters-global button[data-cat].active')]
-                                      .map(b=>b.dataset.cat)""")
+    active = page.evaluate("""() => [...document.querySelectorAll(
+        '#filters-global button[data-cat].active,#filters-thai button[data-cat].active')]
+        .map(b=>b.dataset.cat)""")
     check("분류 두 개를 함께 고를 수 있음", len(active) == 2 and c1 in active and c2 in active,
           " + ".join(active))
     cat2 = [u for u in reqs if "category=" in u]
@@ -109,7 +113,7 @@ with sync_playwright() as p:
     if combo:
         print("      예: %s" % combo[0].split("?")[1][:110])
     state = page.evaluate("""() => ({cats:window.V.cats, terms:window.V.terms,
-                                     pills:[...document.querySelectorAll('#filters-global button[data-cat].active')]
+                                     pills:[...document.querySelectorAll('#filters-global button[data-cat].active,#filters-thai button[data-cat].active')]
                                        .map(b=>b.dataset.cat),
                                      on:[...document.querySelectorAll('#trend .tbtn.on[data-trend]')]
                                        .map(b=>b.dataset.trend)})""")
@@ -119,11 +123,11 @@ with sync_playwright() as p:
 
     # 4. 전체 is still the one control that clears everything
     reqs.clear()
-    page.locator("#filters-global button[data-cat]").first.click()
+    page.locator("%s button[data-cat]" % rows[0]).first.click()
     page.wait_for_timeout(2500)
     cleared = page.evaluate("""() => ({cats:window.V.cats, terms:window.V.terms,
                                        box:(document.querySelector('#q')||{}).value,
-                                       pills:document.querySelectorAll('#filters-global button[data-cat].active').length,
+                                       pills:document.querySelectorAll('#filters-global button[data-cat].active,#filters-thai button[data-cat].active').length,
                                        on:document.querySelectorAll('#trend .tbtn.on[data-trend]').length})""")
     check("전체를 누르면 분류·키워드·검색어가 모두 풀림",
           cleared["cats"] == [] and cleared["terms"] == [] and (cleared["box"] or "") == "",
