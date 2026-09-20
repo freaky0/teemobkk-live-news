@@ -37,6 +37,9 @@ worker/.wrangler/
 # page-check harness: jsdom is installed per machine, not committed
 tests/node_modules/
 
+# the admin password lives on the host that serves the site, never in the repository
+.admin_password
+
 # section pages are generated on the host that serves them
 /ko/
 /news/

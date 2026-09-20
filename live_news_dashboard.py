@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import admin_auth
 import category_rules as taxonomy
 import bluesky_source
 import sbh_open_news
@@ -678,14 +679,81 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         super().end_headers()
 
-    def send_json(self, payload: dict[str, Any]) -> None:
+    def send_json(self, payload: dict[str, Any], cookie: str = "") -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Cache-Control", "no-store")
+        if cookie:
+            self.send_header("Set-Cookie", cookie)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def read_json_body(self) -> dict[str, Any] | None:
+        """The request body as JSON, or None when it is too large or not JSON."""
+        try:
+            length = int(self.headers.get("Content-Length", "0") or 0)
+        except ValueError:
+            return None
+        if length < 0 or length > admin_auth.MAX_BODY:
+            return None
+        if not length:
+            return {}
+        try:
+            payload = json.loads(self.rfile.read(length).decode("utf-8"))
+        except (ValueError, UnicodeDecodeError):
+            return None
+        return payload if isinstance(payload, dict) else None
+
+    def session_cookie(self) -> str:
+        return admin_auth.cookie_header(admin_auth.issue_token(), admin_auth.is_secure(self))
+
+    def clear_session_cookie(self) -> str:
+        return admin_auth.clear_cookie(admin_auth.is_secure(self))
+
+    def is_admin(self) -> bool:
+        """Whether this request carries an admin session, checked per request.
+
+        The deployment runs in read-only public mode; a session upgrades that request only, so the
+        operator sees what an anonymous visitor does not, in the same process.
+        """
+        return admin_auth.authenticated(self)
+
+    def handle_session(self, request_path: str) -> None:
+        """Login and logout: the only writes that must work on the public deployment.
+
+        Without them there is no way to obtain a session at all, so they are answered before the
+        session check rather than after it.
+        """
+        ip = admin_auth.client_ip(self)
+        if request_path == "/api/logout":
+            logging.info("admin logout ip=%s", ip)
+            self.send_json({"ok": True}, cookie=self.clear_session_cookie())
+            return
+        if not admin_auth.login_allowed(ip):
+            logging.warning("admin login refused (too many attempts) ip=%s", ip)
+            self.send_error(429, "Too many attempts")
+            return
+        payload = self.read_json_body()
+        if payload is None:
+            self.send_error(400, "Invalid JSON")
+            return
+        if not admin_auth.is_configured():
+            # Nothing to compare against: answer like a wrong password, and say so in the log.
+            admin_auth.note_failure(ip)
+            logging.warning("admin login refused (no password file at %s) ip=%s",
+                            admin_auth.PASSWORD_FILE, ip)
+            self.send_error(401, "Wrong password")
+            return
+        if not admin_auth.check_password(str(payload.get("password") or "")):
+            admin_auth.note_failure(ip)
+            logging.warning("admin login failed ip=%s", ip)
+            self.send_error(401, "Wrong password")
+            return
+        admin_auth.note_success(ip)
+        logging.info("admin login ok ip=%s", ip)
+        self.send_json({"ok": True}, cookie=self.session_cookie())
 
     def do_OPTIONS(self) -> None:
         self.send_response(204)
@@ -737,20 +805,29 @@ class Handler(BaseHTTPRequestHandler):
                 "region_counts": region_counts or payload.get("region_counts", {}),
                 "articles": articles,
             })
-            if PUBLIC_MODE:
+            if PUBLIC_MODE and not self.is_admin():
                 for key in ("sources", "archive", "archived_total", "fresh_article_count", "inserted_article_count"):
                     payload.pop(key, None)
             self.send_json(payload)
             return
         if request_path == "/api/stats":
-            if PUBLIC_MODE:
+            if PUBLIC_MODE and not self.is_admin():
                 self.send_error(404)
                 return
             self.send_json({"archive": archive_stats(), "updated_at_ict": self.state.snapshot().get("updated_at_ict")})
             return
         if request_path == "/api/status":
             data = self.state.snapshot()
-            self.send_json({"updated_at_ict": data.get("updated_at_ict"), "window_hours": data.get("window_hours", RETENTION_HOURS), "article_count": data.get("article_count", 0), "interval_seconds": self.state.interval, "region_counts": data.get("region_counts", {}), "archive": data.get("archive", {}), "sources": data.get("sources", {})})
+            payload = {"updated_at_ict": data.get("updated_at_ict"), "window_hours": data.get("window_hours", RETENTION_HOURS),
+                       "article_count": data.get("article_count", 0), "region_counts": data.get("region_counts", {})}
+            # The collection state, the retention counts and the refresh interval are the operator's
+            # view; an anonymous visitor gets the clock and the counts, which the page needs. The
+            # deployment in read-only mode used to answer with all of it (measured: sources and
+            # archive present in the anonymous response).
+            if not (PUBLIC_MODE and not self.is_admin()):
+                payload.update({"interval_seconds": self.state.interval, "archive": data.get("archive", {}),
+                                "sources": data.get("sources", {})})
+            self.send_json(payload)
             return
         static = STATIC_FILES.get(request_path)
         if static:
@@ -770,7 +847,7 @@ class Handler(BaseHTTPRequestHandler):
         path = "/index.html" if request_path in {"/", ""} else request_path
         if path == "/index.html":
             body = (ROOT / "index.html").read_bytes()
-            if PUBLIC_MODE:
+            if PUBLIC_MODE and not self.is_admin():
                 body = body.replace(b"<script>", b"<script>window.__PUBLIC__=true;", 1)
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -782,14 +859,25 @@ class Handler(BaseHTTPRequestHandler):
         self.send_error(404)
 
     def do_POST(self) -> None:
-        if PUBLIC_MODE:
-            self.send_error(403, "Read-only public mode")
-            return
         request_path = urllib.parse.urlsplit(self.path).path
-        try:
-            length = int(self.headers.get("Content-Length", "0"))
-            payload = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
-        except (ValueError, TypeError, json.JSONDecodeError):
+        # Login and logout are answered before the session check: they are how a session is obtained.
+        if request_path in ("/api/login", "/api/logout"):
+            self.handle_session(request_path)
+            return
+        # A write needs a session whenever this server is public, and whenever the request arrived
+        # over TLS - the second condition means a deployment that forgot --public, but sits behind
+        # the TLS proxy, still refuses writes instead of trusting the flag. A local server (no
+        # --public, plain http, loopback) keeps its previous behaviour, which is the operator's own
+        # machine.
+        if PUBLIC_MODE or admin_auth.is_secure(self):
+            allowed, why = admin_auth.write_request_ok(self)
+            if not allowed:
+                logging.warning("write refused (%s) %s ip=%s", why, request_path,
+                                admin_auth.client_ip(self))
+                self.send_error(401, "Admin session required")
+                return
+        payload = self.read_json_body()
+        if payload is None:
             self.send_error(400, "Invalid JSON")
             return
         if request_path == "/api/settings":
@@ -802,13 +890,8 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self.send_error(404)
             return
-        body = json.dumps(response, ensure_ascii=False).encode("utf-8")
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+        logging.info("admin write %s ip=%s", request_path, admin_auth.client_ip(self))
+        self.send_json(response)
 
     def log_message(self, fmt: str, *args: Any) -> None:
         logging.info("%s - %s", self.address_string(), fmt % args)

@@ -43,6 +43,8 @@ SUITE = [
 PYTHON_CHECKS = [
     ("test_landing.py", ["-m", "unittest", "test_landing"], "랜딩 단위 계약", "local"),
     ("test_categories.py", ["tests/test_categories.py"], "분류 다중 라벨 계약", "local"),
+    ("test_admin_auth.py", ["tests/test_admin_auth.py"], "관리자 세션 규칙", "local"),
+    ("test_admin_http.py", ["tests/test_admin_http.py"], "관리자 HTTP 게이트", "local"),
 ]
 
 
