@@ -42,6 +42,10 @@ $DOMAIN, www.$DOMAIN {
 		file_server
 	}
 
+	# The Korean dashboard used to live at /ko/. Redirect rather than 404: the address was public.
+	redir /ko /news/ko/ permanent
+	redir /ko/ /news/ko/ permanent
+
 	handle /thai/* {
 		root * $APP_DIR
 		file_server
