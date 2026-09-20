@@ -166,7 +166,7 @@ select{cursor:pointer}
    with no way to read it. The overlay is absolute so it does not move the headline under it. */
 .pickbadge .pnote{color:#d6f7ec;font-weight:500;max-width:46ch;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap;cursor:help}
-.pickbadge:hover .pnote{position:absolute;z-index:5;margin-top:2px;max-width:none;white-space:normal;
+.pickbadge:hover .pnote{position:absolute;z-index:5;margin-top:2px;max-width:min(72ch,84vw);white-space:normal;
   overflow:visible;background:var(--panel);border:1px solid #21c997;border-radius:var(--r-ctl);
   padding:8px 12px;box-shadow:0 6px 20px rgba(0,0,0,.5)}
 .pill.src.th.active{border-color:var(--thai);color:var(--thai)}
@@ -843,7 +843,7 @@ async function hideStory(link,title){
 // optional and asked for at the moment of picking, so a pick is never held up by an empty prompt -
 // a cancel or a browser that refuses to show one still records the pick with no phrase.
 function askPickNote(){
-  try{return (window.prompt(PICK+' — 한 줄 문구 (비워도 됩니다)','')||'').trim().slice(0,120)}
+  try{return (window.prompt(PICK+' — 한 줄 문구 (비워도 됩니다)','')||'').trim().slice(0,300)}
   catch(e){return ''}}
 async function togglePick(link,title,picked){
   const note=picked?'':askPickNote();

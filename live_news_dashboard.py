@@ -33,6 +33,9 @@ PUBLIC_MODE = False
 DEFAULT_INTERVAL = 30
 RETENTION_HOURS = 24
 ARCHIVE_DAYS = 90
+# How long a Teemo's Pick phrase may be. It shows as one truncated line in the row and opens in full
+# on hover, so the ceiling is about what the operator would ever type, not about the screen.
+PICK_NOTE_MAX = 300
 DEFAULT_LIMIT = 300
 MAX_LIMIT = 1000
 ICT = timezone(timedelta(hours=7), name="ICT")
@@ -52,12 +55,24 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 
 RSS_SOURCES = [
     ("CoinDesk", "crypto", "https://www.coindesk.com/arc/outboundfeeds/rss"),
+    ("Cointelegraph", "crypto", "https://cointelegraph.com/rss"),
+    ("The Block", "crypto", "https://www.theblock.co/rss.xml"),
+    ("CryptoSlate", "crypto", "https://cryptoslate.com/feed/"),
     ("Decrypt", "crypto", "https://decrypt.co/feed"),
     ("Bitcoin Magazine", "crypto", "https://bitcoinmagazine.com/.rss/full/"),
     ("SEC", "official", "https://www.sec.gov/news/pressreleases.rss"),
     ("Federal Reserve", "official", "https://www.federalreserve.gov/feeds/press_all.xml"),
     ("Fed Speeches", "official", "https://www.federalreserve.gov/feeds/speeches.xml"),
+    ("ECB", "official", "https://www.ecb.europa.eu/rss/press.html"),
     ("Bank of England", "official", "https://www.bankofengland.co.uk/rss/news"),
+    # Macro and market wires. Measured on the day they were added: 7-50 items each, newest within
+    # a day, so they are alive rather than cached shells (tools/probe_sources.py).
+    ("MarketWatch", "news", "https://feeds.marketwatch.com/marketwatch/topstories/"),
+    ("CNBC Finance", "news", "https://www.cnbc.com/id/10000664/device/rss/rss.html"),
+    ("Yahoo Finance", "news", "https://finance.yahoo.com/news/rssindex"),
+    ("Investing.com", "news", "https://www.investing.com/rss/news.rss"),
+    ("Seeking Alpha", "news", "https://seekingalpha.com/market_currents.xml"),
+    ("FXStreet", "news", "https://www.fxstreet.com/rss/news"),
     ("FinancialJuice", "breaking", "https://www.financialjuice.com/feed.ashx?xy=rss"),
 ]
 
@@ -1114,7 +1129,7 @@ class Handler(BaseHTTPRequestHandler):
             elif request_path == "/api/unhide":
                 total = unhide_link(link)
             elif request_path == "/api/pick":
-                total = pick_link(link, str(payload.get("note") or "").strip()[:120])
+                total = pick_link(link, str(payload.get("note") or "").strip()[:PICK_NOTE_MAX])
             else:
                 total = unpick_link(link)
             logging.info("admin %s %s ip=%s", request_path.rsplit("/", 1)[-1], link,
