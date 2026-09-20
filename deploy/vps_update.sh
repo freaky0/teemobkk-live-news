@@ -18,7 +18,8 @@ APP_DIR="${APP_DIR:-/opt/teemo-live-news}"
 APP_USER="${APP_USER:-teemo}"
 SERVICE="${SERVICE:-teemo-live-news}"
 PORT="${PORT:-8765}"
-SITE="${SITE:-https://teemobkk.io/}"
+SITE="${SITE:-https://teemobkk.io/news/}"
+SECTIONS="https://teemobkk.io/ https://teemobkk.io/news/ https://teemobkk.io/news/ko/ https://teemobkk.io/thai/ https://teemobkk.io/thai/ko/"
 
 say() { printf '  %s\n' "$*"; }
 remote() { ssh -o BatchMode=yes "$HOST" "$@"; }
@@ -58,9 +59,13 @@ rows = sqlite3.connect('$APP_DIR/news.db').execute('SELECT COUNT(*) FROM article
 print('    database: %d articles' % rows)
 \""
 
+for url in $SECTIONS; do
+  code=$(curl -s -o /dev/null -w '%{http_code}' "$url" --max-time 15 || true)
+  printf '  %-40s %s\n' "$url" "$code"
+done
+
 code=$(curl -s -o /dev/null -w '%{http_code}' "$SITE" --max-time 15 || true)
-say "$SITE -> $code"
 if [ "$code" != "200" ]; then
-  say "check: ssh $HOST journalctl -u $SERVICE -n 40"
+  say "the dashboard did not answer: check: ssh $HOST journalctl -u $SERVICE -n 40"
   exit 1
 fi
