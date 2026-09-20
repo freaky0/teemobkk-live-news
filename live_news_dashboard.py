@@ -699,6 +699,10 @@ def query_articles(hours: int = RETENTION_HOURS, region: str = "", category: Any
     for row in rows:
         item = dict(row)
         item["categories"] = taxonomy.split_categories(item.get("categories"), item.get("category"))
+        # Which language each part is in, so the card can say so and a browser translator works on
+        # the right one. Per element: a headline and its summary sometimes differ.
+        item["lang"] = taxonomy.detect_lang(item.get("title") or "")
+        item["summary_lang"] = taxonomy.detect_lang(item.get("summary") or "")
         # The operator's judgement travels with the row, note and all, because the badge is for
         # readers: a pick is only worth something if the person reading the page can see it.
         note = picks.get(item.get("link"))

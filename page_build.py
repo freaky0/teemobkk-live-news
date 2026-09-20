@@ -31,6 +31,7 @@ from pathlib import Path
 
 import landing
 import landing_thai
+import category_rules as taxonomy
 import ui_text
 
 ROOT = Path(__file__).resolve().parent
@@ -157,12 +158,17 @@ select{cursor:pointer}
 .pill.src{border-style:dashed}
 /* Teemo's Pick: the operator's judgement, shown to readers. Warmer than the filter pills and never
    a rank - selecting it narrows the list, the order stays newest first. */
-.pill.pick{border-color:#ff8fa3;color:#ff8fa3}
-.pill.pick.active{background:#3a1a24;border-color:#ff8fa3;color:#ffd0d8;font-weight:600}
+.pill.pick{border-color:#21c997;color:#21c997}
+.pill.pick.active{background:#0d2b22;border-color:#21c997;color:#b9f5e1;font-weight:600}
 .pickbadge{display:inline-flex;align-items:center;gap:8px;margin:0 0 8px;padding:3px 10px;
-  border:1px solid #ff8fa3;border-radius:var(--r-pill);color:#ffb3c1;font-size:12px;font-weight:600}
-.pickbadge .pnote{color:#e8c9d0;font-weight:500;max-width:46ch;overflow:hidden;
-  text-overflow:ellipsis;white-space:nowrap}
+  border:1px solid #21c997;border-radius:var(--r-pill);color:#7de8c4;font-size:12px;font-weight:600}
+/* The phrase is one line in the row, and the whole thing on hover: a long note used to be cut off
+   with no way to read it. The overlay is absolute so it does not move the headline under it. */
+.pickbadge .pnote{color:#d6f7ec;font-weight:500;max-width:46ch;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;cursor:help}
+.pickbadge:hover .pnote{position:absolute;z-index:5;margin-top:2px;max-width:none;white-space:normal;
+  overflow:visible;background:var(--panel);border:1px solid #21c997;border-radius:var(--r-ctl);
+  padding:8px 12px;box-shadow:0 6px 20px rgba(0,0,0,.5)}
 .pill.src.th.active{border-color:var(--thai);color:var(--thai)}
 .pillsep{flex:0 0 auto;width:1px;margin:0 3px;background:var(--line2);align-self:stretch}
 .langbar{display:flex;gap:6px;align-items:center;font-size:13px}
@@ -296,7 +302,7 @@ function writeHeaders(){const h={'Content-Type':'application/json'};
 // strings with single quotes: written inline it would have to be escaped twice over - once for the
 // Python that holds this template, once for JavaScript - and the escaping is exactly where a
 // mistake would break the whole page rather than one label.
-const PICK="Teemo's Pick", PICK_HEART="\u2665";
+const PICK="Teemo's Pick", PICK_ICON="\U0001F344";
 const PAGE=25, BIG=25, STALE_MIN=35, GRACE_MS=3*3600000;
 const GLOBAL_CATS=__CATS_GLOBAL__;
 const THAI_CATS=__CATS_THAI__;
@@ -387,8 +393,12 @@ function stars(a){const n=Number(a.priority)||0;
 function summaryBlock(a){
   const s=a.summary||'';if(!s)return '';
   const long=s.length>220;
-  return '<div class="summary'+(long?' clamp':'')+'">'+hl(s)+'</div>'+
+  return '<div class="summary'+(long?' clamp':'')+'"'+langAttr(a.summary_lang)+'>'+hl(s)+'</div>'+
     (long?'<button class="expand" type="button" aria-expanded="false">펼쳐보기</button>':'')}
+// The language of each part, from the collector. A browser translating a page decides per element
+// with this attribute; without it, a Thai headline with an English summary is guessed wrong and the
+// translator mangles the half it misread.
+function langAttr(code){return code?' lang="'+code+'"':''}
 const SPEAKERS=['트럼프','Trump','TRUMP','머스크','Musk','MUSK','파월','Powell','워시','Warsh','베센트','Bessent','라가르드','Lagarde','푸틴','Putin','시진핑','Xi Jinping','네타냐후','Netanyahu','우에다','Ueda'];
 function speakChip(a){const t=(a.title||'')+' '+(a.summary||'');
   return SPEAKERS.some(n=>t.indexOf(n)>=0)?'<span class="chip speak">인물 발언</span>':''}
@@ -421,9 +431,9 @@ function card(a,th,lead){
     '</div>'+
     // The operator's judgement, shown to everybody: a badge and, when there is one, the phrase. It
     // sits above the headline rather than in the chip row, because it is not a filter over text.
-    (a.picked?'<div class="pickbadge">'+PICK_HEART+' '+PICK+
+    (a.picked?'<div class="pickbadge">'+PICK_ICON+' '+PICK+
       (a.pick_note?'<span class="pnote">'+esc(a.pick_note)+'</span>':'')+'</div>':'')+
-    '<h2 class="title"><a href="'+esc(a.link)+'" target="_blank" rel="noopener nofollow">'+hl(a.title)+'</a></h2>'+
+    '<h2 class="title"'+langAttr(a.lang)+'><a href="'+esc(a.link)+'" target="_blank" rel="noopener nofollow">'+hl(a.title)+'</a></h2>'+
     summaryBlock(a)+
     (CFG.admin?cardActs(a):'')+
   '</article>'}
@@ -443,7 +453,7 @@ function renderPills(){
   // reader can filter by. It composes with the rest - picking it together with 트럼프 asks for
   // stories that are both, which is what selecting two things means everywhere else on this page.
   const pickPill='<button type="button" class="pill pick'+(V.pickOnly?' active':'')+
-    '" data-pick="1" aria-pressed="'+(V.pickOnly?'true':'false')+'">'+PICK_HEART+' '+PICK+'</button>';
+    '" data-pick="1" aria-pressed="'+(V.pickOnly?'true':'false')+'">'+PICK_ICON+' '+PICK+'</button>';
   row.innerHTML=pickPill+items.map(pair=>{
     const n=PUBLIC?pillCount(pair[0]):0;
     const badge=(PUBLIC&&n&&pair[0]!=='전체')?'<i>'+n+'</i>':'';
@@ -813,7 +823,7 @@ let HIDE_UNDO=null;
 function cardActs(a){
   return '<div class="acts"><a class="open" href="'+esc(a.link)+'" target="_blank" rel="noopener nofollow">원문 열기</a>'+
     '<button type="button" class="open" data-picklink="'+esc(a.link)+'" data-title="'+esc(a.title||'')+
-      '" data-picked="'+(a.picked?'1':'0')+'">'+(a.picked?'Pick 해제':PICK_HEART+' Pick')+'</button>'+
+      '" data-picked="'+(a.picked?'1':'0')+'">'+(a.picked?'Pick 해제':PICK_ICON+' Pick')+'</button>'+
     '<button type="button" class="open hide" data-hide="'+esc(a.link)+'" data-title="'+esc(a.title||'')+'">숨기기</button></div>'}
 function renderUndo(){
   const el=document.querySelector('#undobar');if(!el)return;
@@ -1084,22 +1094,23 @@ document.addEventListener('visibilitychange',()=>{hidden=document.hidden;
 """
 
 
-def _script_lang(text: str) -> str:
-    """Dominant script of a headline, used as the lang attribute on seeded cards."""
-    ko = th = latin = 0
-    for ch in text:
-        code = ord(ch)
-        if 0xAC00 <= code <= 0xD7A3:
-            ko += 1
-        elif 0x0E00 <= code <= 0x0E7F:
-            th += 1
-        elif ch.isalpha():
-            latin += 1
-    if not (ko or th or latin):
+def _lang_attr(code: str) -> str:
+    return ' lang="%s"' % code if code else ""
+
+
+def _pick_badge(item: dict) -> str:
+    """Teemo's Pick as part of the first screen.
+
+    A page read with scripts off, or one whose reader never triggers a fetch, still shows which
+    stories the operator put their name on. Same markup the script renders, so the hover overlay
+    that reveals a long phrase works here too.
+    """
+    if not item.get("picked"):
         return ""
-    if th >= ko and th >= latin:
-        return "th"
-    return "ko" if ko > latin else "en"
+    note = str(item.get("pick_note") or "")
+    return ('<div class="pickbadge">\U0001f344 Teemo\'s Pick'
+            + ('<span class="pnote">' + html.escape(note) + '</span>' if note else "")
+            + '</div>')
 
 
 def _ict_stamp(value) -> str:
@@ -1233,28 +1244,22 @@ def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str
         summary = str(item.get("summary") or "")
         if not title:
             continue
-        lang = _script_lang(title + " " + summary)
-        attr = ' lang="%s"' % lang if lang else ""
+        # Per element, like the script does: a Thai headline with an English summary is one card and
+        # two languages, and one attribute for both makes a browser translator mangle half of it.
+        title_attr = _lang_attr(taxonomy.detect_lang(title))
+        summary_attr = _lang_attr(taxonomy.detect_lang(summary))
         chips = "".join('<span class="chip">' + html.escape(labels.get(name, name)) + '</span>'
                         for name in _seed_labels(item))
-        # The badge is part of the first screen, not something that appears once the script runs: a
-        # page read with scripts off, or a reader who never triggers a fetch, should still see which
-        # stories the operator put their name on.
-        badge = ""
-        if item.get("picked"):
-            note = str(item.get("pick_note") or "")
-            badge = ('<div class="pickbadge">\u2665 Teemo\'s Pick'
-                     + ('<span class="pnote">' + html.escape(note) + '</span>' if note else "")
-                     + '</div>')
+        badge = _pick_badge(item)
         rows.append(
             '<article class="card seed' + (" th" if want_thai else "") + '">'
             '<div class="meta"><span class="chip src">' + html.escape(str(item.get("source") or "")) + '</span>'
             + chips +
             '<span>' + html.escape(_ict_stamp(item.get("published_at"))) + '</span></div>'
             + badge +
-            '<h2 class="title"' + attr + '><a href="' + html.escape(str(item.get("link") or ""))
+            '<h2 class="title"' + title_attr + '><a href="' + html.escape(str(item.get("link") or ""))
             + '" target="_blank" rel="noopener nofollow">' + html.escape(title) + '</a></h2>'
-            '<p class="summary clamp"' + attr + '>' + html.escape(summary) + '</p>'
+            '<p class="summary clamp"' + summary_attr + '>' + html.escape(summary) + '</p>'
             '</article>')
     return "".join(rows)
 

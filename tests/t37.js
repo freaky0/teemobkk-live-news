@@ -79,9 +79,11 @@ function stubFetch(realFetch) {
   check('Pick 알약은 기본으로 꺼져 있음', pickPill().getAttribute('aria-pressed') === 'false');
 
   check('골라낸 카드에 배지가 붙음', badges().length === 1, badges().length + '개');
-  check('배지에 하트와 문구가 함께 있음',
-    badges().length > 0 && /♥/.test(badges()[0].textContent) && badges()[0].textContent.indexOf(NOTE) >= 0,
+  check('배지에 버섯과 문구가 함께 있음',
+    badges().length > 0 && /\ud83c\udf44/.test(badges()[0].textContent) && badges()[0].textContent.indexOf(NOTE) >= 0,
     badges().length ? badges()[0].textContent.trim().slice(0, 46) : '없음');
+  check('카드에 언어가 지정됨', !!cards()[0].querySelector('.title[lang]'),
+    (cards()[0].querySelector('.title') || {}).getAttribute ? cards()[0].querySelector('.title').getAttribute('lang') : '없음');
   check('배지가 제목 위에 옴', badges().length > 0
     && badges()[0].compareDocumentPosition(cards()[0].querySelector('.title'))
       & w.Node.DOCUMENT_POSITION_FOLLOWING,
