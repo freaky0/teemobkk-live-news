@@ -413,7 +413,7 @@ const T_STOP=new Set(("그리고 그러나 또한 이번 지난 오늘 어제 �
 const T_SKIP={
   global:new Set('bitcoin btc crypto cryptocurrency 비트코인 암호화폐 코인'.split(' ')),
   thai:new Set('태국 방콕 태국인 교민 thai thailand bangkok'.split(' '))};
-const T_URL=/https?:\/\/\S+|[\w-]+\.(?:com|net|org|co|io|kr|uk|rs|me|ly|gov|ai|news)\S*/gi;
+const T_URL=/https?:\/\/\S+|\b[\w-]+\.(?:com|net|org|co|io|kr|uk|rs|me|ly|gov|ai|news)\S*/gi;
 const T_TAIL=/\s+-\s+[^-]{2,40}$/;
 const T_TOK=/[0-9A-Za-z가-힣฀-๿]+/g;
 function tFold(w){if(!/^[a-z]+$/.test(w))return w;const s=w.replace(/s$/,'');return (s!==w&&s.length>=3)?s:w}
