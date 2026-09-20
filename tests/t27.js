@@ -153,13 +153,55 @@ const check = (name, ok, detail) => {
     thFirst + ' · ' + th.length + '건 표시 · 총 ' + thTotalAfter + ' (전 ' + thTotalBefore + ') · 표본 ' + (freq[thFirst] || 0) + '건');
 
   // --- 6. a story that matched two axes shows both labels ---
+  // Which story carries two labels is a property of the day's news, not of the page. The newest 25
+  // can all be single-label - measured when the finance wires were added: the newest 25 were 0
+  // multi-label while the newest 300 held 41 - and asking the first 25 for one made this check fail
+  // on the data rather than on the rendering. So the story is found in the stored window first, and
+  // the page is then asked to show it.
   d.querySelector('#tab-global').click();
   await sleep(WAIT + 3000);
   g('button[data-cat="전체"]').click();
   await sleep(WAIT);
-  const multi = cards().filter((c) => labelsOf(c).length > 1);
-  check('⑥ 두 축에 걸린 카드는 알약을 두 개 보여줌', multi.length > 0,
-    multi.length + '건 · ' + (multi[0] ? labelsOf(multi[0]).join(' + ') : 'none'));
+  let multiSource = null;
+  try {
+    const listed = await (await fetch(URL_ + 'api/news?limit=300', { cache: 'no-cache' })).json();
+    multiSource = ((listed && listed.articles) || listed || [])
+      .find((a) => (a.categories || []).length > 1) || null;
+  } catch (e) { /* reported by the check below */ }
+  check('⑥ 창 안에 두 축에 걸린 기사가 있음', !!multiSource,
+    multiSource ? multiSource.title.slice(0, 38) + ' · ' + multiSource.categories.join(' + ')
+                : '없음 - 분류가 겹치는 기사를 하나도 만들지 못했습니다');
+  if (multiSource) {
+    // The label order is the taxonomy's, so the page is asked for the whole set, not for one name.
+    const wanted = multiSource.categories.slice().sort().join(' + ');
+    // The search box matches the typed words as one phrase, so a made-up phrase from four title
+    // words finds nothing (measured: "Forecast Fed" 0 rows while "Fed" finds 12). Words are tried
+    // longest first instead, which is also how a reader would hunt for one story.
+    const tries = Array.from(new Set(String(multiSource.title)
+      .replace(/[^\w\s\uac00-\ud7a3]/g, ' ').split(/\s+/)
+      .filter((x) => x.length > 5))).sort((a, b) => b.length - a.length).slice(0, 3);
+    let hit = null;
+    const attempts = [];
+    for (const word of tries) {
+      q.value = word;
+      q.oninput();
+      await sleep(WAIT + 2000);
+      const shown = cards();
+      hit = shown.find((c) => {
+        const a = c.querySelector('.title a');
+        return a && a.getAttribute('href') === multiSource.link;
+      }) || null;
+      attempts.push(word + '=' + shown.length);
+      if (hit) break;
+    }
+    check('⑥ 두 축에 걸린 카드는 알약을 두 개 보여줌',
+      !!hit && labelsOf(hit).slice().sort().join(' + ') === wanted,
+      hit ? labelsOf(hit).join(' + ') + ' (기대 ' + wanted + ')'
+          : '검색으로 그 카드를 찾지 못함 (' + attempts.join(', ') + ')');
+    q.value = '';
+    q.oninput();
+    await sleep(WAIT);
+  }
 
   console.log('\n  %d/%d', pass.filter(Boolean).length, pass.length);
   process.exit(pass.every(Boolean) ? 0 : 1);

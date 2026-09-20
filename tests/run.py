@@ -58,6 +58,7 @@ PYTHON_CHECKS = [
     ("test_categories.py", ["tests/test_categories.py"], "분류 다중 라벨 계약", "local"),
     ("test_admin_auth.py", ["tests/test_admin_auth.py"], "관리자 세션 규칙", "local"),
     ("test_admin_page.py", ["tests/test_admin_page.py"], "관리자·공개 문서 구성", "local"),
+    ("test_page_script.py", ["tests/test_page_script.py"], "문서 스크립트 문법(node --check)", "local"),
     ("test_hidden.py", ["tests/test_hidden.py"], "숨김·되돌리기 계약", "local"),
     ("test_picks.py", ["tests/test_picks.py"], "Pick 계약", "local"),
     ("test_admin_http.py", ["tests/test_admin_http.py"], "관리자 HTTP 게이트", "local"),

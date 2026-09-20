@@ -81,6 +81,15 @@ print('    database: %d articles' % rows)
 \""
 
 missing=""
+# What the sources answer *from this host*, printed on every deploy. Several feeds answer a home
+# connection 200 and this host 403 or 429 (measured: FXStreet 403, FinancialJuice 429), so a feed
+# that looks alive while it is being added can be dead in production, and the missing rows are the
+# only symptom. A dead source does not stop the deploy - a feed can be down for an hour - but it is
+# never allowed to pass silently.
+say "source check (from the host, not fatal)"
+remote "cd $APP_DIR && runuser -u $APP_USER -- python3 tools/probe_sources.py --listed 2>/dev/null |
+        grep -vE '^  (ok|dead) ' | tail -6" || true
+
 for url in $SECTIONS; do
   code=$(curl -s -o /dev/null -w '%{http_code}' "$url" --max-time 15 || true)
   printf '  %-40s %s\n' "$url" "$code"

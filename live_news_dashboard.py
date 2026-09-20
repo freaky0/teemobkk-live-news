@@ -72,9 +72,22 @@ RSS_SOURCES = [
     ("Yahoo Finance", "news", "https://finance.yahoo.com/news/rssindex"),
     ("Investing.com", "news", "https://www.investing.com/rss/news.rss"),
     ("Seeking Alpha", "news", "https://seekingalpha.com/market_currents.xml"),
-    ("FXStreet", "news", "https://www.fxstreet.com/rss/news"),
     ("FinancialJuice", "breaking", "https://www.financialjuice.com/feed.ashx?xy=rss"),
 ]
+
+# The last real answer per source, so a source that is skipped this cycle keeps showing what it
+# actually said the last time it was asked.
+_last_source_status: dict[str, Any] = {}
+_cycle = {"count": 0}
+
+# Sources that answer a datacenter address differently from a home connection, or that rate-limit a
+# single host: fetched every Nth cycle instead of every cycle. Measured from the deployed host:
+# FinancialJuice returns 429 on the cycle right after each successful fetch (14 refusals in 24 hours
+# at one fetch a minute), and it is a wire that repeats itself, so a slower poll loses nothing.
+# FXStreet was dropped for the same reason the list needs this check at all: it answers 403 to the
+# deployed host and 200 to a home connection, so it looked alive when it was added and never
+# produced a single row in production.
+SLOW_SOURCES = {"FinancialJuice": 5}
 
 # 태국 교민용 일반 뉴스. 영문 매체와 태국어 매체를 함께 수집한다.
 THAI_RSS_SOURCES = [
@@ -730,8 +743,14 @@ def query_articles(hours: int = RETENTION_HOURS, region: str = "", category: Any
 def collect_news() -> dict[str, Any]:
     articles: list[dict[str, Any]] = []
     status: dict[str, Any] = {}
-    rss_jobs = [(source, source_type, url, GLOBAL_REGION) for source, source_type, url in RSS_SOURCES]
-    rss_jobs += [(source, source_type, url, THAI_REGION) for source, source_type, url in THAI_RSS_SOURCES]
+    all_rss_jobs = [(source, source_type, url, GLOBAL_REGION) for source, source_type, url in RSS_SOURCES]
+    all_rss_jobs += [(source, source_type, url, THAI_REGION) for source, source_type, url in THAI_RSS_SOURCES]
+    # A source on a slower poll is left out of this cycle entirely; its previous status is carried
+    # over below, so the operator's panel shows the last real answer instead of a false failure.
+    _cycle["count"] += 1
+    turn = _cycle["count"]
+    rss_jobs = [job for job in all_rss_jobs if turn % SLOW_SOURCES.get(job[0], 1) == 1]
+    held_over = [job for job in all_rss_jobs if job not in rss_jobs]
     google_jobs = [(source, query, GLOBAL_REGION, ()) for source, query in GOOGLE_QUERIES]
     google_jobs += [(source, query, THAI_REGION, terms) for source, query, terms in THAI_GOOGLE_QUERIES]
 
@@ -758,7 +777,14 @@ def collect_news() -> dict[str, Any]:
         google_results = list(pool.map(run_google, google_jobs))
     for source, info, items in rss_results + google_results:
         status[source] = info
+        _last_source_status[source] = info
         articles.extend(items)
+    # Sources on a slower poll: carry the last real answer forward, and label it so the panel and the
+    # log do not read a skipped cycle as a failure.
+    for source, _kind, url, _region in held_over:
+        held = dict(_last_source_status.get(source) or {"ok": True, "count": 0, "url": url})
+        held["note"] = "slower poll: not asked this cycle"
+        status[source] = held
     coinness, coinness_status = fetch_coinness()
     articles.extend(coinness)
     status["CoinNess"] = coinness_status

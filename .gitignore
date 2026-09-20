@@ -7,6 +7,8 @@ news.db.retag-*.bak
 news.db.bak-*
 news.db.replaced-*
 news.db.malformed-*
+# copies tools/backup_db.py writes (13MB each - never commit one)
+news-*.db
 news_cache.json
 server.log
 stdout.log
