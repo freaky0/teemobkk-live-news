@@ -55,7 +55,7 @@ select{cursor:pointer}
 .pills::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}
 @media (min-width:900px){.pills{flex-wrap:wrap;overflow-x:visible}}
 .pills[hidden]{display:none!important}
-.trend{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px;padding:2px}
+.trend{display:flex;gap:8px;align-items:center;flex-wrap:nowrap;overflow-x:auto;margin:0 0 10px;padding:2px 2px 8px;scrollbar-width:thin}.trend::-webkit-scrollbar{height:6px}.trend::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}.trend .tlabel{position:sticky;left:0;z-index:1;background:var(--bg);padding:2px 8px 2px 0}.tbtn.on{border-color:var(--accent);color:var(--accent);background:rgba(100,215,221,.12)}.tbtn.clear{border-style:dashed}@media (min-width:900px){.trend{flex-wrap:wrap;overflow:visible}.trend .tlabel{position:static}}
 .trend[hidden]{display:none!important}
 .trend .tlabel{color:var(--muted);font-size:12px;white-space:nowrap}
 .trend .n{color:var(--muted);font-size:11px;margin-left:6px}
@@ -275,7 +275,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const shown=(s,label)=>{const t=String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   return '실제 <b class="'+label+'">'+t+'</b>'};
 
-var V={tab:CFG.wantThai?'thai':'global',filter:'전체',hours:24,q:'',limit:PAGE,tag:null,mode:'all',value:'',offset:0};
+var V={tab:CFG.wantThai?'thai':'global',filter:'전체',hours:24,q:'',terms:[],limit:PAGE,tag:null,mode:'all',value:'',offset:0};
 var MEM={},LATEST={},PENDING={},INDEX={},SEEN={},FULL={},DATA={articles:[],sources:{},total:0,has_more:false};
 var archiveTotal=0,refreshTimer=null,hidden=false,lastRegion={};
 if(CFG.wantThai)document.title=document.title.replace('Live News','Live News · 태국 소식');
@@ -375,14 +375,14 @@ function renderPills(){
     // Same exclusivity as the card chips: a category and a source tag sent together are ANDed
     // server-side, which usually returns nothing at all.
     V.filter=b.dataset.cat;V.tag=null;V.mode='all';V.value='';
-    V.limit=PAGE;V.offset=0;renderPills();fetchFeed()});
+    V.limit=PAGE;V.offset=0;clearText();renderPills();fetchFeed()});
   row.querySelectorAll('button[data-src]').forEach(b=>b.onclick=()=>{
     const v=b.dataset.src;
     V.tag=(V.tag&&V.tag.k==='src'&&V.tag.v===v)?null:{k:'src',v:v};
     V.filter='전체';V.mode='all';V.value='';
-    V.limit=PAGE;V.offset=0;renderPills();fetchFeed()});
+    V.limit=PAGE;V.offset=0;clearText();renderPills();fetchFeed()});
   const clr=row.querySelector('#clrtag');
-  if(clr)clr.onclick=()=>{V.tag=null;V.limit=PAGE;V.offset=0;renderPills();fetchFeed()};
+  if(clr)clr.onclick=()=>{V.tag=null;V.limit=PAGE;V.offset=0;clearText();renderPills();fetchFeed()};
   document.querySelectorAll('.tab').forEach(b=>{
     const on=b.dataset.tab===V.tab;
     b.classList.toggle('active',on);
@@ -481,14 +481,23 @@ function renderTrends(){
   const list=T_CACHE.list||[];
   if(!list.length){el.hidden=true;el.innerHTML='';return}
   el.hidden=false;
-  el.innerHTML='<span class="tlabel">지금 뜨는 키워드</span>'+list.map(function(x){
-    return '<button type="button" class="tbtn" data-trend="'+esc(x.t)+'">'+esc(x.t)+
-          '<span class="n">'+x.c+'</span></button>'}).join('');
-}
+  el.innerHTML='<span class="tlabel">' + "지금 뜨는 키워드" + '</span>'+list.map(function(x){
+    const on=V.terms.indexOf(x.t)>=0;
+    return '<button type="button" class="tbtn'+(on?' on':'')+'" data-trend="'+esc(x.t)+
+    '" aria-pressed="'+(on?'true':'false')+'">'+esc(x.t)+
+    '<span class="n">'+x.c+'</span></button>'}).join('')+
+    (V.terms.length?'<button type="button" class="tbtn clear on" data-trend-clear="1">선택 '
+      +V.terms.length+'개 해제 ✕</button>':''); }
 document.querySelector('#trend').onclick=ev=>{
+  if(ev.target.closest('[data-trend-clear]')){
+    V.terms=[];V.limit=PAGE;V.offset=0;renderTrends();fetchFeed();return}
   const b=ev.target.closest('[data-trend]');if(!b)return;
-  // Reuse the search box's own handler so a trend click behaves exactly like typing.
-  const q=document.querySelector('#q');q.value=b.dataset.trend;q.oninput();
+  // A keyword is a toggle and several can be on at once. Pressing the same one again releases it,
+  // so a reader never has to go back a page to undo a click.
+  const term=b.dataset.trend,i=V.terms.indexOf(term);
+  if(i>=0)V.terms.splice(i,1);else V.terms.push(term);
+  V.q='';const q=document.querySelector('#q');if(q&&q.value)q.value='';
+  V.limit=PAGE;V.offset=0;renderTrends();fetchFeed();
 };
 
 function renderFeed(){
@@ -577,6 +586,16 @@ async function loadPublic(force){
   SEEN[region()]={stamp:meta.stamp,recent_stamp:meta.recent_stamp};
   renderPills();renderFeed()}
 
+// The keyword row and the search box are both text filters, so they stay mutually exclusive: a
+// reader who picked keywords should not also be filtered by a leftover query, and a reader who
+// typed one should not have keywords quietly narrowing the list. Every control that resets the
+// filters calls this - that is what makes 전체 release a keyword instead of leaving the list stuck
+// until the search box is cleared by hand, which needed going back a page.
+function clearText(){
+  V.q='';V.terms=[];
+  const q=document.querySelector('#q');if(q&&q.value)q.value='';
+  if(document.querySelector('#trend'))renderTrends()}
+
 function buildQuery(){
   const p=new URLSearchParams();
   p.set('region',V.tab==='thai'?'태국':'글로벌');
@@ -593,7 +612,37 @@ function buildQuery(){
   // unfiltered request, so clicking a chip only highlighted it and the list never moved.
   if(V.tag){if(V.tag.k==='cat')p.set('category',V.tag.v);else p.set('source',V.tag.v)}
   return p.toString()}
+// A keyword selection is several searches, because the API takes one q. Each keyword is fetched
+// on its own and the results are merged by link, so three keywords cover the whole stored window
+// instead of only what one query happened to return. The merged set is kept and paging slices it,
+// so 더 보기 does not refetch.
+const TERMS={sig:'',list:[],updated:'',ict:'',counts:null};
+async function loadTerms(){
+  const sig=V.tab+'|'+V.hours+'|'+V.terms.slice().sort().join(',');
+  if(TERMS.sig!==sig){
+    const pages=await Promise.all(V.terms.map(function(t){
+      const p=new URLSearchParams({region:region(),hours:String(V.hours),limit:'300',offset:'0',q:t});
+      return fetch(API+'/api/news?'+p.toString(),{cache:'no-cache'})
+        .then(function(r){return r.ok?r.json():null}).catch(function(){return null})}));
+    const seen={},merged=[];
+    pages.forEach(function(d){(d&&d.articles||[]).forEach(function(a){
+      const k=String(a.link||'');if(!k||seen[k])return;seen[k]=1;merged.push(a)})});
+    merged.sort(function(a,b){return String(b.published_at||'').localeCompare(String(a.published_at||''))});
+    TERMS.sig=sig;TERMS.list=merged;
+    TERMS.updated=(pages[0]&&pages[0].updated_at)||'';
+    TERMS.ict=(pages[0]&&pages[0].updated_at_ict)||'';
+    TERMS.counts=(pages[0]&&pages[0].region_counts)||null;
+  }
+  const all=TERMS.list,shown=all.slice(0,V.limit);
+  DATA={articles:shown,total:all.length,has_more:all.length>shown.length,
+        updated_at:TERMS.updated,updated_at_ict:TERMS.ict,window_hours:V.hours,
+        region_counts:TERMS.counts||{}};
+  setStamp((TERMS.ict||'')+' · '+V.hours+'시간 · 키워드 '+V.terms.length+'개 · '+all.length+'건',TERMS.counts);
+  flagStale(TERMS.updated);
+  renderPills();renderFeed()}
+
 async function loadLocal(){
+  if(V.terms.length){await loadTerms();return}
   const r=await fetch(API+'/api/news?'+buildQuery(),{cache:'no-cache'});
   if(!r.ok)throw Error(r.status);
   const fresh=await r.json();
@@ -635,7 +684,7 @@ function setTab(next,silent){
   // because it was shown with an inline style that the tab class could not undo.
   if(next==='cal'&&V.tab==='cal'&&!silent){setTab(V.lastNews||'global');return}
   if(next!=='cal')V.lastNews=next;
-  V.tab=next;V.filter='전체';V.tag=null;V.limit=PAGE;V.offset=0;V.mode='all';V.value='';
+  V.tab=next;V.filter='전체';V.tag=null;V.limit=PAGE;V.offset=0;V.mode='all';V.value='';clearText();
   document.body.classList.toggle('tab-cal',next==='cal');
   document.querySelectorAll('.tab').forEach(b=>{
     const on=b.dataset.tab===next;b.classList.toggle('active',on);b.setAttribute('aria-selected',on?'true':'false')});
@@ -710,6 +759,7 @@ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab)
 // as a second, dead copy of the filter logic.
 document.querySelector('#q').oninput=()=>{clearTimeout(window.__qt);
   window.__qt=setTimeout(()=>{V.q=document.querySelector('#q').value.trim();
+    if(V.terms.length){V.terms=[];renderTrends()}
     V.limit=PAGE;V.offset=0;fetchFeed()},350)};
 document.querySelector('#hours').onchange=()=>{V.hours=Number(document.querySelector('#hours').value)||24;
   V.limit=PAGE;V.offset=0;fetchFeed()};
@@ -738,7 +788,7 @@ document.querySelector('#feed').addEventListener('click',ev=>{
     // The category pill row and the card chips are two different filters. Left alone they
     // would be sent together and ANDed on the server, which usually returns nothing.
     V.filter='전체';V.mode='all';V.value='';
-    V.limit=PAGE;V.offset=0;renderPills();fetchFeed();return}
+    V.limit=PAGE;V.offset=0;clearText();renderPills();fetchFeed();return}
   const btn=ev.target.closest('.expand');
   if(!btn)return;
   const s=btn.previousElementSibling;
