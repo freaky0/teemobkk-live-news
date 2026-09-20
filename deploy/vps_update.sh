@@ -19,7 +19,7 @@ APP_USER="${APP_USER:-teemo}"
 SERVICE="${SERVICE:-teemo-live-news}"
 PORT="${PORT:-8765}"
 SITE="${SITE:-https://teemobkk.io/news/}"
-SECTIONS="https://teemobkk.io/ https://teemobkk.io/news/ https://teemobkk.io/news/ko/ https://teemobkk.io/thai/ https://teemobkk.io/thai/ko/"
+SECTIONS="https://teemobkk.io/ https://teemobkk.io/news/ https://teemobkk.io/news/ko/ https://teemobkk.io/thai/ https://teemobkk.io/thai/news/ https://teemobkk.io/thai/news/ko/"
 
 say() { printf '  %s\n' "$*"; }
 remote() { ssh -o BatchMode=yes "$HOST" "$@"; }
