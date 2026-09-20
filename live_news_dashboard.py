@@ -81,12 +81,11 @@ _last_source_status: dict[str, Any] = {}
 _cycle = {"count": 0}
 
 # Sources that answer a datacenter address differently from a home connection, or that rate-limit a
-# single host: fetched every Nth cycle instead of every cycle. Measured from the deployed host:
-# FinancialJuice returns 429 on the cycle right after each successful fetch (14 refusals in 24 hours
-# at one fetch a minute), and it is a wire that repeats itself, so a slower poll loses nothing.
-# FXStreet was dropped for the same reason the list needs this check at all: it answers 403 to the
-# deployed host and 200 to a home connection, so it looked alive when it was added and never
-# produced a single row in production.
+# single host: fetched every Nth cycle instead of every cycle. Measured facts behind this list:
+# FinancialJuice answered 429 intermittently (14 refusals in 24 hours while being fetched once a
+# minute), and it is a wire that repeats itself, so a slower poll loses nothing. FXStreet was dropped
+# instead of slowed: it answers 403 to the deployed host and 200 to a home connection, so it passed
+# the check when it was added and never produced a single row in production.
 SLOW_SOURCES = {"FinancialJuice": 5}
 
 # 태국 교민용 일반 뉴스. 영문 매체와 태국어 매체를 함께 수집한다.
