@@ -89,14 +89,23 @@ const check = (n, ok, d) => { pass.push(ok); console.log('  %s %s%s', ok ? 'PASS
   await waitFor(() => selected().length === 0);
   check('해제 버튼이 바로 풀어 줌', selected().length === 0 && !d.querySelector('[data-trend-clear]'));
 
-  // typing in the box releases the keywords, so the two text filters never fight
+  // Typing no longer releases the keywords. A typed word and the chips are conditions on the same
+  // axis and they are ANDed, which is what selecting several things means; the old behaviour
+  // released the chips so the two text filters never fought, and it also made a second condition
+  // impossible to type.
   btns()[0].click();
   await waitFor(() => selected().length === 1);
   const q = d.querySelector('#q');
   q.value = '금리';
   q.oninput();
-  await sleep(900);
-  check('검색어를 입력하면 키워드가 풀림', selected().length === 0, selected().join(',') || '없음');
+  await sleep(1200);
+  check('검색어를 입력해도 키워드가 유지됨', selected().length === 1, selected().join(',') || '없음');
+  const last = queries[queries.length - 1] || '';
+  check('요청에 키워드와 검색어가 함께 실림',
+    last.indexOf('q=') >= 0 && dec(last).indexOf('금리') >= 0,
+    (last.split('?')[1] || '없음').slice(0, 80));
+  q.value = ''; q.oninput();
+  await sleep(800);
 
   console.log('\n  %d/%d', pass.filter(Boolean).length, pass.length);
   process.exit(pass.every(Boolean) ? 0 : 1);

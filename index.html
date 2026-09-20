@@ -70,6 +70,24 @@ select{cursor:pointer}
 .trend[hidden]{display:none!important}
 .trend .tlabel{color:var(--muted);font-size:12px;white-space:nowrap}
 .trend .n{color:var(--muted);font-size:11px;margin-left:6px}
+/* The selected conditions, in one row: every filter that is currently narrowing the list, each
+   with its own count and a way out. The number after the arrow is what all of them together
+   return, which is the difference between this row and the pill rows above it. */
+.conds{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:0 0 10px;padding:6px 8px;
+  border:1px solid var(--line);border-radius:var(--r);background:var(--bg2)}
+.conds[hidden]{display:none!important}
+.conds .clabel{color:var(--muted);font-size:12px;white-space:nowrap;margin-right:2px}
+.conds .cbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--accent);
+  background:var(--accent);color:#08111f;font-weight:600;font-size:12px;
+  border-radius:var(--r-pill);padding:4px 10px;cursor:pointer}
+.conds .cbtn .n{color:#08111f;opacity:.7;font-size:11px}
+.conds .sum{color:var(--muted);font-size:12px;margin-left:4px}
+.conds .warn{color:var(--warn);font-weight:600}
+.conds button.wide{border:1px dashed var(--accent);background:none;color:var(--accent);
+  border-radius:var(--r-pill);padding:4px 10px;font-size:12px;cursor:pointer}
+.qadd{border:1px solid var(--line);background:none;color:var(--muted);border-radius:var(--r-pill);
+  padding:5px 10px;font-size:12px;white-space:nowrap;cursor:pointer}
+@media (hover:hover){.qadd:hover{border-color:var(--accent);color:var(--accent)}}
 /* Own class rather than the filter chips' ".chip.tap": those are toggles carrying
    aria-pressed, while a trend button is a one-shot search action. Reusing the class
    made every ".chip.tap" invariant assertion count a chip that is not a toggle. */
@@ -233,11 +251,14 @@ body.local .card{cursor:auto}
 
   <section class="toolbar">
     <input id="q" type="search" placeholder="제목·요약·출처 검색 ( / )" aria-label="뉴스 검색">
+    <button id="qadd" class="qadd" type="button" title="검색어를 조건으로 고정합니다">+ 조건 추가</button>
     <select id="hours" aria-label="기간">
       <option value="1">최근 1시간</option>
       <option value="6">최근 6시간</option>
       <option value="12">최근 12시간</option>
       <option value="24" selected>최근 24시간</option>
+      <option value="168">최근 7일</option>
+      <option value="2160">전체 기간</option>
     </select>
     <label class="note admin" for="interval">갱신</label><select id="interval" class="admin" aria-label="갱신 간격"><option value="10">10초</option><option value="30">30초</option><option value="60" selected>1분</option><option value="120">2분</option><option value="300">5분</option></select>
     <button id="newpill" class="newpill" type="button"></button>
@@ -245,6 +266,7 @@ body.local .card{cursor:auto}
   </section>
 
   <section class="trend" id="trend" hidden></section>
+  <section class="conds" id="conds" hidden></section>
 
   <section id="filters-global" class="pills"></section>
   <section id="filters-thai" class="pills th" hidden></section>
@@ -293,6 +315,10 @@ if(CFG.wantThai)document.title=document.title.replace('Live News','Live News · 
 try{const s=localStorage.getItem(CACHE_KEY);if(s){const p=JSON.parse(s);if(p&&p.articles)DATA=p}}catch(e){}
 
 function region(){return V.tab==='thai'?'태국':'글로벌'}
+// The period in words: the select offers hours up to a day and then days, and the stamp used to
+// print "168시간" for a week and "2160시간" for the whole archive.
+function hoursLabel(){const h=Number(V.hours)||24;
+  return h>=2160?'전체 기간':(h>=48?Math.round(h/24)+'일':h+'시간')}
 function articles(){return PUBLIC?(MEM[region()]||[]):(DATA.articles||[])}
 function age(iso){if(!iso)return '시각 미상';const d=new Date(iso);if(isNaN(d))return '시각 미상';
   const sec=Math.max(0,(Date.now()-d.getTime())/1000);
@@ -314,20 +340,35 @@ function hl(t){const txt=esc(t);const q=(V.q||'').trim();if(!q)return txt;
 // The same rule the server applies, so the static copy and the API agree on what a term matches.
 // A Latin term is a whole word (with the plural s), a Korean or Thai term is a substring: measured,
 // 'ai' as a substring matched 3,720 rows where the whole word matched 599 ("said", "Thailand").
-const LATIN=/^[\x00-\u2E7F]*$/;
+// Written with indexOf instead of a RegExp on purpose: this script lives inside a Python string, and
+// a regex character class written here arrives with its backslashes doubled - it still parses and
+// then silently matches the wrong thing.
+function isLatinTerm(n){for(let i=0;i<n.length;i++){if(n.charCodeAt(i)>0x2E7F)return false}return true}
 function termMatch(text,needle){
   const t=String(text==null?'':text).toLowerCase(), n=String(needle==null?'':needle).trim().toLowerCase();
   if(!n)return false;
-  if(!LATIN.test(n))return t.indexOf(n)>=0;
-  return new RegExp('(^|[^a-z0-9])'+n.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+(n.indexOf(' ')<0?'s?':'')+'([^a-z0-9]|$)').test(t)}
+  if(!isLatinTerm(n))return t.indexOf(n)>=0;
+  const plural=n.indexOf(' ')<0;
+  for(let at=t.indexOf(n);at>=0;at=t.indexOf(n,at+1)){
+    const before=t.charAt(at-1), after=t.charAt(at+n.length);
+    if(before&&/[a-z0-9]/.test(before))continue;
+    if(after&&/[a-z0-9]/.test(after)){
+      if(!plural||after!=='s')continue;
+      const next=t.charAt(at+n.length+1);
+      if(next&&/[a-z0-9]/.test(next))continue;
+    }
+    return true}
+  return false}
 function catList(a){const c=a.categories;return (Array.isArray(c)&&c.length)?c:(a.category?[a.category]:[])}
 function keep(a){
   const hours=Number(V.hours)||24,t=new Date(a.published_at).getTime();
   if(!isFinite(t)||Date.now()-t>hours*3600000)return false;
   // A story can carry several axes, so a selected category matches if it is any of the card's
-  // labels, not only its first one. Two selected categories are a union, not an intersection.
+  // labels, not only its first one - and several selected categories must ALL be on the card, which
+  // is what the server does too (this path runs for the published static copy, which has no API).
   const labels=catList(a);
-  if(V.cats.length&&!V.cats.some(c=>labels.indexOf(c)>=0))return false;
+  if(V.cats.length&&!V.cats.every(c=>labels.indexOf(c)>=0))return false;
+  if(V.terms.length&&!V.terms.every(t=>termMatch((a.title||'')+' '+(a.summary||''),t)))return false;
   if(V.tag&&(V.tag.k==='cat'?labels.indexOf(V.tag.v)<0:a.source!==V.tag.v))return false;
   const q=(V.q||'').trim();
   if(q&&!termMatch((a.title||'')+' '+(a.summary||'')+' '+(a.source||'')+' '+labels.join(' '),q))return false;
@@ -399,22 +440,25 @@ function renderPills(){
     (V.tag?'<button type="button" class="pill on" id="clrtag">✕ '+esc(V.tag.v)+'</button>':'');
   row.hidden=false;
   row.querySelectorAll('button[data-cat]').forEach(b=>b.onclick=()=>{
-    // Same exclusivity as the card chips: a category and a source tag sent together are ANDed
-    // server-side, which usually returns nothing at all.
+    // A category and a source are different axes and now compose: several conditions are ANDed,
+    // which is what a reader gets from "FinancialJuice + Trump". Selecting one no longer releases
+    // the other, because the intersection is the point.
     const v=b.dataset.cat;
-    // 전체 is the one control that clears the lot and shows the whole list; a single category
-    // toggles and composes with the keyword row.
-    if(v==='전체'){V.cats=[];clearText()}
+    // 전체 is the one control that clears the lot and shows the whole list, so it releases the
+    // source tag and the keywords as well; a single category toggles and composes with the rest.
+    if(v==='전체'){V.cats=[];V.tag=null;clearText()}
     else{const i=V.cats.indexOf(v);if(i>=0)V.cats.splice(i,1);else V.cats.push(v)}
-    V.tag=null;V.mode='all';V.value='';
+    V.mode='all';V.value='';
     V.limit=PAGE;V.offset=0;renderPills();fetchFeed()});
   row.querySelectorAll('button[data-src]').forEach(b=>b.onclick=()=>{
     const v=b.dataset.src;
     V.tag=(V.tag&&V.tag.k==='src'&&V.tag.v===v)?null:{k:'src',v:v};
-    V.cats=[];V.mode='all';V.value='';
-    V.limit=PAGE;V.offset=0;clearText();renderPills();fetchFeed()});
+    V.mode='all';V.value='';
+    V.limit=PAGE;V.offset=0;renderPills();fetchFeed()});
   const clr=row.querySelector('#clrtag');
-  if(clr)clr.onclick=()=>{V.tag=null;V.limit=PAGE;V.offset=0;clearText();renderPills();fetchFeed()};
+  // Releases this value only: the other conditions stay, because each one now has its own place in
+  // the condition row above the feed.
+  if(clr)clr.onclick=()=>{V.tag=null;V.limit=PAGE;V.offset=0;renderPills();fetchFeed()};
   document.querySelectorAll('.tab').forEach(b=>{
     const on=b.dataset.tab===V.tab;
     b.classList.toggle('active',on);
@@ -535,11 +579,13 @@ document.querySelector('#trend').onclick=ev=>{
 };
 
 function renderFeed(){
-  loadTrends();renderTrends();
+  loadTrends();renderTrends();loadCondCounts();renderConditions();
   const all=visible(),view=all.slice(0,V.limit),th=V.tab==='thai';
   const feed=document.querySelector('#feed');
   if(!view.length){
-    feed.innerHTML='<div class="empty"><b>조건에 맞는 뉴스가 없습니다</b>검색어를 지우거나 기간을 넓혀 보세요.</div>';
+    feed.innerHTML=condList().length
+      ?'<div class="empty"><b>선택한 조건을 모두 만족하는 뉴스가 없습니다</b>위 조건 줄에서 가장 좁은 조건을 풀거나 기간을 넓혀 보세요.</div>'
+      :'<div class="empty"><b>조건에 맞는 뉴스가 없습니다</b>검색어를 지우거나 기간을 넓혀 보세요.</div>';
     document.querySelector('#counts').innerHTML=fmt('총 <b>{n}</b>건',all.length);
     document.querySelector('#more').hidden=true;return}
   // Strictly newest first, with light time headings. An earlier version pinned the
@@ -634,56 +680,91 @@ function buildQuery(){
   const p=new URLSearchParams();
   p.set('region',V.tab==='thai'?'태국':'글로벌');
   p.set('hours',V.hours);p.set('limit',V.limit);p.set('offset',V.offset);
-  if(V.q)p.set('q',V.q);
   if(V.mode==='priority')p.set('priority',V.value||'5');
   else if(V.mode==='official')p.set('source_type','official');
-  else if(V.mode==='source'&&V.value)p.set('source',V.value);
-  // V.cats is empty or a list of category names.
-  // setting V.mode, so gating this branch on the mode left the pill highlighted while the
-  // server still returned the unfiltered list.
-  if(V.cats.length)p.set('category',V.cats[0]);
+  // Every selected condition goes into ONE request, and a repeated parameter means all of them:
+  // the server ANDs terms and categories and matches any of several sources. This replaces the
+  // path that fetched one request per (category, keyword) pair and merged them by link - that was
+  // a union, the opposite of what selecting three things should do.
+  // V.cats is a list; gating the old single-value branch on V.mode left a pill highlighted while
+  // the server still returned the unfiltered list, so the values are read directly here.
+  V.cats.forEach(c=>p.append('category',c));
+  V.terms.forEach(t=>p.append('q',t));
+  if(V.q)p.append('q',V.q);
   // Card chips set V.tag, not V.mode/V.value. Without this the local page sent an
   // unfiltered request, so clicking a chip only highlighted it and the list never moved.
-  if(V.tag){if(V.tag.k==='cat')p.set('category',V.tag.v);else p.set('source',V.tag.v)}
+  if(V.tag){if(V.tag.k==='cat')p.append('category',V.tag.v);else p.append('source',V.tag.v)}
   return p.toString()}
-// Categories and keywords are two axes and both multi-select, so a request is one (category,
-// keyword) pair per combination - the API takes a single value for each. The pair results are
-// merged by link, which is exactly "one of the chosen categories and one of the chosen keywords".
-// Two categories alone still work: that is one request per category over the same window. The
-// merged set is kept and paging slices it, so 더 보기 never refetches.
-const COMBO={sig:'',list:[],updated:'',ict:'',counts:null,label:''};
-async function loadCombo(){
-  const cats=V.cats.length?V.cats:[''], terms=V.terms.length?V.terms:[''];
-  const sig=V.tab+'|'+V.hours+'|'+cats.slice().sort().join(',')+'|'+terms.slice().sort().join(',');
-  if(COMBO.sig!==sig){
-    const pairs=[];cats.forEach(function(c){terms.forEach(function(t2){pairs.push([c,t2])})});
-    const pages=await Promise.all(pairs.map(function(pr){
-      const p=new URLSearchParams({region:region(),hours:String(V.hours),limit:'300',offset:'0'});
-      if(pr[0])p.set('category',pr[0]);
-      if(pr[1])p.set('q',pr[1]);
-      return fetch(API+'/api/news?'+p.toString(),{cache:'no-cache'})
-        .then(function(r){return r.ok?r.json():null}).catch(function(){return null})}));
-    const seen={},merged=[];
-    pages.forEach(function(d){(d&&d.articles||[]).forEach(function(a){
-      const k=String(a.link||'');if(!k||seen[k])return;seen[k]=1;merged.push(a)})});
-    merged.sort(function(a,b){return String(b.published_at||'').localeCompare(String(a.published_at||''))});
-    COMBO.sig=sig;COMBO.list=merged;
-    COMBO.updated=(pages[0]&&pages[0].updated_at)||'';
-    COMBO.ict=(pages[0]&&pages[0].updated_at_ict)||'';
-    COMBO.counts=(pages[0]&&pages[0].region_counts)||null;
-    COMBO.label=cats.filter(Boolean).join(" · ")+(terms.filter(Boolean).length
-      ?(cats.filter(Boolean).length?" + ":"")+"키워드 "+terms.filter(Boolean).length+"개":"");
-  }
-  const all=COMBO.list,shown=all.slice(0,V.limit);
-  DATA={articles:shown,total:all.length,has_more:all.length>shown.length,
-        updated_at:COMBO.updated,updated_at_ict:COMBO.ict,window_hours:V.hours,
-        region_counts:COMBO.counts||{}};
-  setStamp((COMBO.ict||'')+' · '+V.hours+'시간 · '+COMBO.label+' · '+all.length+'건',COMBO.counts);
-  flagStale(COMBO.updated);
-  renderPills();renderFeed()}
+
+// --- the selected-condition row ----------------------------------------------------
+// Every filter narrowing the list, each with what it returns on its own, and what all of them
+// together return. A reader looking at "0건" needs to know which condition caused it: 관세 34건
+// next to 트럼프 462건 with a total of 0 is a different situation from all three being small.
+const COND={sig:'',counts:{}};
+function condList(){
+  const list=V.cats.map(c=>['cat',c]).concat(V.terms.map(t=>['term',t]));
+  if(V.tag)list.push([V.tag.k==='cat'?'cat':'src',V.tag.v]);
+  return list}
+function condKey(kind,value){return kind+':'+value}
+function condHit(a,c){
+  if(c[0]==='cat')return catList(a).indexOf(c[1])>=0;
+  if(c[0]==='term')return termMatch((a.title||'')+' '+(a.summary||''),c[1]);
+  return a.source===c[1]}
+function loadCondCounts(){
+  const list=condList();
+  const sig=V.tab+'|'+V.hours+'|'+list.map(c=>condKey(c[0],c[1])).join('|');
+  if(COND.sig===sig)return;
+  COND.sig=sig;COND.counts={};
+  if(!list.length){renderConditions();return}
+  if(PUBLIC){
+    // The static copy has no API: these counts are what the rows it loaded contain, which is the
+    // same basis its pill counts use.
+    list.forEach(c=>{COND.counts[condKey(c[0],c[1])]=articles().filter(a=>condHit(a,c)).length});
+    renderConditions();return}
+  const p=new URLSearchParams({region:region(),hours:String(V.hours),limit:'1'});
+  Promise.all(list.map(c=>{
+    const q=new URLSearchParams(p.toString());
+    if(c[0]==='cat')q.append('category',c[1]);
+    else if(c[0]==='term')q.append('q',c[1]);
+    else q.append('source',c[1]);
+    return fetch(API+'/api/news?'+q.toString(),{cache:'no-cache'})
+      .then(r=>r.ok?r.json():null).catch(()=>null)}))
+    .then(answers=>{answers.forEach((d,i)=>{if(d&&d.total!=null)COND.counts[condKey(list[i][0],list[i][1])]=d.total});
+      renderConditions()})}
+function renderConditions(){
+  const el=document.querySelector('#conds');if(!el)return;
+  const list=condList();
+  if(!list.length){el.hidden=true;el.innerHTML='';COND.sig='';return}
+  el.hidden=false;
+  const counts=COND.counts||{},total=(DATA&&DATA.total!=null)?DATA.total:null;
+  const known=list.filter(c=>counts[condKey(c[0],c[1])]!=null);
+  const narrow=known.length>1?known.slice().sort(function(a,b){
+    return counts[condKey(a[0],a[1])]-counts[condKey(b[0],b[1])]})[0]:null;
+  el.innerHTML='<span class="clabel">선택한 조건</span>'+
+    list.map(function(c){
+      const key=condKey(c[0],c[1]),n=counts[key];
+      return '<button type="button" class="cbtn" data-cond-off="'+esc(key)+'" '+
+        'title="이 조건을 풉니다">'+(c[0]==='term'?'키워드 ':'')+esc(c[1])+
+        (n==null?'':'<span class="n">'+n+'</span>')+'<span aria-hidden="true">✕</span></button>'}).join('')+
+    '<span class="sum">'+(total==null?'':'→ '+total+'건')+
+      (narrow&&total===0?' · <span class="warn">가장 좁은 조건: '+esc(narrow[1])+' ('+
+        counts[condKey(narrow[0],narrow[1])]+'건)</span>':'')+'</span>'+
+    (total===0&&V.hours<2160?'<button type="button" class="wide" data-cond-wide="1">'+
+      '더 긴 기간에서 찾기</button>':'');
+  el.querySelectorAll('[data-cond-off]').forEach(function(b){
+    b.onclick=function(){dropCond(b.dataset.condOff)}});
+  const wide=el.querySelector('[data-cond-wide]');
+  if(wide)wide.onclick=function(){
+    const h=document.querySelector('#hours');
+    if(h){h.value='2160';h.onchange()}}}
+function dropCond(key){
+  const at=key.indexOf(':'),kind=key.slice(0,at),value=key.slice(at+1),i=
+    kind==='cat'?V.cats.indexOf(value):(kind==='term'?V.terms.indexOf(value):-1);
+  if(i>=0){if(kind==='cat')V.cats.splice(i,1);else V.terms.splice(i,1)}
+  else if(V.tag&&V.tag.v===value)V.tag=null;
+  V.limit=PAGE;V.offset=0;renderTrends();fetchFeed()}
 
 async function loadLocal(){
-  if(V.cats.length||V.terms.length){await loadCombo();return}
   const r=await fetch(API+'/api/news?'+buildQuery(),{cache:'no-cache'});
   if(!r.ok)throw Error(r.status);
   const fresh=await r.json();
@@ -694,7 +775,7 @@ async function loadLocal(){
   DATA=fresh;
   archiveTotal=(fresh.archived_total!=null?fresh.archived_total:archiveTotal);
   try{localStorage.setItem(CACHE_KEY,JSON.stringify(DATA))}catch(e){}
-  setStamp((fresh.updated_at_ict||'')+' · '+(fresh.window_hours||24)+'시간 · '+(fresh.total||0)+'건',fresh.region_counts);
+  setStamp((fresh.updated_at_ict||'')+' · '+hoursLabel()+' · '+(fresh.total||0)+'건',fresh.region_counts);
   flagStale(fresh.updated_at);
   renderSources();renderPills();renderFeed()}
 
@@ -800,8 +881,16 @@ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab)
 // as a second, dead copy of the filter logic.
 document.querySelector('#q').oninput=()=>{clearTimeout(window.__qt);
   window.__qt=setTimeout(()=>{V.q=document.querySelector('#q').value.trim();
-    if(V.terms.length){V.terms=[];renderTrends()}
+    // Typing no longer releases the keyword chips: a typed word and the chips are conditions on the
+    // same axis and they are ANDed, which is what a reader selecting three things expects. The box
+    // stays the immediate filter and "+ 조건 추가" turns what is in it into a chip.
     V.limit=PAGE;V.offset=0;fetchFeed()},350)};
+document.querySelector('#qadd').onclick=()=>{
+  const box=document.querySelector('#q'),value=(box.value||'').trim();
+  if(!value)return;
+  if(V.terms.indexOf(value)<0)V.terms.push(value);
+  box.value='';V.q='';
+  V.limit=PAGE;V.offset=0;renderTrends();fetchFeed()};
 document.querySelector('#hours').onchange=()=>{V.hours=Number(document.querySelector('#hours').value)||24;
   V.limit=PAGE;V.offset=0;fetchFeed()};
 document.querySelector('#more').onclick=async()=>{
@@ -826,10 +915,10 @@ document.querySelector('#feed').addEventListener('click',ev=>{
   const chip=ev.target.closest('.chip.tap');
   if(chip){const k=chip.dataset.k,v=chip.dataset.v;
     V.tag=(V.tag&&V.tag.k===k&&V.tag.v===v)?null:{k:k,v:v};
-    // The category pill row and the card chips are two different filters. Left alone they
-    // would be sent together and ANDed on the server, which usually returns nothing.
-    V.cats=[];V.mode='all';V.value='';
-    V.limit=PAGE;V.offset=0;clearText();renderPills();fetchFeed();return}
+    // Chips compose with the pill rows and the keywords: everything selected is ANDed, so a card
+    // chip is one more condition rather than a replacement for the rest.
+    V.mode='all';V.value='';
+    V.limit=PAGE;V.offset=0;renderPills();fetchFeed();return}
   const btn=ev.target.closest('.expand');
   if(!btn)return;
   const s=btn.previousElementSibling;

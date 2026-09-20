@@ -88,17 +88,30 @@ const check = (name, ok, detail) => {
   check('② 지정학 알약 active', g('button[data-cat="지정학"]').classList.contains('active'), '');
   check('② 지정학 건수가 줄어듦', cl.length <= base && counts().indexOf('전체 목록') < 0, counts().trim());
 
-  // --- 3. source pills, and exclusivity between the two axes ---
+  // --- 3. source pills, and how the two axes combine ---
   const srclist = Array.from(d.querySelectorAll('#filters-global button[data-src]')).map((b) => b.dataset.src);
   check('③ 소스 알약에 Whale Alert 있음', srclist.indexOf('Whale Alert') >= 0, srclist.join(' · '));
+  // Clear the category first: this check is about the source filter on its own.
+  g('button[data-cat="전체"]').click();
+  await sleep(WAIT);
   g('button[data-src="Whale Alert"]').click();
   await sleep(WAIT);
   cl = cards();
   check('③ Whale Alert 알약 → 고래 알림만', same(cl.map(srcOf), 'Whale Alert') && cl.length > 0, cl.length + '건');
   check('③ 소스 알약 aria-pressed', g('button[data-src="Whale Alert"]').getAttribute('aria-pressed') === 'true',
     'aria=' + g('button[data-src="Whale Alert"]').getAttribute('aria-pressed'));
-  check('③ 분류 알약이 풀림', !g('button[data-cat="지정학"]').classList.contains('active'),
-    'active=' + g('button[data-cat="지정학"]').classList.contains('active'));
+
+  // The axes compose: selecting a category next to a source keeps both and returns the
+  // intersection, which can only narrow the list. This used to release one of them, because two
+  // conditions sent together were ANDed on the server and usually returned nothing.
+  const srcOnly = totalOf(counts());
+  g('button[data-cat="지정학"]').click();
+  await sleep(WAIT);
+  const bothAxes = totalOf(counts());
+  check('③ 두 축이 교차함 (분류 + 소스)',
+    g('button[data-cat="지정학"]').classList.contains('active') && srcOnly >= 0 && bothAxes >= 0
+      && bothAxes <= srcOnly,
+    '소스만 ' + srcOnly + ' → 둘 다 ' + bothAxes);
 
   // --- 4. 전체 restores the baseline ---
   g('button[data-cat="전체"]').click();
