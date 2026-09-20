@@ -27,6 +27,7 @@ import io
 import json
 from pathlib import Path
 
+import landing
 import ui_text
 
 ROOT = Path(__file__).resolve().parent
@@ -998,99 +999,70 @@ def write(path: Path, text: str) -> int:
     return len(text.encode("utf-8"))
 
 
-def build_public() -> dict[str, int]:
-    """Rewrite only the two published pages.
+# Where each published address should send its reader. The domain was split into sections
+# (/news, /thai) and the collector runs on its own host, so these addresses are old links.
+MOVED = {
+    "docs/index.html": "https://teemobkk.io/",
+    "docs/ko/index.html": "https://teemobkk.io/news/ko/",
+    "docs/thai/index.html": "https://teemobkk.io/thai/",
+    "docs/ko/thai/index.html": "https://teemobkk.io/thai/ko/",
+}
 
-    The collector calls this every cycle, including in CI, and it must not touch anything
-    outside docs/. An earlier version called build_all() here, which also rewrote the local
-    page at the repository root. That left an unstaged modification in the CI working tree on
-    every run, so `git pull --rebase` refused to start ("cannot pull with rebase: You have
-    unstaged changes"), the push failed after its retries, and the published site silently
-    stopped updating while the workflow still reported a run every five minutes.
-    """
-    sizes = {}
-    global_seed = str(DOCS / "global-recent.json")
-    thai_seed = str(DOCS / "thai-recent.json")
-    # English is the default: the headlines are mostly English, and a page whose only text at
-    # load time is Korean interface makes a browser treat it as a Korean page and offer to
-    # translate it into English. The Korean pages exist for readers who want that interface.
-    sizes["docs/index.html"] = write(DOCS / "index.html", render(
-        public=True, datadir="", want_thai=False, icon_prefix="", admin=False,
-        lang="en", alt="ko/index.html", seed_path=global_seed))
-    sizes["docs/ko/index.html"] = write(DOCS / "ko" / "index.html", render(
-        public=True, datadir="../", want_thai=False, icon_prefix="../", admin=False,
-        lang="ko", alt="../index.html", seed_path=global_seed))
-    sizes["docs/thai/index.html"] = write(DOCS / "thai" / "index.html", render(
-        public=True, datadir="../", want_thai=True, icon_prefix="../", admin=False,
-        lang="en", alt="../ko/thai/index.html", seed_path=thai_seed))
-    sizes["docs/ko/thai/index.html"] = write(DOCS / "ko" / "thai" / "index.html", render(
-        public=True, datadir="../../", want_thai=True, icon_prefix="../../", admin=False,
-        lang="ko", alt="../../thai/index.html", seed_path=thai_seed))
-    return sizes
-
-
-LANDING = """<!doctype html>
-<html lang="ko">
+REDIRECT = """<!doctype html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TeemoBKK</title>
-<meta name="description" content="방콕에서 보는 비트코인·매크로·태국 뉴스와 경제지표">
-<link rel="icon" href="/favicon.ico" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="canonical" href="__TO__">
+<meta name="robots" content="noindex">
+<meta http-equiv="refresh" content="0; url=__TO__">
 <style>
-__CSS__
-.landing{max-width:820px;margin:9vh auto 40px;padding:0 20px}
-.landing h1{font-size:32px;letter-spacing:-.02em;margin:0 0 8px}
-.landing .lead{color:var(--muted);font-size:15px;line-height:1.75;margin:0 0 28px;max-width:62ch}
-.landing h2{font-size:13px;color:var(--muted);font-weight:600;margin:30px 0 10px}
-.sects{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
-.sect{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-card);padding:18px}
-.sect b{display:block;font-size:17px;margin-bottom:7px}
-.sect span{display:block;color:var(--muted);font-size:13.5px;line-height:1.65;margin-bottom:12px}
-.sect .go{display:flex;gap:10px;font-size:13px}
-.sect .go a{border:1px solid var(--line);border-radius:var(--r-pill);padding:5px 12px;color:var(--muted)}
-.sect .go a:hover{border-color:var(--accent);color:var(--accent)}
-.sect.soon{opacity:.5}
-.sect.soon b::after{content:" 준비 중";font-size:12px;color:var(--muted);font-weight:400}
+html{background:#05070d;color:#8b9bbd;font:14px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center}
+b{display:block;color:#eef3ff;font-size:17px;letter-spacing:-.02em;margin-bottom:10px}
+a{color:#64d7ff;word-break:break-all}
 </style>
 </head>
 <body>
-<main class="landing">
-  <h1>TeemoBKK</h1>
-  <p class="lead">방콕에서 보는 시장과 생활. 뉴스 대시보드와 태국 소식을 지금 볼 수 있고,
-  블로그와 경제지표 공유는 이곳에 차례로 붙습니다.</p>
-
-  <h2>지금 볼 수 있는 것</h2>
-  <div class="sects">
-    <div class="sect">
-      <b>뉴스 대시보드</b>
-      <span>비트코인·매크로 헤드라인과 경제지표 일정. 수집한 기사를 분류·기간·출처로 걸러 볼 수 있습니다.</span>
-      <div class="go"><a href="/news/">English</a><a href="/news/ko/">한국어</a></div>
-    </div>
-    <div class="sect">
-      <b>태국 소식</b>
-      <span>비자·이민, 사고·재난, 생활·경제, 관광·보건. 방콕에 사는 사람이 먼저 볼 소식 위주입니다.</span>
-      <div class="go"><a href="/thai/">English</a><a href="/thai/ko/">한국어</a></div>
-    </div>
-  </div>
-
-  <h2>준비 중</h2>
-  <div class="sects">
-    <div class="sect soon"><b>블로그</b><span>시장과 생활에 대한 글을 이곳에 올릴 예정입니다.</span></div>
-    <div class="sect soon"><b>지표 공유</b><span>경제지표와 차트를 정리해 공유할 예정입니다.</span></div>
-  </div>
+<main>
+<b>TeemoBKK has moved.</b>
+<a href="__TO__">__TO__</a>
 </main>
-</body></html>
+<script>location.replace("__TO__");</script>
+</body>
+</html>
 """
 
 
-def render_landing() -> str:
-    """The site root. Not the dashboard: this domain will also carry a blog and indicator pages,
-    so each section keeps its own path and the root stays a short index."""
-    return LANDING.replace("__CSS__", CSS)
+def redirect_page(to: str) -> str:
+    """A pointer, not a second copy.
+
+    These addresses were published before the domain was split into sections, so links to them
+    exist and must keep working. A copy of the dashboard here would be stale the moment the
+    collector moved on, and a reader landing on it would have no way to know. So: a meta refresh
+    for the browser, a real link for a reader whose refresh is blocked, and noindex so the old
+    address is not what a search result offers.
+    """
+    return REDIRECT.replace("__TO__", to)
+
+
+def build_public() -> dict[str, int]:
+    """Write the published pages as redirects to the live site.
+
+    Only docs/ is touched. An earlier version also rewrote the local page at the repository
+    root, which left an unstaged modification in the CI working tree on every run, so
+    `git pull --rebase` refused to start ("cannot pull with rebase: You have unstaged changes")
+    and the published site silently stopped updating while the workflow still reported a run
+    every five minutes.
+
+    The redirects are rewritten every cycle on purpose: whatever the publish step does, the old
+    address must not come back as a copy of the dashboard.
+    """
+    sizes = {}
+    for name, to in MOVED.items():
+        sizes[name] = write(ROOT / name, redirect_page(to))
+    return sizes
 
 
 def build_server(db_path: str = "news.db") -> dict[str, int]:
@@ -1108,7 +1080,7 @@ def build_server(db_path: str = "news.db") -> dict[str, int]:
     sizes = {}
     global_seed = seed_from_db(db_path, "\uae00\ub85c\ubc8c", False, "en")
     thai_seed = seed_from_db(db_path, "\ud0dc\uad6d", True, "en")
-    sizes["index.html"] = write(ROOT / "index.html", render_landing())
+    sizes["index.html"] = write(ROOT / "index.html", landing.render_landing())
     for section, want_thai, seed in (("news", False, global_seed), ("thai", True, thai_seed)):
         for target, code, alt in ((section, "en", "ko/index.html"),
                                   (section + "/ko", "ko", "../index.html")):
