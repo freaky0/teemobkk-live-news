@@ -266,16 +266,7 @@ h1 .thin{color:transparent;-webkit-text-stroke:1.2px rgba(238,243,255,.62)}
     cards.forEach(function(c){ io.observe(c); });
   }
 
-  function countTo(el, to){
-    if (reduced){ el.textContent = to.toLocaleString("en-US"); return; }
-    var start = performance.now(), dur = 900;
-    (function step(now){
-      var p = Math.min(1, (now - start) / dur);
-      var eased = 1 - Math.pow(1 - p, 3);
-      el.textContent = Math.round(to * eased).toLocaleString("en-US");
-      if (p < 1) requestAnimationFrame(step);
-    })(start);
-  }
+  function setNumber(el, to){ el.textContent = to.toLocaleString("en-US"); }
 
   function escapeText(s){ var d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
 
@@ -283,9 +274,9 @@ h1 .thin{color:transparent;-webkit-text-stroke:1.2px rgba(238,243,255,.62)}
     .then(function(r){ if (!r.ok) throw new Error(r.status); return r.json(); })
     .then(function(data){
       var stats = document.getElementById("stats");
-      if (typeof data.total === "number"){ countTo(document.getElementById("s-window"), data.total); }
+      if (typeof data.total === "number"){ setNumber(document.getElementById("s-window"), data.total); }
       var thai = (data.region_counts || {})["태국"];
-      if (typeof thai === "number"){ countTo(document.getElementById("s-thai"), thai); }
+      if (typeof thai === "number"){ setNumber(document.getElementById("s-thai"), thai); }
       if (data.updated_at_ict){
         var m = String(data.updated_at_ict).match(/(\d{1,2}:\d{2})/);
         if (m) document.getElementById("s-upd").textContent = m[1];
