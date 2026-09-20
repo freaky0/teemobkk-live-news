@@ -52,25 +52,34 @@ const check = (n, ok, d) => { pass.push(ok); console.log('  %s %s%s', ok ? 'PASS
 await waitFor(() => d.querySelectorAll('#filters-global button[data-cat]').length > 0
   && d.querySelectorAll('#feed .card').length > 0);
 
+  const HANGUL = /[\uAC00-\uD7A3]/;
   const pills = Array.from(d.querySelectorAll('#filters-global button[data-cat]'));
   const labels = pills.map((b) => b.textContent.replace(/\d+$/, '').trim());
-  check('분류 알약 라벨이 영어', labels.indexOf('Liquidity & rates') >= 0, labels.slice(0, 3).join(' / '));
-  const values = pills.map((b) => b.dataset.cat);
-  check('분류 값은 저장값(한국어) 유지', values.indexOf('유동성·금리') >= 0, values.slice(0, 3).join(' / '));
+  // The contract is "the stored value stays the Korean name, the label is translated", so the test
+  // picks a real pill and checks both halves of it. Naming a category here instead would be the
+  // one string most likely to be wrong after a taxonomy change, and it would then "prove" the page
+  // correct against a name this test invented.
+  const pick = pills.find((b) => HANGUL.test(b.dataset.cat) && !HANGUL.test(b.textContent));
+  check('분류 알약 라벨이 영어', !!pick, labels.slice(1, 4).join(' / '));
+  const pickLabel = pick ? pick.textContent.replace(/\d+$/, '').trim() : '';
+  const pickValue = pick ? pick.dataset.cat : '';
+  check('분류 값은 저장값(한국어) 유지', !!pick && HANGUL.test(pickValue), pickValue);
 
   const cards = () => Array.from(d.querySelectorAll('#feed .card'));
-  const base = cards().length;
-  const catChip = (c) => { const e = c.querySelector('.chip.tap:not(.src)'); return e ? e.textContent.trim() : ''; };
-  const pill = d.querySelector('#filters-global button[data-cat="유동성·금리"]');
-  pill.click();
+  // A story can carry several labels, and the clicked one need not be the first of them.
+  const labelsOf = (c) => Array.from(c.querySelectorAll('.chip.tap:not(.src)')).map((e) => e.textContent.trim());
+  const hasLabel = (c) => labelsOf(c).indexOf(pickLabel) >= 0;
+  pick.click();
   await waitFor(() => {
     const c = cards();
-    return c.length > 0 && c.every((x) => catChip(x) === 'Liquidity & rates');
+    return c.length > 0 && c.every(hasLabel);
   });
   const after = cards();
-  check('영어 알약이 실제로 걸러냄', after.length > 0 && after.every((c) => catChip(c) === 'Liquidity & rates'),
-    after.length + '건 · ' + Array.from(new Set(after.map(catChip))).join(', '));
-  check('도 영어 라벨로 표시', catChip(after[0]) === 'Liquidity & rates', catChip(after[0]));
+  check('영어 알약이 실제로 걸러냄', after.length > 0 && after.every(hasLabel),
+    after.length + '건 · ' + Array.from(new Set(after.flatMap(labelsOf))).join(', '));
+  check('분류 칩도 영어 라벨로 표시',
+    after.length > 0 && hasLabel(after[0]) && !HANGUL.test(labelsOf(after[0]).join(' ')),
+    after.length ? labelsOf(after[0]).join(' + ') : '(없음)');
 
   console.log('\n  %d/%d', pass.filter(Boolean).length, pass.length);
   process.exit(pass.every(Boolean) ? 0 : 1);

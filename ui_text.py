@@ -182,7 +182,7 @@ UI_KO = {
     "sideWaiting": "대기 중",
     "srcOk": "정상", "srcFail": "실패",
     "guideGlobalH2": "관찰 기준",
-    "guideGlobalP1": ("유동성·금리, 달러·국채, 미국 정책, 지정학, ETF·기관 수급, 파생상품, "
+    "guideGlobalP1": ("금리·유동성, 미국 정책·트럼프, 지정학, ETF·기관 수급, 파생상품, "
                       "온체인, 스테이블코인, X 발언을 우선 수집합니다."),
     "guideGlobalP2": ("뉴스 사실과 시장 해석을 분리합니다. X 게시물과 속보는 공식 발표나 "
                       "원문 확인 전까지 확정 사실로 취급하지 않습니다."),
@@ -205,8 +205,9 @@ UI = {"en": UI_EN, "ko": UI_KO}
 CATS = {
     "global": [
         ("일반", "General"),
-        ("유동성·금리", "Liquidity & rates"),
-        ("미국 정책·트럼프", "US policy & Trump"),
+        ("금리", "Rates & liquidity"),
+        ("미국 정책", "US policy"),
+        ("트럼프", "Trump"),
         ("지정학", "Geopolitics"),
         ("ETF·수급", "ETF & flows"),
         ("파생상품·청산", "Derivatives & liquidations"),

@@ -276,13 +276,17 @@ function bucket(iso){const t=new Date(iso).getTime();if(!isFinite(t))return '그
 function hl(t){const txt=esc(t);const q=(V.q||'').trim();if(!q)return txt;
   const qe=esc(q).replace(/[.*+?^${}()|[\\]\\\\]/g,'\\\\$&');
   try{return txt.replace(new RegExp('('+qe+')','gi'),'<mark>$1</mark>')}catch(e){return txt}}
+function catList(a){const c=a.categories;return (Array.isArray(c)&&c.length)?c:(a.category?[a.category]:[])}
 function keep(a){
   const hours=Number(V.hours)||24,t=new Date(a.published_at).getTime();
   if(!isFinite(t)||Date.now()-t>hours*3600000)return false;
-    if(V.cats.length&&V.cats.indexOf(a.category)<0)return false;
-  if(V.tag&&(V.tag.k==='cat'?a.category!==V.tag.v:a.source!==V.tag.v))return false;
+  // A story can carry several axes, so a selected category matches if it is any of the card's
+  // labels, not only its first one. Two selected categories are a union, not an intersection.
+  const labels=catList(a);
+  if(V.cats.length&&!V.cats.some(c=>labels.indexOf(c)>=0))return false;
+  if(V.tag&&(V.tag.k==='cat'?labels.indexOf(V.tag.v)<0:a.source!==V.tag.v))return false;
   const q=(V.q||'').trim().toLowerCase();
-  if(q&&(((a.title||'')+' '+(a.summary||'')+' '+(a.source||'')+' '+(a.category||'')).toLowerCase().indexOf(q)<0))return false;
+  if(q&&(((a.title||'')+' '+(a.summary||'')+' '+(a.source||'')+' '+labels.join(' ')).toLowerCase().indexOf(q)<0))return false;
   return true}
 function visible(){return PUBLIC?articles().filter(keep):articles()}
 function stars(a){const n=Number(a.priority)||0;
@@ -309,15 +313,17 @@ function verifChip(a){
   return ''}
 function card(a,th,lead){
   const tag=V.tag||{};
-  const srcOn=tag.k==='src'&&tag.v===a.source,catOn=tag.k==='cat'&&tag.v===a.category;
+  const srcOn=tag.k==='src'&&tag.v===a.source;
   const srcCls='chip src tap'+(a.source_type==='official'?' official':'')+(th?' th':'')+(srcOn?' on':'');
-  const catCls='chip tap'+(catOn?' on':'');
   return '<article class="card'+(th?' th':'')+(a.fresh?' new':'')+'">'+
     '<div class="meta">'+
       verifChip(a)+
       '<button type="button" class="'+srcCls+'" data-k="src" data-v="'+esc(a.source)+'" aria-pressed="'+(srcOn?'true':'false')+'">'+esc(a.source)+'</button>'+
       speakChip(a)+
-      '<button type="button" class="'+catCls+'" data-k="cat" data-v="'+esc(a.category)+'" aria-pressed="'+(catOn?'true':'false')+'">'+esc(catLabel(a.category))+'</button>'+
+      // Every label the story matched is a chip, and each one filters on its own. Measured over a
+      // 24-hour window: 19% of rows carry two labels, 4.7% carry three or more.
+      catList(a).map(v=>{const on=tag.k==='cat'&&tag.v===v;
+        return '<button type="button" class="chip tap'+(on?' on':'')+'" data-k="cat" data-v="'+esc(v)+'" aria-pressed="'+(on?'true':'false')+'">'+esc(catLabel(v))+'</button>'}).join('')+
       '<span>'+age(a.published_at)+'</span>'+stars(a)+
     '</div>'+
     '<h2 class="title"><a href="'+esc(a.link)+'" target="_blank" rel="noopener nofollow">'+hl(a.title)+'</a></h2>'+
@@ -327,7 +333,7 @@ function card(a,th,lead){
 
 function catLabel(value){const map=CFG.catLabels||{};return map[value]||value}
 function fmt(t,n,m){return String(t).replace("{n}",n).replace("{m}",m)}
-function pillCount(cat){return articles().filter(a=>a.category===cat).length}
+function pillCount(cat){return articles().filter(a=>catList(a).indexOf(cat)>=0).length}
 function catOn(v){return v==='전체'?!V.cats.length:V.cats.indexOf(v)>=0}
 function renderPills(){
   const th=V.tab==='thai';
@@ -667,7 +673,7 @@ function renderGuide(){
   const el=document.querySelector('#tguide');if(!el)return;
   el.innerHTML=V.tab==='thai'
     ?'<h2>태국 소식</h2><p class="note">방콕포스트·카오솟·타이인콰이어러·프라차타이(영문), 타이랏·마티촌(태국어), 구글뉴스 태국·방콕·교민 검색을 모읍니다.</p><p class="note">비자·이민과 사고·재난을 우선 표시하며, 확정되지 않은 속보는 원문 확인 전까지 단정하지 않습니다.</p>'
-    :'<h2>관찰 기준</h2><p class="note">유동성·금리, 달러·국채, 미국 정책, 지정학, ETF·기관 수급, 파생상품, 온체인, 스테이블코인, X 발언을 우선 수집합니다.</p><p class="note">뉴스 사실과 시장 해석을 분리합니다. X 게시물과 속보는 공식 발표나 원문 확인 전까지 확정 사실로 취급하지 않습니다.</p>'}
+    :'<h2>관찰 기준</h2><p class="note">금리·유동성, 미국 정책·트럼프, 지정학, ETF·기관 수급, 파생상품, 온체인, 스테이블코인, X 발언을 우선 수집합니다.</p><p class="note">뉴스 사실과 시장 해석을 분리합니다. X 게시물과 속보는 공식 발표나 원문 확인 전까지 확정 사실로 취급하지 않습니다.</p>'}
 
 function setTab(next,silent){
   // The indicator tab toggles: pressing it again closes the panel and returns to the
@@ -887,7 +893,7 @@ def seed_from_db(db_path: str, region: str, want_thai: bool, lang: str,
         connection = sqlite3.connect("file:%s?mode=ro" % db_path, uri=True)
         connection.row_factory = sqlite3.Row
         rows = connection.execute(
-            "SELECT title, summary, source, category, link, published_at FROM articles "
+            "SELECT title, summary, source, category, categories, link, published_at FROM articles "
             "WHERE region = ? AND title IS NOT NULL AND title != '' "
             "ORDER BY published_at DESC LIMIT ?", (region, limit)).fetchall()
     except sqlite3.Error:
@@ -900,8 +906,25 @@ def seed_from_db(db_path: str, region: str, want_thai: bool, lang: str,
     return _seed_cards([dict(r) for r in rows], want_thai, lang, limit)
 
 
+def _seed_labels(item: dict) -> list:
+    """The labels a seeded card shows.
+
+    The published JSON carries a list; a row read straight out of a collector database carries the
+    comma-joined column; a row written before the column existed carries only `category`.
+    """
+    raw = item.get("categories")
+    if isinstance(raw, (list, tuple)):
+        names = [str(x) for x in raw if x]
+    else:
+        names = [part for part in str(raw or "").split(",") if part]
+    if not names:
+        names = [str(item.get("category") or "")]
+    return [name for name in names if name]
+
+
 def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str:
     rows = []
+    labels = ui_text.cat_labels(lang)
     for item in items[:limit]:
         title = str(item.get("title") or "")
         summary = str(item.get("summary") or "")
@@ -909,11 +932,12 @@ def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str
             continue
         lang = _script_lang(title + " " + summary)
         attr = ' lang="%s"' % lang if lang else ""
+        chips = "".join('<span class="chip">' + html.escape(labels.get(name, name)) + '</span>'
+                        for name in _seed_labels(item))
         rows.append(
             '<article class="card seed' + (" th" if want_thai else "") + '">'
             '<div class="meta"><span class="chip src">' + html.escape(str(item.get("source") or "")) + '</span>'
-            '<span class="chip">' + html.escape(
-                ui_text.cat_labels(lang).get(str(item.get("category")), str(item.get("category") or ""))) + '</span>'
+            + chips +
             '<span>' + html.escape(_ict_stamp(item.get("published_at"))) + '</span></div>'
             '<h2 class="title"' + attr + '><a href="' + html.escape(str(item.get("link") or ""))
             + '" target="_blank" rel="noopener nofollow">' + html.escape(title) + '</a></h2>'

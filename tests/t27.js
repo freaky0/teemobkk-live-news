@@ -35,6 +35,11 @@ const check = (name, ok, detail) => {
   const counts = () => (d.querySelector('#counts') || {}).textContent || '';
   const srcOf = (c) => { const e = c.querySelector('.chip.src'); return e ? e.textContent.trim() : ''; };
   const catOf = (c) => { const e = c.querySelector('.chip.tap:not(.src)'); return e ? e.textContent.trim() : ''; };
+  // A story can carry more than one axis, so a card can show several labels and the one that was
+  // clicked is not necessarily the first. Every check about a category filter asks "does the card
+  // carry this label", not "is this its only label".
+  const labelsOf = (c) => Array.from(c.querySelectorAll('.chip.tap:not(.src)')).map((e) => e.textContent.trim());
+  const allHave = (arr, v) => arr.length > 0 && arr.every((c) => labelsOf(c).indexOf(v) >= 0);
   const same = (arr, v) => arr.length > 0 && arr.every((x) => x === v);
   // renderPills() rewrites the row, so pills are looked up again after every click.
   const g = (sel) => d.querySelector('#filters-global ' + sel);
@@ -65,7 +70,7 @@ const check = (name, ok, detail) => {
   cards()[0].querySelector('.chip.tap:not(.src)').click();
   await sleep(WAIT);
   cl = cards();
-  check('① 분류 칩 클릭 → 그 분류만', same(cl.map(catOf), firstCat), firstCat + ' · ' + cl.length + '건');
+  check('① 분류 칩 클릭 → 그 분류를 가진 카드', allHave(cl, firstCat), firstCat + ' · ' + cl.length + '건');
   const clr = d.querySelector('#clrtag');
   if (clr) { clr.click(); await sleep(WAIT); }
   check('① 해제 알약 → 원복', cards().length === base, cards().length + '건 vs ' + base);
@@ -76,8 +81,8 @@ const check = (name, ok, detail) => {
   g('button[data-cat="지정학"]').click();
   await sleep(WAIT);
   cl = cards();
-  check('② 지정학 알약 → 그 분류만', same(cl.map(catOf), '지정학'),
-    Array.from(new Set(cl.map(catOf))).join(', ') || '(없음)');
+  check('② 지정학 알약 → 그 분류를 가진 카드', allHave(cl, '지정학'),
+    Array.from(new Set(cl.flatMap(labelsOf))).join(', ') || '(없음)');
   check('② 지정학 알약 active', g('button[data-cat="지정학"]').classList.contains('active'), '');
   check('② 지정학 건수가 줄어듦', cl.length <= base && counts().indexOf('전체 목록') < 0, counts().trim());
 
@@ -106,8 +111,17 @@ const check = (name, ok, detail) => {
   t('button[data-cat="비자·이민"]').click();
   await sleep(WAIT + 3000);
   const th = cards();
-  check('⑤ 태국 탭 비자·이민 → 그 분류만', same(th.map(catOf), '비자·이민'),
-    Array.from(new Set(th.map(catOf))).join(', ') || '(없음)');
+  check('⑤ 태국 탭 비자·이민 → 그 분류를 가진 카드', allHave(th, '비자·이민'),
+    Array.from(new Set(th.flatMap(labelsOf))).join(', ') || '(없음)');
+
+  // --- 6. a story that matched two axes shows both labels ---
+  d.querySelector('#tab-global').click();
+  await sleep(WAIT + 3000);
+  g('button[data-cat="전체"]').click();
+  await sleep(WAIT);
+  const multi = cards().filter((c) => labelsOf(c).length > 1);
+  check('⑥ 두 축에 걸린 카드는 알약을 두 개 보여줌', multi.length > 0,
+    multi.length + '건 · ' + (multi[0] ? labelsOf(multi[0]).join(' + ') : 'none'));
 
   console.log('\n  %d/%d', pass.filter(Boolean).length, pass.length);
   process.exit(pass.every(Boolean) ? 0 : 1);
