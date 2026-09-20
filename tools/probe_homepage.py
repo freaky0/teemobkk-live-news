@@ -72,10 +72,21 @@ with sync_playwright() as p:
     rule = page.evaluate("getComputedStyle(document.querySelector('.hero-rule')).transform")
     check("히어로 라인이 그려짐", rule in ("none", "matrix(1, 0, 0, 1, 0, 0)"), rule)
 
-    # live counts from the same endpoint
+    # live counts from the same endpoint (in live mode compare against what the API holds now)
+    if LIVE:
+        import urllib.request
+        req = urllib.request.Request(BASE + "api/news?region=%EA%B8%80%EB%A1%9C%EB%B2%8C&hours=24&limit=1",
+                                     headers={"User-Agent": "Mozilla/5.0"})
+        now = json.loads(urllib.request.urlopen(req, timeout=30).read())
+        want_total = "{:,}건".format(now["total"])
+        want_thai = "{:,}건".format(now["region_counts"]["태국"])
+    else:
+        want_total, want_thai = "1,338건", "572건"
     check("통계가 API 값으로 채워짐",
-          page.locator("#stat-total").inner_text() == "1,338건" and page.locator("#stat-thai").inner_text() == "572건",
-          page.locator("#stat-total").inner_text() + " / " + page.locator("#stat-thai").inner_text())
+          page.locator("#stat-total").inner_text() == want_total
+          and page.locator("#stat-thai").inner_text() == want_thai,
+          page.locator("#stat-total").inner_text() + " / " + page.locator("#stat-thai").inner_text()
+          + " (기대 " + want_total + " / " + want_thai + ")")
 
     # oversized word band
     marq = page.evaluate("""(() => {
