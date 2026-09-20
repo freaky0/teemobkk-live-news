@@ -40,6 +40,7 @@ SUITE = [
 
 PYTHON_CHECKS = [
     ("test_landing.py", ["-m", "unittest", "test_landing"], "랜딩 단위 계약", "local"),
+    ("test_categories.py", ["tests/test_categories.py"], "분류 다중 라벨 계약", "local"),
 ]
 
 

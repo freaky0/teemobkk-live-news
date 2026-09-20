@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import category_rules as taxonomy
 import bluesky_source
 import sbh_open_news
 import sbh_source
@@ -98,35 +99,6 @@ THAI_GOOGLE_QUERIES = [
 # 태국 탭에서 걸러낼 저품질·비태국 매체. 구글뉴스 제목 뒤에 붙는 매체명으로 판별한다.
 THAI_BLOCK_TERMS = ("calgary roughnecks", "specialtimes", "vietnam.vn", "vietnamnet", "vnexpress", "baoquocte")
 
-CATEGORY_RULES = {
-    "유동성·금리": ["liquidity", "repo", "reverse repo", "qt", "qe", "treasury cash", "bank reserves", "real yield", "interest rate", "central bank", "pboc", "ecb", "yuan", "midpoint", "interbank", "금리", "유동성", "국채"],
-    "미국 정책·트럼프": ["trump", "white house", "tariff", "executive order", "strategic reserve", "미국 대통령", "백악관", "트럼프", "관세"],
-    "ETF·수급": ["etf", "fund flow", "inflow", "outflow", "blackrock", "fidelity", "institutional buying"],
-    "규제·정책": ["sec", "cftc", "regulation", "regulator", "law", "bill", "congress", "ban", "sanction", "법안", "규제", "과세", "세금", "당국"],
-    "지정학": ["war", "iran", "israel", "ukraine", "russia", "china", "taiwan", "middle east", "geopolit", "전쟁", "중동", "지정학", "공습", "미사일", "제재"],
-    "파생상품·청산": ["liquidation", "funding", "open interest", "options", "futures", "basis", "청산", "펀딩", "미결제약정", "선물"],
-    "온체인·기관": ["whale", "wallet", "on-chain", "onchain", "exchange reserve", "exchange flow", "institution", "고래", "온체인", "거래소 유입", "거래소"],
-    "스테이블코인": ["stablecoin", "usdt", "usdc", "depeg", "디페깅", "스테이블코인"],
-    "X 발언": ["elon musk", "michael saylor", "jack dorsey", "x post", "twitter post", "x.com"],
-    "주식·원자재": ["s&p 500", "nasdaq", "vix", "oil", "crude", "gold", "copper", "stocks", "원유", "금값", "증시", "급락", "급등"],
-    "채굴": ["miner", "mining", "hashrate", "difficulty", "채굴", "해시레이트"],
-    "거시경제": ["fed", "federal reserve", "inflation", "cpi", "ppi", "jobs", "yield", "dollar", "실업", "연준", "물가", "고용", "소비자"],
-    "시장·가격": ["price", "rally", "crash", "market", "가격", "상승", "하락", "신고가", "신저가", "시가총액"],
-    "이더리움·알트": ["ethereum", "ether", "solana", "xrp", "altcoin", "defi", "layer 2", "eth"],
-}
-
-# 태국 교민 생활에 직접 닿는 순서로 배치한다.
-THAI_CATEGORY_RULES = {
-    "비자·이민": ["visa", "immigration", "work permit", "residence permit", "permanent residence", "residence visa", "extension of stay", "90-day", "overstay", "visa run", "land border", "entry requirement", "비자", "이민", "체류", "워크퍼밋", "วีซ่า", "ตรวจคนเข้าเมือง", "ต่ออายุ"], 
-    "사고·재난": ["flood", "fire", "wildfire", "crash", "collision", "accident", "explosion", "earthquake", "storm", "drown", "collapse", "killed", "injured", "outbreak", "홍수", "화재", "사고", "폭발", "지진", "태풍", "붕", "사망", "부상", "น้ำท่วม", "ไฟไหม้", "อุบัติเหตุ", "แผ่นดินไหว", "พายุ", "ระเบิด"],
-    "태국 생활": ["bts", "mrt", "skytrain", "subway", "tollway", "expressway", "traffic", "water outage", "power outage", "blackout", "electricity", "water supply", "dust", "pm2.5", "air quality", "weather", "rain", "heat", "교통", "단수", "정전", "지하철", "미세먼지", "날씨", "폭우", "고속도로", "น้ำไม่ไหล", "ไฟฟ้าดับ", "ฝุ่น", "จราจร", "อากาศ"],
-    "태국 경제": ["baht", "thai economy", "gdp", "inflation", "set index", "bank of thailand", "bot ", "investment", "tax", "export", "tourism revenue", "minimum wage", "경제", "밧", "물가", "투자", "세금", "관세", "최저임금", "수출", "เศรษฐกิจ", "บาท", "ภาษี", "ลงทุน", "เงินเฟ้อ", "ค่าแรง"],
-    "태국 정치·사회": ["government", "prime minister", "parliament", "senate", "election", "protest", "constitution", "court", "police", "corruption", "party", "cabinet", "정치", "정부", "총리", "의회", "선거", "시위", "경찰", "부패", "탄핵", "รัฐบาล", "นายกรัฐมนตรี", "สภา", "เลือกตั้ง", "ตำรวจ", "ทุจริต"],
-    "태국 관광": ["tourist", "tourism", "hotel", "resort", "travel", "flight", "airport", "songkran", "full moon", "관광", "여행", "호텔", "공항", "항공", "축제", "ท่องเที่ยว", "นักท่องเที่ยว", "โรงแรม", "สนามบิน"],
-    "태국 보건": ["hospital", "health", "dengue", "influenza", "vaccine", "disease", "clinic", "insurance", "medical", "보건", "병원", "의료", "질병", "독감", "백신", "보험", "โรงพยาบาล", "สุขภาพ", "ไข้เลือดออก", "วัคซีน", "ประกัน"],
-}
-
-
 def fetch_bytes(url: str, timeout: int = 12) -> bytes:
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "application/rss+xml, application/xml, application/json, text/xml, */*"})
     with urllib.request.urlopen(request, timeout=timeout) as response:
@@ -186,47 +158,6 @@ def parse_rss(payload: bytes, source: str, source_type: str, region: str = "글�
     return output
 
 
-# Terms that must match a whole word, chosen from measurement rather than taste.
-#
-# Substring matching stays the default: Korean and Thai have no reliable word breaks, so
-# a compound like 규제법 legitimately contains 규제 and a Thai run contains its words
-# joined. Latin terms are different — an unbounded hit usually means the term fired
-# inside an unrelated word. Counting the enclosing words over one day showed which:
-#
-#   war  212 substring vs 21 whole-word: warsh(136), toward(30), warns(25), payward(16)
-#   ban   92 vs  5: bank(67), banks(27), bitbank(18), banking(13)
-#   sec  128 vs 44: security(27), secretary(20), second(18), sector(7)
-#   repo  46 vs  4: reports(36), report(22)
-#   eth  130 vs 28: whether(15), ethiopia(6), method(4)   (ethereum/ether are separate terms)
-#   bill 121 vs 75: billion(66), billionaire(14)
-#   gold  55 vs 39: goldman(19), golden(5)
-#   rain  17 vs  8: train(7), bahrain(6), training(3), ukraine(2), brain(2)
-#   fire   9 vs  4: gas-fired(4), ceasefire(4)
-#   dust   7 vs  0: industry(13)          ppi 20 vs 10: shipping(5), dropping(4)
-#   hospital 6 vs 1: hospitality(10)      qe   5 vs  0: base64-like feed artefacts
-#
-# The worst of these was not cosmetic: "warsh" was putting Fed-governor coverage into
-# 지정학 instead of the rates categories.
-#
-# Deliberately NOT listed, because their unbounded hits are the intent:
-#   fed→federal(71), institution→institutional(65), iran→iranian(26), russia→russian(15),
-#   regulator→regulatory(19), law→lawsuit/lawmaker, market→polymarket, etf→etfflows
-BOUNDARY_TERMS = {
-    "war", "ban", "sec", "repo", "bill", "gold", "rain", "fire", "travel",
-    "dust", "ppi", "qe", "defi", "hospital", "eth", "ether",
-}
-
-
-def _term_hits(text: str, term: str) -> bool:
-    """Match a category keyword, whole-word for the terms listed above and by substring otherwise."""
-    term = term.strip()
-    if not term:
-        return False
-    if term in BOUNDARY_TERMS:
-        return re.search(r"\b" + re.escape(term) + r"s?\b", text) is not None
-    return term in text
-
-
 def canonical_link(link: str) -> str:
     """Drop tracking parameters that would turn one article into several rows.
 
@@ -245,12 +176,8 @@ def make_article(title: str, link: str, summary: str, published: str, source: st
     link = canonical_link(link)
     title = re.sub(r"^FinancialJuice:\s*", "", title or "")
     text = f"{title} {summary}".lower()
-    rules = THAI_CATEGORY_RULES if region == "태국" else CATEGORY_RULES
-    category = "일반"
-    for candidate, terms in rules.items():
-        if any(_term_hits(text, term) for term in terms):
-            category = candidate
-            break
+    categories = taxonomy.match_all(text, taxonomy.rules_for(region, THAI_REGION)) or [GENERIC_CATEGORY]
+    category = categories[0]
     if region == "태국":
         asset = "태국"
         priority = 2
@@ -289,6 +216,7 @@ def make_article(title: str, link: str, summary: str, published: str, source: st
         "source_type": source_type,
         "region": region,
         "category": category,
+        "categories": categories,
         "asset": asset,
         "priority": min(priority, 5),
         "published_at": published,
@@ -491,8 +419,16 @@ def init_db() -> None:
         connection.execute(
             "CREATE TABLE IF NOT EXISTS articles ("
             "link TEXT PRIMARY KEY, title TEXT NOT NULL, summary TEXT, source TEXT, source_type TEXT, "
-            "region TEXT, category TEXT, asset TEXT, priority INTEGER, published_at TEXT NOT NULL, collected_at TEXT)"
+            "region TEXT, category TEXT, categories TEXT, asset TEXT, priority INTEGER, "
+            "published_at TEXT NOT NULL, collected_at TEXT)"
         )
+        # A database created before multi-label matching has no `categories` column. Add it and
+        # leave the old rows blank rather than guessing at them: split_categories() falls back to
+        # `category`, and tools/retag_categories.py recomputes the archive from the stored text.
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(articles)")}
+        if "categories" not in columns:
+            connection.execute("ALTER TABLE articles ADD COLUMN categories TEXT")
+        # No index on `categories`: the filter is a contains-match, which no index can serve.
         for column in ("published_at", "region", "category", "source", "priority"):
             connection.execute(f"CREATE INDEX IF NOT EXISTS idx_articles_{column} ON articles({column})")
 
@@ -502,7 +438,9 @@ def insert_articles(articles: list[dict[str, Any]]) -> int:
         (
             article.get("link", ""), article.get("title", ""), article.get("summary", ""),
             article.get("source", ""), article.get("source_type", ""), article.get("region", GLOBAL_REGION),
-            article.get("category", GENERIC_CATEGORY), article.get("asset", ""), int(article.get("priority", 3)),
+            article.get("category", GENERIC_CATEGORY), taxonomy.join_categories(
+                article.get("categories") or [article.get("category", GENERIC_CATEGORY)]),
+            article.get("asset", ""), int(article.get("priority", 3)),
             article.get("published_at", ""), article.get("collected_at", ""),
         )
         for article in articles
@@ -513,8 +451,8 @@ def insert_articles(articles: list[dict[str, Any]]) -> int:
     with DB_LOCK, db_connect() as connection:
         before = connection.total_changes
         connection.executemany(
-            "INSERT OR IGNORE INTO articles (link, title, summary, source, source_type, region, category, asset, priority, published_at, collected_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT OR IGNORE INTO articles (link, title, summary, source, source_type, region, category, categories, asset, priority, published_at, collected_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             rows,
         )
         return connection.total_changes - before
@@ -553,8 +491,12 @@ def query_articles(hours: int = RETENTION_HOURS, region: str = "", category: str
         where.append("region = ?")
         params.append(region)
     if category:
-        where.append("category = ?")
-        params.append(category)
+        # A story can carry several categories, so the filter matches the list, not the first
+        # value: a tariff bill filed under 미국 정책 must still answer a 트럼프 filter. The stored
+        # string is wrapped in commas and the needle carries them too, so 금리 cannot match inside
+        # a longer name. ESCAPE keeps a % or _ in a category name from acting as a wildcard.
+        where.append("(',' || COALESCE(NULLIF(categories, ''), category) || ',') LIKE ? ESCAPE '\\'")
+        params.append("%," + category.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + ",%")
     if source:
         where.append("source = ?")
         params.append(source)
@@ -577,7 +519,14 @@ def query_articles(hours: int = RETENTION_HOURS, region: str = "", category: str
         ).fetchall()
         region_counts = {row["region"]: row["n"] for row in connection.execute(
             "SELECT region, COUNT(*) AS n FROM articles WHERE published_at >= ? GROUP BY region", (cutoff,))}
-    return [dict(row) for row in rows], int(total), {str(k): int(v) for k, v in region_counts.items()}
+    # The column is a comma-joined string on disk; the API and the page both want the list, and
+    # every row written before the column existed falls back to its single stored value.
+    items = []
+    for row in rows:
+        item = dict(row)
+        item["categories"] = taxonomy.split_categories(item.get("categories"), item.get("category"))
+        items.append(item)
+    return items, int(total), {str(k): int(v) for k, v in region_counts.items()}
 
 
 def collect_news() -> dict[str, Any]:

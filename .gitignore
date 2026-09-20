@@ -2,6 +2,11 @@
 news.db
 news.db-wal
 news.db-shm
+# database copies a swap or a retag leaves behind (see the VPS swap on 2026-09-20)
+news.db.retag-*.bak
+news.db.bak-*
+news.db.replaced-*
+news.db.malformed-*
 news_cache.json
 server.log
 stdout.log

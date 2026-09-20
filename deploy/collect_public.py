@@ -20,6 +20,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT))
 
+import category_rules  # noqa: E402
 import live_news_dashboard as core  # noqa: E402  (path is set just above)
 import page_build  # noqa: E402
 
@@ -35,7 +36,7 @@ RECENT_PER_REGION = 300
 PAGE_SIZE = 1000
 FIELDS = (
     "title", "link", "summary", "published_at",
-    "source", "source_type", "category", "priority",
+    "source", "source_type", "category", "categories", "priority",
 )
 
 
@@ -45,6 +46,12 @@ SUMMARY_CHARS = 240
 def public_row(row: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {key: row.get(key) for key in FIELDS}
     out["priority"] = int(out.get("priority") or 3)
+    # Every published row leaves here with a list, so the page never has to fall back to a single
+    # value - and with names passed through the retirer, so a row merged forward from a file written
+    # before a rename cannot put a name on screen that no pill offers any more.
+    labels = category_rules.split_categories(out.get("categories"), out.get("category"))
+    out["category"] = labels[0]
+    out["categories"] = labels
     # The page clamps a summary to three lines (~220 chars) and trims it only when it
     # is longer than that, so shipping the full 800-char text wasted most of the file.
     # Trimming here cut global.json from 936KB to about half, with nothing lost on screen.
