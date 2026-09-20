@@ -36,14 +36,9 @@ say "local commit: $(git log -1 --format=%h)"
 if [ "${SKIP_TESTS:-0}" = "1" ]; then
   say "page checks: SKIPPED (SKIP_TESTS=1) - nothing was verified before this deploy"
 else
-  # Shell redirection, not `curl -o /dev/null`: in this MSYS shell curl exits 23 (write error) even
-  # on a 200 because it cannot write to the /dev/null it resolves, so the exit code cannot be used
-  # as the health signal there.
-  if ! curl -s --max-time 5 "http://127.0.0.1:$PORT/" >/dev/null; then
-    say "the local dashboard is not answering on 127.0.0.1:$PORT"
-    say "start it with start_dashboard_bg.bat, or set SKIP_TESTS=1 to deploy without checks"
-    exit 1
-  fi
+  # No listener is required beforehand any more: the local page is not something the operator keeps
+  # running, and the check suite starts its own collector (and stops it again). A server that will
+  # not come up fails the suite, which stops this deploy the same way a missing one used to.
   say "page checks (${PYTHON:-python} tests/run.py --local)"
   if ! "${PYTHON:-python}" tests/run.py --local; then
     say "page checks FAILED - nothing was deployed"

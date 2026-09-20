@@ -103,7 +103,19 @@ http://127.0.0.1:8765
 python live_news_dashboard.py --interval 30 --port 8765
 ```
 
-## 윈도우 배치 실행
+## 로컬 실행 (개발·검사용)
+
+운영자가 쓰는 화면은 배포본 **https://teemobkk.io/admin** 이다(로그인 뒤 운영자 대시보드). 로컬 페이지는
+그 역할에서 은퇴했고, 이제 **검사용 픽스처**다 — 검사 하네스가 페이지를 재생성하고 수집기를 직접 띄웠다가
+끝나면 내린다:
+
+```
+python tests/run.py --local      # 페이지 재생성 → 로컬 수집기 기동 → 22개 검사 → 서버 종료(포트 반환)
+```
+
+이미 떠 있는 서버가 있으면 그것을 쓰고 **건드리지 않는다**(하네스가 띄운 것만 내린다).
+
+로컬 페이지를 눈으로 보고 싶을 때만 직접 띄운다:
 
 ```bat
 @echo off
@@ -111,23 +123,11 @@ cd /d "C:\AI\Work_Folders\News_Macros\live_news_dashboard"
 python live_news_dashboard.py --interval 30
 ```
 
-### 백그라운드(분리) 실행 — 권장
-
-`start_dashboard_bg.bat` 은 서버를 **분리된 프로세스**로 띄우고, 포트가 실제로 응답하면 바로 돌아온다. 창이 남지 않고 실행한 쪽(탐색기·cmd·Hermes 세션)이 끝나도 서버는 계속 돈다.
-
-```bat
-start_dashboard_bg.bat          :: 기동. 포트를 잡고 있는 이전 프로세스는 정리한다
-start_dashboard_bg.bat open     :: 기동 후 브라우저까지 열기
-```
-
-```
-동작     이전 리스너 종료 → 분리 기동 → 포트 LISTENING 확인 → 그 뒤에 성공 반환
-실패 시   포트가 안 열리면 로그 마지막 12줄을 출력하고 exit 1
-출력     local.log · local.log.err (로거가 stderr로 쓰므로 내용은 .err에 있다)
-         직전 실행분은 *.prev로 보존 — 숨은 창은 다른 흔적을 남기지 않는다
-```
-
-분리 기동 자체는 `run_dashboard_bg.py` 가 맡는다. `Start-Process -WindowStyle Hidden` 으로 띄우면 자식이 호출자의 콘솔을 물려받아, 실행한 쪽이 **서버가 끝날 때까지** 기다린다(실측: 서버는 정상인데 에이전트 도구 호출이 5분 대기). `DETACHED_PROCESS` 로 콘솔을 아예 주지 않으면 즉시 반환한다(실측 1.7초).
+이 명령은 그 콘솔이 살아 있는 동안만 서버가 돈다(창을 닫으면 끝난다). 예전의 분리 기동 배치
+(`start_dashboard_bg.bat`·`run_dashboard_bg.py`)는 "운영자가 항상 켜 두는 로컬 페이지"를 위한 것이었고
+그 역할이 없어져 삭제했다. 그때 배운 것 하나는 남겨 둔다: `Start-Process -WindowStyle Hidden` 으로 띄우면
+자식이 호출자의 콘솔을 물려받아 실행한 쪽이 **서버가 끝날 때까지** 기다리고(실측: 서버는 정상인데
+에이전트 도구 호출이 5분 대기), `DETACHED_PROCESS` 로 콘솔을 아예 주지 않으면 즉시 반환한다.
 
 ## 선택 기능 — AI 채점 (미활성)
 
