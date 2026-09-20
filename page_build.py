@@ -369,8 +369,8 @@ const T_SKIP={
   global:new Set('bitcoin btc crypto cryptocurrency 비트코인 암호화폐 코인'.split(' ')),
   thai:new Set('태국 방콕 태국인 교민 thai thailand bangkok'.split(' '))};
 const T_URL=/https?:\\/\\/\\S+|\\b[\\w-]+\\.(?:com|net|org|co|io|kr|uk|rs|me|ly|gov|ai|news)\\S*/gi;
-const T_TAIL=/\s+-\s+[^-]{2,40}$/;
-const T_TOK=/[0-9A-Za-z가-힣\u0e00-\u0e7f]+/g;
+const T_TAIL=/\\s+-\\s+[^-]{2,40}$/;
+const T_TOK=/[0-9A-Za-z가-힣\\u0e00-\\u0e7f]+/g;
 function tFold(w){if(!/^[a-z]+$/.test(w))return w;const s=w.replace(/s$/,'');return (s!==w&&s.length>=3)?s:w}
 function trends(){
   const skip=T_SKIP[V.tab]||T_SKIP.global,uni={},bi={},form={};
@@ -380,11 +380,11 @@ function trends(){
     t=t.replace(T_URL,' ');
     const tl=t.toLowerCase(),keep=[];
     (tl.match(T_TOK)||[]).forEach((w,i)=>{
-      if(/^\d+$/.test(w))return;
+      if(/^\\d+$/.test(w))return;
       // Minimum length per script: Korean words are short and space-separated, while
       // Thai runs have no spaces between words, so anything short there is a particle
       // (the first run surfaced "นี้", meaning "this").
-      const ko=/[\uac00-\ud7a3]/.test(w),thai=/[\u0e00-\u0e7f]/.test(w);
+      const ko=/[\\uac00-\\ud7a3]/.test(w),thai=/[\\u0e00-\\u0e7f]/.test(w);
       if(w.length<(ko?2:(thai?5:3)))return;
       keep.push({w:w,raw:w,i:i})});
     const good=[],seenU={},seenB={};
