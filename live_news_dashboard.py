@@ -450,6 +450,14 @@ def init_db() -> None:
             "CREATE TABLE IF NOT EXISTS hidden_links ("
             "link TEXT PRIMARY KEY, title TEXT, hidden_at TEXT)"
         )
+        # What the operator has picked out. Separate from priority and the star rating on purpose:
+        # those are computed from the text, this is a judgement, and a reader is meant to see the
+        # difference. The sort order never consults it either - a quiet hour must not look like a
+        # feed that stopped moving.
+        connection.execute(
+            "CREATE TABLE IF NOT EXISTS picked_links ("
+            "link TEXT PRIMARY KEY, note TEXT, picked_at TEXT)"
+        )
 
 
 def insert_articles(articles: list[dict[str, Any]]) -> int:
@@ -502,6 +510,43 @@ def archive_stats() -> dict[str, Any]:
         hidden = connection.execute("SELECT COUNT(*) FROM hidden_links").fetchone()[0] or 0
     return {"archived_total": int(total), "window_total": int(recent), "oldest_published_at": oldest,
             "archive_days": ARCHIVE_DAYS, "hidden_total": int(hidden)}
+
+
+def picked_links(limit: int = 500) -> list[dict[str, Any]]:
+    """Everything the operator has picked, newest first, with the headline from the archive."""
+    with DB_LOCK, db_connect() as connection:
+        rows = connection.execute(
+            "SELECT p.link, COALESCE(NULLIF(a.title, ''), ''), a.source, a.published_at, p.note, p.picked_at "
+            "FROM picked_links p LEFT JOIN articles a ON a.link = p.link "
+            "ORDER BY p.picked_at DESC LIMIT ?", (int(limit),)).fetchall()
+    return [{"link": row[0], "title": row[1] or "", "source": row[2] or "", "published_at": row[3] or "",
+             "note": row[4] or "", "picked_at": row[5] or ""} for row in rows]
+
+
+def pick_map() -> dict[str, str]:
+    """The picks as {link: note}, for marking rows on their way out.
+
+    A map rather than a join: the picks are a few dozen rows and the article query is the hot path,
+    so the marking costs one small read instead of another clause on every page of the feed.
+    """
+    with DB_LOCK, db_connect() as connection:
+        return {row[0]: (row[1] or "") for row in connection.execute("SELECT link, note FROM picked_links")}
+
+
+def pick_link(link: str, note: str = "") -> int:
+    when = datetime.now(timezone.utc).isoformat()
+    with DB_LOCK, db_connect() as connection:
+        connection.execute(
+            "INSERT INTO picked_links (link, note, picked_at) VALUES (?, ?, ?) "
+            "ON CONFLICT(link) DO UPDATE SET note = excluded.note, picked_at = excluded.picked_at",
+            (link, note, when))
+        return connection.execute("SELECT COUNT(*) FROM picked_links").fetchone()[0] or 0
+
+
+def unpick_link(link: str) -> int:
+    with DB_LOCK, db_connect() as connection:
+        connection.execute("DELETE FROM picked_links WHERE link = ?", (link,))
+        return connection.execute("SELECT COUNT(*) FROM picked_links").fetchone()[0] or 0
 
 
 def _looks_like_link(value: str) -> bool:
@@ -563,6 +608,7 @@ def _as_list(value: Any) -> list[str]:
 
 def query_articles(hours: int = RETENTION_HOURS, region: str = "", category: Any = "", source: Any = "",
                    source_type: str = "", minimum_priority: int = 0, text: Any = "",
+                   picked_only: bool = False,
                    limit: int = DEFAULT_LIMIT, offset: int = 0) -> tuple[list[dict[str, Any]], int, dict[str, int]]:
     """Articles in the window, with every selected condition applied.
 
@@ -598,6 +644,11 @@ def query_articles(hours: int = RETENTION_HOURS, region: str = "", category: Any
     if minimum_priority:
         where.append("priority >= ?")
         params.append(int(minimum_priority))
+    if picked_only:
+        # The reader's view of what the operator picked. It filters and never sorts: a pick is a
+        # judgement about a story, not a rank, and pinning picked rows would leave the top of the
+        # feed unchanged for hours on a quiet day.
+        where.append("link IN (SELECT link FROM picked_links)")
     for term in _as_list(text):
         # Two conditions per term on purpose. LIKE is a byte-level prefilter SQLite can reject a row
         # with, and kwmatch then applies the real rule only to the rows that survive it. Measured on
@@ -619,10 +670,16 @@ def query_articles(hours: int = RETENTION_HOURS, region: str = "", category: Any
             "SELECT region, COUNT(*) AS n FROM articles WHERE published_at >= ? GROUP BY region", (cutoff,))}
     # The column is a comma-joined string on disk; the API and the page both want the list, and
     # every row written before the column existed falls back to its single stored value.
+    picks = pick_map()
     items = []
     for row in rows:
         item = dict(row)
         item["categories"] = taxonomy.split_categories(item.get("categories"), item.get("category"))
+        # The operator's judgement travels with the row, note and all, because the badge is for
+        # readers: a pick is only worth something if the person reading the page can see it.
+        note = picks.get(item.get("link"))
+        item["picked"] = note is not None
+        item["pick_note"] = note or ""
         items.append(item)
     return items, int(total), {str(k): int(v) for k, v in region_counts.items()}
 
@@ -856,6 +913,15 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json({"hidden": rows, "total": len(rows),
                         "hidden_total": archive_stats().get("hidden_total", 0)})
 
+    def serve_picks(self) -> None:
+        """What the operator has picked. Public on purpose: the badge is the whole point.
+
+        This is the one operator-made list a reader sees, so it answers without a session - the
+        write that fills it is what needs one.
+        """
+        rows = picked_links()
+        self.send_json({"picked": rows, "total": len(rows)})
+
     def do_GET(self) -> None:
         request_path = urllib.parse.urlsplit(self.path).path
         if request_path in ("/admin", "/admin/"):
@@ -863,6 +929,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         if request_path == "/api/hidden":
             self.serve_hidden()
+            return
+        if request_path == "/api/picks":
+            self.serve_picks()
             return
         if request_path == "/api/news":
             params = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
@@ -893,6 +962,7 @@ class Handler(BaseHTTPRequestHandler):
                 "hours": hours, "region": pick("region"), "category": pick_all("category"),
                 "source": pick_all("source"), "source_type": pick("source_type"),
                 "minimum_priority": minimum_priority, "text": pick_all("q"),
+                "picked_only": pick("picked") in ("1", "true", "yes"),
             }
             articles, total, region_counts = self.state.query(**filters, limit=limit, offset=offset)
             payload = dict(self.state.snapshot())
@@ -990,20 +1060,29 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_error(400, "Invalid interval")
                 return
             response = {"ok": True, "interval_seconds": interval}
-        elif request_path in ("/api/hide", "/api/unhide"):
-            # Hide or restore one story. The link is what identifies it, so it is the only thing
-            # this needs; the title is stored alongside so the restore list reads as headlines.
+        elif request_path in ("/api/hide", "/api/unhide", "/api/pick", "/api/unpick"):
+            # One story changes state. The link identifies it, so it is the only thing that has to
+            # be right; the title and the note are carried along so the operator's lists read as
+            # headlines and phrases rather than as URLs.
             link = str(payload.get("link") or "").strip()
             if not _looks_like_link(link):
                 self.send_error(400, "Invalid link")
                 return
             if request_path == "/api/hide":
                 total = hide_link(link, str(payload.get("title") or "")[:500])
-                logging.info("admin hide %s ip=%s", link, admin_auth.client_ip(self))
-            else:
+            elif request_path == "/api/unhide":
                 total = unhide_link(link)
-                logging.info("admin unhide %s ip=%s", link, admin_auth.client_ip(self))
-            response = {"ok": True, "hidden_total": total}
+            elif request_path == "/api/pick":
+                total = pick_link(link, str(payload.get("note") or "").strip()[:120])
+            else:
+                total = unpick_link(link)
+            logging.info("admin %s %s ip=%s", request_path.rsplit("/", 1)[-1], link,
+                         admin_auth.client_ip(self))
+            # Both counts go back, because the two lists are two different lengths and the page
+            # shows both of them.
+            response = {"ok": True, "count": total,
+                        "hidden_total": archive_stats().get("hidden_total", 0),
+                        "picked_total": len(pick_map())}
         else:
             self.send_error(404)
             return

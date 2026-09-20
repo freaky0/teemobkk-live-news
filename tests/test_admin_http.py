@@ -25,6 +25,7 @@ import live_news_dashboard as core  # noqa: E402
 
 SECRET = "correct horse battery staple"
 LINK = "https://example.com/http-test-story"
+PICK_LINK = "https://example.com/http-test-pick"
 
 
 def now_iso():
@@ -266,6 +267,50 @@ class Gate(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(payload.get("hidden_total"), 0)
         self.assertIn(LINK, self.links(), "restoring has to bring it back")
+
+    # --- Teemo's Pick ---
+    def test_a_stranger_cannot_pick(self):
+        self.assertEqual(self.call("/api/pick", "POST", {"link": PICK_LINK})[0], 401)
+        self.assertEqual(self.call("/api/unpick", "POST", {"link": PICK_LINK})[0], 401)
+
+    def test_the_pick_list_is_public_because_the_badge_is_the_point(self):
+        status, _, payload = self.call("/api/picks")
+        self.assertEqual(status, 200, "a reader has to be able to see what was picked")
+        self.assertIn("picked", payload)
+
+    def test_picking_marks_the_row_for_readers(self):
+        cookie = self.session()
+        core.init_db()
+        core.insert_articles([{"link": PICK_LINK, "title": "골라낸 기사", "summary": "본문",
+                               "source": "Example", "source_type": "news", "region": "글로벌",
+                               "category": "시장·가격", "categories": ["시장·가격"], "priority": 3,
+                               "published_at": now_iso(), "collected_at": now_iso()}])
+        status, _, payload = self.call("/api/pick", "POST", {"link": PICK_LINK, "note": "확인함"},
+                                       cookie=cookie, header=True)
+        self.assertEqual(status, 200)
+        self.assertEqual(payload.get("picked_total"), 1)
+
+        # A reader's request, with no session, sees the pick on the row.
+        row = [a for a in self.call("/api/news?hours=24&limit=50")[2]["articles"] if a["link"] == PICK_LINK][0]
+        self.assertTrue(row["picked"])
+        self.assertEqual(row["pick_note"], "확인함")
+
+        # And the filter the pill uses.
+        status, _, payload = self.call("/api/news?hours=24&limit=50&picked=1")
+        self.assertEqual([a["link"] for a in payload["articles"]], [PICK_LINK])
+        self.assertEqual(payload["total"], 1)
+        status, _, payload = self.call("/api/news?hours=24&limit=50&picked=1&category=%ED%8A%B8%EB%9F%BC%ED%94%84")
+        self.assertEqual(payload["total"], 0, "a pick composes with the other conditions")
+
+        status, _, payload = self.call("/api/unpick", "POST", {"link": PICK_LINK}, cookie=cookie, header=True)
+        self.assertEqual(status, 200)
+        self.assertEqual(payload.get("picked_total"), 0)
+        row = [a for a in self.call("/api/news?hours=24&limit=50")[2]["articles"] if a["link"] == PICK_LINK][0]
+        self.assertFalse(row["picked"])
+
+    def test_a_pick_needs_the_header_as_well_as_a_session(self):
+        cookie = self.session()
+        self.assertEqual(self.call("/api/pick", "POST", {"link": PICK_LINK}, cookie=cookie)[0], 401)
 
     def links(self, path="/api/news?hours=24&limit=50"):
         payload = self.call(path)[2]

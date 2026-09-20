@@ -128,6 +128,14 @@ select{cursor:pointer}
 /* Source chips sit in the same row as the category pills but are a different axis, so they
    are dashed and separated. */
 .pill.src{border-style:dashed}
+/* Teemo's Pick: the operator's judgement, shown to readers. Warmer than the filter pills and never
+   a rank - selecting it narrows the list, the order stays newest first. */
+.pill.pick{border-color:#ff8fa3;color:#ff8fa3}
+.pill.pick.active{background:#3a1a24;border-color:#ff8fa3;color:#ffd0d8;font-weight:600}
+.pickbadge{display:inline-flex;align-items:center;gap:8px;margin:0 0 8px;padding:3px 10px;
+  border:1px solid #ff8fa3;border-radius:var(--r-pill);color:#ffb3c1;font-size:12px;font-weight:600}
+.pickbadge .pnote{color:#e8c9d0;font-weight:500;max-width:46ch;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
 .pill.src.th.active{border-color:var(--thai);color:var(--thai)}
 .pillsep{flex:0 0 auto;width:1px;margin:0 3px;background:var(--line2);align-self:stretch}
 .langbar{display:flex;gap:6px;align-items:center;font-size:13px}
@@ -324,6 +332,11 @@ const PUBLIC=CFG.public, DATADIR=CFG.datadir, API=CFG.api;
 const ADMIN=window.__ADMIN__===true;
 function writeHeaders(){const h={'Content-Type':'application/json'};
   if(ADMIN)h['X-Requested-With']='teemo-admin';return h}
+// The label a reader sees, written once. It carries an apostrophe, and this script builds its
+// strings with single quotes: written inline it would have to be escaped twice over - once for the
+// Python that holds this template, once for JavaScript - and the escaping is exactly where a
+// mistake would break the whole page rather than one label.
+const PICK="Teemo's Pick", PICK_HEART="♥";
 const PAGE=25, BIG=25, STALE_MIN=35, GRACE_MS=3*3600000;
 const GLOBAL_CATS=[["일반","일반"],["금리","금리"],["미국 정책","미국 정책"],["트럼프","트럼프"],["지정학","지정학"],["ETF·수급","ETF·수급"],["파생상품·청산","파생상품·청산"],["온체인·기관","온체인·기관"],["스테이블코인","스테이블코인"],["X 발언","X 발언"],["주식·원자재","주식·원자재"],["채굴","채굴"],["규제·정책","규제·정책"],["거시경제","거시경제"],["시장·가격","시장·가격"],["이더리움·알트","이더리움·알트"]];
 const THAI_CATS=[["일반","일반"],["비자·이민","비자·이민"],["사고·재난","사고·재난"],["태국 생활","생활·교통·날씨"],["태국 경제","태국 경제"],["태국 정치·사회","정치·사회"],["태국 관광","관광"],["태국 보건","보건"]];
@@ -340,7 +353,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const shown=(s,label)=>{const t=String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   return '실제 <b class="'+label+'">'+t+'</b>'};
 
-var V={tab:CFG.wantThai?'thai':'global',cats:[],hours:24,q:'',terms:[],limit:PAGE,tag:null,mode:'all',value:'',offset:0};
+var V={tab:CFG.wantThai?'thai':'global',cats:[],hours:24,q:'',terms:[],limit:PAGE,tag:null,mode:'all',value:'',offset:0,pickOnly:false};
 var MEM={},LATEST={},PENDING={},INDEX={},SEEN={},FULL={},DATA={articles:[],sources:{},total:0,has_more:false};
 var archiveTotal=0,refreshTimer=null,hidden=false,lastRegion={};
 if(CFG.wantThai)document.title=document.title.replace('Live News','Live News · 태국 소식');
@@ -402,6 +415,9 @@ function keep(a){
   if(V.cats.length&&!V.cats.every(c=>labels.indexOf(c)>=0))return false;
   if(V.terms.length&&!V.terms.every(t=>termMatch((a.title||'')+' '+(a.summary||''),t)))return false;
   if(V.tag&&(V.tag.k==='cat'?labels.indexOf(V.tag.v)<0:a.source!==V.tag.v))return false;
+  // The operator's picks are a condition like any other on this path: a selected pill narrows the
+  // list, it never reorders it.
+  if(V.pickOnly&&!a.picked)return false;
   const q=(V.q||'').trim();
   if(q&&!termMatch((a.title||'')+' '+(a.summary||'')+' '+(a.source||'')+' '+labels.join(' '),q))return false;
   return true}
@@ -443,6 +459,10 @@ function card(a,th,lead){
         return '<button type="button" class="chip tap'+(on?' on':'')+'" data-k="cat" data-v="'+esc(v)+'" aria-pressed="'+(on?'true':'false')+'">'+esc(catLabel(v))+'</button>'}).join('')+
       '<span>'+age(a.published_at)+'</span>'+stars(a)+
     '</div>'+
+    // The operator's judgement, shown to everybody: a badge and, when there is one, the phrase. It
+    // sits above the headline rather than in the chip row, because it is not a filter over text.
+    (a.picked?'<div class="pickbadge">'+PICK_HEART+' '+PICK+
+      (a.pick_note?'<span class="pnote">'+esc(a.pick_note)+'</span>':'')+'</div>':'')+
     '<h2 class="title"><a href="'+esc(a.link)+'" target="_blank" rel="noopener nofollow">'+hl(a.title)+'</a></h2>'+
     summaryBlock(a)+
     (CFG.admin?cardActs(a):'')+
@@ -459,7 +479,12 @@ function renderPills(){
   const cats=th?THAI_CATS:GLOBAL_CATS;
   const srcs=th?THAI_SRC:GLOBAL_SRC;
   const items=[['전체','전체']].concat(cats.map(c=>Array.isArray(c)?c:[c,c]));
-  row.innerHTML=items.map(pair=>{
+  // Teemo's Pick sits first because it is a mode, not a category: the operator's judgement, which a
+  // reader can filter by. It composes with the rest - picking it together with 트럼프 asks for
+  // stories that are both, which is what selecting two things means everywhere else on this page.
+  const pickPill='<button type="button" class="pill pick'+(V.pickOnly?' active':'')+
+    '" data-pick="1" aria-pressed="'+(V.pickOnly?'true':'false')+'">'+PICK_HEART+' '+PICK+'</button>';
+  row.innerHTML=pickPill+items.map(pair=>{
     const n=PUBLIC?pillCount(pair[0]):0;
     const badge=(PUBLIC&&n&&pair[0]!=='전체')?'<i>'+n+'</i>':'';
     return '<button type="button" class="pill'+(th?' th':'')+(catOn(pair[0])?' active':'')+
@@ -471,6 +496,8 @@ function renderPills(){
         '" data-src="'+esc(s)+'" aria-pressed="'+(on?'true':'false')+'">'+esc(s)+'</button>'}).join('')+
     (V.tag?'<button type="button" class="pill on" id="clrtag">✕ '+esc(V.tag.v)+'</button>':'');
   row.hidden=false;
+  const pickBtn=row.querySelector('button[data-pick]');
+  if(pickBtn)pickBtn.onclick=()=>{V.pickOnly=!V.pickOnly;V.limit=PAGE;V.offset=0;renderPills();fetchFeed()};
   row.querySelectorAll('button[data-cat]').forEach(b=>b.onclick=()=>{
     // A category and a source are different axes and now compose: several conditions are ANDed,
     // which is what a reader gets from "FinancialJuice + Trump". Selecting one no longer releases
@@ -478,7 +505,7 @@ function renderPills(){
     const v=b.dataset.cat;
     // 전체 is the one control that clears the lot and shows the whole list, so it releases the
     // source tag and the keywords as well; a single category toggles and composes with the rest.
-    if(v==='전체'){V.cats=[];V.tag=null;clearText()}
+    if(v==='전체'){V.cats=[];V.tag=null;V.pickOnly=false;clearText()}
     else{const i=V.cats.indexOf(v);if(i>=0)V.cats.splice(i,1);else V.cats.push(v)}
     V.mode='all';V.value='';
     V.limit=PAGE;V.offset=0;renderPills();fetchFeed()});
@@ -722,6 +749,8 @@ function buildQuery(){
   // the server still returned the unfiltered list, so the values are read directly here.
   V.cats.forEach(c=>p.append('category',c));
   V.terms.forEach(t=>p.append('q',t));
+  // A pick is one more condition, server-side, so it composes with everything else selected.
+  if(V.pickOnly)p.set('picked','1');
   if(V.q)p.append('q',V.q);
   // Card chips set V.tag, not V.mode/V.value. Without this the local page sent an
   // unfiltered request, so clicking a chip only highlighted it and the list never moved.
@@ -736,11 +765,15 @@ const COND={sig:'',counts:{}};
 function condList(){
   const list=V.cats.map(c=>['cat',c]).concat(V.terms.map(t=>['term',t]));
   if(V.tag)list.push([V.tag.k==='cat'?'cat':'src',V.tag.v]);
+  // The pick is a condition too, so it gets a count of its own and a way out from the same row as
+  // everything else - which is what makes "0건" answerable.
+  if(V.pickOnly)list.push(['pick',PICK]);
   return list}
 function condKey(kind,value){return kind+':'+value}
 function condHit(a,c){
   if(c[0]==='cat')return catList(a).indexOf(c[1])>=0;
   if(c[0]==='term')return termMatch((a.title||'')+' '+(a.summary||''),c[1]);
+  if(c[0]==='pick')return !!a.picked;
   return a.source===c[1]}
 function loadCondCounts(){
   const list=condList();
@@ -758,6 +791,7 @@ function loadCondCounts(){
     const q=new URLSearchParams(p.toString());
     if(c[0]==='cat')q.append('category',c[1]);
     else if(c[0]==='term')q.append('q',c[1]);
+    else if(c[0]==='pick')q.set('picked','1');
     else q.append('source',c[1]);
     return fetch(API+'/api/news?'+q.toString(),{cache:'no-cache'})
       .then(r=>r.ok?r.json():null).catch(()=>null)}))
@@ -795,9 +829,10 @@ function renderConditions(){
 function dropCond(key){
   const at=key.indexOf(':'),kind=key.slice(0,at),value=key.slice(at+1),i=
     kind==='cat'?V.cats.indexOf(value):(kind==='term'?V.terms.indexOf(value):-1);
-  if(i>=0){if(kind==='cat')V.cats.splice(i,1);else V.terms.splice(i,1)}
+  if(kind==='pick')V.pickOnly=false;
+  else if(i>=0){if(kind==='cat')V.cats.splice(i,1);else V.terms.splice(i,1)}
   else if(V.tag&&V.tag.v===value)V.tag=null;
-  V.limit=PAGE;V.offset=0;renderTrends();fetchFeed()}
+  V.limit=PAGE;V.offset=0;renderTrends();renderPills();fetchFeed()}
 
 async function writeJSON(path,body){
   const r=await fetch(API+path,{method:'POST',headers:writeHeaders(),body:JSON.stringify(body||{})});
@@ -817,6 +852,8 @@ let HIDE_UNDO=null;
 // Korean and a reader's document carries this same script: the call site is one condition away.
 function cardActs(a){
   return '<div class="acts"><a class="open" href="'+esc(a.link)+'" target="_blank" rel="noopener nofollow">원문 열기</a>'+
+    '<button type="button" class="open" data-picklink="'+esc(a.link)+'" data-title="'+esc(a.title||'')+
+      '" data-picked="'+(a.picked?'1':'0')+'">'+(a.picked?'Pick 해제':PICK_HEART+' Pick')+'</button>'+
     '<button type="button" class="open hide" data-hide="'+esc(a.link)+'" data-title="'+esc(a.title||'')+'">숨기기</button></div>'}
 function renderUndo(){
   const el=document.querySelector('#undobar');if(!el)return;
@@ -832,6 +869,17 @@ async function hideStory(link,title){
   try{await writeJSON('/api/hide',{link:link,title:title||''})}
   catch(e){alert('숨기기 실패: '+e.message);return}
   HIDE_UNDO={link:link,title:title||link};renderUndo();loadHidden();fetchFeed()}
+// Teemo's Pick: the one thing this page writes that a reader is meant to see. The phrase is
+// optional and asked for at the moment of picking, so a pick is never held up by an empty prompt -
+// a cancel or a browser that refuses to show one still records the pick with no phrase.
+function askPickNote(){
+  try{return (window.prompt(PICK+' — 한 줄 문구 (비워도 됩니다)','')||'').trim().slice(0,120)}
+  catch(e){return ''}}
+async function togglePick(link,title,picked){
+  const note=picked?'':askPickNote();
+  try{await writeJSON(picked?'/api/unpick':'/api/pick',{link:link,note:note,title:title||''})}
+  catch(e){alert('Pick 변경 실패: '+e.message);return}
+  fetchFeed()}
 async function loadHidden(){
   const el=document.querySelector('#hidden');if(!el)return;
   try{
@@ -850,10 +898,12 @@ async function loadHidden(){
 }
 // <<< operator-only
 
-async function loadLocal(){
+async function fetchLocal(){
   const r=await fetch(API+'/api/news?'+buildQuery(),{cache:'no-cache'});
   if(!r.ok)throw Error(r.status);
-  const fresh=await r.json();
+  return r.json()}
+
+function applyLocal(fresh){
   if(V.offset>0&&(DATA.articles||[]).length)fresh.articles=(DATA.articles||[]).concat(fresh.articles||[]);
   const before=(DATA.articles||[]).length?String(DATA.articles[0].published_at||''):'';
   if(before&&V.offset===0)(fresh.articles||[]).forEach(a=>{
@@ -867,7 +917,14 @@ async function loadLocal(){
 
 async function fetchFeed(){
   if(PUBLIC){try{await loadPublic(false)}catch(e){offline()}return}
-  try{await loadLocal()}catch(e){document.querySelector('#state')&&(document.querySelector('#state').textContent='재시도 중');renderFeed()}}
+  // Only the request is inside the try. Rendering used to be in here as well, so an error while
+  // drawing the list was reported as a connection problem: the page looked fine and simply stopped
+  // updating, which is the hardest kind of failure to notice. Now it reaches the console.
+  let fresh=null;
+  try{fresh=await fetchLocal()}
+  catch(e){document.querySelector('#state')&&(document.querySelector('#state').textContent='재시도 중');
+    renderFeed();return}
+  applyLocal(fresh)}
 function offline(){
   if(!articles().length){
     setStamp('연결 실패');
@@ -892,7 +949,7 @@ function setTab(next,silent){
   // because it was shown with an inline style that the tab class could not undo.
   if(next==='cal'&&V.tab==='cal'&&!silent){setTab(V.lastNews||'global');return}
   if(next!=='cal')V.lastNews=next;
-  V.tab=next;V.cats=[];V.tag=null;V.limit=PAGE;V.offset=0;V.mode='all';V.value='';clearText();
+  V.tab=next;V.cats=[];V.tag=null;V.limit=PAGE;V.offset=0;V.mode='all';V.value='';V.pickOnly=false;clearText();
   document.body.classList.toggle('tab-cal',next==='cal');
   document.querySelectorAll('.tab').forEach(b=>{
     const on=b.dataset.tab===next;b.classList.toggle('active',on);b.setAttribute('aria-selected',on?'true':'false')});
@@ -998,6 +1055,8 @@ document.querySelector('#newpill').onclick=()=>{const t=region();
     MEM[t]=LATEST[t]}
   PENDING[t]=0;V.limit=PAGE;renderFeed()};
 document.querySelector('#feed').addEventListener('click',ev=>{
+  const pickBtn=ev.target.closest('[data-picklink]');
+  if(pickBtn){togglePick(pickBtn.dataset.picklink,pickBtn.dataset.title,pickBtn.dataset.picked==='1');return}
   const hide=ev.target.closest('[data-hide]');
   if(hide){hideStory(hide.dataset.hide,hide.dataset.title);return}
   const chip=ev.target.closest('.chip.tap');
