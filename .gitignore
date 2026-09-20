@@ -28,3 +28,8 @@ icon-source.png
 # cloudflare worker deps
 worker/node_modules/
 worker/.wrangler/
+
+# section pages are generated on the host that serves them
+/ko/
+/news/
+/thai/
