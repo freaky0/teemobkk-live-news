@@ -48,7 +48,7 @@ SUITE = [
     ("t35.js", [LOCAL_URL], "조건 줄·교차 필터", "local"),
     ("t36.js", [LOCAL_URL], "숨기기·되돌리기 (운영자 화면)", "local"),
     ("t37.js", [LOCAL_URL], "Teemo's Pick 배지·알약", "local"),
-    ("t38.js", [LOCAL_URL], "소스 공개 스위치", "local"),
+    ("t39.js", [LOCAL_URL], "소스 스위치·알약", "local"),
     ("t30.js", ["-", LIVE_EN], "영문 대시보드", "live"),
     ("t31.js", [LIVE_THAI], "태국 대시보드", "live"),
     ("t32.js", [LIVE_KO], "키워드 멀티셀렉 (운영)", "live"),

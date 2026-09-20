@@ -198,11 +198,9 @@ mark{background:#3f3418;color:#ffe9b0;border-radius:3px;padding:0 2px}
 .box p{margin:0 0 8px}
 .source{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:4px 0;border-bottom:1px solid var(--line)}
 .source:last-child{border-bottom:0}
-.srcrow{display:flex;align-items:center;gap:9px;padding:4px 0;border-bottom:1px solid var(--line)}
-.srcrow:last-of-type{border-bottom:0}
-.srcrow.off .srcname{color:var(--muted);text-decoration:line-through}
-.srcname{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.srccount{color:var(--muted);font-size:11px}
+/* the switch sits in the collection-status row, left of the name */
+.source.off > span:first-of-type{color:var(--muted);text-decoration:line-through}
+.source > span:first-of-type{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sw{flex:0 0 auto;width:34px;height:18px;border-radius:999px;border:1px solid var(--line2);background:var(--panel2);position:relative;cursor:pointer;padding:0}
 .sw .knob{position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--muted);transition:left .14s}
 .sw[aria-checked="true"]{border-color:var(--accent);background:rgba(100,215,255,.18)}
@@ -329,7 +327,7 @@ body.local .card{cursor:auto}
         <button id="totop" type="button">맨 위로</button>
       </div>
     </section>
-    <aside class="side admin"><div class="box"><h2>수집 상태</h2><div id="sources"><div class="note">대기 중</div></div></div><div class="box"><h2>소스 공개</h2><div id="srcpanel"><div class="note">불러오는 중</div></div></div><div class="box"><h2>숨긴 기사</h2><div id="hidden"><div class="note">불러오는 중</div></div></div><div class="box" id="tguide"></div></aside>
+    <aside class="side admin"><div class="box"><h2>수집 상태</h2><div id="sources"><div class="note">대기 중</div></div></div><div class="box"><h2>숨긴 기사</h2><div id="hidden"><div class="note">불러오는 중</div></div></div><div class="box" id="tguide"></div></aside>
   </div>
 
   <footer class="foot">
@@ -495,7 +493,9 @@ function renderPills(){
   const row=document.querySelector(th?'#filters-thai':'#filters-global');
   document.querySelector(th?'#filters-global':'#filters-thai').hidden=true;
   const cats=th?THAI_CATS:GLOBAL_CATS;
-  const srcs=th?THAI_SRC:GLOBAL_SRC;
+  // A source the operator switched off is dropped by the server, so a pill for it would
+  // return nothing: leave it out rather than offer a filter that cannot match.
+  const srcs=(th?THAI_SRC:GLOBAL_SRC).filter(s=>!(OFF&&OFF.indexOf(s)>=0));
   const items=[['전체','전체']].concat(cats.map(c=>Array.isArray(c)?c:[c,c]));
   // Teemo's Pick sits first because it is a mode, not a category: the operator's judgement, which a
   // reader can filter by. It composes with the rest - picking it together with 트럼프 asks for
@@ -915,53 +915,52 @@ async function loadHidden(){
   }catch(e){el.innerHTML='<div class="note">목록을 불러오지 못했습니다</div>'}
 }
 // --- which sources the deployed pages show (operator only) --------------------------------
-// A switched-off source is dropped by the server on every read path, so there is no filter to apply
-// here: this box is the switch itself. The list of sources comes from the collection status, and the
-// switches come from the status answer, which carries them only for a session - the anonymous
-// response deliberately keeps source detail out.
-// The list comes from the status answer, not from the feed: the feed only carries the source map
-// after a collection cycle has run, so a panel built from it would sit empty on a fresh start.
-let OFF=null, SRC_STATE=null;
+// The switch lives in the collection-status rows, because those rows are already the list of
+// sources. It has nothing to filter here: a switched-off source is dropped by the server on every
+// read path, so this is the switch itself. The state comes from the status answer, which carries
+// source detail only for a session.
+let OFF=null, SRC_STATE=null, SRC_MSG='';   // SRC_MSG survives the feed's redraw of the rows
+function sourceSwitch(name){
+  if(OFF===null)return '';
+  const off=OFF.indexOf(name)>=0;
+  return '<button type="button" class="sw" role="switch" aria-checked="'+(off?'false':'true')
+    +'" data-source="'+esc(name)+'" title="'+(off?'공개로 되돌리기':'배포 페이지에서 감추기')
+    +'"><span class="knob"></span></button>';
+}
+function srcNote(text){
+  SRC_MSG=text||'';
+  const el=document.querySelector('#sources');if(!el)return;
+  let note=el.querySelector('#srcnote');
+  if(!note){note=document.createElement('div');note.className='note';note.id='srcnote';el.append(note)}
+  note.textContent=text||'';
+  if(!text)note.remove();
+}
 async function loadSourceSwitches(){
   try{
     const d=await (await fetch(API+'/api/status',{cache:'no-cache'})).json();
     OFF=d.hidden_sources||[];SRC_STATE=d.sources||{};
   }catch(e){OFF=null}
-  renderSourcePanel();
-}
-function renderSourcePanel(){
-  const el=document.querySelector('#srcpanel');if(!el)return;
-  if(OFF===null){el.innerHTML='<div class="note">목록을 불러오지 못했습니다</div>';return}
-  const counts={};
-  const src=(SRC_STATE&&Object.keys(SRC_STATE).length)?SRC_STATE:(DATA.sources||{});
-  Object.entries(src).forEach(([name,st])=>{counts[name]=(st&&st.count)||0});
-  const names=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]||a.localeCompare(b));
-  if(!names.length){el.innerHTML='<div class="note">아직 수집 기록이 없습니다</div>';return}
-  el.innerHTML=names.map(n=>{
-    const off=OFF.indexOf(n)>=0;
-    return '<div class="srcrow'+(off?' off':'')+'"><button type="button" class="sw" role="switch"'
-      +' aria-checked="'+(off?'false':'true')+'" data-source="'+esc(n)+'" title="'
-      +(off?'공개로 되돌리기':'배포 페이지에서 감추기')+'"><span class="knob"></span></button>'
-      +'<span class="srcname">'+esc(n)+'</span><span class="srccount">'+counts[n]+'</span></div>'}).join('')
-    +'<div class="note" id="srcnote">'+(OFF.length?'숨김 '+OFF.length+'개 · ':'')
-    +'감춘 소스는 배포 페이지에서 빠집니다</div>';
-  el.querySelectorAll('.sw').forEach(b=>b.onclick=()=>switchSource(b.dataset.source));
+  renderSources();renderPills();
 }
 async function switchSource(name){
-  const off=OFF.indexOf(name)>=0, note=()=>document.querySelector('#srcnote');
-  if(note())note().textContent='저장 중…';
+  const off=OFF.indexOf(name)>=0;
+  srcNote('저장 중…');
   try{
     const d=await writeJSON('/api/source',{source:name,hidden:!off});
     OFF=d.hidden_sources||OFF;
-    renderSourcePanel();
-    if(note())note().textContent=name+(off?' 공개로 되돌렸습니다':' 을 감췄습니다');
+    const button=document.querySelector('#sources .sw[data-source="'+name+'"]');
+    if(button){
+      button.setAttribute('aria-checked',OFF.indexOf(name)>=0?'false':'true');
+      const row=button.closest('.source');if(row)row.classList.toggle('off',OFF.indexOf(name)>=0);
+    }
+    srcNote(name+(off?' 공개로 되돌렸습니다':' 을 감췄습니다'));
+    renderPills();
     fetchFeed();
   }catch(e){
-    renderSourcePanel();
-    if(note())note().textContent='저장하지 못했습니다 — '+e.message;
+    srcNote('저장하지 못했습니다 — '+e.message);
   }
 }
-// <<< operator-only
+
 
 async function fetchLocal(){
   const r=await fetch(API+'/api/news?'+buildQuery(),{cache:'no-cache'});
@@ -1001,12 +1000,17 @@ function offline(){
 
 function renderSources(){
   const el=document.querySelector('#sources');if(!el)return;
-  const rows=Object.entries(DATA.sources||{});
+  // The feed's own map usually has it; the status answer is the fallback for the moment before a
+  // collection cycle has run.
+  const map=(Object.keys(DATA.sources||{}).length?DATA.sources:(SRC_STATE||{}));
+  const rows=Object.entries(map);
   el.innerHTML=rows.length?rows.map(([name,s])=>
-    '<div class="source"><span>'+esc(name)+'</span><span class="'+(s.ok?'ok':'bad')+'">'+
+    '<div class="source'+((OFF&&OFF.indexOf(name)>=0)?' off':'')+'">'+sourceSwitch(name)+
+    '<span>'+esc(name)+'</span><span class="'+(s.ok?'ok':'bad')+'">'+
       (s.ok?'정상 '+(s.count==null?0:s.count):'실패')+'</span></div>').join('')
-    :'<div class="note">대기 중</div>'
-  if(CFG.admin)renderSourcePanel();}
+    :'<div class="note">대기 중</div>';
+  if(SRC_MSG)srcNote(SRC_MSG);
+  el.querySelectorAll('.sw').forEach(b=>b.onclick=()=>switchSource(b.dataset.source));}
 function renderGuide(){
   const el=document.querySelector('#tguide');if(!el)return;
   el.innerHTML=V.tab==='thai'
