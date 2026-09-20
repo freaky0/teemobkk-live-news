@@ -1116,7 +1116,9 @@ def build_server(db_path: str = "news.db") -> dict[str, int]:
     sizes = {}
     global_seed = seed_from_db(db_path, "\uae00\ub85c\ubc8c", False, "en")
     thai_seed = seed_from_db(db_path, "\ud0dc\uad6d", True, "en")
-    targets = ("news", "news/ko", "thai/news", "thai/news/ko")
+    # The section roots are in the keep set: build_server writes them (the section front pages and
+    # the news dashboard), and pruning them first would leave a window where nothing answers.
+    targets = ("news", "news/ko", "thai", "thai/news", "thai/news/ko")
     pruned = _prune_sections(ROOT / t for t in targets)
     for gone in pruned:
         print("removed stale section %s (its address now redirects)" % gone)
