@@ -29,6 +29,9 @@ icon-source.png
 worker/node_modules/
 worker/.wrangler/
 
+# page-check harness: jsdom is installed per machine, not committed
+tests/node_modules/
+
 # section pages are generated on the host that serves them
 /ko/
 /news/
