@@ -198,6 +198,15 @@ mark{background:#3f3418;color:#ffe9b0;border-radius:3px;padding:0 2px}
 .box p{margin:0 0 8px}
 .source{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:4px 0;border-bottom:1px solid var(--line)}
 .source:last-child{border-bottom:0}
+.srcrow{display:flex;align-items:center;gap:9px;padding:4px 0;border-bottom:1px solid var(--line)}
+.srcrow:last-of-type{border-bottom:0}
+.srcrow.off .srcname{color:var(--muted);text-decoration:line-through}
+.srcname{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srccount{color:var(--muted);font-size:11px}
+.sw{flex:0 0 auto;width:34px;height:18px;border-radius:999px;border:1px solid var(--line2);background:var(--panel2);position:relative;cursor:pointer;padding:0}
+.sw .knob{position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--muted);transition:left .14s}
+.sw[aria-checked="true"]{border-color:var(--accent);background:rgba(100,215,255,.18)}
+.sw[aria-checked="true"] .knob{left:18px;background:var(--accent)}
 .source .ok{color:var(--official)}
 .source .bad{color:var(--hot)}
 .note{color:var(--muted);font-size:12px}
@@ -320,7 +329,7 @@ body.local .card{cursor:auto}
         <button id="totop" type="button">맨 위로</button>
       </div>
     </section>
-    <aside class="side admin"><div class="box"><h2>수집 상태</h2><div id="sources"><div class="note">대기 중</div></div></div><div class="box"><h2>숨긴 기사</h2><div id="hidden"><div class="note">불러오는 중</div></div></div><div class="box" id="tguide"></div></aside>
+    <aside class="side admin"><div class="box"><h2>수집 상태</h2><div id="sources"><div class="note">대기 중</div></div></div><div class="box"><h2>소스 공개</h2><div id="srcpanel"><div class="note">불러오는 중</div></div></div><div class="box"><h2>숨긴 기사</h2><div id="hidden"><div class="note">불러오는 중</div></div></div><div class="box" id="tguide"></div></aside>
   </div>
 
   <footer class="foot">
@@ -905,6 +914,53 @@ async function loadHidden(){
       loadHidden();fetchFeed()});
   }catch(e){el.innerHTML='<div class="note">목록을 불러오지 못했습니다</div>'}
 }
+// --- which sources the deployed pages show (operator only) --------------------------------
+// A switched-off source is dropped by the server on every read path, so there is no filter to apply
+// here: this box is the switch itself. The list of sources comes from the collection status, and the
+// switches come from the status answer, which carries them only for a session - the anonymous
+// response deliberately keeps source detail out.
+// The list comes from the status answer, not from the feed: the feed only carries the source map
+// after a collection cycle has run, so a panel built from it would sit empty on a fresh start.
+let OFF=null, SRC_STATE=null;
+async function loadSourceSwitches(){
+  try{
+    const d=await (await fetch(API+'/api/status',{cache:'no-cache'})).json();
+    OFF=d.hidden_sources||[];SRC_STATE=d.sources||{};
+  }catch(e){OFF=null}
+  renderSourcePanel();
+}
+function renderSourcePanel(){
+  const el=document.querySelector('#srcpanel');if(!el)return;
+  if(OFF===null){el.innerHTML='<div class="note">목록을 불러오지 못했습니다</div>';return}
+  const counts={};
+  const src=(SRC_STATE&&Object.keys(SRC_STATE).length)?SRC_STATE:(DATA.sources||{});
+  Object.entries(src).forEach(([name,st])=>{counts[name]=(st&&st.count)||0});
+  const names=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]||a.localeCompare(b));
+  if(!names.length){el.innerHTML='<div class="note">아직 수집 기록이 없습니다</div>';return}
+  el.innerHTML=names.map(n=>{
+    const off=OFF.indexOf(n)>=0;
+    return '<div class="srcrow'+(off?' off':'')+'"><button type="button" class="sw" role="switch"'
+      +' aria-checked="'+(off?'false':'true')+'" data-source="'+esc(n)+'" title="'
+      +(off?'공개로 되돌리기':'배포 페이지에서 감추기')+'"><span class="knob"></span></button>'
+      +'<span class="srcname">'+esc(n)+'</span><span class="srccount">'+counts[n]+'</span></div>'}).join('')
+    +'<div class="note" id="srcnote">'+(OFF.length?'숨김 '+OFF.length+'개 · ':'')
+    +'감춘 소스는 배포 페이지에서 빠집니다</div>';
+  el.querySelectorAll('.sw').forEach(b=>b.onclick=()=>switchSource(b.dataset.source));
+}
+async function switchSource(name){
+  const off=OFF.indexOf(name)>=0, note=()=>document.querySelector('#srcnote');
+  if(note())note().textContent='저장 중…';
+  try{
+    const d=await writeJSON('/api/source',{source:name,hidden:!off});
+    OFF=d.hidden_sources||OFF;
+    renderSourcePanel();
+    if(note())note().textContent=name+(off?' 공개로 되돌렸습니다':' 을 감췄습니다');
+    fetchFeed();
+  }catch(e){
+    renderSourcePanel();
+    if(note())note().textContent='저장하지 못했습니다 — '+e.message;
+  }
+}
 // <<< operator-only
 
 async function fetchLocal(){
@@ -949,7 +1005,8 @@ function renderSources(){
   el.innerHTML=rows.length?rows.map(([name,s])=>
     '<div class="source"><span>'+esc(name)+'</span><span class="'+(s.ok?'ok':'bad')+'">'+
       (s.ok?'정상 '+(s.count==null?0:s.count):'실패')+'</span></div>').join('')
-    :'<div class="note">대기 중</div>'}
+    :'<div class="note">대기 중</div>'
+  if(CFG.admin)renderSourcePanel();}
 function renderGuide(){
   const el=document.querySelector('#tguide');if(!el)return;
   el.innerHTML=V.tab==='thai'
@@ -1125,6 +1182,7 @@ document.addEventListener('visibilitychange',()=>{hidden=document.hidden;
   // silently kept filtering the list, which reads as the dashboard being stuck.
   skeleton();
   if(CFG.admin)loadHidden();
+  if(CFG.admin)loadSourceSwitches();
   if(PUBLIC){fetchFeed();setInterval(()=>{if(!hidden&&V.tab!=='cal')fetchFeed()},300000)}
   else{fetchFeed();refreshTimer=setInterval(()=>{if(!hidden)fetchFeed()},30000)}
   if(V.tab==='cal')loadCalendar();

@@ -600,6 +600,38 @@ def setting_set(name: str, value: str) -> None:
     logging.info("setting %s = %s", name, value)
 
 
+HIDDEN_SOURCES = "hidden_sources"
+
+
+def hidden_sources() -> list[str]:
+    """The sources the operator has switched off, as stored.
+
+    Kept in the settings table rather than one of its own: it is a single list, it changes only when
+    a person changes it, and the row that records when it changed is already there.
+    """
+    raw = setting_get(HIDDEN_SOURCES)
+    try:
+        values = json.loads(raw) if raw else []
+    except ValueError:
+        return []
+    if not isinstance(values, list):
+        return []
+    return sorted({str(value).strip() for value in values if str(value).strip()})
+
+
+def set_source_hidden(source: str, hidden: bool) -> list[str]:
+    """Switch one source off or back on, and answer with the whole list as it now stands."""
+    name = str(source or "").strip()
+    current = hidden_sources()
+    if not name:
+        return current
+    if hidden and name not in current:
+        current.append(name)
+    elif not hidden and name in current:
+        current.remove(name)
+    setting_set(HIDDEN_SOURCES, json.dumps(sorted(current), ensure_ascii=False))
+    return sorted(current)
+
 def _looks_like_link(value: str) -> bool:
     """Whether a string can be the key of a stored story.
 
@@ -674,6 +706,14 @@ def query_articles(hours: int = RETENTION_HOURS, region: str = "", category: Any
     # not be able to bring back the row that was hidden, or hiding would only work on the screen it
     # was done from. The restore path reads hidden_links directly instead.
     where.append("link NOT IN (SELECT link FROM hidden_links)")
+    # A switched-off source is skipped on every read path, for the same reason a hidden story is: the
+    # switch has to mean the same thing on the deployed pages as on the screen it was flipped from.
+    # That also means a hidden source leaves the operator's own feed, so the way back is the source
+    # list - the switch - rather than a filter that could bring the rows in again.
+    off = hidden_sources()
+    if off:
+        where.append("source NOT IN (%s)" % ", ".join("?" * len(off)))
+        params.extend(off)
     if region:
         where.append("region = ?")
         params.append(region)
@@ -1080,7 +1120,8 @@ class Handler(BaseHTTPRequestHandler):
             # archive present in the anonymous response).
             if not (PUBLIC_MODE and not self.is_admin()):
                 payload.update({"interval_seconds": self.state.interval, "archive": data.get("archive", {}),
-                                "sources": data.get("sources", {})})
+                                "sources": data.get("sources", {}),
+                                "hidden_sources": hidden_sources()})
             self.send_json(payload)
             return
         static = STATIC_FILES.get(request_path)
@@ -1141,6 +1182,18 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_error(400, "Invalid interval")
                 return
             response = {"ok": True, "interval_seconds": interval}
+        elif request_path == "/api/source":
+            # Switching a whole source on or off. The answer carries the whole list back, because
+            # that list is what the operator page draws its switches from.
+            source = str(payload.get("source") or "").strip()
+            if not source:
+                self.send_error(400, "Invalid source")
+                return
+            hidden = bool(payload.get("hidden"))
+            pushed = set_source_hidden(source, hidden)
+            logging.info("source %s by the operator: %s ip=%s",
+                         "hidden" if hidden else "shown", source, admin_auth.client_ip(self))
+            response = {"ok": True, "source": source, "hidden": hidden, "hidden_sources": pushed}
         elif request_path in ("/api/hide", "/api/unhide", "/api/pick", "/api/unpick"):
             # One story changes state. The link identifies it, so it is the only thing that has to
             # be right; the title and the note are carried along so the operator's lists read as
