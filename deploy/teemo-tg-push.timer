@@ -1,0 +1,13 @@
+[Unit]
+Description=Tick the TeemoBKK Telegram channel push every minute
+
+[Timer]
+# One minute after boot, then every minute - the interval is measured from the end of the previous
+# run, so a slow tick delays the next one instead of stacking two of them on top of each other.
+OnBootSec=90
+OnUnitActiveSec=60
+AccuracySec=5s
+Unit=teemo-tg-push.service
+
+[Install]
+WantedBy=timers.target

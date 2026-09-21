@@ -1,0 +1,20 @@
+[Unit]
+# One tick of the Telegram channel push. Started by teemo-tg-push.timer every minute; it reads
+# news.db, posts whatever is eligible, and exits. Nothing is held in memory between runs, so a
+# restart never loses or repeats a post - the state lives in the tg_posted table.
+Description=TeemoBKK Live News - push important stories to the Telegram channel
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=teemo
+Group=teemo
+WorkingDirectory=/opt/teemo-live-news
+# Secrets and thresholds. The file is 0600 and owned by teemo; nothing here belongs in the repo.
+EnvironmentFile=/opt/teemo-live-news/.env.push
+ExecStart=/usr/bin/python3 /opt/teemo-live-news/deploy/tg_push.py
+Nice=10
+# A tick that runs long must not pile up behind the next one: the lock file inside the script
+# already skips an overlapping run, and this is the backstop.
+TimeoutStartSec=120
