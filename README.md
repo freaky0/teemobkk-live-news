@@ -143,6 +143,29 @@ python live_news_dashboard.py --interval 30
 
 화면은 아직 `ai_priority`를 읽지 않는다. 도입 전에 표본 30건을 손으로 라벨링해 모델 점수와 비교한다 — 그 비교 없이 켜지 않는다.
 
+## 텔레그램 채널 푸시 (`deploy/tg_push.py`)
+
+중요한 기사를 채널에 1분 주기로 내보낸다. 판단은 규칙이 하고, 언어모델은 **실제로 게시하는 건에만** 제목·요약을 한국어로 옮길 때 호출한다.
+
+```
+후보   query_articles(minimum_priority=4, region=글로벌) + picked_only (티모의 선택은 별점 무관)
+       숨긴 기사·걸러진 기사·꺼둔 소스는 서버 읽기 경로가 이미 제외한다
+중복   링크(tg_posted 기본키) → 제목 문자 유사도 0.88 → 같은 사건 토큰 판정(180분 창)
+잡음   시세 알림·주간 프로모·영문 SEO 설명글·알트 개별 종목(★5·픽 예외)·연예
+페이싱 ★5·픽 즉시 / ★4 쿨다운 180초 / 시간당 12건 / 90분 넘은 기사는 버림
+형식   [기사] 제목 + 요약 2줄 + 출처·분류·★ + 발행 HH:MM ICT + 원문 링크 (HTML)
+기록   tg_posted(link, message_id, posted_at, title_key, recap …)
+```
+
+```
+설치   bash deploy/vps_push_setup.sh   (로컬에서. 유닛 설치·타이머 활성·호스트 dry-run까지)
+검증   python deploy/tg_push.py --replay 24   과거 24시간을 1분 단위로 재생해 예상 건수를 본다
+       실측: 후보 299건 → 게시 132건/24h, 남은 중복 0쌍
+운영   systemctl stop teemo-tg-push.timer 로 즉시 중지, .env.push 수정 후 restart 로 임계 조정
+```
+
+전체 절차와 함정은 스킬 `teemo-telegram-news-push`에 있다. 비밀값(봇 토큰·채널 id·번역 키)은 저장소가 아니라 호스트의 `/opt/teemo-live-news/.env.push`(0600)에만 둔다.
+
 ## 설계 원칙
 
 - API 키 없이 실행
