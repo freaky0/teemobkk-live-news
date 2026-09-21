@@ -889,16 +889,15 @@ def learn_filter_rules(limit: int = 8) -> list[dict[str, Any]]:
         return any(rx.search(title.lower()) for rx, _ in existing)
 
     # A proposal that says what a rule already says is not worth the operator's attention: pressing
-    # learn twice must not keep growing the list with weaker wordings of the same shape.
-    fresh = []
+    # learn twice must not keep growing the list with weaker wordings of the same shape. The check
+    # runs as each one is added, so a phrase and the words inside it cannot both arrive.
+    added = []
     for proposal in proposals:
         rx = _rule_regex(proposal["pattern"])
-        if any(rx.search(title.lower()) and not covered(title) for title in hidden_titles):
-            fresh.append(proposal)
-
-    added = []
-    for proposal in fresh:
+        if not any(rx.search(title.lower()) and not covered(title) for title in hidden_titles):
+            continue
         added.append(add_filter_rule(proposal["pattern"], kind=proposal.get("kind", "phrase"), origin="learned"))
+        existing.append((rx, proposal["pattern"]))
     return added
 
 

@@ -27,7 +27,7 @@ PHRASE_MIN = 3        # 구절로 인정할 최소 낱말 수 ('bloomberg news n
 PHRASE_MAX = 8        # 최대
 HIDDEN_MIN = 2        # 같은 문구가 숨김에 두 번은 나와야 '되풀이'다
 LEAD = 12             # 제목 앞머리만 본다: 정형 기사의 표식이 거기 있다
-WORD_HIDDEN_MIN = 2   # 낱말 후보의 최소 숨김 건수
+WORD_HIDDEN_MIN = 3   # 낱말 후보의 최소 숨김 건수 (두 건은 한 기사가 두 경로로 들어온 것일 수 있다)
 WORD_RATE = 0.5       # 그 낱말이 나온 기사의 절반 이상이 숨김이어야 한다
 LIMIT = 8             # 한 번에 올릴 후보 수
 
