@@ -28,7 +28,7 @@ PAGES = (
     "https://www.sbhnews.com/",
     "https://www.sbhnews.com/news",
 )
-SOURCE = "SBHNews · 오픈뉴스"
+SOURCE = "오픈 소스"
 SOURCE_TYPE = "social"
 MAX_ITEMS = 20
 TITLE_MAX = 160
