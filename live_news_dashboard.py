@@ -4,6 +4,7 @@ import argparse
 import admin_auth
 import admin_page
 import category_rules as taxonomy
+import filter_learn
 import bluesky_source
 import sbh_open_news
 import sbh_source
@@ -492,6 +493,27 @@ def init_db() -> None:
             "CREATE TABLE IF NOT EXISTS settings ("
             "name TEXT PRIMARY KEY, value TEXT, changed_at TEXT)"
         )
+        # A pattern that keeps a story off the pages. Kept apart from hidden_links because the
+        # reason is different: hiding is one judgement about one story, a rule is a judgement that
+        # keeps being applied. The stories a rule catches are recorded in filter_hits, so turning
+        # the rule off gives all of them back - filtering never becomes a silent delete.
+        connection.execute(
+            "CREATE TABLE IF NOT EXISTS filter_rules ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, pattern TEXT NOT NULL UNIQUE, kind TEXT,"
+            "origin TEXT, enabled INTEGER NOT NULL DEFAULT 0, hits INTEGER NOT NULL DEFAULT 0,"
+            "created_at TEXT, last_hit_at TEXT)"
+        )
+        connection.execute(
+            "CREATE TABLE IF NOT EXISTS filter_hits ("
+            "link TEXT PRIMARY KEY, rule_id INTEGER, matched_at TEXT)"
+        )
+        # A story a rule caught that the operator chose to keep. Without this the only way to be
+        # right about a false positive would be to give up the rule, and a rule that is mostly
+        # right is worth more than one that catches nothing.
+        connection.execute(
+            "CREATE TABLE IF NOT EXISTS filter_keeps ("
+            "link TEXT PRIMARY KEY, kept_at TEXT)"
+        )
 
 
 def insert_articles(articles: list[dict[str, Any]]) -> int:
@@ -516,7 +538,11 @@ def insert_articles(articles: list[dict[str, Any]]) -> int:
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             rows,
         )
-        return connection.total_changes - before
+        inserted = connection.total_changes - before
+        # The rules are asked about the stories in the same breath as the insert, so a filtered
+        # story is registered and skipped in one transaction and cannot show up in between.
+        _record_filter_hits(connection, rows)
+        return inserted
 
 
 def prune_archive(days: int = ARCHIVE_DAYS) -> int:
@@ -677,6 +703,205 @@ def hidden_links(limit: int = 200) -> list[dict[str, Any]]:
              "hidden_at": row[4] or ""} for row in rows]
 
 
+# ── 거르는 규칙 ─────────────────────────────────────────────────────────
+# The operator hides stories one at a time and the same shapes keep coming back: a digest that is
+# posted every hour, an ad for a casino, a wire that reposts its sports desk. A rule is that shape,
+# written down once. Stories a rule catches are registered as usual and then skipped on every read
+# path, so the only thing a rule changes is what a reader sees - and every catch is listed, so a
+# wrong rule is visible instead of quietly eating the feed.
+
+def _rule_regex(pattern: str) -> "re.Pattern[str]":
+    """One rule as a regular expression. A Latin word has to start a word.
+
+    'casino' must not fire inside 'fascinating', or the rule cannot be turned on. Korean has no word
+    boundary to use - particles attach to the noun ("에어드롭이", "에어드롭은") - so it is matched as
+    a plain substring.
+    """
+    text = (pattern or "").strip().lower()
+    if re.match(r"^[0-9a-z]", text):
+        return re.compile(r"(?<![0-9a-z])" + re.escape(text))
+    return re.compile(re.escape(text))
+
+
+def filter_rules(enabled_only: bool = False) -> list[dict[str, Any]]:
+    """The rules. Switched-on first, then the ones that have caught the most."""
+    sql = ("SELECT id, pattern, kind, origin, enabled, hits, created_at, last_hit_at FROM filter_rules")
+    if enabled_only:
+        sql += " WHERE enabled = 1"
+    sql += " ORDER BY enabled DESC, hits DESC, id DESC"
+    with DB_LOCK, db_connect() as connection:
+        rows = connection.execute(sql).fetchall()
+    return [{"id": row[0], "pattern": row[1] or "", "kind": row[2] or "phrase", "origin": row[3] or "operator",
+             "enabled": bool(row[4]), "hits": int(row[5] or 0), "created_at": row[6] or "",
+             "last_hit_at": row[7] or ""} for row in rows]
+
+
+def _record_filter_hits(connection: sqlite3.Connection, rows: list[tuple]) -> int:
+    """Try the switched-on rules against the rows and record what they catch.
+
+    Called with the rows handed to the insert, so the check happens where registration happens and
+    the counting is idempotent: a story the collector sees again is already recorded and is not
+    counted twice. One rule per story - the panel reads as "this rule caught this", which is what
+    makes a rule judgeable.
+    """
+    rules = connection.execute("SELECT id, pattern FROM filter_rules WHERE enabled = 1").fetchall()
+    if not rules:
+        return 0
+    matchers = [(row[0], _rule_regex(row[1])) for row in rules]
+    when = datetime.now(timezone.utc).isoformat()
+    added = 0
+    for row in rows:
+        link, title, summary = row[0], row[1] or "", row[2] or ""
+        if not link:
+            continue
+        blob = (title + " " + summary).lower()
+        for rule_id, rx in matchers:
+            if not rx.search(blob):
+                continue
+            cursor = connection.execute(
+                "INSERT OR IGNORE INTO filter_hits (link, rule_id, matched_at) VALUES (?, ?, ?)",
+                (link, rule_id, when))
+            if cursor.rowcount:
+                connection.execute(
+                    "UPDATE filter_rules SET hits = hits + 1, last_hit_at = ? WHERE id = ?", (when, rule_id))
+                added += 1
+            break
+    return added
+
+
+def rescan_filters() -> int:
+    """Run the switched-on rules over the window the pages show.
+
+    Turning a rule on has to act on what is already there, or the first day of a filter looks like
+    nothing happened. The scan covers the retention window, which is exactly what a reader can see.
+    """
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=RETENTION_HOURS)).isoformat()
+    with DB_LOCK, db_connect() as connection:
+        enabled = [row[0] for row in connection.execute("SELECT id FROM filter_rules WHERE enabled = 1")]
+        if not enabled:
+            connection.execute("DELETE FROM filter_hits WHERE rule_id IN (SELECT id FROM filter_rules)")
+            return 0
+        connection.execute("DELETE FROM filter_hits WHERE rule_id IN (SELECT id FROM filter_rules WHERE enabled = 0)")
+        rows = connection.execute("SELECT link, title, summary FROM articles WHERE published_at >= ?",
+                                  (cutoff,)).fetchall()
+        connection.execute("DELETE FROM filter_hits")
+        return _record_filter_hits(connection, [tuple(r) for r in rows])
+
+
+def add_filter_rule(pattern: str, kind: str = "phrase", origin: str = "operator",
+                    enabled: bool = False) -> dict[str, Any]:
+    """Add one rule. A pattern that is already there is left as it is."""
+    text = (pattern or "").strip().lower()[:200]
+    if not text:
+        raise ValueError("empty pattern")
+    when = datetime.now(timezone.utc).isoformat()
+    with DB_LOCK, db_connect() as connection:
+        connection.execute(
+            "INSERT OR IGNORE INTO filter_rules (pattern, kind, origin, enabled, hits, created_at) "
+            "VALUES (?, ?, ?, ?, 0, ?)", (text, kind or "phrase", origin or "operator", 1 if enabled else 0, when))
+        row = connection.execute("SELECT id, enabled FROM filter_rules WHERE pattern = ?", (text,)).fetchone()
+    if row and row[1]:
+        rescan_filters()
+    return {"id": row[0], "pattern": text, "enabled": bool(row[1])}
+
+
+def set_filter_rule(rule_id: int, enabled: "bool | None" = None, pattern: "str | None" = None) -> dict[str, Any]:
+    """Switch a rule on or off, or reword it. Either way the catches are recomputed.
+
+    A rule that is switched off gives its stories back - that is the whole point of recording them.
+    """
+    with DB_LOCK, db_connect() as connection:
+        if pattern is not None:
+            text = (pattern or "").strip().lower()[:200]
+            if not text:
+                raise ValueError("empty pattern")
+            connection.execute("UPDATE filter_rules SET pattern = ? WHERE id = ?", (text, int(rule_id)))
+        if enabled is not None:
+            connection.execute("UPDATE filter_rules SET enabled = ? WHERE id = ?",
+                               (1 if enabled else 0, int(rule_id)))
+        row = connection.execute("SELECT id, pattern, enabled FROM filter_rules WHERE id = ?",
+                                 (int(rule_id),)).fetchone()
+    if row is None:
+        raise ValueError("no such rule")
+    if row[2]:
+        rescan_filters()
+    else:
+        with DB_LOCK, db_connect() as connection:
+            connection.execute("DELETE FROM filter_hits WHERE rule_id = ?", (int(rule_id),))
+    return {"id": row[0], "pattern": row[1], "enabled": bool(row[2])}
+
+
+def delete_filter_rule(rule_id: int) -> int:
+    """Remove a rule. Its catches come back with it."""
+    with DB_LOCK, db_connect() as connection:
+        connection.execute("DELETE FROM filter_hits WHERE rule_id = ?", (int(rule_id),))
+        connection.execute("DELETE FROM filter_rules WHERE id = ?", (int(rule_id),))
+        return connection.execute("SELECT COUNT(*) FROM filter_rules").fetchone()[0] or 0
+
+
+def keep_caught(link: str, keep: bool = True) -> int:
+    """Keep one story a rule caught. The rule stays; this story does not go through it."""
+    with DB_LOCK, db_connect() as connection:
+        if keep:
+            connection.execute(
+                "INSERT INTO filter_keeps (link, kept_at) VALUES (?, ?) "
+                "ON CONFLICT(link) DO UPDATE SET kept_at = excluded.kept_at",
+                (link, datetime.now(timezone.utc).isoformat()))
+        else:
+            connection.execute("DELETE FROM filter_keeps WHERE link = ?", (link,))
+        return connection.execute("SELECT COUNT(*) FROM filter_keeps").fetchone()[0] or 0
+
+
+def caught_links(limit: int = 80) -> list[dict[str, Any]]:
+    """What the rules caught, newest first, with the rule that caught it - the review list."""
+    with DB_LOCK, db_connect() as connection:
+        rows = connection.execute(
+            "SELECT h.link, COALESCE(NULLIF(a.title, ''), ''), a.source, a.published_at, "
+            "       r.pattern, r.id, h.matched_at "
+            "FROM filter_hits h JOIN filter_rules r ON r.id = h.rule_id "
+            "LEFT JOIN articles a ON a.link = h.link "
+            "WHERE h.link NOT IN (SELECT link FROM filter_keeps) "
+            "ORDER BY h.matched_at DESC LIMIT ?", (int(limit),)).fetchall()
+        kept = connection.execute("SELECT COUNT(*) FROM filter_keeps").fetchone()[0] or 0
+    return [{"link": row[0], "title": row[1] or "", "source": row[2] or "", "published_at": row[3] or "",
+             "pattern": row[4] or "", "rule_id": row[5], "matched_at": row[6] or "", "kept_total": kept}
+            for row in rows]
+
+
+def learn_filter_rules(limit: int = 8) -> list[dict[str, Any]]:
+    """Propose rules from the stories the operator has hidden by hand.
+
+    The proposals arrive switched off, with what each would catch, because the decision to filter a
+    whole shape of story is the operator's and a rule that is on by default is one that is never
+    read.
+    """
+    with DB_LOCK, db_connect() as connection:
+        hidden_titles = [row[0] or "" for row in connection.execute(
+            "SELECT COALESCE(NULLIF(h.title, ''), a.title, '') FROM hidden_links h "
+            "LEFT JOIN articles a ON a.link = h.link")]
+        kept_texts = [(row[0] or "") + " " + (row[1] or "") for row in connection.execute(
+            "SELECT title, summary FROM articles WHERE link NOT IN (SELECT link FROM hidden_links)")]
+        existing = [(_rule_regex(row[0]), row[0]) for row in
+                    connection.execute("SELECT pattern FROM filter_rules")]
+    proposals = filter_learn.derive(hidden_titles, kept_texts, exclude={p for _, p in existing}, limit=limit)
+
+    def covered(title: str) -> bool:
+        return any(rx.search(title.lower()) for rx, _ in existing)
+
+    # A proposal that says what a rule already says is not worth the operator's attention: pressing
+    # learn twice must not keep growing the list with weaker wordings of the same shape.
+    fresh = []
+    for proposal in proposals:
+        rx = _rule_regex(proposal["pattern"])
+        if any(rx.search(title.lower()) and not covered(title) for title in hidden_titles):
+            fresh.append(proposal)
+
+    added = []
+    for proposal in fresh:
+        added.append(add_filter_rule(proposal["pattern"], kind=proposal.get("kind", "phrase"), origin="learned"))
+    return added
+
+
 def _as_list(value: Any) -> list[str]:
     """One value or several, always as a list of non-empty strings.
 
@@ -706,6 +931,12 @@ def query_articles(hours: int = RETENTION_HOURS, region: str = "", category: Any
     # not be able to bring back the row that was hidden, or hiding would only work on the screen it
     # was done from. The restore path reads hidden_links directly instead.
     where.append("link NOT IN (SELECT link FROM hidden_links)")
+    # A story a rule caught is skipped on every read path, exactly like a hidden one, and a story
+    # the operator chose to keep is not skipped even though a rule caught it. The rule is joined
+    # in rather than trusted: a rule that was switched off must not keep stories off the page
+    # because a row was left behind somewhere.
+    where.append("link NOT IN (SELECT h.link FROM filter_hits h JOIN filter_rules r ON r.id = h.rule_id "
+                 "WHERE r.enabled = 1 AND h.link NOT IN (SELECT link FROM filter_keeps))")
     # A switched-off source is skipped on every read path, for the same reason a hidden story is: the
     # switch has to mean the same thing on the deployed pages as on the screen it was flipped from.
     # That also means a hidden source leaves the operator's own feed, so the way back is the source
@@ -1039,6 +1270,13 @@ class Handler(BaseHTTPRequestHandler):
         rows = picked_links()
         self.send_json({"picked": rows, "total": len(rows)})
 
+    def serve_filters(self) -> None:
+        """The rules and what they caught, for the operator page."""
+        if PUBLIC_MODE and not self.is_admin():
+            self.send_error(404)
+            return
+        self.send_json({"rules": filter_rules(), "caught": caught_links()})
+
     def do_GET(self) -> None:
         request_path = urllib.parse.urlsplit(self.path).path
         if request_path in ("/admin", "/admin/"):
@@ -1046,6 +1284,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         if request_path == "/api/hidden":
             self.serve_hidden()
+            return
+        if request_path == "/api/filters":
+            self.serve_filters()
             return
         if request_path == "/api/picks":
             self.serve_picks()
@@ -1119,9 +1360,12 @@ class Handler(BaseHTTPRequestHandler):
             # deployment in read-only mode used to answer with all of it (measured: sources and
             # archive present in the anonymous response).
             if not (PUBLIC_MODE and not self.is_admin()):
+                rules = filter_rules()
                 payload.update({"interval_seconds": self.state.interval, "archive": data.get("archive", {}),
                                 "sources": data.get("sources", {}),
-                                "hidden_sources": hidden_sources()})
+                                "hidden_sources": hidden_sources(),
+                                "filter_rules": rules,
+                                "filter_enabled": sum(1 for r in rules if r["enabled"])})
             self.send_json(payload)
             return
         static = STATIC_FILES.get(request_path)
@@ -1194,6 +1438,39 @@ class Handler(BaseHTTPRequestHandler):
             logging.info("source %s by the operator: %s ip=%s",
                          "hidden" if hidden else "shown", source, admin_auth.client_ip(self))
             response = {"ok": True, "source": source, "hidden": hidden, "hidden_sources": pushed}
+        elif request_path == "/api/filter":
+            # One endpoint for the rules, because every action ends in the same answer: the list
+            # the panel draws from. `learn` reads the stories the operator hid by hand and proposes
+            # rules from them; the proposals arrive switched off.
+            action = str(payload.get("action") or "").strip()
+            try:
+                if action == "add":
+                    add_filter_rule(str(payload.get("pattern") or ""),
+                                    kind="word" if payload.get("kind") == "word" else "phrase")
+                elif action == "set":
+                    set_filter_rule(int(payload.get("id") or 0),
+                                    enabled=payload.get("enabled"),
+                                    pattern=payload.get("pattern"))
+                elif action == "delete":
+                    delete_filter_rule(int(payload.get("id") or 0))
+                elif action == "keep":
+                    link = str(payload.get("link") or "").strip()
+                    if not _looks_like_link(link):
+                        self.send_error(400, "Invalid link")
+                        return
+                    keep_caught(link, bool(payload.get("keep", True)))
+                elif action == "learn":
+                    learn_filter_rules()
+                else:
+                    self.send_error(400, "Unknown filter action")
+                    return
+            except (TypeError, ValueError) as exc:
+                self.send_error(400, "Invalid filter: %s" % exc)
+                return
+            logging.info("admin filter %s ip=%s", action, admin_auth.client_ip(self))
+            rules = filter_rules()
+            response = {"ok": True, "rules": rules, "caught": caught_links(),
+                        "filter_enabled": sum(1 for r in rules if r["enabled"])}
         elif request_path in ("/api/hide", "/api/unhide", "/api/pick", "/api/unpick"):
             # One story changes state. The link identifies it, so it is the only thing that has to
             # be right; the title and the note are carried along so the operator's lists read as

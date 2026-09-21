@@ -205,6 +205,20 @@ mark{background:#3f3418;color:#ffe9b0;border-radius:3px;padding:0 2px}
 .sw .knob{position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--muted);transition:left .14s}
 .sw[aria-checked="true"]{border-color:var(--accent);background:rgba(100,215,255,.18)}
 .sw[aria-checked="true"] .knob{left:18px;background:var(--accent)}
+.rule{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--line2)}
+.rule .rp{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+.rule.off .rp{color:var(--muted);text-decoration:line-through}
+.rule .rh{flex:0 0 auto;font-variant-numeric:tabular-nums;color:var(--muted);font-size:11px}
+.rule .rx{flex:0 0 auto;border:0;background:none;color:var(--muted);cursor:pointer;font-size:12px;padding:0 2px}
+.rule .rx:hover{color:var(--accent)}
+.frow{display:flex;gap:6px;margin:8px 0 6px}
+.frow input{flex:1 1 auto;min-width:0;background:var(--panel2);border:1px solid var(--line2);color:inherit;
+border-radius:6px;padding:5px 7px;font-size:12px}
+.wide{width:100%;background:var(--panel2);border:1px solid var(--line2);color:inherit;border-radius:6px;
+padding:5px 7px;font-size:12px;cursor:pointer}
+.caught{display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid var(--line2)}
+.caught .ct{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--muted)}
+.caught .keep{flex:0 0 auto;border:0;background:none;color:var(--accent);cursor:pointer;font-size:11px;padding:0}
 .source .ok{color:var(--official)}
 .source .bad{color:var(--hot)}
 .note{color:var(--muted);font-size:12px}
@@ -327,7 +341,7 @@ body.local .card{cursor:auto}
         <button id="totop" type="button">맨 위로</button>
       </div>
     </section>
-    <aside class="side admin"><div class="box"><h2>수집 상태</h2><div id="sources"><div class="note">대기 중</div></div></div><div class="box"><h2>숨긴 기사</h2><div id="hidden"><div class="note">불러오는 중</div></div></div><div class="box" id="tguide"></div></aside>
+    <aside class="side admin"><div class="box"><h2>수집 상태</h2><div id="sources"><div class="note">대기 중</div></div></div><div class="box"><h2>거르는 규칙</h2><div id="filters"><div class="note">불러오는 중…</div></div><div class="frow"><input id="fpattern" placeholder="문구 — 제목·요약에 있으면 뺀다" maxlength="120"><button type="button" id="fadd">추가</button></div><button type="button" class="wide" id="flearn">숨긴 기사에서 규칙 뽑기</button><div class="note" id="fnote"></div></div><div class="box"><h2>숨긴 기사</h2><div id="hidden"><div class="note">불러오는 중</div></div></div><div class="box" id="tguide"></div></aside>
   </div>
 
   <footer class="foot">
@@ -960,6 +974,97 @@ async function switchSource(name){
     srcNote('저장하지 못했습니다 — '+e.message);
   }
 }
+  // ── 거르는 규칙 ──
+  // A rule is described by what it caught, never by what it promises: every rule shows its catches,
+  // and the catches can be read and kept before the rule is left on.
+  let RULES=[],CAUGHT=[],FMSG='';
+  function filterNote(text){
+    FMSG=text||'';
+    const el=document.querySelector('#fnote');if(el)el.textContent=text||'';
+  }
+  function ruleSwitch(id,on){
+    return '<button type="button" class="sw" role="switch" aria-checked="'+(on?'true':'false')+'" data-rule="'+id
+      +'" title="'+(on?'규칙 끄기 — 잡았던 기사가 돌아옵니다':'규칙 켜기')+'"><span class="knob"></span></button>';
+  }
+  function renderFilters(){
+    const el=document.querySelector('#filters');if(!el)return;
+    const on=RULES.filter(r=>r.enabled).length;
+    let h='<div class="note">켜짐 '+on+'개 · 잡은 기사 '+CAUGHT.length+'건</div>';
+    h+=RULES.length
+      ?RULES.map(r=>'<div class="rule'+(r.enabled?'':' off')+'">'+ruleSwitch(r.id,r.enabled)
+          +'<span class="rp" title="'+esc(r.pattern)+'">'+esc(r.pattern)+'</span>'
+          +'<span class="rh">'+r.hits+'</span>'
+          +'<button type="button" class="rx" data-del="'+r.id+'" title="규칙 지우기">✕</button></div>').join('')
+      :'<div class="note">규칙 없음 — 숨긴 기사에서 뽑거나 직접 넣으세요</div>';
+    if(CAUGHT.length){
+      h+='<div class="note" style="margin-top:8px">규칙이 잡은 기사 '+CAUGHT.length+'건</div>';
+      h+=CAUGHT.slice(0,6).map(c=>'<div class="caught"><span class="ct" title="'+esc(c.title||c.link)+'">'
+          +esc(c.title||c.link)+'</span>'
+          +'<button type="button" class="keep" data-keep="'+esc(c.link)+'" title="이 기사는 살립니다">살리기</button></div>').join('');
+    }
+    if(FMSG)h+='<div class="note">'+esc(FMSG)+'</div>';
+    el.innerHTML=h;
+    el.querySelectorAll('.sw').forEach(b=>b.onclick=()=>setRule(b.dataset.rule,b.getAttribute('aria-checked')!=='true'));
+    el.querySelectorAll('.rx').forEach(b=>b.onclick=()=>setRule(b.dataset.del,null));
+    el.querySelectorAll('.keep').forEach(b=>b.onclick=()=>keepStory(b.dataset.keep));
+  }
+  async function loadFilters(){
+    try{
+      const d=await (await fetch(API+'/api/filters',{cache:'no-cache'})).json();
+      RULES=d.rules||[];CAUGHT=d.caught||[];
+    }catch(e){FMSG='규칙을 불러오지 못했습니다'}
+    renderFilters();
+  }
+  async function setRule(id,enable){
+    filterNote('저장 중…');renderFilters();
+    try{
+      const d=await writeJSON('/api/filter',enable===null?{action:'delete',id:Number(id)}
+                                                :{action:'set',id:Number(id),enabled:enable});
+      RULES=d.rules||RULES;CAUGHT=d.caught||[];
+      filterNote(enable===null?'규칙을 지웠습니다 — 잡혔던 기사가 돌아옵니다'
+                :(enable?'규칙을 켰습니다':'규칙을 껐습니다 — 잡혔던 기사가 돌아옵니다'));
+      renderFilters();fetchFeed();
+    }catch(e){filterNote('저장하지 못했습니다 — '+e.message);renderFilters()}
+  }
+  async function addRule(){
+    const input=document.querySelector('#fpattern');
+    const pattern=input?input.value.trim():'';
+    if(!pattern){filterNote('문구를 넣으세요');return}
+    filterNote('더하는 중…');
+    try{
+      const d=await writeJSON('/api/filter',{action:'add',pattern:pattern});
+      RULES=d.rules||RULES;CAUGHT=d.caught||[];
+      if(input)input.value='';
+      filterNote('규칙을 더했습니다 — 켜야 작동합니다');
+      renderFilters();
+    }catch(e){filterNote('더하지 못했습니다 — '+e.message);renderFilters()}
+  }
+  async function learnRules(){
+    const before=RULES.length;
+    filterNote('숨긴 기사에서 뽑는 중…');renderFilters();
+    try{
+      const d=await writeJSON('/api/filter',{action:'learn'});
+      RULES=d.rules||RULES;CAUGHT=d.caught||[];
+      filterNote(RULES.length>before?'후보 '+String(RULES.length-before)+'개를 올렸습니다 — 잡을 기사를 보고 켜세요'
+                                    :'새로 뽑을 후보가 없습니다');
+      renderFilters();
+    }catch(e){filterNote('뽑지 못했습니다 — '+e.message);renderFilters()}
+  }
+  async function keepStory(link){
+    filterNote('살리는 중…');
+    try{
+      const d=await writeJSON('/api/filter',{action:'keep',link:link});
+      RULES=d.rules||RULES;CAUGHT=d.caught||[];
+      filterNote('이 기사는 규칙을 통과해 살아납니다');
+      renderFilters();fetchFeed();
+    }catch(e){filterNote('살리지 못했습니다 — '+e.message);renderFilters()}
+  }
+  function wireFilters(){
+    const add=document.querySelector('#fadd');if(add)add.onclick=addRule;
+    const learn=document.querySelector('#flearn');if(learn)learn.onclick=learnRules;
+    const input=document.querySelector('#fpattern');
+    if(input)input.onkeydown=e=>{if(e.key==='Enter')addRule()};
+  }
 // <<< operator-only
 
 
@@ -1188,6 +1293,7 @@ document.addEventListener('visibilitychange',()=>{hidden=document.hidden;
   skeleton();
   if(CFG.admin)loadHidden();
   if(CFG.admin)loadSourceSwitches();
+  if(CFG.admin){wireFilters();loadFilters()}
   if(PUBLIC){fetchFeed();setInterval(()=>{if(!hidden&&V.tab!=='cal')fetchFeed()},300000)}
   else{fetchFeed();refreshTimer=setInterval(()=>{if(!hidden)fetchFeed()},30000)}
   if(V.tab==='cal')loadCalendar();

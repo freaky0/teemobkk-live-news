@@ -233,6 +233,10 @@ class Gate(unittest.TestCase):
         self.assertEqual(self.call("/api/unhide", "POST", {"link": LINK})[0], 401)
         self.assertEqual(self.call("/api/hidden")[0], 404, "the restore list is the operator's")
 
+    def test_a_stranger_cannot_touch_the_rules(self):
+        self.assertEqual(self.call("/api/filter", "POST", {"action": "add", "pattern": "x"})[0], 401)
+        self.assertEqual(self.call("/api/filters")[0], 404, "the rule list is the operator's")
+
     def test_hiding_needs_the_header_as_well_as_a_session(self):
         cookie = self.session()
         self.assertEqual(self.call("/api/hide", "POST", {"link": LINK}, cookie=cookie)[0], 401)

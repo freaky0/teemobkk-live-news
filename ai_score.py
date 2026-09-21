@@ -73,10 +73,17 @@ def ensure_column(connection: sqlite3.Connection) -> None:
 
 
 def pending(connection: sqlite3.Connection, limit: int | None) -> list[sqlite3.Row]:
-    """Articles in the window that no model run has scored yet, newest first."""
+    """Articles in the window that no model run has scored yet, newest first.
+
+    A story an operator rule caught is left out: it is already off every page, so scoring it would
+    spend tokens on something no reader will see. The rule is joined in rather than trusted, so a
+    rule that was switched off cannot keep costing anything.
+    """
     rows = connection.execute(
         "SELECT link, title, source, priority FROM articles "
         "WHERE ai_priority IS NULL AND published_at >= datetime('now', ?) "
+        "AND link NOT IN (SELECT h.link FROM filter_hits h JOIN filter_rules r ON r.id = h.rule_id "
+        "                 WHERE r.enabled = 1 AND h.link NOT IN (SELECT link FROM filter_keeps)) "
         "ORDER BY published_at DESC",
         ("-%d hours" % WINDOW_HOURS,),
     ).fetchall()
