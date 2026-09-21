@@ -148,14 +148,30 @@ PROVIDERS = {
 TRANSLATE_PROVIDER = (os.environ.get("TG_TRANSLATE_PROVIDER") or "openai").strip().lower()
 TRANSLATE_MODEL = os.environ.get("TG_TRANSLATE_MODEL", "").strip()
 SUMMARY_CHARS = env_int("TG_SUMMARY_CHARS", 180)
+BODY_CHARS = env_int("TG_BODY_CHARS", 240)
+# `foreign` rewrites only what is not in Korean; `always` puts every post through the editor, so
+# the body/note/tag lines read the same whether the source was Korean or not. The channel format
+# is fixed, and a post that skips the editor is visibly a different shape from the rest.
+REWRITE_MODE = (os.environ.get("TG_REWRITE") or "always").strip().lower()
+# The footer carries the channel's own link. Empty means the line prints without a link rather
+# than pointing at someone else's channel.
+CHANNEL_LINK = os.environ.get("TG_CHANNEL_LINK", "").strip()
+TZ_NAME = (os.environ.get("TG_TIMEZONE") or "ICT").strip().upper()
+ZONES = {"ICT": ICT, "UTC": timezone.utc, "KST": timezone(timedelta(hours=9), name="KST"),
+         "ET": timezone(timedelta(hours=-4), name="ET")}
+STAMP_ZONE = ZONES.get(TZ_NAME, ICT)
 
 SYSTEM_PROMPT = (
-    "너는 영어·중국어·일본어 뉴스를 한국어 채널 게시물로 옮기는 편집자다. 규칙: "
-    "① 원문에 있는 사실과 숫자만 쓴다. 추측·전망·해석을 덧붙이지 않는다. "
-    "② 제목은 40자 이내 한 줄, 요약은 두 줄(각 60자 이내)로 줄인다. "
-    "③ 한자·한문을 쓰지 않는다. 회사·기관·인명은 통상 표기를 쓴다. "
-    "④ 인용은 원문의 발화자를 밝힌 채로 유지한다. "
-    "⑤ 출력은 다른 말 없이 JSON 하나만: {\"title\": \"...\", \"summary\": \"...\"}."
+    "너는 한국어 텔레그램 속보 채널의 편집자다. 주어진 제목과 요약만 근거로 게시물을 쓴다. 규칙: "
+    "① 사실과 숫자는 원문에 있는 것만 쓴다. 없는 수치·기관·인과를 만들지 않는다. "
+    "② title: 40자 이내, 사실만. 과장·낚시·이모지 금지. 원문이 한국어면 표현을 살린다. "
+    "③ body: 1~2문장. 원문에 있는 숫자를 그대로 살려 구체적으로 쓴다. 해석·전망은 넣지 않는다. "
+    "④ note: 시장·정책 함의를 한 줄(60자 이내). 원문 수치에 근거해 구체적으로 쓰고 단정하지 않는다"
+    "('~할 수 있다'). 시장과 무관한 사건이면 그 사건이 이어질 다음 단계를 사실에 근거해 짚는다. "
+    "⑤ tags: 사건·주제·지역을 나타내는 한국어 단어 3개. '#' 없이 단어만. "
+    "⑥ 한자·한문을 쓰지 않는다. 회사·기관·인명은 통용 표기. "
+    "⑦ 출력은 다른 말 없이 JSON 하나만: {\"title\": \"...\", \"body\": \"...\", \"note\": \"...\", "
+    "\"tags\": [\"가\", \"나\", \"다\"]}"
 )
 
 
@@ -268,9 +284,10 @@ def candidates(connection: sqlite3.Connection, window_hours: int) -> list[dict[s
 
 
 def pick_tag(item: dict[str, Any]) -> str:
+    """The first line's hashtag. It is the operator's own labelling, so it stays Korean and short."""
     if item.get("channel_pick"):
-        return "[티모의 선택]"
-    return "[속보]" if int(item.get("priority") or 0) >= 5 else "[기사]"
+        return "#티모의선택"
+    return "#속보" if int(item.get("priority") or 0) >= 5 else "#기사"
 
 
 def age_minutes(item: dict[str, Any], now: datetime) -> float | None:
@@ -351,23 +368,30 @@ def has_korean(text: str) -> bool:
     return bool(re.search(r"[가-힣]", text or ""))
 
 
-def rewrite(title: str, summary: str) -> tuple[str, str] | None:
-    """Korean title and two-line summary for a story that is not in Korean."""
+def brief(item: dict[str, Any], title: str, summary: str) -> dict[str, Any] | None:
+    """The channel post's parts, written from the stored headline and summary.
+
+    title, body, note and tags are produced together on purpose: the body has to stay factual while
+    the note is an interpretation, and asking for them in one call is what keeps the line between
+    the two where the format says it is.
+    """
     url, key_name, default_model = PROVIDERS.get(TRANSLATE_PROVIDER, PROVIDERS["openai"])
     key = os.environ.get(key_name, "").strip()
     if not TRANSLATE or not key:
         return None
-    body = {
+    if REWRITE_MODE == "foreign" and has_korean(title):
+        return None
+    payload_body = {
         "model": TRANSLATE_MODEL or default_model,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": "제목: %s\n요약: %s" % (title, summary[:600])},
+            {"role": "user", "content": "제목: %s\n요약: %s" % (title, summary[:700])},
         ],
         "temperature": 0,
-        "max_tokens": 400,
+        "max_tokens": 500,
     }
     request = urllib.request.Request(
-        url, data=json.dumps(body).encode("utf-8"),
+        url, data=json.dumps(payload_body).encode("utf-8"),
         headers={"Content-Type": "application/json", "Authorization": "Bearer " + key})
     try:
         with urllib.request.urlopen(request, timeout=25) as response:
@@ -383,11 +407,15 @@ def rewrite(title: str, summary: str) -> tuple[str, str] | None:
         data = json.loads(match.group(0))
     except json.JSONDecodeError:
         return None
-    title_ko = str(data.get("title") or "").strip()
-    summary_ko = str(data.get("summary") or "").strip()
-    if not title_ko:
+    out = {
+        "title": str(data.get("title") or "").strip()[:80],
+        "body": re.sub(r"\s+", " ", str(data.get("body") or "")).strip()[:BODY_CHARS],
+        "note": re.sub(r"\s+", " ", str(data.get("note") or "")).strip()[:120],
+        "tags": [str(tag).strip().lstrip("#") for tag in (data.get("tags") or []) if str(tag).strip()],
+    }
+    if not out["title"]:
         return None
-    return title_ko, summary_ko
+    return out
 
 
 def aggregator(link: str) -> bool:
@@ -403,35 +431,48 @@ def when(item: dict[str, Any]) -> str:
         return ""
     if stamp.tzinfo is None:
         stamp = stamp.replace(tzinfo=timezone.utc)
-    return stamp.astimezone(ICT).strftime("%H:%M")
+    return stamp.astimezone(STAMP_ZONE).strftime("%Y-%m-%d %H:%M:%S")
 
 
-def render(item: dict[str, Any], title: str, summary: str, original_title: str = "") -> str:
-    tag = pick_tag(item)
-    lines = ["<b>%s</b> %s" % (tag, escape(title))]
-    if original_title:
-        lines.append("<i>%s</i>" % escape(original_title))
-    note = str(item.get("pick_note") or "").strip()
-    if note:
-        lines.append("🍄 <b>티모의 선택</b> · %s" % escape(note))
-    if summary:
-        lines.append("")
-        lines.append(escape(summary))
-    categories = item.get("categories") or []
+def fallback_tags(item: dict[str, Any]) -> list[str]:
+    """Tags when the editor call failed: the stored categories, which are already Korean topics."""
+    categories = item.get("categories") or item.get("category") or []
     if isinstance(categories, str):
         categories = [categories]
-    meta = [str(item.get("source") or ""), " · ".join([c for c in categories[:2] if c])]
-    meta.append("★%d" % int(item.get("priority") or 0))
-    lines.append("")
-    lines.append(escape(" · ".join([part for part in meta if part])))
-    stamp = when(item)
-    if stamp:
-        lines.append("발행 %s ICT" % stamp)
+    tags = [str(value).replace("·", "").replace(" ", "") for value in categories if value]
+    return [tag for tag in tags if tag][:3]
+
+
+def render(item: dict[str, Any], title: str, body: str, note: str,
+           tags: list[str]) -> str:
+    """The channel's fixed shape. Every line here is load-bearing; keep the order.
+
+        #태그 제목
+        본문 (사실만)
+        Teemo's Note : 해석 한 줄
+        #태그1, #태그2, #태그3
+        출처 <매체> · <원문 링크> | YYYY-MM-DD HH:MM:SS
+        TeemoBKK Live News · <채널 링크>
+    """
+    lines = ["%s %s" % (pick_tag(item), escape(title))]
+    if body:
+        lines.append(escape(body))
+    if note:
+        lines.append("Teemo's Note : %s" % escape(note))
+    if tags:
+        lines.append(", ".join("#" + escape(tag) for tag in tags[:4]))
     link = str(item.get("link") or "")
-    if aggregator(link):
-        lines.append('<a href="%s">집계 링크 (구글뉴스)</a>' % escape(link))
-    else:
-        lines.append('<a href="%s">원문 보기</a>' % escape(link))
+    label = "집계 링크(구글뉴스)" if aggregator(link) else "원문"
+    source = escape(str(item.get("source") or ""))
+    stamp = when(item)
+    source_line = "출처 %s · <a href=\"%s\">%s</a>" % (source, escape(link), label)
+    if stamp:
+        source_line += " | %s" % stamp
+    lines.append(source_line)
+    footer = "TeemoBKK Live News"
+    if CHANNEL_LINK:
+        footer += " · <a href=\"%s\">채널</a>" % escape(CHANNEL_LINK)
+    lines.append(footer)
     return "\n".join(lines)[:LINK_CHARS]
 
 
@@ -520,22 +561,25 @@ def tick(connection: sqlite3.Connection, now: datetime | None = None, limit: int
             logging.info("hold (%s): %s", why, (item.get("title") or "")[:70])
             continue
 
-        title = str(item.get("title") or "")
-        summary = re.sub(r"\s+", " ", str(item.get("summary") or "")).strip()
-        if not has_korean(title):
-            rewritten = rewrite(title, summary)
-            if rewritten:
-                summary = rewritten[1] or summary
-                title = rewritten[0]
-            else:
-                # The Korean rewrite is the requested form; when it fails the reader still gets the
-                # story, in the language it was published in, rather than nothing at all.
-                title = title[:120] + ("…" if len(title) > 120 else "")
-        if len(summary) > SUMMARY_CHARS:
-            # A channel post is read on a phone: the source feed's own summary is often longer than
-            # the whole message should be.
-            summary = summary[:SUMMARY_CHARS].rstrip() + "…"
-        text = render(item, title, summary)
+        raw_title = str(item.get("title") or "")
+        raw_summary = re.sub(r"\s+", " ", str(item.get("summary") or "")).strip()
+        written = brief(item, raw_title, raw_summary)
+        if written:
+            title = written["title"]
+            body = written["body"] or raw_summary[:BODY_CHARS]
+            tags = written["tags"] or fallback_tags(item)
+            note = written["note"]
+        else:
+            # The editor call is what makes the body/note/tag lines; without it the post still goes
+            # out in the same shape, with the stored text and the stored categories as tags.
+            title = raw_title[:120] + ("…" if len(raw_title) > 120 else "")
+            body = raw_summary[:SUMMARY_CHARS] + ("…" if len(raw_summary) > SUMMARY_CHARS else "")
+            tags = fallback_tags(item)
+            note = ""
+        if item.get("channel_pick") and str(item.get("pick_note") or "").strip():
+            # A pick carries the operator's own sentence; that outranks a written note.
+            note = str(item["pick_note"]).strip()
+        text = render(item, title, body, note, tags)
 
         if DRY_RUN or quiet:
             out.append({"link": link, "text": text, "priority": item.get("priority"),
