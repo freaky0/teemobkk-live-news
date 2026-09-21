@@ -135,6 +135,9 @@ CANDIDATE_LIMIT = env_int("TG_CANDIDATE_LIMIT", 600)
 MAX_AGE_MINUTES = env_int("TG_MAX_AGE_MINUTES", 90)
 RECAP_COOLDOWN_MINUTES = env_int("TG_RECAP_COOLDOWN_MINUTES", 120)
 EVENT_WINDOW_MINUTES = env_int("TG_EVENT_WINDOW_MINUTES", 180)
+# The related-assets line prints only for these: the collector's asset column also holds regions
+# ('시장', '태국'), and "$시장" would be nonsense.
+TICKER_ASSETS = ("BTC", "ETH")
 TRANSLATE = env_flag("TG_TRANSLATE", True)
 DRY_RUN = env_flag("TG_DRY_RUN", False)
 
@@ -284,10 +287,20 @@ def candidates(connection: sqlite3.Connection, window_hours: int) -> list[dict[s
 
 
 def pick_tag(item: dict[str, Any]) -> str:
-    """The first line's hashtag. It is the operator's own labelling, so it stays Korean and short."""
+    """The bracket tag on the first line. One tag only, and the same five words the channel uses."""
     if item.get("channel_pick"):
-        return "#티모의선택"
-    return "#속보" if int(item.get("priority") or 0) >= 5 else "#기사"
+        return "[티모의 선택]"
+    return "[속보]" if int(item.get("priority") or 0) >= 5 else "[기사]"
+
+
+def related(item: dict[str, Any]) -> str:
+    """The ticker line, printed only when the stored asset is an actual ticker.
+
+    The collector stores '시장' and '태국' in the same column, and those are regions, not assets -
+    a post carrying "관련 : $시장" would be nonsense, so those items simply lose the line.
+    """
+    asset = str(item.get("asset") or "").strip().upper()
+    return "$" + asset if asset in TICKER_ASSETS else ""
 
 
 def age_minutes(item: dict[str, Any], now: datetime) -> float | None:
@@ -447,33 +460,46 @@ def render(item: dict[str, Any], title: str, body: str, note: str,
            tags: list[str]) -> str:
     """The channel's fixed shape. Every line here is load-bearing; keep the order.
 
-        #태그 제목
-        본문 (사실만)
-        Teemo's Note : 해석 한 줄
-        #태그1, #태그2, #태그3
-        출처 (@url:`<원문 링크>`) | YYYY-MM-DD HH:MM:SS
-        TeemoBKK Live News (@url:`<채널 링크>`)
+        [속보] 제목
 
-    Plain text, no parse mode: the operator asked for the link wrapper to be visible in the post
-    itself, and a body that never carries markup cannot be broken by a '<' inside a headline.
+        본문 (사실만)
+
+        TeemoBKK's Note : 해석 한 줄
+
+        관련 : $BTC
+        #태그1 #태그2 #태그3
+        2026-09-22 04:45:11 ICT
+
+        출처: <원문 링크>
+        TeemoBKK 라이브 뉴스 (https://teemobkk.io/news)
+
+    This is the shape the channel already used before this script was written: bracket tag, plain
+    URL, ICT stamp on its own line. The push and the VPS agent write the same post here, so a
+    reader cannot tell which pipeline produced it. Plain text, no parse mode: a body that never
+    carries markup cannot be broken by a '<' inside a headline.
     """
     lines = ["%s %s" % (pick_tag(item), title)]
     if body:
+        lines.append("")
         lines.append(body)
     if note:
-        lines.append("Teemo's Note : %s" % note)
+        lines.append("")
+        lines.append("TeemoBKK's Note : %s" % note)
+    ticker = related(item)
+    if ticker:
+        lines.append("")
+        lines.append("관련 : %s" % ticker)
     if tags:
-        lines.append(", ".join("#" + tag for tag in tags[:4]))
-    link = str(item.get("link") or "")
-    source = str(item.get("source") or "")
+        lines.append(" ".join("#" + tag for tag in tags[:4]))
     stamp = when(item)
-    source_line = "출처 %s (@url:`%s`)" % (source, link)
     if stamp:
-        source_line += " | %s" % stamp
-    lines.append(source_line)
-    footer = "TeemoBKK Live News"
+        lines.append("%s %s" % (stamp, TZ_NAME))
+    lines.append("")
+    link = str(item.get("link") or "").strip()
+    lines.append("출처: %s" % (link or "원문 확인 필요"))
+    footer = "TeemoBKK 라이브 뉴스"
     if CHANNEL_LINK:
-        footer += " (@url:`%s`)" % CHANNEL_LINK
+        footer += " (%s)" % CHANNEL_LINK
     lines.append(footer)
     return "\n".join(lines)[:LINK_CHARS]
 
