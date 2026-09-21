@@ -451,27 +451,29 @@ def render(item: dict[str, Any], title: str, body: str, note: str,
         본문 (사실만)
         Teemo's Note : 해석 한 줄
         #태그1, #태그2, #태그3
-        출처 <매체> · <원문 링크> | YYYY-MM-DD HH:MM:SS
-        TeemoBKK Live News · <채널 링크>
+        출처 (@url:`<원문 링크>`) | YYYY-MM-DD HH:MM:SS
+        TeemoBKK Live News (@url:`<채널 링크>`)
+
+    Plain text, no parse mode: the operator asked for the link wrapper to be visible in the post
+    itself, and a body that never carries markup cannot be broken by a '<' inside a headline.
     """
-    lines = ["%s %s" % (pick_tag(item), escape(title))]
+    lines = ["%s %s" % (pick_tag(item), title)]
     if body:
-        lines.append(escape(body))
+        lines.append(body)
     if note:
-        lines.append("Teemo's Note : %s" % escape(note))
+        lines.append("Teemo's Note : %s" % note)
     if tags:
-        lines.append(", ".join("#" + escape(tag) for tag in tags[:4]))
+        lines.append(", ".join("#" + tag for tag in tags[:4]))
     link = str(item.get("link") or "")
-    label = "집계 링크(구글뉴스)" if aggregator(link) else "원문"
-    source = escape(str(item.get("source") or ""))
+    source = str(item.get("source") or "")
     stamp = when(item)
-    source_line = "출처 %s · <a href=\"%s\">%s</a>" % (source, escape(link), label)
+    source_line = "출처 %s (@url:`%s`)" % (source, link)
     if stamp:
         source_line += " | %s" % stamp
     lines.append(source_line)
     footer = "TeemoBKK Live News"
     if CHANNEL_LINK:
-        footer += " · <a href=\"%s\">채널</a>" % escape(CHANNEL_LINK)
+        footer += " (@url:`%s`)" % CHANNEL_LINK
     lines.append(footer)
     return "\n".join(lines)[:LINK_CHARS]
 
@@ -496,8 +498,7 @@ def send(text: str, preview: bool) -> dict[str, Any]:
     return telegram("sendMessage", {
         "chat_id": os.environ.get("TELEGRAM_CHAT_ID", "").strip(),
         "text": text,
-        "parse_mode": "HTML",
-        "link_preview_options": json.dumps({"is_disabled": not preview, "prefer_small_media": True}),
+        "link_preview_options": json.dumps({"prefer_small_media": True}),
         "disable_notification": "false",
     })
 
