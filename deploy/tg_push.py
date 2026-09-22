@@ -700,6 +700,43 @@ def post_parts(connection: sqlite3.Connection, parts: dict[str, Any],
     return True, text
 
 
+def drain_outbox(connection: sqlite3.Connection, outbox: Path) -> tuple[int, int]:
+    """Post what the VPS agent queued, through the same render() the timer uses.
+
+    The agent cannot call this script: it runs in a container that has only its own data directory
+    mounted, and that directory is where it writes the JSON parts. The host sees them under the
+    mount, and this drain is what turns them into posts. A file that cannot be posted stays where
+    it is, so the agent's reason for writing it is not lost and the next drain tries again.
+    """
+    posted = 0
+    held = 0
+    done = outbox / "done"
+    for path in sorted(outbox.glob("*.json")):
+        try:
+            parts = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            logging.error("outbox: unreadable %s: %s", path.name, str(exc)[:120])
+            held += 1
+            continue
+        ok, detail = post_parts(connection, parts)
+        if not ok:
+            logging.error("outbox: held %s: %s", path.name, detail)
+            held += 1
+            continue
+        posted += 1
+        logging.info("outbox: posted %s", parts.get("link", ""))
+        if DRY_RUN:
+            print("-" * 60)
+            print(detail)
+        else:
+            done.mkdir(parents=True, exist_ok=True)
+            try:
+                path.replace(done / path.name)
+            except OSError as exc:
+                logging.error("outbox: could not archive %s: %s", path.name, str(exc)[:80])
+    return posted, held
+
+
 # ----------------------------------------------------------------------------- one tick
 
 def eligible(item: dict[str, Any], now: datetime, last: datetime | None, in_hour: int) -> tuple[bool, str]:
@@ -940,6 +977,9 @@ def main() -> None:
                              "note, tags - rendered here, so both pipelines write one shape")
     parser.add_argument("--shape-check", metavar="PATH",
                         help="print the shape problems of a saved post file, exit 1 if it has any")
+    parser.add_argument("--drain-outbox", metavar="DIR",
+                        help="post every queued JSON the VPS agent wrote into DIR, then archive it "
+                             "under DIR/done; a file that cannot be posted stays where it is")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -957,6 +997,10 @@ def main() -> None:
 
     connection = connect()
     try:
+        if args.drain_outbox:
+            posted, held = drain_outbox(connection, Path(args.drain_outbox))
+            print("outbox: %d posted, %d held" % (posted, held))
+            return
         if args.agent_json:
             parts = json.loads(Path(args.agent_json).read_text(encoding="utf-8"))
             ok, detail = post_parts(connection, parts)

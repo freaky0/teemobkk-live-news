@@ -1,0 +1,22 @@
+[Unit]
+# The VPS agent picks stories and writes the post's parts as JSON into its own data directory;
+# this unit is what turns them into channel posts. It is separate from teemo-tg-push.service on
+# purpose: that one selects stories from the archive as the timer's own producer, this one only
+# posts what the agent queued, and both render through the same function so the channel sees one
+# shape either way.
+Description=TeemoBKK Live News - post the VPS agent's queued channel items
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# Root, because the outbox sits inside the agent container's bind mount and belongs to that
+# container's user; the script drops to teemo (runuser) for the pusher itself, since news.db and
+# its WAL files belong to that user.
+Type=oneshot
+ExecStart=/opt/teemo-live-news/deploy/tg_outbox_drain.sh
+# A held file means the post was refused (a link that is not in news.db, a shape the channel does
+# not use). The script logs the reason and leaves the file; the next queued file still triggers the
+# path unit, so one bad item cannot block the rest.
+TimeoutStartSec=120
+[Install]
+WantedBy=multi-user.target

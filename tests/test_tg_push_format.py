@@ -9,6 +9,7 @@ link post and the older `#태그` + `(@url:)` post); they must keep failing.
 
     python tests/test_tg_push_format.py
 """
+import json
 import os
 import sys
 import tempfile
@@ -190,8 +191,8 @@ class TagsLine(unittest.TestCase):
         self.assertEqual(4, len(tg_push.merge_tags(["가", "나", "다", "라", "마"], [])))
 
 
-class AgentPath(unittest.TestCase):
-    """The agent supplies words; this script supplies the shape."""
+class AgentFixture(unittest.TestCase):
+    """A database with one stored article, and dry-run on, for the agent paths."""
 
     def setUp(self):
         self.dir = tempfile.mkdtemp()
@@ -220,6 +221,10 @@ class AgentPath(unittest.TestCase):
         data.update(overrides)
         return data
 
+
+class AgentPath(AgentFixture):
+    """The agent supplies words; this script supplies the shape."""
+
     def test_the_agent_post_comes_out_in_the_frozen_shape(self):
         ok, text = tg_push.post_parts(self.connection, self.parts())
         self.assertTrue(ok, text)
@@ -244,6 +249,34 @@ class AgentPath(unittest.TestCase):
         ok, why = tg_push.post_parts(self.connection, self.parts())
         self.assertFalse(ok)
         self.assertIn("already posted", why)
+
+
+class OutboxDrain(AgentFixture):
+    """The container cannot call the pusher: it queues JSON parts, the host drains them."""
+
+    def outbox(self):
+        directory = Path(self.dir) / "tg_outbox"
+        directory.mkdir(exist_ok=True)
+        return directory
+
+    def test_a_queued_file_is_rendered_and_reported(self):
+        outbox = self.outbox()
+        (outbox / "one.json").write_text(json.dumps(self.parts(), ensure_ascii=False),
+                                         encoding="utf-8")
+        posted, held = tg_push.drain_outbox(self.connection, outbox)
+        self.assertEqual((1, 0), (posted, held))
+        # The queue is only archived when the post was really sent: in a dry run the file stays,
+        # which is what keeps --dry-run a read-only check.
+        self.assertTrue((outbox / "one.json").exists())
+
+    def test_a_file_that_cannot_be_posted_stays_and_is_reported(self):
+        outbox = self.outbox()
+        (outbox / "bad.json").write_text(
+            json.dumps(self.parts(link="https://example.com/absent"), ensure_ascii=False),
+            encoding="utf-8")
+        posted, held = tg_push.drain_outbox(self.connection, outbox)
+        self.assertEqual((0, 1), (posted, held))
+        self.assertTrue((outbox / "bad.json").exists())
 
 
 if __name__ == "__main__":
