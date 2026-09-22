@@ -14,9 +14,9 @@ Wants=network-online.target
 # its WAL files belong to that user.
 Type=oneshot
 ExecStart=/opt/teemo-live-news/deploy/tg_outbox_drain.sh
-# A held file means the post was refused (a link that is not in news.db, a shape the channel does
-# not use). The script logs the reason and leaves the file; the next queued file still triggers the
-# path unit, so one bad item cannot block the rest.
+# A file that cannot be posted is moved to outbox/failed with the reason in the log
+# (/var/log/teemo-tg-outbox.log). It must leave the watched directory: leaving it would keep the
+# path unit triggering until systemd's start limit failed both units.
 TimeoutStartSec=120
 [Install]
 WantedBy=multi-user.target

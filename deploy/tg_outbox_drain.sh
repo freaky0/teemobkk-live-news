@@ -5,8 +5,9 @@
 # pusher itself. It writes the JSON parts of a post into its data directory instead, the host sees
 # that directory under the bind mount, and this script is the bridge: each file goes to
 # `tg_push.py --agent-json`, which renders the post through the same render() the timer uses and
-# runs the same shape check. A file that cannot be posted is left in place, so the next run retries
-# it and the reason stays in the log.
+# runs the same shape check. A file that cannot be posted goes to outbox/failed with the reason in
+# the log; it has to leave the watched directory, because a file that stays there keeps the path
+# unit triggering until systemd's start limit stops it.
 #
 # Run as root from teemo-tg-outbox.service: the outbox belongs to the container's user, while the
 # pusher itself runs as teemo (runuser) because news.db and its WAL files belong to that user.

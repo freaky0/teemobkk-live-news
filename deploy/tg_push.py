@@ -705,23 +705,31 @@ def drain_outbox(connection: sqlite3.Connection, outbox: Path) -> tuple[int, int
 
     The agent cannot call this script: it runs in a container that has only its own data directory
     mounted, and that directory is where it writes the JSON parts. The host sees them under the
-    mount, and this drain is what turns them into posts. A file that cannot be posted stays where
-    it is, so the agent's reason for writing it is not lost and the next drain tries again.
+    mount, and this drain is what turns them into posts.
+
+    A file that cannot be posted moves to `failed/` rather than staying in the queue. It has to:
+    the queue directory is what the path unit watches, so a file that is never taken out keeps the
+    unit triggering until systemd's start limit stops it (measured - one refused file produced four
+    service starts in 34 seconds and failed both units). The file is kept, the reason is in the
+    log, and a human decides what to do with it.
     """
     posted = 0
     held = 0
     done = outbox / "done"
+    failed = outbox / "failed"
     for path in sorted(outbox.glob("*.json")):
         try:
             parts = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             logging.error("outbox: unreadable %s: %s", path.name, str(exc)[:120])
             held += 1
+            _set_aside(path, failed, "unreadable")
             continue
         ok, detail = post_parts(connection, parts)
         if not ok:
-            logging.error("outbox: held %s: %s", path.name, detail)
+            logging.error("outbox: %s could not be posted: %s", path.name, detail)
             held += 1
+            _set_aside(path, failed, detail)
             continue
         posted += 1
         logging.info("outbox: posted %s", parts.get("link", ""))
@@ -729,12 +737,21 @@ def drain_outbox(connection: sqlite3.Connection, outbox: Path) -> tuple[int, int
             print("-" * 60)
             print(detail)
         else:
-            done.mkdir(parents=True, exist_ok=True)
-            try:
-                path.replace(done / path.name)
-            except OSError as exc:
-                logging.error("outbox: could not archive %s: %s", path.name, str(exc)[:80])
+            _set_aside(path, done, "")
     return posted, held
+
+
+def _set_aside(path: Path, directory: Path, reason: str) -> None:
+    """Move a queued file out of the watch directory; a dry run never touches the queue."""
+    if DRY_RUN:
+        return
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        path.replace(directory / path.name)
+        if reason:
+            logging.error("outbox: %s moved to %s/ (%s)", path.name, directory.name, reason[:80])
+    except OSError as exc:
+        logging.error("outbox: could not move %s: %s", path.name, str(exc)[:80])
 
 
 # ----------------------------------------------------------------------------- one tick

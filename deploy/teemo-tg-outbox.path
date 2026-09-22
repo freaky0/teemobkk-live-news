@@ -4,8 +4,8 @@ Description=Watch the VPS agent's Telegram outbox
 
 [Path]
 # Two triggers on purpose. PathExistsGlob catches the first file to appear after the queue was
-# empty; PathModified watches the directory itself, so a file that was refused (and deliberately
-# left in place) cannot swallow the trigger for the files that arrive after it.
+# empty; PathModified watches the directory itself, so a second file arriving while the first is
+# still queued is not swallowed.
 PathExistsGlob=/docker/hermes-agent-hjzo/data/tg_outbox/*.json
 PathModified=/docker/hermes-agent-hjzo/data/tg_outbox
 Unit=teemo-tg-outbox.service

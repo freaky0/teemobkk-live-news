@@ -269,14 +269,19 @@ class OutboxDrain(AgentFixture):
         # which is what keeps --dry-run a read-only check.
         self.assertTrue((outbox / "one.json").exists())
 
-    def test_a_file_that_cannot_be_posted_stays_and_is_reported(self):
+    def test_a_file_that_cannot_be_posted_moves_out_of_the_watch_directory(self):
         outbox = self.outbox()
         (outbox / "bad.json").write_text(
             json.dumps(self.parts(link="https://example.com/absent"), ensure_ascii=False),
             encoding="utf-8")
+        # Safe without dry run: a link that is not in the archive is refused before any send.
+        tg_push.DRY_RUN = False
         posted, held = tg_push.drain_outbox(self.connection, outbox)
         self.assertEqual((0, 1), (posted, held))
-        self.assertTrue((outbox / "bad.json").exists())
+        # Out of the queue, kept for a human: a file left in place keeps the path unit
+        # triggering until systemd's start limit fails both units.
+        self.assertFalse((outbox / "bad.json").exists())
+        self.assertTrue((outbox / "failed" / "bad.json").exists())
 
 
 if __name__ == "__main__":
