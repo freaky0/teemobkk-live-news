@@ -39,7 +39,11 @@ for file in "${files[@]}"; do
   chmod 600 "$staged"
   if runuser -u "$APP_USER" --preserve-environment -- \
        python3 "$APP_DIR/deploy/tg_push.py" --agent-json "$staged" >>"$LOG" 2>&1; then
-    mv -f "$file" "$OUTBOX/done/$name"
+    # A dry run renders and checks the post but sends nothing, so it must not move the file out of
+    # the queue either - the same rule the pusher follows for its own dry runs.
+    if [ "${TG_DRY_RUN:-0}" != "1" ]; then
+      mv -f "$file" "$OUTBOX/done/$name"
+    fi
   fi
   rm -f "$staged"
 done
