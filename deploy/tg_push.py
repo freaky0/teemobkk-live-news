@@ -156,9 +156,11 @@ BODY_CHARS = env_int("TG_BODY_CHARS", 240)
 # the body/note/tag lines read the same whether the source was Korean or not. The channel format
 # is fixed, and a post that skips the editor is visibly a different shape from the rest.
 REWRITE_MODE = (os.environ.get("TG_REWRITE") or "always").strip().lower()
-# The footer carries the channel's own link. Empty means the line prints without a link rather
-# than pointing at someone else's channel.
-CHANNEL_LINK = os.environ.get("TG_CHANNEL_LINK", "").strip()
+# The footer carries the channel's own link, and the link is part of the frozen shape: a post
+# whose footer has no link reads as a different format, so an unset TG_CHANNEL_LINK falls back to
+# the channel page instead of dropping the link.
+DEFAULT_CHANNEL_LINK = "https://teemobkk.io/news/"
+CHANNEL_LINK = os.environ.get("TG_CHANNEL_LINK", "").strip() or DEFAULT_CHANNEL_LINK
 TZ_NAME = (os.environ.get("TG_TIMEZONE") or "ICT").strip().upper()
 ZONES = {"ICT": ICT, "UTC": timezone.utc, "KST": timezone(timedelta(hours=9), name="KST"),
          "ET": timezone(timedelta(hours=-4), name="ET")}
@@ -451,9 +453,34 @@ def fallback_tags(item: dict[str, Any]) -> list[str]:
     """Tags when the editor call failed: the stored categories, which are already Korean topics."""
     categories = item.get("categories") or item.get("category") or []
     if isinstance(categories, str):
-        categories = [categories]
+        # The stored column is a comma-joined string; the reader turns it into a list, and a row
+        # read straight from the table still carries the raw value - one tag per category, never
+        # one tag that contains the commas.
+        categories = categories.split(",")
     tags = [str(value).replace("·", "").replace(" ", "") for value in categories if value]
     return [tag for tag in tags if tag][:3]
+
+
+def merge_tags(written: list[str], stored: list[str],
+               minimum: int = 2, maximum: int = 4) -> list[str]:
+    """The tag line of the frozen shape carries 2~4 hashtags.
+
+    The editor's words come first because they describe the story best. The stored categories are
+    only used to reach the minimum - a one-word answer must not leave a thin tag line, and a full
+    answer must not collect extra tags it did not ask for.
+    """
+    out: list[str] = []
+    for tag in written:
+        clean = str(tag).strip().lstrip("#").replace("·", "").replace(" ", "")
+        if clean and clean not in out:
+            out.append(clean)
+    for tag in stored:
+        if len(out) >= minimum:
+            break
+        clean = str(tag).strip().lstrip("#").replace("·", "").replace(" ", "")
+        if clean and clean not in out:
+            out.append(clean)
+    return out[:maximum]
 
 
 def render(item: dict[str, Any], title: str, body: str, note: str,
@@ -464,7 +491,7 @@ def render(item: dict[str, Any], title: str, body: str, note: str,
 
         본문 (사실만)
 
-        TeemoBKK's Note : 해석 한 줄
+        Teemo's Note : 해석 한 줄
 
         관련 : $BTC
         #태그1 #태그2 #태그3
@@ -484,7 +511,7 @@ def render(item: dict[str, Any], title: str, body: str, note: str,
         lines.append(body)
     if note:
         lines.append("")
-        lines.append("TeemoBKK's Note : %s" % note)
+        lines.append("%s : %s" % (NOTE_LABEL, note))
     ticker = related(item)
     if ticker:
         lines.append("")
@@ -508,6 +535,84 @@ def escape(text: str) -> str:
     return (str(text or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
 
 
+# ----------------------------------------------------------------------------- shape check
+
+# The channel has one shape, and the shape is what a reader recognises. Two pipelines wrote to it
+# with two different renderers and four written definitions of the format, so both shapes ended up
+# in the same channel and a single producer alternated between markdown links and a plain URL. The
+# check below is what stops that: a post that does not match the frozen shape is not sent.
+TITLE_LINE = re.compile(r"^\[(속보|기사|지표|카더라|분석|티모의 선택)\] \S")
+# The note label is a decision, not an accident: the desktop revision wrote "TeemoBKK's Note",
+# the cron prompt and every post the channel actually carries write "Teemo's Note" (52 of 69
+# measured posts, 2026-09-22, so this is the channel's label - fixed here and in TG_NOTE_LABEL).
+# It stays one constant so the choice is one line.
+NOTE_LABEL = (os.environ.get("TG_NOTE_LABEL") or "Teemo's Note").strip()
+NOTE_LINE = re.compile(r"^%s : \S" % re.escape(NOTE_LABEL))
+TAGS_LINE = re.compile(r"^#\S+(?: #\S+){0,3}$")
+# The stamp's standard is HH:MM:SS, which is what render() writes. A minute-precision stamp is
+# still accepted - the agent's own posts carried that shape before the two pipelines were unified,
+# and refusing them buys nothing. New posts must be HH:MM:SS.
+STAMP_LINE = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})? (?:ICT|KST|UTC|ET)$")
+SOURCE_LINE = re.compile(r"^출처: \S")
+# Shapes the channel used to carry and must not carry again: a markdown-link post, the old
+# `@url:` link wrapper and a two-tag title line. The old `#태그 제목` first line is checked against
+# line one directly - a pattern would also match the hashtag line the frozen shape is supposed to
+# have.
+BANNED_SHAPES = (
+    (re.compile(r"\]\(\s*https?://"), "markdown link"),
+    (re.compile(r"\(@url:"), "(@url:) wrapper"),
+    (re.compile(r"^\[[^\]]*[,·][^\]]*\] "), "two tags in the title line"),
+)
+
+
+def validate_post(text: str, require_note: bool = False) -> list[str]:
+    """Every way this text breaks the frozen shape; an empty list means it may be posted.
+
+    Only the skeleton is checked - which lines exist, in which order, with which labels. The words
+    are the editor's business, the shape is this script's, and a post that fails here is dropped
+    rather than sent in a shape the channel does not use.
+
+    `require_note` is for the agent path: a post the model wrote carries its own interpretation
+    line, so a missing one means the model did not follow the format. The timer's editor-less
+    fallback has no note to write and would rather omit the line than invent an interpretation, so
+    there the line is optional - and a shape check that forced it would take the channel down
+    instead of keeping it tidy.
+    """
+    problems: list[str] = []
+    lines = [line.rstrip() for line in (text or "").split("\n")]
+    if not text:
+        return ["empty post"]
+    if len(text) > LINK_CHARS:
+        problems.append("over %d characters" % LINK_CHARS)
+    if not lines[0] or not TITLE_LINE.match(lines[0]):
+        problems.append("first line is not '[태그] 제목'")
+    if lines[0].lstrip().startswith("#"):
+        problems.append("carries hash-tag first line")
+    notes = [i for i, line in enumerate(lines) if NOTE_LINE.match(line)]
+    if len(notes) > 1 or (require_note and len(notes) != 1):
+        problems.append("expected exactly one \"%s : ...\" line, found %d" % (NOTE_LABEL, len(notes)))
+    tags = [i for i, line in enumerate(lines) if TAGS_LINE.match(line)]
+    if len(tags) != 1:
+        problems.append("expected one hashtag line with 1~4 tags, found %d" % len(tags))
+    stamps = [i for i, line in enumerate(lines) if STAMP_LINE.match(line)]
+    if len(stamps) != 1:
+        problems.append("expected one 'YYYY-MM-DD HH:MM:SS <ZONE>' line, found %d" % len(stamps))
+    sources = [i for i, line in enumerate(lines) if SOURCE_LINE.match(line)]
+    if len(sources) != 1:
+        problems.append("expected one '출처: ...' line, found %d" % len(sources))
+    footer = "TeemoBKK 라이브 뉴스 (%s)" % CHANNEL_LINK
+    if lines[-1].strip() != footer:
+        problems.append("footer line is not '%s'" % footer)
+    if tags and sources and stamps and not (tags[0] < stamps[0] < sources[0]):
+        problems.append("line order is not tags -> stamp -> source")
+    if notes and tags and not notes[0] < tags[0]:
+        problems.append("line order is not note -> tags -> stamp -> source")
+    for pattern, label in BANNED_SHAPES:
+        if pattern.search(text):
+            problems.append("carries %s" % label)
+    return problems
+
+
 # ----------------------------------------------------------------------------- telegram
 
 def telegram(method: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -527,6 +632,72 @@ def send(text: str, preview: bool) -> dict[str, Any]:
         "link_preview_options": json.dumps({"prefer_small_media": True}),
         "disable_notification": "false",
     })
+
+
+# ----------------------------------------------------------------------------- agent path
+
+# The second pipeline - the VPS agent that picks stories with a model - posts through the functions
+# below instead of writing the message itself. Two renderers writing one channel is how the channel
+# ended up with two formats: a post whose link style depends on which model run wrote it. Here the
+# agent brings words and a verified link, this script brings the shape, and the shape check above
+# decides whether the post may go out at all.
+
+def article_row(connection: sqlite3.Connection, link: str) -> dict[str, Any]:
+    """The stored row the shape's ticker, source and stamp lines are read from."""
+    row = connection.execute(
+        "SELECT link, title, summary, source, asset, priority, published_at, categories "
+        "FROM articles WHERE link = ?", (link,)).fetchone()
+    return dict(row) if row else {}
+
+
+def operator_note(connection: sqlite3.Connection, link: str) -> str:
+    row = connection.execute("SELECT note FROM picked_links WHERE link = ?", (link,)).fetchone()
+    return str(row["note"] or "") if row else ""
+
+
+def post_parts(connection: sqlite3.Connection, parts: dict[str, Any],
+               now: datetime | None = None, quiet: bool = False) -> tuple[bool, str]:
+    """Post one story the agent picked, through the same render() the timer uses."""
+    now = now or datetime.now(timezone.utc)
+    link = str(parts.get("link") or "").strip()
+    if not link:
+        return False, "no link"
+    item = article_row(connection, link)
+    if not item:
+        return False, "link is not in news.db - verify the original before posting"
+    note_here = operator_note(connection, link)
+    item["channel_pick"] = bool(parts.get("pick")) or bool(note_here)
+    title = str(parts.get("title") or "").strip()
+    if not title:
+        return False, "no title"
+    body = re.sub(r"\s+", " ", str(parts.get("body") or "")).strip()[:BODY_CHARS]
+    note = re.sub(r"\s+", " ", str(parts.get("note") or "")).strip()[:120] or note_here
+    tags = merge_tags(parts.get("tags") or [], fallback_tags(item))
+    text = render(item, title[:80], body, note, tags)
+    problems = validate_post(text, require_note=True)
+    if problems:
+        return False, "shape check failed: " + "; ".join(problems)
+    if already_posted(connection, link, set()):
+        return False, "already posted"
+    if DRY_RUN or quiet:
+        return True, text
+    try:
+        response = send(text, preview=not aggregator(link))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", "replace")[:200]
+        return False, "telegram refused (%s): %s" % (exc.code, detail)
+    except Exception as exc:
+        return False, "send failed: %s" % str(exc)[:160]
+    connection.execute(
+        "INSERT OR REPLACE INTO %s (link, message_id, posted_at, priority, tag, title, title_key,"
+        " source, mode, recap, chat_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)" % STATE_TABLE,
+        (link, (response.get("result") or {}).get("message_id"), now.isoformat(),
+         int(item.get("priority") or 0), pick_tag(item), title,
+         core.normalize_title(str(item.get("title") or title)), str(item.get("source") or ""),
+         "agent", 1 if is_recap(str(item.get("title") or "")) else 0,
+         os.environ.get("TELEGRAM_CHAT_ID", "")))
+    connection.commit()
+    return True, text
 
 
 # ----------------------------------------------------------------------------- one tick
@@ -594,7 +765,7 @@ def tick(connection: sqlite3.Connection, now: datetime | None = None, limit: int
         if written:
             title = written["title"]
             body = written["body"] or raw_summary[:BODY_CHARS]
-            tags = written["tags"] or fallback_tags(item)
+            tags = merge_tags(written["tags"], fallback_tags(item))
             note = written["note"]
         else:
             # The editor call is what makes the body/note/tag lines; without it the post still goes
@@ -607,6 +778,18 @@ def tick(connection: sqlite3.Connection, now: datetime | None = None, limit: int
             # A pick carries the operator's own sentence; that outranks a written note.
             note = str(item["pick_note"]).strip()
         text = render(item, title, body, note, tags)
+        problems = validate_post(text)
+        if problems:
+            # Fail closed: a post that does not match the frozen shape stays out of the channel.
+            # In a dry run the text is still printed, with the reason, so the operator can see both.
+            logging.error("shape check failed for %s: %s", link, "; ".join(problems))
+            if DRY_RUN or quiet:
+                out.append({"link": link, "text": text, "priority": item.get("priority"),
+                            "tag": pick_tag(item), "title": title, "recap": recap,
+                            "problems": problems})
+                sent += 1
+                continue
+            continue
 
         if DRY_RUN or quiet:
             out.append({"link": link, "text": text, "priority": item.get("priority"),
@@ -752,6 +935,11 @@ def main() -> None:
                         help="walk a past window through the same rules and print the result")
     parser.add_argument("--limit", type=int, default=0, help="stop after N messages")
     parser.add_argument("--skip-lock", action="store_true")
+    parser.add_argument("--agent-json", metavar="PATH",
+                        help="post one story the VPS agent wrote: JSON with link, title, body, "
+                             "note, tags - rendered here, so both pipelines write one shape")
+    parser.add_argument("--shape-check", metavar="PATH",
+                        help="print the shape problems of a saved post file, exit 1 if it has any")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -759,8 +947,24 @@ def main() -> None:
     if args.dry_run:
         DRY_RUN = True
 
+    if args.shape_check:
+        text = Path(args.shape_check).read_text(encoding="utf-8")
+        problems = validate_post(text)
+        for problem in problems:
+            print("problem:", problem)
+        print("shape: %s" % ("ok" if not problems else "broken"))
+        sys.exit(1 if problems else 0)
+
     connection = connect()
     try:
+        if args.agent_json:
+            parts = json.loads(Path(args.agent_json).read_text(encoding="utf-8"))
+            ok, detail = post_parts(connection, parts)
+            if ok:
+                print(detail if DRY_RUN else "posted: %s" % parts.get("link", ""))
+                return
+            logging.error("agent post refused: %s", detail)
+            sys.exit(2)
         if args.replay:
             rows = replay(connection, args.replay)
             print("replay %dh: %d messages" % (args.replay, len(rows)))
@@ -779,6 +983,8 @@ def main() -> None:
             print("dry run: %d messages" % len(rows))
             for row in rows:
                 print("-" * 60)
+                for problem in row.get("problems") or ():
+                    print("PROBLEM:", problem)
                 print(row["text"])
     finally:
         connection.close()
