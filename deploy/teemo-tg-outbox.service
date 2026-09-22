@@ -10,13 +10,13 @@ Wants=network-online.target
 
 [Service]
 # Root, because the outbox sits inside the agent container's bind mount and belongs to that
-# container's user; the script drops to teemo (runuser) for the pusher itself, since news.db and
-# its WAL files belong to that user.
+# container's user. The script stages the queue into /var/lib/teemo-tg-outbox and drops to teemo
+# (runuser) for the pusher itself, since news.db and its WAL files belong to that user.
 Type=oneshot
 ExecStart=/opt/teemo-live-news/deploy/tg_outbox_drain.sh
-# A file that cannot be posted is moved to outbox/failed with the reason in the log
-# (/var/log/teemo-tg-outbox.log). It must leave the watched directory: leaving it would keep the
-# path unit triggering until systemd's start limit failed both units.
+# A file that cannot be posted is moved to the staging directory's failed/ with the reason in
+# /var/log/teemo-tg-outbox.log, so one bad item cannot fail the units by keeping the watch
+# directory busy.
 TimeoutStartSec=120
 [Install]
 WantedBy=multi-user.target
