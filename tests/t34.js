@@ -81,7 +81,14 @@ const check = (n, ok, d) => { pass.push(ok); console.log('  %s %s%s', ok ? 'PASS
 
   q.value = ''; q.oninput();
   await sleep(3000);
-  check('검색어를 지우면 원복', cards().length > koCards.length, cards().length + '건');
+  // The feed renders one page of cards, so a term that matches at least that many leaves the list
+  // exactly as long as it already was: "more cards than the search showed" is then false while the
+  // box works. Measured 2026-09-23: the Korean term matched 25 in the window and the unfiltered first
+  // page is 25 too (total 1,332). Compare what comes back with what was on screen before the search -
+  // that is what clearing the box has to do - and keep both counts in the message.
+  const setOf = (list) => list.map(hrefOf).sort().join('\n');
+  check('검색어를 지우면 원복', setOf(cards()) === setOf(beforeSearch),
+    cards().length + '건 · 검색 전 ' + beforeSearch.length + '건');
 
   console.log('\n  %d/%d', pass.filter(Boolean).length, pass.length);
   process.exit(pass.every(Boolean) ? 0 : 1);
