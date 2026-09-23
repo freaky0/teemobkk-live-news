@@ -12,6 +12,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -23,8 +24,13 @@ import page_build  # noqa: E402
 KEEP = "https://example.com/keep-me"
 HIDE = "https://example.com/hide-me"
 
+# The read paths this file checks are windowed (hours=24). The fixture therefore has to be recent:
+# an absolute date ages out of the window and the file fails with zero rows while the code is
+# unchanged. Measured on 2026-09-23: the pinned 2026-09-20 timestamp was 76 hours old.
+WHEN = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
 
-def article(link, title, region="글로벌", source="Example", published="2026-09-20T10:00:00+00:00"):
+
+def article(link, title, region="글로벌", source="Example", published=WHEN):
     return {"link": link, "title": title, "summary": "본문", "source": source,
             "source_type": "news", "region": region, "category": "시장·가격",
             "categories": ["시장·가격"], "priority": 3, "published_at": published,

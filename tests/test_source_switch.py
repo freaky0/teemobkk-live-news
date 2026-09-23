@@ -17,6 +17,7 @@ import unittest
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -28,7 +29,9 @@ import live_news_dashboard as core  # noqa: E402
 SECRET = "correct-horse-battery-staple"
 KEPT = "https://example.com/kept"
 DROPPED = "https://example.com/dropped"
-WHEN = "2026-09-20T10:00:00+00:00"
+# The read paths this file checks are windowed (hours=24), so the fixture has to be recent: a pinned
+# date ages out of the window and the feeds answer empty while the code is unchanged.
+WHEN = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
 
 
 def article(link, title, source):

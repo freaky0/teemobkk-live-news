@@ -12,6 +12,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -19,7 +20,9 @@ sys.path.insert(0, ROOT)
 
 import live_news_dashboard as core  # noqa: E402
 
-WHEN = "2026-09-21T04:00:00+00:00"
+# The read paths this file checks are windowed (hours=24), so the fixture has to be recent: a pinned
+# date ages out of the window and every rule looks like it caught nothing while the code is unchanged.
+WHEN = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
 DIGEST = "https://example.com/digest"
 DIGEST2 = "https://example.com/digest-2"
 OTHER = "https://example.com/other"

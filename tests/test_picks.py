@@ -11,6 +11,7 @@ import os
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -22,6 +23,12 @@ import page_build  # noqa: E402
 OLD = "https://example.com/older-picked"
 NEW = "https://example.com/newer-plain"
 FILLER = "https://example.com/filler"
+
+
+def ago(hours):
+    """A recent timestamp. The feed is windowed (hours=24), so a pinned date ages out of it and this
+    file fails with zero rows while the code is unchanged."""
+    return (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
 
 
 def article(link, title, published):
@@ -39,9 +46,9 @@ class Picks(unittest.TestCase):
         core.DB_FILE = self.db
         core.init_db()
         core.insert_articles([
-            article(NEW, "새 기사", "2026-09-20T12:00:00+00:00"),
-            article(OLD, "오래된 기사", "2026-09-20T09:00:00+00:00"),
-            article(FILLER, "보통 기사", "2026-09-20T06:00:00+00:00"),
+            article(NEW, "새 기사", ago(1)),
+            article(OLD, "오래된 기사", ago(3)),
+            article(FILLER, "보통 기사", ago(6)),
         ])
 
     def tearDown(self):
