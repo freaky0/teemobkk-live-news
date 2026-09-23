@@ -43,6 +43,12 @@ tests/node_modules/
 # the admin password lives on the host that serves the site, never in the repository
 .admin_password
 
+# secret files belong to the host that runs the pusher: its token, channel id and rewrite provider
+# key are all in one of these. They are staged on the host by hand and never travel through git -
+# the pattern is here so that one `git add -A` on that host cannot commit them.
+.env
+.env.*
+
 # section pages are generated on the host that serves them
 /ko/
 /news/
