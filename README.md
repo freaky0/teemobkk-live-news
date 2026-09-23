@@ -270,9 +270,11 @@ python -c "import page_build; page_build.build_server('news.db')"
 서버 라우팅은 루트 `index.html` 만 처리하므로 섹션 페이지는 Caddy가 디스크에서 직접 서빙한다(코어 무수정). 설치는 `deploy/vps_setup.sh`, 웹·TLS·방화벽은 `deploy/vps_web.sh`, 갱신은 `deploy/vps_update.sh` 한 명령이다.
 
 ```
-갱신 순서   소유권 복구 → git pull → 페이지 재생성 → 재시작
-            재생성을 건너뛰면 저장소에 커밋된 운영용 index.html이 잠깐 공개로 나간다
-            (서버는 요청마다 디스크에서 읽는다)
+갱신 순서   소유권 복구 → 서빙 페이지 보관 → git pull → (지워졌으면) 되돌리기 → 페이지 재생성 → 재시작
+            서빙 페이지 index.html은 저장소에 없다. 로컬 판은 그 기계의 DB로 만든 운영자 화면이고,
+            호스트 판은 landing.py와 실시간 관점 목록으로 만든 랜딩이라 한 파일로 공유할 수 없다.
+            git reset --hard가 그 파일을 지우므로 갱신 전에 /var/lib 로 보관했다가, 재생성이
+            돌기 전에 비어 있으면 되돌린다 (서버는 요청마다 디스크에서 읽는다).
 ```
 
 쌓아둔 기사를 옮길 때는 **돌아가는 SQLite 파일을 그대로 복사하지 않는다.** WAL 모드라 본 파일만 복사하면 받은 쪽이 손상된다. `deploy/vps_merge_db.py` 가 백업 API로 뜬 사본을 바탕으로 새 호스트의 최근 분을 `INSERT OR IGNORE` 로 얹고, 교체 전후에 `PRAGMA integrity_check` 로 확인한다.

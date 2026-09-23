@@ -53,3 +53,9 @@ tests/node_modules/
 /ko/
 /news/
 /thai/
+
+# The page the collector answers "/" with is generated per machine and is not a file to commit:
+# locally it is the operator page built from this database's rows, on the host it is landing.py plus
+# the live post list, so no single copy can be the right one. tests/run.py and
+# page_build.build_server() both write it before it is served.
+/index.html

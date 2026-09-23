@@ -1,8 +1,9 @@
 """Build every dashboard page from one source.
 
-Three files are published and they must never drift apart:
+Three pages are built from one source and they must never drift apart:
 
-    index.html            local, served by the collector on 127.0.0.1:8765 (admin extras)
+    index.html            built per machine, never committed - the collector answers "/" with it
+                          (operator page on a developer's box, landing page on the host)
     docs/index.html       public, GitHub Pages root
     docs/thai/index.html  public, same page one level deeper so /thai/ opens the Thailand tab
 
