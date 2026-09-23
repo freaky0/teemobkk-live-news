@@ -145,19 +145,28 @@ python live_news_dashboard.py --interval 30
 
 ## 텔레그램 채널 푸시 (`deploy/tg_push.py`)
 
-중요한 기사를 채널에 1분 주기로 내보낸다. 판단은 규칙이 하고, 언어모델은 **실제로 게시하는 건에만** 제목·요약을 한국어로 옮길 때 호출한다.
+중요한 기사를 채널에 1분 주기로 내보낸다. 결정론적 규칙이 하드 게이트를 맡고, JEV는 VPS에서 후보 최대 3건을 한 번에 판정한다.
 
 ```
 후보   query_articles(minimum_priority=4, region=글로벌) + picked_only (티모의 선택은 별점 무관)
        숨긴 기사·걸러진 기사·꺼둔 소스는 서버 읽기 경로가 이미 제외한다
 중복   링크(tg_posted 기본키) → 제목 문자 유사도 0.88 → 같은 사건 토큰 판정(180분 창)
+       같은 실행 안에서 먼저 스킵된 후보도 사건 서명으로 예약해 다음 변형 재게시를 막는다
+JEV    한 틱 한 번, 최대 3건. 중요도·최신성은 감사 기록, 같은 사건 신뢰도 0.85 이상은 ★4 중복을 차단
+       ★5·픽은 JEV 중복 차단을 우회하며, JEV 오류 시 해당 틱은 결정론적 규칙으로 폴백
 잡음   시세 알림·주간 프로모·영문 SEO 설명글·알트 개별 종목(★5·픽 예외)·연예
 페이싱 ★5·픽 즉시 / ★4 쿨다운 180초 / 시간당 12건 / 90분 넘은 기사는 버림
-형식   [기사] 제목 + 요약 2줄 + 출처·분류·★ + 발행 HH:MM ICT + 원문 링크 (HTML)
-기록   tg_posted(link, message_id, posted_at, title_key, recap …)
+형식   [기사] 제목 + 본문 + Teemo's Note + 관련 해시태그 + `출처` 링크 | 발행시각 ICT + `TeemoBKK 라이브 뉴스` 링크
+기록   tg_posted(...) + jev_runs(...) + jev_decisions(...)
 ```
 
 ```
+JEV_MODE=live
+JEV_DUPLICATE_THRESHOLD=0.85
+JEV_TIMEOUT_SECONDS=18
+```
+
+JEV는 사실 여부를 검증하지 않는다. API 장애·응답 오류·키 누락 시 게시를 전부 중단하지 않고 기존 결정론적 규칙으로 폴백한다.
 설치   bash deploy/vps_push_setup.sh   (로컬에서. 유닛 설치·타이머 활성·호스트 dry-run까지)
 검증   python deploy/tg_push.py --replay 24   과거 24시간을 1분 단위로 재생해 예상 건수를 본다
        실측: 후보 299건 → 게시 132건/24h, 남은 중복 0쌍
@@ -168,7 +177,7 @@ python live_news_dashboard.py --interval 30
 
 ## 설계 원칙
 
-- API 키 없이 실행
+- 기본 수집은 API 키 없이 실행하며, JEV 실시간 판정은 VPS의 `JEV_API_KEY`가 있을 때만 활성화
 - 수집 실패한 개별 출처가 있어도 다른 출처는 계속 수집
 - 기본 조회는 최근 24시간이며, 발행 시각이 확인된 기사만 저장한다
 - 펨코톤 자동 변환 기능은 현재 비활성화

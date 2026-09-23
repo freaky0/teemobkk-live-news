@@ -1,11 +1,6 @@
 """The channel's frozen shape, and the check that keeps it frozen.
 
-The channel is fed by two pipelines - the one-minute timer in `deploy/tg_push.py` and the VPS
-agent that picks stories with a model - and both of them now render through `render()`. What this
-file locks down is the part that made the channel look inconsistent before: the exact lines of the
-post, in order, with one link style and one footer, and a `validate_post()` that refuses anything
-else. The regression samples at the bottom are the shapes the channel actually carried (a markdown
-link post and the older `#태그` + `(@url:)` post); they must keep failing.
+The channel is fed by the one-minute timer and an optional outbox bridge, but both paths now render through `render()`. What this file locks down is the exact approved shape: one bracket tag, factual body, `Teemo's Note`, related hashtags, an `@url:` source line with ICT time, and the Korean footer. Legacy markdown links, raw source lines, and English footer variants must keep failing.
 
     python tests/test_tg_push_format.py
 """
@@ -14,6 +9,7 @@ import os
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -21,9 +17,8 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "deploy"))
 
 os.environ.setdefault("TG_TIMEZONE", "ICT")
-# The channel's label, confirmed 2026-09-22. Pinned here so the test does not silently follow a
-# changed default: the frozen shape is a decision and this file is what records it.
-os.environ["TG_NOTE_LABEL"] = "Teemo's Note"
+# The channel's format is fixed in tg_push.py; a stale TG_NOTE_LABEL must not select a second shape.
+os.environ["TG_NOTE_LABEL"] = "TeemoBKK's Note"
 
 import live_news_dashboard as core  # noqa: E402
 import tg_push  # noqa: E402
@@ -53,17 +48,15 @@ GOLDEN = (
     "\n"
     "소프트뱅크그룹이 110억 달러 규모의 달러·유로 채권 발행을 추진하고 있다.\n"
     "\n"
-    "Teemo's Note : 조달 자금이 오픈AI 후속 투자에 쓰일 수 있다.\n"
+    "Teemo's Note\n"
+    "조달 자금이 오픈AI 후속 투자에 쓰일 수 있다.\n"
     "\n"
-    "관련 : $BTC\n"
-    "#소프트뱅크 #오픈AI #정크본드\n"
-    "2026-09-21 09:00:00 ICT\n"
-    "\n"
-    "출처: https://example.com/story\n"
-    "TeemoBKK 라이브 뉴스 (https://teemobkk.io/news/)"
+    "관련 : #소프트뱅크 #오픈AI #정크본드\n"
+    "출처: <a href=\"https://example.com/story\">출처</a> | 2026-09-21 09:00:00 ICT\n"
+    "<a href=\"https://teemobkk.io/news/\">TeemoBKK 라이브 뉴스</a>"
 )
 
-# Shapes this channel really carried. Each one has to stay broken.
+# Shapes the channel carried before the single renderer was enforced. They must stay rejected.
 MARKDOWN_POST = (
     "[속보] 비트코인, ETF 자금 유입 전환에 84.8K 돌파\n"
     "\n"
@@ -71,10 +64,8 @@ MARKDOWN_POST = (
     "\n"
     "TeemoBKK's Note : ETF 수급이 실제 순유입으로 이어지는지가 핵심 변수다.\n"
     "\n"
-    "관련 : $BTC\n"
     "#비트코인 #ETF #기관수급\n"
     "2026-09-22 06:16 ICT\n"
-    "\n"
     "[출처](https://www.bloomberg.com/news/articles/x)\n"
     "[TeemoBKK 라이브 뉴스](https://teemobkk.io/news)"
 )
@@ -116,17 +107,34 @@ class GoldenShape(unittest.TestCase):
     def test_a_breaking_story_gets_the_breaking_tag(self):
         self.assertTrue(frozen(priority=5).startswith("[속보] "))
 
-    def test_the_shape_carries_one_link_style_only(self):
+    def test_body_paragraph_breaks_are_preserved(self):
+        text = tg_push.render(ITEM, TITLE, "첫 문단.\n\n둘째 문단.", NOTE, TAGS)
+        self.assertIn("첫 문단.\n\n둘째 문단.", text)
+
+    def test_the_shape_carries_embedded_anchor_links_only(self):
         text = frozen()
-        self.assertNotIn("](", text)
         self.assertNotIn("@url:", text)
-        self.assertIn("출처: https://example.com/story", text)
+        self.assertNotIn("](", text)
+        self.assertIn('<a href="https://example.com/story">출처</a>', text)
+        self.assertIn('<a href="https://teemobkk.io/news/">TeemoBKK 라이브 뉴스</a>', text)
+
+    def test_dynamic_ampersands_are_html_escaped(self):
+        item = dict(ITEM)
+        item["link"] = "https://example.com/story?a=1&b=2"
+        text = tg_push.render(item, "A < B", "본문 & 확인", NOTE, TAGS)
+        self.assertIn("A &lt; B", text)
+        self.assertIn("본문 &amp; 확인", text)
+        self.assertIn("story?a=1&amp;b=2", text)
+
+    def test_the_note_label_is_fixed_even_when_env_requests_another_one(self):
+        self.assertIn("Teemo's Note\n조달", frozen())
+        self.assertNotIn("TeemoBKK's Note", frozen())
 
     def test_the_footer_keeps_its_link_when_the_env_is_empty(self):
         original = tg_push.CHANNEL_LINK
         try:
             tg_push.CHANNEL_LINK = "https://teemobkk.io/news/"
-            self.assertIn("TeemoBKK 라이브 뉴스 (https://teemobkk.io/news/)", frozen())
+            self.assertIn('<a href="https://teemobkk.io/news/">TeemoBKK 라이브 뉴스</a>', frozen())
         finally:
             tg_push.CHANNEL_LINK = original
 
@@ -134,43 +142,44 @@ class GoldenShape(unittest.TestCase):
 class ShapeCheck(unittest.TestCase):
     def test_it_reports_one_problem_per_broken_line(self):
         broken = "\n".join(["[기사] 제목", "", "본문", "", "출처: https://example.com/x",
-                            "TeemoBKK 라이브 뉴스 (https://teemobkk.io/news/)"])
-        joined = " | ".join(tg_push.validate_post(broken, require_note=True))
+                            "TeemoBKK Live News (https://teemobkk.io/news/)"])
+        joined = " | ".join(tg_push.validate_post(broken))
         self.assertIn("Note", joined)
-        self.assertIn("hashtag", joined)
-        self.assertIn("ZONE", joined)
+        self.assertIn("관련", joined)
+        self.assertIn("ICT source", joined)
 
     def test_the_old_renderers_shapes_are_still_rejected(self):
         for text, expected in ((MARKDOWN_POST, "markdown link"),
                                (OLD_DEPLOYED_POST, "hash-tag first line"),
-                               (OLD_DEPLOYED_POST, "(@url:) wrapper")):
+                               (OLD_DEPLOYED_POST, "visible URL wrapper"),
+                               (OLD_DEPLOYED_POST, "old English footer"),
+                               (OLD_DEPLOYED_POST, "ICT source")):
             with self.subTest(expected=expected):
                 self.assertIn(expected, " | ".join(tg_push.validate_post(text)))
 
-    def test_a_two_tag_title_line_is_rejected(self):
-        text = GOLDEN.replace("[기사] 소프트뱅크", "[속보, 기사] 소프트뱅크")
-        self.assertIn("two tags", " | ".join(tg_push.validate_post(text)))
-
-    def test_a_missing_tag_line_is_rejected(self):
-        text = GOLDEN.replace("#소프트뱅크 #오픈AI #정크본드", "")
-        self.assertIn("hashtag", " | ".join(tg_push.validate_post(text)))
+    def test_a_missing_related_line_is_rejected(self):
+        text = GOLDEN.replace("관련 : #소프트뱅크 #오픈AI #정크본드\n", "")
+        self.assertIn("관련", " | ".join(tg_push.validate_post(text)))
 
     def test_more_than_four_tags_is_rejected(self):
         text = GOLDEN.replace("#소프트뱅크 #오픈AI #정크본드", "#가 #나 #다 #라 #마")
-        self.assertIn("hashtag", " | ".join(tg_push.validate_post(text)))
+        self.assertIn("관련", " | ".join(tg_push.validate_post(text)))
 
-    def test_the_note_line_is_optional_for_the_timer_and_required_for_the_agent(self):
+    def test_the_note_block_is_required_for_every_publisher(self):
         text = "\n".join(line for line in GOLDEN.split("\n")
-                         if not line.startswith(tg_push.NOTE_LABEL))\
-            .replace("\n\n\n", "\n\n")
-        self.assertEqual([], tg_push.validate_post(text))
-        self.assertIn("Note", " | ".join(tg_push.validate_post(text, require_note=True)))
+                         if line not in (tg_push.NOTE_LABEL, NOTE))
+        problems = " | ".join(tg_push.validate_post(text))
+        self.assertIn("Note", problems)
+
+    def test_note_body_is_required_after_the_note_header(self):
+        text = GOLDEN.replace("Teemo's Note\n조달", "Teemo's Note\n\n조달")
+        self.assertIn("note body", " | ".join(tg_push.validate_post(text)))
 
     def test_lines_out_of_order_are_rejected(self):
         lines = GOLDEN.split("\n")
-        notes = [i for i, line in enumerate(lines) if line.startswith(tg_push.NOTE_LABEL)][0]
-        tags = [i for i, line in enumerate(lines) if line.startswith("#소프트뱅크")][0]
-        lines[notes], lines[tags] = lines[tags], lines[notes]
+        notes = lines.index(tg_push.NOTE_LABEL)
+        related = [i for i, line in enumerate(lines) if line.startswith("관련 :")][0]
+        lines[notes], lines[related] = lines[related], lines[notes]
         self.assertIn("order", " | ".join(tg_push.validate_post("\n".join(lines))))
 
 
@@ -236,10 +245,10 @@ class AgentPath(AgentFixture):
         self.assertFalse(ok)
         self.assertIn("news.db", why)
 
-    def test_a_post_without_a_note_is_refused_by_the_shape_check(self):
+    def test_a_post_without_a_note_is_refused(self):
         ok, why = tg_push.post_parts(self.connection, self.parts(note=""))
         self.assertFalse(ok)
-        self.assertIn("shape check failed", why)
+        self.assertIn("no note", why)
 
     def test_a_second_post_of_the_same_link_is_refused(self):
         self.connection.execute(
@@ -249,6 +258,44 @@ class AgentPath(AgentFixture):
         ok, why = tg_push.post_parts(self.connection, self.parts())
         self.assertFalse(ok)
         self.assertIn("already posted", why)
+
+
+class SameTickEvent(unittest.TestCase):
+    """A same-event rewrite skipped first must block the next wording in that tick."""
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self._original_db = core.DB_FILE
+        self._original_dry = tg_push.DRY_RUN
+        core.DB_FILE = Path(self.dir) / "news.db"
+        core.init_db()
+        self.connection = tg_push.connect()
+        tg_push.DRY_RUN = True
+        now = datetime.now(timezone.utc)
+        rows = [
+            ("https://example.com/a", "미국 법무부, 바이낸스 이란 제재 위반 조사"),
+            ("https://example.com/b", "연방 검찰, 바이낸스 이란 제재 위반 조사"),
+        ]
+        for index, (link, title) in enumerate(rows):
+            stamp = (now - timedelta(minutes=index + 1)).isoformat()
+            self.connection.execute(
+                "INSERT INTO articles (link, title, summary, source, source_type, region,"
+                " category, asset, priority, published_at, collected_at, categories)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                (link, title, title, "Google News · 지정학", "news", "글로벌", "지정학",
+                 "", 4, stamp, stamp, "지정학,규제정책"),
+            )
+        self.connection.commit()
+
+    def tearDown(self):
+        tg_push.DRY_RUN = self._original_dry
+        self.connection.close()
+        core.DB_FILE = self._original_db
+
+    def test_only_one_rewrite_of_the_event_is_selected(self):
+        rows = tg_push.tick(self.connection, now=datetime.now(timezone.utc), limit=10, quiet=True)
+        self.assertEqual(1, len(rows))
+        self.assertIn("바이낸스", rows[0]["title"])
 
 
 class OutboxDrain(AgentFixture):

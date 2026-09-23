@@ -25,6 +25,7 @@ Environment (systemd EnvironmentFile, never on the command line):
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import logging
 import os
@@ -45,6 +46,7 @@ ROOT = HERE.parent
 sys.path.insert(0, str(ROOT))
 
 import live_news_dashboard as core  # noqa: E402  (path is set just above)
+import jev_gate  # noqa: E402
 
 ICT = timezone(timedelta(hours=7), name="ICT")
 BOT_API = "https://api.telegram.org/bot%s/%s"
@@ -135,9 +137,6 @@ CANDIDATE_LIMIT = env_int("TG_CANDIDATE_LIMIT", 600)
 MAX_AGE_MINUTES = env_int("TG_MAX_AGE_MINUTES", 90)
 RECAP_COOLDOWN_MINUTES = env_int("TG_RECAP_COOLDOWN_MINUTES", 120)
 EVENT_WINDOW_MINUTES = env_int("TG_EVENT_WINDOW_MINUTES", 180)
-# The related-assets line prints only for these: the collector's asset column also holds regions
-# ('시장', '태국'), and "$시장" would be nonsense.
-TICKER_ASSETS = ("BTC", "ETH")
 TRANSLATE = env_flag("TG_TRANSLATE", True)
 DRY_RUN = env_flag("TG_DRY_RUN", False)
 
@@ -160,11 +159,12 @@ REWRITE_MODE = (os.environ.get("TG_REWRITE") or "always").strip().lower()
 # whose footer has no link reads as a different format, so an unset TG_CHANNEL_LINK falls back to
 # the channel page instead of dropping the link.
 DEFAULT_CHANNEL_LINK = "https://teemobkk.io/news/"
-CHANNEL_LINK = os.environ.get("TG_CHANNEL_LINK", "").strip() or DEFAULT_CHANNEL_LINK
-TZ_NAME = (os.environ.get("TG_TIMEZONE") or "ICT").strip().upper()
-ZONES = {"ICT": ICT, "UTC": timezone.utc, "KST": timezone(timedelta(hours=9), name="KST"),
-         "ET": timezone(timedelta(hours=-4), name="ET")}
-STAMP_ZONE = ZONES.get(TZ_NAME, ICT)
+_raw_channel_link = os.environ.get("TG_CHANNEL_LINK", "").strip() or DEFAULT_CHANNEL_LINK
+CHANNEL_LINK = _raw_channel_link.rstrip("/") + "/"
+# The channel contract is ICT. Keep the old environment switch out of the renderer so a stale
+# host .env cannot create a second timestamp format.
+TZ_NAME = "ICT"
+STAMP_ZONE = ICT
 
 SYSTEM_PROMPT = (
     "너는 한국어 텔레그램 속보 채널의 편집자다. 주어진 제목과 요약만 근거로 게시물을 쓴다. 규칙: "
@@ -202,6 +202,18 @@ def connect() -> sqlite3.Connection:
     for name, ddl in (("recap", "INTEGER DEFAULT 0"), ("title_key", "TEXT"), ("chat_id", "TEXT")):
         if name not in columns:
             connection.execute("ALTER TABLE %s ADD COLUMN %s %s" % (STATE_TABLE, name, ddl))
+    connection.execute(
+        "CREATE TABLE IF NOT EXISTS jev_runs ("
+        "run_id TEXT PRIMARY KEY, started_at TEXT NOT NULL, mode TEXT NOT NULL, "
+        "candidate_count INTEGER NOT NULL, status TEXT NOT NULL, error TEXT)"
+    )
+    connection.execute(
+        "CREATE TABLE IF NOT EXISTS jev_decisions ("
+        "run_id TEXT NOT NULL, link TEXT NOT NULL, importance TEXT, "
+        "duplicate_confidence REAL, freshness TEXT, blocked INTEGER NOT NULL DEFAULT 0, "
+        "fallback INTEGER NOT NULL DEFAULT 0, raw_json TEXT, created_at TEXT NOT NULL, "
+        "PRIMARY KEY (run_id, link))"
+    )
     return connection
 
 
@@ -256,7 +268,49 @@ def recently_posted(stamp: str, now: datetime) -> bool:
     return (now - when_posted).total_seconds() <= EVENT_WINDOW_MINUTES * 60
 
 
-# ----------------------------------------------------------------------------- selection
+def persist_jev(connection: sqlite3.Connection, batch: jev_gate.Batch,
+                items: list[dict[str, Any]], now: datetime) -> None:
+    """Persist only auditable JEV metadata; never persist the API key or request headers."""
+    status = "fallback" if batch.fallback else ("ok" if batch.decisions else "empty")
+    connection.execute(
+        "INSERT OR REPLACE INTO jev_runs "
+        "(run_id, started_at, mode, candidate_count, status, error) VALUES (?,?,?,?,?,?)",
+        (batch.run_id, now.isoformat(), jev_gate.MODE, len(items), status, batch.error or None),
+    )
+    for item in items:
+        link = str(item.get("link") or "")
+        decision = batch.decisions.get(link)
+        connection.execute(
+            "INSERT OR REPLACE INTO jev_decisions "
+            "(run_id, link, importance, duplicate_confidence, freshness, blocked, fallback, raw_json, created_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?)",
+            (
+                batch.run_id,
+                link,
+                decision.importance if decision else None,
+                decision.duplicate_confidence if decision else None,
+                decision.freshness if decision else None,
+                0,
+                1 if batch.fallback else 0,
+                json.dumps(decision.raw if decision else {"error": batch.error}, ensure_ascii=False),
+                now.isoformat(),
+            ),
+        )
+    connection.commit()
+
+
+def mark_jev_blocked(connection: sqlite3.Connection, run_id: str, link: str) -> None:
+    connection.execute(
+        "UPDATE jev_decisions SET blocked = 1 WHERE run_id = ? AND link = ?",
+        (run_id, link),
+    )
+    connection.commit()
+
+
+def is_single_alt_notice(item: dict[str, Any]) -> bool:
+    """Return true for routine news about low-impact altcoins."""
+    return jev_gate.is_single_alt_notice(item)
+
 
 def is_noise(title: str) -> str:
     for pattern in NOISE_PATTERNS:
@@ -295,16 +349,6 @@ def pick_tag(item: dict[str, Any]) -> str:
     return "[속보]" if int(item.get("priority") or 0) >= 5 else "[기사]"
 
 
-def related(item: dict[str, Any]) -> str:
-    """The ticker line, printed only when the stored asset is an actual ticker.
-
-    The collector stores '시장' and '태국' in the same column, and those are regions, not assets -
-    a post carrying "관련 : $시장" would be nonsense, so those items simply lose the line.
-    """
-    asset = str(item.get("asset") or "").strip().upper()
-    return "$" + asset if asset in TICKER_ASSETS else ""
-
-
 def age_minutes(item: dict[str, Any], now: datetime) -> float | None:
     raw = str(item.get("published_at") or "")
     try:
@@ -328,8 +372,8 @@ def worth_posting(item: dict[str, Any], now: datetime | None = None) -> tuple[bo
         age = age_minutes(item, now)
         if age is not None and age > MAX_AGE_MINUTES:
             return False, "stale (%.0f min)" % age
-    if not (item.get("channel_pick") or int(item.get("priority") or 0) >= 5) and ALT_ONLY.search(title):
-        return False, "alt-specific"
+    if is_single_alt_notice(item):
+        return False, "altcoin-noise"
     return True, ""
 
 
@@ -383,6 +427,16 @@ def has_korean(text: str) -> bool:
     return bool(re.search(r"[가-힣]", text or ""))
 
 
+def clean_body(text: Any, limit: int) -> str:
+    """Normalize spaces without flattening deliberate paragraph breaks."""
+    paragraphs = []
+    for paragraph in re.split(r"\n\s*\n", str(text or "")):
+        clean = re.sub(r"[ \t]+", " ", paragraph).strip()
+        if clean:
+            paragraphs.append(clean)
+    return "\n\n".join(paragraphs)[:limit]
+
+
 def brief(item: dict[str, Any], title: str, summary: str) -> dict[str, Any] | None:
     """The channel post's parts, written from the stored headline and summary.
 
@@ -424,7 +478,7 @@ def brief(item: dict[str, Any], title: str, summary: str) -> dict[str, Any] | No
         return None
     out = {
         "title": str(data.get("title") or "").strip()[:80],
-        "body": re.sub(r"\s+", " ", str(data.get("body") or "")).strip()[:BODY_CHARS],
+        "body": clean_body(data.get("body"), BODY_CHARS),
         "note": re.sub(r"\s+", " ", str(data.get("note") or "")).strip()[:120],
         "tags": [str(tag).strip().lstrip("#") for tag in (data.get("tags") or []) if str(tag).strip()],
     }
@@ -485,49 +539,45 @@ def merge_tags(written: list[str], stored: list[str],
 
 def render(item: dict[str, Any], title: str, body: str, note: str,
            tags: list[str]) -> str:
-    """The channel's fixed shape. Every line here is load-bearing; keep the order.
+    """Render the single approved channel shape.
 
-        [속보] 제목
+    The channel uses one format only:
 
-        본문 (사실만)
+        [기사] 제목
 
-        Teemo's Note : 해석 한 줄
+        본문 1
+        본문 2
 
-        관련 : $BTC
-        #태그1 #태그2 #태그3
-        2026-09-22 04:45:11 ICT
+        Teemo's Note
+        해석 한 줄
 
-        출처: <원문 링크>
-        TeemoBKK 라이브 뉴스 (https://teemobkk.io/news)
+        관련 : #태그1 #태그2
+        출처 (@url:`<원문>`) | YYYY-MM-DD HH:MM:SS ICT
+        TeemoBKK 라이브 뉴스 (@url:`<채널 링크>`)
 
-    This is the shape the channel already used before this script was written: bracket tag, plain
-    URL, ICT stamp on its own line. The push and the VPS agent write the same post here, so a
-    reader cannot tell which pipeline produced it. Plain text, no parse mode: a body that never
-    carries markup cannot be broken by a '<' inside a headline.
+    The old markdown, raw-URL, separate ticker, and separate hashtag-line renderers are deliberately
+    gone. A missing editor note gets a visible fallback sentence so the timer cannot create a second
+    shape when the rewrite provider is unavailable.
     """
-    lines = ["%s %s" % (pick_tag(item), title)]
-    if body:
-        lines.append("")
-        lines.append(body)
-    if note:
-        lines.append("")
-        lines.append("%s : %s" % (NOTE_LABEL, note))
-    ticker = related(item)
-    if ticker:
-        lines.append("")
-        lines.append("관련 : %s" % ticker)
-    if tags:
-        lines.append(" ".join("#" + tag for tag in tags[:4]))
+    safe_title = html.escape(title, quote=False)
+    safe_body = html.escape(body, quote=False)
+    safe_note = html.escape(note.strip() or "원문 추가 확인 필요", quote=False)
+    clean_tags = [str(tag).strip().lstrip("#") for tag in tags if str(tag).strip()]
+    lines = ["%s %s" % (pick_tag(item), safe_title)]
+    if safe_body:
+        lines.extend(["", safe_body])
+    lines.extend(["", NOTE_LABEL, safe_note])
+    if clean_tags:
+        lines.extend(["", "관련 : " + " ".join("#" + html.escape(tag, quote=False) for tag in clean_tags[:4])])
     stamp = when(item)
+    link = str(item.get("link") or "").strip() or "원문 확인 필요"
+    safe_link = html.escape(link, quote=True)
     if stamp:
-        lines.append("%s %s" % (stamp, TZ_NAME))
-    lines.append("")
-    link = str(item.get("link") or "").strip()
-    lines.append("출처: %s" % (link or "원문 확인 필요"))
-    footer = "TeemoBKK 라이브 뉴스"
-    if CHANNEL_LINK:
-        footer += " (%s)" % CHANNEL_LINK
-    lines.append(footer)
+        lines.append('출처: <a href="%s">출처</a> | %s %s' % (safe_link, stamp, TZ_NAME))
+    else:
+        lines.append('출처: <a href="%s">출처</a>' % safe_link)
+    safe_channel_link = html.escape(CHANNEL_LINK, quote=True)
+    lines.append('<a href="%s">TeemoBKK 라이브 뉴스</a>' % safe_channel_link)
     return "\n".join(lines)[:LINK_CHARS]
 
 
@@ -537,47 +587,28 @@ def escape(text: str) -> str:
 
 # ----------------------------------------------------------------------------- shape check
 
-# The channel has one shape, and the shape is what a reader recognises. Two pipelines wrote to it
-# with two different renderers and four written definitions of the format, so both shapes ended up
-# in the same channel and a single producer alternated between markdown links and a plain URL. The
-# check below is what stops that: a post that does not match the frozen shape is not sent.
+# The channel contract is fixed. Do not let a stale environment variable or a separate editor skill
+# select a second note label or link shape.
 TITLE_LINE = re.compile(r"^\[(속보|기사|지표|카더라|분석|티모의 선택)\] \S")
-# The note label is a decision, not an accident: the desktop revision wrote "TeemoBKK's Note",
-# the cron prompt and every post the channel actually carries write "Teemo's Note" (52 of 69
-# measured posts, 2026-09-22, so this is the channel's label - fixed here and in TG_NOTE_LABEL).
-# It stays one constant so the choice is one line.
-NOTE_LABEL = (os.environ.get("TG_NOTE_LABEL") or "Teemo's Note").strip()
-NOTE_LINE = re.compile(r"^%s : \S" % re.escape(NOTE_LABEL))
-TAGS_LINE = re.compile(r"^#\S+(?: #\S+){0,3}$")
-# The stamp's standard is HH:MM:SS, which is what render() writes. A minute-precision stamp is
-# still accepted - the agent's own posts carried that shape before the two pipelines were unified,
-# and refusing them buys nothing. New posts must be HH:MM:SS.
-STAMP_LINE = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})? (?:ICT|KST|UTC|ET)$")
-SOURCE_LINE = re.compile(r"^출처: \S")
-# Shapes the channel used to carry and must not carry again: a markdown-link post, the old
-# `@url:` link wrapper and a two-tag title line. The old `#태그 제목` first line is checked against
-# line one directly - a pattern would also match the hashtag line the frozen shape is supposed to
-# have.
+NOTE_LABEL = "Teemo's Note"
+NOTE_HEAD = re.compile(r"^%s$" % re.escape(NOTE_LABEL))
+RELATED_LINE = re.compile(r"^관련 : #\S+(?: #\S+){0,3}$")
+SOURCE_LINE = re.compile(
+    r'^출처: <a href="[^"]+">출처</a> \| \d{4}-\d{2}-\d{2} '
+    r'\d{2}:\d{2}:\d{2} ICT$'
+)
+# Reject legacy markdown, raw URL wrappers, and the old English footer.
 BANNED_SHAPES = (
     (re.compile(r"\]\(\s*https?://"), "markdown link"),
-    (re.compile(r"\(@url:"), "(@url:) wrapper"),
-    (re.compile(r"^\[[^\]]*[,·][^\]]*\] "), "two tags in the title line"),
+    (re.compile(r"@url:"), "visible URL wrapper"),
+    (re.compile(r"^#\S+ "), "hash-tag first line"),
+    (re.compile(r"^출처:\s*https?://", re.M), "raw source URL"),
+    (re.compile(r"TeemoBKK Live News"), "old English footer"),
 )
 
 
-def validate_post(text: str, require_note: bool = False) -> list[str]:
-    """Every way this text breaks the frozen shape; an empty list means it may be posted.
-
-    Only the skeleton is checked - which lines exist, in which order, with which labels. The words
-    are the editor's business, the shape is this script's, and a post that fails here is dropped
-    rather than sent in a shape the channel does not use.
-
-    `require_note` is for the agent path: a post the model wrote carries its own interpretation
-    line, so a missing one means the model did not follow the format. The timer's editor-less
-    fallback has no note to write and would rather omit the line than invent an interpretation, so
-    there the line is optional - and a shape check that forced it would take the channel down
-    instead of keeping it tidy.
-    """
+def validate_post(text: str) -> list[str]:
+    """Return every violation of the one approved channel shape."""
     problems: list[str] = []
     lines = [line.rstrip() for line in (text or "").split("\n")]
     if not text:
@@ -586,27 +617,24 @@ def validate_post(text: str, require_note: bool = False) -> list[str]:
         problems.append("over %d characters" % LINK_CHARS)
     if not lines[0] or not TITLE_LINE.match(lines[0]):
         problems.append("first line is not '[태그] 제목'")
-    if lines[0].lstrip().startswith("#"):
-        problems.append("carries hash-tag first line")
-    notes = [i for i, line in enumerate(lines) if NOTE_LINE.match(line)]
-    if len(notes) > 1 or (require_note and len(notes) != 1):
-        problems.append("expected exactly one \"%s : ...\" line, found %d" % (NOTE_LABEL, len(notes)))
-    tags = [i for i, line in enumerate(lines) if TAGS_LINE.match(line)]
-    if len(tags) != 1:
-        problems.append("expected one hashtag line with 1~4 tags, found %d" % len(tags))
-    stamps = [i for i, line in enumerate(lines) if STAMP_LINE.match(line)]
-    if len(stamps) != 1:
-        problems.append("expected one 'YYYY-MM-DD HH:MM:SS <ZONE>' line, found %d" % len(stamps))
+    notes = [i for i, line in enumerate(lines) if NOTE_HEAD.match(line)]
+    if len(notes) != 1:
+        problems.append("expected exactly one '%s' line, found %d" % (NOTE_LABEL, len(notes)))
+    if notes:
+        note_index = notes[0]
+        if note_index + 1 >= len(lines) or not lines[note_index + 1].strip():
+            problems.append("note body is missing")
+    related = [i for i, line in enumerate(lines) if RELATED_LINE.match(line)]
+    if len(related) != 1:
+        problems.append("expected one '관련 : #tag ...' line, found %d" % len(related))
     sources = [i for i, line in enumerate(lines) if SOURCE_LINE.match(line)]
     if len(sources) != 1:
-        problems.append("expected one '출처: ...' line, found %d" % len(sources))
-    footer = "TeemoBKK 라이브 뉴스 (%s)" % CHANNEL_LINK
+        problems.append("expected one ICT source line, found %d" % len(sources))
+    footer = '<a href="%s">TeemoBKK 라이브 뉴스</a>' % html.escape(CHANNEL_LINK, quote=True)
     if lines[-1].strip() != footer:
         problems.append("footer line is not '%s'" % footer)
-    if tags and sources and stamps and not (tags[0] < stamps[0] < sources[0]):
-        problems.append("line order is not tags -> stamp -> source")
-    if notes and tags and not notes[0] < tags[0]:
-        problems.append("line order is not note -> tags -> stamp -> source")
+    if notes and related and sources and not (notes[0] < related[0] < sources[0]):
+        problems.append("line order is not note -> related -> source")
     for pattern, label in BANNED_SHAPES:
         if pattern.search(text):
             problems.append("carries %s" % label)
@@ -629,6 +657,7 @@ def send(text: str, preview: bool) -> dict[str, Any]:
     return telegram("sendMessage", {
         "chat_id": os.environ.get("TELEGRAM_CHAT_ID", "").strip(),
         "text": text,
+        "parse_mode": "HTML",
         "link_preview_options": json.dumps({"prefer_small_media": True}),
         "disable_notification": "false",
     })
@@ -667,14 +696,19 @@ def post_parts(connection: sqlite3.Connection, parts: dict[str, Any],
         return False, "link is not in news.db - verify the original before posting"
     note_here = operator_note(connection, link)
     item["channel_pick"] = bool(parts.get("pick")) or bool(note_here)
+    # The same alt-notice gate protects the outbox path. Picks bypass the filter.
+    if is_single_alt_notice(item):
+        return False, "altcoin-noise"
     title = str(parts.get("title") or "").strip()
     if not title:
         return False, "no title"
-    body = re.sub(r"\s+", " ", str(parts.get("body") or "")).strip()[:BODY_CHARS]
+    body = clean_body(parts.get("body"), BODY_CHARS)
     note = re.sub(r"\s+", " ", str(parts.get("note") or "")).strip()[:120] or note_here
+    if not note:
+        return False, "no note"
     tags = merge_tags(parts.get("tags") or [], fallback_tags(item))
     text = render(item, title[:80], body, note, tags)
-    problems = validate_post(text, require_note=True)
+    problems = validate_post(text)
     if problems:
         return False, "shape check failed: " + "; ".join(problems)
     if already_posted(connection, link, set()):
@@ -774,9 +808,38 @@ def tick(connection: sqlite3.Connection, now: datetime | None = None, limit: int
     now = now or datetime.now(timezone.utc)
     items = candidates(connection, WINDOW_HOURS)
     recent = posted(connection, 24)
+    jev_items: list[dict[str, Any]] = []
+    for candidate in items:
+        if len(jev_items) >= jev_gate.BATCH_SIZE:
+            break
+        link = str(candidate.get("link") or "")
+        if already_posted(connection, link, {row["link"] for row in recent}):
+            continue
+        ok, _why = worth_posting(candidate, now)
+        if not ok:
+            continue
+        probe = dict(candidate)
+        probe["_age_minutes"] = age_minutes(candidate, now)
+        jev_items.append(probe)
+    jev_batch = jev_gate.evaluate(
+        jev_items,
+        [str(row["title"] or "") for row in recent if row["title"]],
+        now,
+    )
+    if jev_gate.MODE != "off":
+        persist_jev(connection, jev_batch, jev_items, now)
+        if jev_batch.fallback:
+            logging.warning("JEV fallback: %s", jev_batch.error or "no decision")
+        else:
+            logging.info("JEV evaluated %d candidates (%s)", len(jev_batch.decisions), jev_batch.run_id)
     keys = [row["title_key"] or "" for row in recent]
     keep: set[str] = {row["link"] for row in recent}
     events = [(row["posted_at"], tokens(row["title"] or "")) for row in recent]
+    # Keep signatures for candidates seen in this tick too. A candidate that is skipped because it
+    # duplicates an older post must still block the next rewrite of the same event; otherwise the
+    # second wording can slip through one minute later.
+    tick_events: list[set[str]] = [signature for stamp, signature in events
+                                    if recently_posted(stamp, now)]
     last = last_post_at(connection)
     in_hour = posts_within(connection, now, 3600)
     last_recap = last_recap_at(connection)
@@ -796,12 +859,28 @@ def tick(connection: sqlite3.Connection, now: datetime | None = None, limit: int
         title_now = str(item.get("title") or "")
         key = core.normalize_title(title_now)
         sig = tokens(title_now)
+        jev_decision = jev_batch.decisions.get(link)
+        if jev_decision and jev_gate.MODE == "live" and jev_gate.should_block_duplicate(
+                jev_decision, int(item.get("priority") or 0), bool(item.get("channel_pick"))):
+            logging.info(
+                "skip (JEV same-event %.2f): %s",
+                jev_decision.duplicate_confidence,
+                title_now[:70],
+            )
+            mark_jev_blocked(connection, jev_batch.run_id, link)
+            tick_events.append(sig)
+            continue
         if key and any(core._similar_title(key, old) for old in keys if old):
             logging.info("skip (duplicate of an earlier post): %s", title_now[:70])
+            tick_events.append(sig)
             continue
-        if any(same_event(sig, old) for stamp, old in events if recently_posted(stamp, now)):
-            logging.info("skip (same story as an earlier post): %s", title_now[:70])
+        if any(same_event(sig, old) for old in tick_events):
+            logging.info("skip (same story as an earlier candidate/post): %s", title_now[:70])
+            tick_events.append(sig)
             continue
+        # Reserve the event before pacing and writing. If this candidate is held by cooldown, a
+        # second source for the same event must not become the post merely because it is next.
+        tick_events.append(sig)
         recap = is_recap(item.get("title") or "")
         if recap and last_recap is not None and \
                 (now - last_recap).total_seconds() < RECAP_COOLDOWN_MINUTES * 60 and \
@@ -814,7 +893,7 @@ def tick(connection: sqlite3.Connection, now: datetime | None = None, limit: int
             continue
 
         raw_title = str(item.get("title") or "")
-        raw_summary = re.sub(r"\s+", " ", str(item.get("summary") or "")).strip()
+        raw_summary = clean_body(item.get("summary"), SUMMARY_CHARS)
         written = brief(item, raw_title, raw_summary)
         if written:
             title = written["title"]
@@ -932,9 +1011,12 @@ def replay(connection: sqlite3.Connection, hours: int, step_seconds: int = 60) -
             sig = tokens(str(item.get("title") or ""))
             if key and any(core._similar_title(key, old) for old in keys if old):
                 taken.add(link)
+                keys.append(key)
+                events.append((now.isoformat(), sig))
                 continue
             if any(same_event(sig, old) for stamp, old in events if recently_posted(stamp, now)):
                 taken.add(link)
+                events.append((now.isoformat(), sig))
                 continue
             recap = is_recap(item.get("title") or "")
             if recap and last_recap is not None and not item.get("channel_pick") and \

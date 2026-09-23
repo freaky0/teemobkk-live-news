@@ -4,11 +4,99 @@ Keep external publishing links in EDITORIAL_POSTS, not in navigation labels.
 Script previews are actual publication images, never reconstructed charts.
 """
 from html import escape
+import json
+import time
+from pathlib import Path
+from urllib.request import Request, urlopen
 
 EDITORIAL_POSTS = [
     {"title": "9월 18일 비트코인 주말 관점", "date": "2026-09-18", "url": "https://teemobkk.substack.com/p/9-18", "summary": "78K는 되찾았습니다. 다만 주말에는 77K대 지지와 현물 수요를 먼저 확인합니다."},
     {"title": "9월 17일 비트코인 TeemoBKK 관점", "date": "2026-09-17", "url": "https://teemobkk.substack.com/p/9-17-teemobkk", "summary": "ETF 유출과 매파적 FOMC 뒤, 76.6K 회복 전까지는 WAIT입니다."},
 ]
+
+_SUBSTACK_POSTS_URL = "https://teemobkk.substack.com/api/v1/posts?limit=10"
+_CACHE_FILE = Path(__file__).with_name("perspectives_cache.json")
+_CACHE_TTL_SECONDS = 3600
+
+
+def _valid_posts(posts):
+    return isinstance(posts, list) and all(
+        isinstance(post, dict) and post.get("title") and post.get("date")
+        and post.get("url", "").startswith("https://teemobkk.substack.com/")
+        for post in posts
+    )
+
+
+def _read_cache():
+    try:
+        with _CACHE_FILE.open(encoding="utf-8") as handle:
+            cached = json.load(handle)
+        posts = cached.get("posts") if isinstance(cached, dict) else None
+        return posts if _valid_posts(posts) else None
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return None
+
+
+def _fresh_cache():
+    try:
+        if time.time() - _CACHE_FILE.stat().st_mtime < _CACHE_TTL_SECONDS:
+            return _read_cache()
+    except OSError:
+        pass
+    return None
+
+
+def _fetch_posts():
+    request = Request(_SUBSTACK_POSTS_URL, headers={"User-Agent": "TeemoBKK homepage builder/1.0"})
+    with urlopen(request, timeout=8) as response:
+        payload = json.load(response)
+    posts = []
+    for item in payload if isinstance(payload, list) else []:
+        title = str(item.get("title") or "").strip()
+        url = str(item.get("canonical_url") or "").strip()
+        date = str(item.get("post_date") or "")[:10]
+        tags = {str(tag.get("name") or "") for tag in (item.get("postTags") or []) if isinstance(tag, dict)}
+        if "관점" not in title and "관점" not in tags:
+            continue
+        if not title or not url.startswith("https://teemobkk.substack.com/") or len(date) != 10:
+            continue
+        posts.append({
+            "title": title,
+            "date": date,
+            "url": url,
+            "summary": str(item.get("subtitle") or item.get("description") or "").strip(),
+        })
+    posts.sort(key=lambda post: post["date"], reverse=True)
+    return posts[:3]
+
+
+def _write_cache(posts):
+    temporary = _CACHE_FILE.with_name(_CACHE_FILE.name + ".tmp")
+    try:
+        with temporary.open("w", encoding="utf-8") as handle:
+            json.dump({"fetched_at": int(time.time()), "posts": posts}, handle, ensure_ascii=False, indent=2)
+            handle.write("\n")
+        temporary.replace(_CACHE_FILE)
+    except OSError:
+        try:
+            temporary.unlink()
+        except OSError:
+            pass
+
+
+def editorial_posts():
+    """Use a one-hour file cache, then stale cache, then the built-in fallback."""
+    fresh = _fresh_cache()
+    if fresh:
+        return fresh
+    try:
+        posts = _fetch_posts()
+        if posts:
+            _write_cache(posts)
+            return posts
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        pass
+    return _read_cache() or EDITORIAL_POSTS
 
 PAGE = r'''<!doctype html>
 <html lang="ko">
@@ -200,6 +288,6 @@ def stylesheet() -> str:
 
 def render_landing() -> str:
     posts = []
-    for post in EDITORIAL_POSTS:
+    for post in editorial_posts():
         posts.append('<article class="post"><time datetime="{date}">{date}</time><h3><a href="{url}" target="_blank" rel="noopener noreferrer">{title}</a></h3><p>{summary}</p><a class="read" href="{url}" target="_blank" rel="noopener noreferrer">관점 읽기 · 외부 글 ↗</a></article>'.format(**{k: escape(v, quote=True) for k, v in post.items()}))
     return PAGE.replace('__POSTS__', ''.join(posts))
