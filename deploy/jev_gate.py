@@ -39,12 +39,16 @@ ALT_NOTICE_RE = re.compile(
 MAJOR_ASSET_RE = re.compile(r"\b(bitcoin|btc|ethereum|eth|ether)\b|비트코인|이더리움", re.I)
 ALT_ASSET_RE = re.compile(
     r"\b(solana|sol|xrp|ripple|dogecoin|doge|cardano|ada|zcash|zec|sei|pepe|toncoin|"
-    r"avalanche|avax|shiba|bonk|chainlink|polygon|matic|arbitrum|optimism|aptos|sui|"
-    r"litecoin|ltc|tron|trx|stellar|xlm|near|injective|polkadot|dot|cosmos|atom|"
+    r"avalanche|avax|shiba|bonk|chainlink|polygon|matic|arbitrum|aptos|sui|"
+    r"litecoin|ltc|tron|trx|stellar|xlm|injective|polkadot|dot|cosmos|atom|"
     r"filecoin|uniswap|aave|lido|jupiter|worldcoin|ondo|hyperliquid|bittensor|celestia|"
     r"kaspa|render|fetch(?:\.ai)?|stargate|ethena|pendle|aerodrome|jto|pyth|sophon|soph|remittix)\b",
     re.I,
 )
+# These names also occur as ordinary English words. Match them only as explicit tickers or
+# structured asset values, never as arbitrary substrings of titles and summaries.
+EXPLICIT_ALT_TICKER_RE = re.compile(r"\$(?:NEAR|OP)\b", re.I)
+EXPLICIT_ALT_ASSET_RE = re.compile(r"^(?:NEAR|OP)$", re.I)
 BROAD_NOTICE_RE = re.compile(
     r"거래소\s*(전체|전반)|(?:전|전체)\s*종목|시장\s*전체|전체\s*(자산|마켓|시장)|해킹|보안\s*사고|금융\s*당국|규제|법원|"
     r"exchange[- ]wide|all\s+(assets|markets)|hack|security\s+incident|regulator|court",
@@ -88,10 +92,13 @@ def is_single_alt_notice(item: dict[str, Any]) -> bool:
     if BROAD_NOTICE_RE.search(text):
         return False
     asset = str(item.get("asset") or "").strip()
-    if ALT_ASSET_RE.search(text):
-        return True
+    # A major-market mention must win over a secondary ticker elsewhere in a mixed headline.
     if MAJOR_ASSET_RE.search(asset) or MAJOR_ASSET_RE.search(text):
         return False
+    if EXPLICIT_ALT_ASSET_RE.fullmatch(asset) or EXPLICIT_ALT_TICKER_RE.search(text):
+        return True
+    if ALT_ASSET_RE.search(text):
+        return True
     if ALT_NOTICE_RE.search(text):
         return True
     category = str(item.get("category") or "")

@@ -92,5 +92,42 @@ class JEVGate(unittest.TestCase):
         self.assertFalse(jev_gate.should_block_duplicate(decision, 4, True))
 
 
+class AltNoiseFilter(unittest.TestCase):
+    def item(self, title, asset="시장", category="일반", priority=4):
+        return {
+            "title": title,
+            "summary": "",
+            "asset": asset,
+            "priority": priority,
+            "category": category,
+            "categories": [category],
+            "channel_pick": False,
+        }
+
+    def test_plain_near_is_not_an_altcoin_ticker(self):
+        item = self.item("Bitcoin ETF inflows near $1B", asset="BTC", category="ETF·수급")
+        self.assertFalse(jev_gate.is_single_alt_notice(item))
+
+    def test_plain_optimism_is_not_an_altcoin_ticker(self):
+        item = self.item("Geopolitical Optimism Supports Market Sentiment")
+        self.assertFalse(jev_gate.is_single_alt_notice(item))
+
+    def test_major_asset_mention_exempts_mixed_altcoin_headline(self):
+        item = self.item("Bitcoin and XRP exchange listing update", asset="BTC")
+        self.assertFalse(jev_gate.is_single_alt_notice(item))
+
+    def test_unambiguous_dollar_ticker_still_matches(self):
+        item = self.item("$NEAR ecosystem update")
+        self.assertTrue(jev_gate.is_single_alt_notice(item))
+
+    def test_explicit_asset_field_ticker_still_matches(self):
+        item = self.item("Token ecosystem update", asset="NEAR")
+        self.assertTrue(jev_gate.is_single_alt_notice(item))
+
+    def test_unambiguous_altcoin_symbol_still_matches(self):
+        item = self.item("Solana ecosystem update")
+        self.assertTrue(jev_gate.is_single_alt_notice(item))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
