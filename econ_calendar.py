@@ -367,8 +367,8 @@ def collect(now: datetime | None = None) -> dict[str, Any]:
     for offset in (-1, 0, 1):
         day_date = anchor + timedelta(days=offset)
         mine = [event for event in kept if event["date"] == day_date.isoformat()]
-        if not mine:
-            continue
+        # Always publish all three days: an empty tomorrow means the source has not
+        # posted the next ET page yet, and the tab renders it as "주요 지표 없음".
         days.append({
             "date": day_date.isoformat(),
             "label": LABELS[offset],

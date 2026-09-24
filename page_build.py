@@ -466,6 +466,24 @@ html[data-theme="light"] body.public,html[data-theme="light"] body.local{
 html[data-theme="dark"] body.public .bar,html[data-theme="dark"] body.local .bar,
 html[data-theme="light"] body.public .bar,html[data-theme="light"] body.local .bar{
   background:var(--bg);color:var(--text);backdrop-filter:none}
+html[data-theme="light"] body.public .pill.active,html[data-theme="light"] body.public .pill.on,
+html[data-theme="light"] body.public .pill.pick.active,html[data-theme="light"] body.public .trend .tbtn.on,
+html[data-theme="light"] body.local .pill.active,html[data-theme="light"] body.local .pill.on,
+html[data-theme="light"] body.local .pill.pick.active,html[data-theme="light"] body.local .trend .tbtn.on{
+  background:var(--panel2);border-color:var(--accent);color:var(--text)}
+html[data-theme="light"] body.public .pill.pick.active,html[data-theme="light"] body.local .pill.pick.active{
+  border-color:var(--official);color:var(--official)}
+html[data-theme="light"] body.public .pill.th.active,html[data-theme="light"] body.public .pill.src.th.active,
+html[data-theme="light"] body.local .pill.th.active,html[data-theme="light"] body.local .pill.src.th.active{
+  border-color:var(--thai);color:var(--thai)}
+html[data-theme="light"] body.public .trend .tbtn.on .n,html[data-theme="light"] body.local .trend .tbtn.on .n{
+  color:var(--muted);opacity:1}
+html[data-theme="light"] body.public .conds .cbtn:not(.kw),html[data-theme="light"] body.local .conds .cbtn:not(.kw){
+  background:var(--panel2);border-color:var(--line2);color:var(--text)}
+html[data-theme="light"] body.public .conds .cbtn:not(.kw) .n,
+html[data-theme="light"] body.local .conds .cbtn:not(.kw) .n{color:var(--muted);opacity:1}
+html[data-theme="light"] body.public .newpill[data-show="1"],html[data-theme="light"] body.local .newpill[data-show="1"]{
+  background:var(--panel2);border-color:var(--accent);color:var(--accent)}
 """
 
 THEME_SCRIPT = """\

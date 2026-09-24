@@ -83,7 +83,10 @@ class PublicDocument(unittest.TestCase):
         self.assertIn('html[data-theme="light"] body.public', page)
         self.assertIn('html[data-theme="light"] body.public .bar', page)
         self.assertIn('html[data-theme="dark"] body.public .bar', page)
-        self.assertIn('background:var(--bg);color:var(--text);backdrop-filter:none', page)
+        self.assertIn('html[data-theme="light"] body.public .trend .tbtn.on', page)
+        self.assertIn('html[data-theme="light"] body.public .conds .cbtn:not(.kw)', page)
+        self.assertIn('html[data-theme="light"] body.public .pill.pick.active', page)
+        self.assertIn('background:var(--panel2);border-color:var(--accent);color:var(--text)', page)
         self.assertIn('aria-pressed="false"', page)
 
     def test_the_write_helper_is_inert_without_a_session(self):
@@ -173,6 +176,8 @@ class OperatorDocument(unittest.TestCase):
         self.assertIn('body.local:not(.tab-cal) .layout', page)
         self.assertIn('html[data-theme="light"] body.local .bar', page)
         self.assertIn('html[data-theme="dark"] body.local .bar', page)
+        self.assertIn('html[data-theme="light"] body.local .trend .tbtn.on', page)
+        self.assertIn('html[data-theme="light"] body.local .conds .cbtn:not(.kw)', page)
         for marker in OPERATOR_MARKERS:
             self.assertIn(marker, page)
 
