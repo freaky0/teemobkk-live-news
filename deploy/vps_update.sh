@@ -29,7 +29,7 @@ SERVICE="${SERVICE:-teemo-live-news}"
 PORT="${PORT:-8765}"
 # The address list below is the whole public surface, including the dashboard itself, so there is
 # no separate "the site URL" variable to keep in sync with it.
-SECTIONS="https://teemobkk.io/ https://teemobkk.io/news/ https://teemobkk.io/news/ko/ https://teemobkk.io/thai/ https://teemobkk.io/thai/news/ https://teemobkk.io/thai/news/ko/ https://teemobkk.io/admin"
+SECTIONS="https://teemobkk.io/ https://teemobkk.io/news/ https://teemobkk.io/news/ko/ https://teemobkk.io/thai/ https://teemobkk.io/thai/news/ https://teemobkk.io/thai/news/ko/ https://teemobkk.io/privacy/ https://teemobkk.io/privacy/en/ https://teemobkk.io/robots.txt https://teemobkk.io/sitemap.xml https://teemobkk.io/admin"
 
 say() { printf '  %s\n' "$*"; }
 remote() { ssh -o BatchMode=yes "$HOST" "$@"; }

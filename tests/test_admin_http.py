@@ -16,6 +16,7 @@ import unittest
 import urllib.error
 import urllib.request
 from pathlib import Path
+from xml.etree import ElementTree as ET
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -359,6 +360,50 @@ class Gate(unittest.TestCase):
             self.assertEqual(self.call("/api/settings", "POST", {"interval": 300})[0], 401)
         finally:
             self.password.write_bytes(SECRET.encode("utf-8"))
+
+    def test_robots_and_sitemap_are_public_and_only_list_indexable_pages(self):
+        with urllib.request.urlopen(self.base + "/robots.txt", timeout=10) as response:
+            self.assertEqual(response.status, 200)
+            self.assertIn("text/plain", response.headers.get("Content-Type", ""))
+            robots = response.read().decode("utf-8")
+        self.assertIn("User-agent: *", robots)
+        self.assertIn("Allow: /", robots)
+        self.assertIn("Sitemap: https://teemobkk.io/sitemap.xml", robots)
+
+        with urllib.request.urlopen(self.base + "/sitemap.xml", timeout=10) as response:
+            self.assertEqual(response.status, 200)
+            self.assertIn("xml", response.headers.get("Content-Type", ""))
+            sitemap = ET.fromstring(response.read())
+        namespace = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+        urls = [node.text or "" for node in sitemap.findall("sm:url/sm:loc", namespace)]
+        self.assertEqual(urls, ["https://teemobkk.io/", "https://teemobkk.io/thai/",
+                                "https://teemobkk.io/privacy/", "https://teemobkk.io/privacy/en/"])
+        self.assertFalse(any("/news/" in url for url in urls),
+                         "the news dashboards are noindex and don't belong in the sitemap")
+
+    def test_privacy_pages_are_public_translated_and_canonical(self):
+        pages = (
+            ("/privacy/", "ko", "개인정보 처리방침", "https://teemobkk.io/privacy/", "en",
+             "https://teemobkk.io/privacy/en/", "활성화되어 있지"),
+            ("/privacy/en/", "en", "Privacy Policy", "https://teemobkk.io/privacy/en/", "ko",
+             "https://teemobkk.io/privacy/", "not active"),
+        )
+        for path, lang, title, canonical, alternate_lang, alternate, inactive_note in pages:
+            with urllib.request.urlopen(self.base + path, timeout=10) as response:
+                self.assertEqual(response.status, 200)
+                self.assertIn("text/html", response.headers.get("Content-Type", ""))
+                page = response.read().decode("utf-8")
+            self.assertIn('<html lang="%s">' % lang, page)
+            self.assertIn('<link rel="canonical" href="%s">' % canonical, page)
+            self.assertIn('<link rel="alternate" hreflang="%s" href="%s">' %
+                          (alternate_lang, alternate), page)
+            self.assertIn("Keith S. Jun", page)
+            self.assertIn("freaky0@gmail.com", page)
+            self.assertIn(title, page)
+            self.assertNotIn('name="robots" content="noindex"', page)
+            self.assertIn("AdSense", page)
+            self.assertIn("TCF v2.3", page)
+            self.assertIn(inactive_note, page)
 
     def test_the_page_tells_the_script_it_is_public(self):
         # The page is not JSON, so it is fetched directly rather than through the JSON helper.

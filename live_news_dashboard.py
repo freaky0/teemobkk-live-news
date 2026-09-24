@@ -49,6 +49,12 @@ STATIC_FILES = {
     "/favicon-32.png": ("favicon-32.png", "image/png"),
     "/favicon-16.png": ("favicon-16.png", "image/png"),
     "/apple-touch-icon.png": ("apple-touch-icon.png", "image/png"),
+    "/robots.txt": ("robots.txt", "text/plain; charset=utf-8"),
+    "/sitemap.xml": ("sitemap.xml", "application/xml; charset=utf-8"),
+    "/privacy": ("privacy.html", "text/html; charset=utf-8"),
+    "/privacy/": ("privacy.html", "text/html; charset=utf-8"),
+    "/privacy/en": ("privacy_en.html", "text/html; charset=utf-8"),
+    "/privacy/en/": ("privacy_en.html", "text/html; charset=utf-8"),
 }
 
 USER_AGENT = "TeemoLiveNewsDashboard/1.0 (+local research dashboard)"

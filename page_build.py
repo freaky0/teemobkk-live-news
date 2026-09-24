@@ -484,6 +484,8 @@ html[data-theme="light"] body.public .conds .cbtn:not(.kw) .n,
 html[data-theme="light"] body.local .conds .cbtn:not(.kw) .n{color:var(--muted);opacity:1}
 html[data-theme="light"] body.public .newpill[data-show="1"],html[data-theme="light"] body.local .newpill[data-show="1"]{
   background:var(--panel2);border-color:var(--accent);color:var(--accent)}
+.foot .legal-links{margin:14px 0 0;font-size:12px}
+.foot .legal-links a{color:var(--muted);text-decoration:underline;text-underline-offset:3px}
 """
 
 THEME_SCRIPT = """\
@@ -1736,6 +1738,9 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
         theme_button = theme_button.replace("다크 모드", "Dark mode")
     elif lang == "th":
         theme_button = theme_button.replace("다크 모드", "โหมดมืด")
+    privacy_url = "/privacy/en/" if lang == "en" else "/privacy/"
+    privacy_label = "Privacy policy" if lang == "en" else "개인정보 처리방침"
+    privacy_link = '<p class="legal-links"><a href="%s">%s</a></p>' % (privacy_url, privacy_label)
     langbar = _langbar(lang, alt)
     script = SCRIPT.replace("__CONFIG__", json.dumps(config, ensure_ascii=False, separators=(",", ":")))
     script = script.replace("__CATS_GLOBAL__", json.dumps(
@@ -1823,6 +1828,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
   <footer class="foot">
     각 기사의 저작권은 원 매체에 있습니다. 제목과 요약, 그리고 원문 링크만 표시하며 원문 확인은 링크를 통해 해 주세요.<br>
     자동 수집 결과이므로 표기 오류나 지연이 있을 수 있습니다. 투자 판단의 근거로 사용하지 마세요.
+    {privacy_link}
   </footer>
 </main>
 

@@ -217,6 +217,8 @@ h2{font-size:25px}
 .chart-open:hover{transform:none;box-shadow:none}
 .indicator .button{margin-top:2px}
 dialog::backdrop{background:rgba(20,29,27,.78)}
+.footer-links{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:14px;font-size:13px;color:var(--muted)}
+.footer-links a{text-decoration:underline;text-underline-offset:3px}
 @media(max-width:767px){
   .nav{gap:8px 20px}.brand{font-size:20px}
   .hero{padding:34px 0 26px}
@@ -248,7 +250,7 @@ dialog::backdrop{background:rgba(20,29,27,.78)}
 </div><a class="section-link" href="https://www.tradingview.com/u/TeemoBKK/" target="_blank" rel="noopener noreferrer me">공식 프로필에서 전체 지표 보기 ↗</a><p class="note">이미지는 각 지표의 공식 공개 페이지에 게시된 과거 적용 예시이며 실시간 차트나 수익률 증명이 아닙니다. 사용 조건과 설정은 해당 페이지에서 확인하세요. 파동 카운팅과 목표 구간은 진행 중인 가격에 따라 달라질 수 있습니다.</p></section>
 <section class="section about" aria-labelledby="about-title"><div><h2 id="about-title">TeemoBKK에 대하여</h2><p>경제 뉴스를 모으고, 시장을 바라보는 관점을 쓰며, 차트에서 사용하는 지표를 만듭니다.</p><p>뉴스는 시장의 맥락을 살피는 출발점입니다. 해석과 시나리오는 사실과 구분해 기록하겠습니다.</p></div><div><h3>읽기 전에</h3><ul><li>뉴스는 자동 수집한 원문 제목과 출처를 제공합니다.</li><li>시장 관점은 운영자의 개인적인 해석입니다.</li><li>지표는 분석 보조 도구이며 수익을 보장하지 않습니다.</li></ul></div></section>
 </main>
-<footer class="footer"><div class="wrap"><div class="footer-row"><span>TeemoBKK · 경제 뉴스와 트레이더의 기록</span><a href="/thai/">별도 소식 · 태국 교민 뉴스 ↗</a></div><p>뉴스는 자동 매매 신호가 아닙니다 · 중요한 사건은 원문과 공시로 확인하세요. 제공되는 글과 지표만으로 투자 결정을 내리지 마세요.</p></div></footer>
+<footer class="footer"><div class="wrap"><div class="footer-row"><span>TeemoBKK · 경제 뉴스와 트레이더의 기록</span><a href="/thai/">별도 소식 · 태국 교민 뉴스 ↗</a></div><p>뉴스는 자동 매매 신호가 아닙니다 · 중요한 사건은 원문과 공시로 확인하세요. 제공되는 글과 지표만으로 투자 결정을 내리지 마세요.</p><nav class="footer-links" aria-label="사이트 정보"><a href="/privacy/">개인정보 처리방침</a></nav></div></footer>
 <dialog id="chart-dialog" aria-labelledby="chart-title"><div class="dialog-head"><p id="chart-title"></p><button id="close-chart" type="button">닫기</button></div><img id="expanded-chart" alt=""></dialog>
 <script>
 (function(){

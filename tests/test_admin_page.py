@@ -87,6 +87,9 @@ class PublicDocument(unittest.TestCase):
         self.assertIn('html[data-theme="light"] body.public .conds .cbtn:not(.kw)', page)
         self.assertIn('html[data-theme="light"] body.public .pill.pick.active', page)
         self.assertIn('background:var(--panel2);border-color:var(--accent);color:var(--text)', page)
+        self.assertIn('href="/privacy/en/"', page)
+        korean = public_document(lang="ko")
+        self.assertIn('href="/privacy/"', korean)
         self.assertIn('aria-pressed="false"', page)
 
     def test_the_write_helper_is_inert_without_a_session(self):
