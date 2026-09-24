@@ -59,3 +59,9 @@ tests/node_modules/
 # the live post list, so no single copy can be the right one. tests/run.py and
 # page_build.build_server() both write it before it is served.
 /index.html
+
+# graft's local repository settings — not committed.
+/.graft/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
