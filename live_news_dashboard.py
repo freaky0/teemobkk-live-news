@@ -4,6 +4,7 @@ import argparse
 import admin_auth
 import admin_page
 import category_rules as taxonomy
+import econ_calendar
 import filter_learn
 import bluesky_source
 import sbh_open_news
@@ -1289,6 +1290,16 @@ class Handler(BaseHTTPRequestHandler):
             return
         if request_path == "/api/picks":
             self.serve_picks()
+            return
+        if request_path == "/api/calendar":
+            # Served, not read from a committed file: the indicator tab has to move on its own
+            # the way the news feed does. The payload is cached in the collector process, so a
+            # page that polls it costs nothing until the cache expires.
+            try:
+                self.send_json(econ_calendar.cached_payload())
+            except Exception:
+                logging.exception("calendar build failed")
+                self.send_json({"days": [], "errors": ["달력 소스를 불러오지 못했습니다"]})
             return
         if request_path == "/api/news":
             params = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)

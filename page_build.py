@@ -62,6 +62,9 @@ h1{font-size:19px;margin:0;letter-spacing:-.01em}
 .spacer{flex:1}
 .stamp{color:var(--muted);font-size:12px;text-align:right;line-height:1.5}
 .stamp b{color:var(--text);font-weight:600}
+.theme-toggle{flex:0 0 auto;min-height:40px;padding:7px 11px;border:1px solid var(--line);
+  border-radius:4px;background:transparent;color:var(--text);font-size:12px;font-weight:650;cursor:pointer}
+.theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
 .stale{display:none;margin-top:5px;border:1px solid var(--warn);color:var(--warn);
   border-radius:var(--r-pill);padding:3px 10px;font-size:11.5px}
 .stale[data-show="1"]{display:inline-block}
@@ -446,9 +449,50 @@ body.local .foot{max-width:72ch}
   body.local .pill.active,body.local .pill.on,body.local .pill.pick.active,
   body.local .trend .tbtn.on,body.local .pill.th.active,body.local .pill.src.th.active{color:#15201d}
 }
+html[data-theme="dark"] body.public,html[data-theme="dark"] body.local{
+  color-scheme:dark;--bg:#151c1b;--panel:#1e2927;--panel2:#26332f;
+  --text:#edf3f0;--muted:#b1c2bc;--line:#3c4e48;--line2:#53655e;
+  --accent:#89d7cb;--thai:#dec28c;--hot:#efae85;--official:#a3dcc3;--warn:#f1a87d}
+html[data-theme="dark"] body.public .pill.active,html[data-theme="dark"] body.public .pill.on,
+html[data-theme="dark"] body.public .pill.pick.active,html[data-theme="dark"] body.public .trend .tbtn.on,
+html[data-theme="dark"] body.public .pill.th.active,html[data-theme="dark"] body.public .pill.src.th.active,
+html[data-theme="dark"] body.local .pill.active,html[data-theme="dark"] body.local .pill.on,
+html[data-theme="dark"] body.local .pill.pick.active,html[data-theme="dark"] body.local .trend .tbtn.on,
+html[data-theme="dark"] body.local .pill.th.active,html[data-theme="dark"] body.local .pill.src.th.active{color:#15201d}
+html[data-theme="light"] body.public,html[data-theme="light"] body.local{
+  color-scheme:light;--bg:#f8f9f8;--panel:#fff;--panel2:#f0f3f2;
+  --text:#192422;--muted:#52625e;--line:#d7dfdc;--line2:#c5d1cd;
+  --accent:#08645d;--thai:#705323;--hot:#9b451f;--official:#25634a;--warn:#a04719}
 """
 
-SCRIPT = """\
+THEME_SCRIPT = """\
+(function(){
+  var root=document.documentElement,button=document.getElementById('theme-toggle');
+  if(!button)return;
+  var labels={ko:{dark:'다크 모드',light:'일반 모드'},en:{dark:'Dark mode',light:'Light mode'},
+    th:{dark:'โหมดมืด',light:'โหมดสว่าง'}};
+  var words=labels[root.lang]||labels.ko;
+  function mode(){
+    if(root.dataset.theme==='dark'||root.dataset.theme==='light')return root.dataset.theme;
+    return window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
+  }
+  function update(){
+    var dark=mode()==='dark';
+    button.textContent=dark?words.light:words.dark;
+    button.setAttribute('aria-label',dark?words.light:words.dark);
+    button.setAttribute('aria-pressed',String(dark));
+  }
+  button.addEventListener('click',function(){
+    var next=mode()==='dark'?'light':'dark';
+    root.dataset.theme=next;
+    try{localStorage.setItem('tbn-theme',next)}catch(e){}
+    update();
+  });
+  update();
+})();
+"""
+
+SCRIPT = """
 const CFG=__CONFIG__;
 const PUBLIC=CFG.public, DATADIR=CFG.datadir, API=CFG.api;
 // A session lives in a cookie this script cannot read, so the server says whether there is one by
@@ -1612,7 +1656,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
         "wantThai": want_thai,
         "admin": admin,
         "api": "",
-        "calendar": "https://raw.githubusercontent.com/freaky0/teemobkk-live-news/main/docs/calendar.json",
+        "calendar": "/api/calendar",
         "lang": lang,
         "catLabels": ui_text.cat_labels(lang),
     }
@@ -1666,6 +1710,11 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
         og = og.replace('content="TeemoBKK Live News"', f'content="{reader_name} | TeemoBKK"')
     # Back to the section that introduced this dashboard.
     home = "/thai/" if want_thai else "/"
+    theme_button = '<button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false">다크 모드</button>'
+    if lang == "en":
+        theme_button = theme_button.replace("다크 모드", "Dark mode")
+    elif lang == "th":
+        theme_button = theme_button.replace("다크 모드", "โหมดมืด")
     langbar = _langbar(lang, alt)
     script = SCRIPT.replace("__CONFIG__", json.dumps(config, ensure_ascii=False, separators=(",", ":")))
     script = script.replace("__CATS_GLOBAL__", json.dumps(
@@ -1678,6 +1727,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<script>(function(){{try{{var t=localStorage.getItem('tbn-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}}catch(e){{}}}})();</script>
 <meta name="robots" content="noindex">
 {og}<link rel="icon" href="{icon_prefix}favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="{icon_prefix}favicon-32.png">
@@ -1696,6 +1746,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
     </div>
     <div class="spacer"></div>
     {langbar}
+    {theme_button}
     {stamp}<br><span id="stale" class="stale"></span></div>
   </div>
 </header>
@@ -1756,6 +1807,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
 
 <script>
 {script}</script>
+<script>{THEME_SCRIPT}</script>
 </body></html>
 """
     page = localize(page, lang).replace("__SEED__", seed)

@@ -74,6 +74,15 @@ class PublicDocument(unittest.TestCase):
         english = public_document()
         self.assertIn('<h1>Market Today</h1>', english)
 
+    def test_reader_page_has_persistent_theme_switch(self):
+        page = public_document()
+        self.assertEqual(page.count('id="theme-toggle"'), 1)
+        self.assertIn("localStorage.getItem('tbn-theme')", page)
+        self.assertIn("localStorage.setItem('tbn-theme',next)", page)
+        self.assertIn('html[data-theme="dark"] body.public', page)
+        self.assertIn('html[data-theme="light"] body.public', page)
+        self.assertIn('aria-pressed="false"', page)
+
     def test_the_write_helper_is_inert_without_a_session(self):
         # The helper is in every document; it only adds the header when the server has told the
         # document it has a session, which a public document never is.
@@ -119,6 +128,18 @@ class LoginDocument(unittest.TestCase):
         self.assertIn('for="pw"', page)
         self.assertNotIn('id="feed"', page)
 
+    def test_login_uses_saved_theme_without_adding_dashboard_controls(self):
+        page = admin_page.login_page()
+        self.assertIn("localStorage.getItem('tbn-theme')", page)
+        self.assertIn('html[data-theme="dark"]', page)
+        self.assertIn('html[data-theme="light"]', page)
+        self.assertNotIn('id="theme-toggle"', page)
+        self.assertNotIn('id="feed"', page)
+        noted = admin_page.login_page("Try again")
+        note_script = noted.index("document.querySelector('#msg').textContent=\"Try again\"")
+        self.assertGreater(note_script, noted.index("</form>"))
+        self.assertLess(note_script, noted.index("</body>"))
+
     def test_the_login_document_is_small(self):
         self.assertLess(len(admin_page.login_page()), 4000,
                         "a login page that carries the dashboard is the bug this guards")
@@ -136,6 +157,8 @@ class OperatorDocument(unittest.TestCase):
             self.assertIn(marker, page, "the operator page needs " + marker)
         self.assertIn("window.__ADMIN__=true", page)
         self.assertIn('id="feed"', page)
+        self.assertIn('id="theme-toggle"', page)
+        self.assertIn("localStorage.setItem('tbn-theme',next)", page)
         self.assertIn("갱신", page, "the interval control is the point of this page")
 
     def test_operator_edition_uses_reader_palette_and_keeps_controls(self):

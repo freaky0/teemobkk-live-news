@@ -34,6 +34,8 @@ UI_EN = {
     # header
     "connecting": "Connecting",
     "updated": "Updated",
+    "themeDark": "Dark mode",
+    "themeLight": "Light mode",
     "interval": "Refresh",
     "intervalAria": "Refresh interval",
     "sec10": "10s", "sec30": "30s", "min1": "1 min", "min2": "2 min", "min5": "5 min",
@@ -142,6 +144,8 @@ UI_KO = {
     # header
     "connecting": "연결 중",
     "updated": "업데이트",
+    "themeDark": "다크 모드",
+    "themeLight": "일반 모드",
     "interval": "갱신",
     "intervalAria": "갱신 간격",
     "sec10": "10초", "sec30": "30초", "min1": "1분", "min2": "2분", "min5": "5분",

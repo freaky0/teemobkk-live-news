@@ -22,6 +22,7 @@ LOGIN = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>(function(){try{var t=localStorage.getItem('tbn-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}})();</script>
 <meta name="robots" content="noindex">
 <title>관리자 로그인 · TeemoBKK</title>
 <style>
@@ -48,6 +49,11 @@ button[disabled]{opacity:.55;cursor:default}
 @media(prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#151c1b;--surface:#1e2927;
   --text:#edf3f0;--muted:#b1c2bc;--line:#3c4e48;--accent:#89d7cb;--error:#f1a87d}
   button{color:#15201d}}
+html[data-theme="dark"]{color-scheme:dark;--bg:#151c1b;--surface:#1e2927;--text:#edf3f0;
+  --muted:#b1c2bc;--line:#3c4e48;--accent:#89d7cb;--error:#f1a87d}
+html[data-theme="dark"] button:not(.theme-toggle){color:#15201d}
+html[data-theme="light"]{color-scheme:light;--bg:#f8f9f8;--surface:#fff;--text:#192422;
+  --muted:#52625e;--line:#d7dfdc;--accent:#08645d;--error:#a04719}
 </style>
 </head>
 <body>
@@ -85,7 +91,7 @@ def login_page(status_note: str = "") -> str:
     """The login document. `status_note` is set in the page, never echoed into the markup."""
     if not status_note:
         return LOGIN
-    return LOGIN.replace("</script>", "document.querySelector('#msg').textContent=%s;</script>"
+    return LOGIN.replace("</body>", "<script>document.querySelector('#msg').textContent=%s;</script></body>"
                          % _js_string(status_note))
 
 

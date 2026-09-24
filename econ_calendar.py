@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
@@ -392,6 +393,29 @@ def write(path: str) -> int:
     with open(path, "w", encoding="utf-8", newline="\n") as handle:
         handle.write(text)
     return len(text.encode("utf-8"))
+
+
+# The dashboard serves the calendar from /api/calendar, so the build has to be cheap to call
+# repeatedly and must not go blank when the source hiccups. One cached payload per process:
+# rebuilt at most every max_age seconds, and on failure the previous payload is returned.
+_PAYLOAD: dict[str, Any] = {"built_at": 0.0, "payload": None}
+PAYLOAD_MAX_AGE = 300
+
+
+def cached_payload(max_age: int = PAYLOAD_MAX_AGE) -> dict[str, Any]:
+    """The calendar as a dict, rebuilt at most once every max_age seconds."""
+    payload = _PAYLOAD["payload"]
+    if payload is not None and time.monotonic() - _PAYLOAD["built_at"] < max_age:
+        return payload
+    try:
+        fresh = collect()
+    except Exception:
+        if payload is not None:
+            return payload
+        raise
+    _PAYLOAD["built_at"] = time.monotonic()
+    _PAYLOAD["payload"] = fresh
+    return fresh
 
 
 if __name__ == "__main__":
