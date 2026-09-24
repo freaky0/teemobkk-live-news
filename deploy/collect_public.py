@@ -42,6 +42,10 @@ FIELDS = (
     # Filled from the resolution cache, never from the database row: the stored link is the
     # row's identity and stays what the operator's actions address.
     "original_link",
+    # The publisher's own name from the feed, so a reader sees who wrote the story rather than the
+    # collecting query. NULL for rows collected before the column existed; the page falls back to
+    # the hostname of the resolved link.
+    "original_source",
 )
 
 
@@ -63,14 +67,26 @@ def public_row(row: dict[str, Any], cache: dict[str, str] | None = None) -> dict
     summary = str(out.get("summary") or "")
     if len(summary) > SUMMARY_CHARS:
         out["summary"] = summary[:SUMMARY_CHARS].rstrip() + "…"
-    # What the reader clicks. A Google News row is published with the publisher's own URL
-    # beside the aggregator one, so the page can send a reader to the article instead of to
-    # the redirect - and a reader who lands on a story still sees the link the row is filed
-    # under. Rows with no resolution yet keep the stored link only; nothing is invented.
+    # What the reader clicks. A Google News row is published with the publisher's own URL beside the
+    # aggregator one, so the page can send a reader to the article instead of to the redirect - and a
+    # reader who lands on a story still sees the link the row is filed under.
+    #
+    # Three cases, in this order:
+    #   * the current cache has a mapping - it wins, because it comes from Google's own answer;
+    #   * the cache is empty for this link but the row already carries a publisher URL - it is kept,
+    #     and only when `valid_original` verifies it. The publishing job runs against a fresh database
+    #     in CI, so without this a row published as an original on one run would lose its publisher
+    #     URL on the next one and flip back to the redirect;
+    #   * neither holds - the field is dropped, so an unverifiable or Google-pointing value can never
+    #     be republished just because some earlier run wrote it.
     link = str(out.get("link") or "")
-    original = google_news.original_for(link, cache or {})
-    if original and original != link:
-        out["original_link"] = original
+    published_before = str(out.get("original_link") or "")
+    from_cache = str((cache or {}).get(link) or "")
+    if google_news.valid_original(from_cache):
+        out["original_link"] = from_cache
+    elif (google_news.is_aggregator(link) and published_before != link
+          and google_news.valid_original(published_before)):
+        out["original_link"] = published_before
     else:
         out.pop("original_link", None)
     return out

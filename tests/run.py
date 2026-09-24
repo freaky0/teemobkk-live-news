@@ -64,6 +64,7 @@ PYTHON_CHECKS = [
     ("test_hidden.py", ["tests/test_hidden.py"], "숨김·되돌리기 계약", "local"),
     ("test_picks.py", ["tests/test_picks.py"], "Pick 계약", "local"),
     ("test_google_links.py", ["tests/test_google_links.py"], "구글뉴스 원본 링크 계약", "local"),
+    ("test_original_source.py", ["tests/test_original_source.py"], "원출처 이름 표시 계약", "local"),
     ("test_admin_http.py", ["tests/test_admin_http.py"], "관리자 HTTP 게이트", "local"),
     ("test_source_switch.py", ["tests/test_source_switch.py"], "소스 스위치 계약", "local"),
     ("test_filter_rules.py", ["tests/test_filter_rules.py"], "거르는 규칙·학습 계약", "local"),

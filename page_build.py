@@ -33,6 +33,7 @@ from pathlib import Path
 import landing
 import landing_thai
 import category_rules as taxonomy
+import google_news
 import ui_text
 
 ROOT = Path(__file__).resolve().parent
@@ -638,6 +639,14 @@ function verifChip(a){
   if(a.source_type==='official')return '<span class="chip verif off" title="공식 기관이 직접 발표한 문서">공식</span>';
   if(a.source_type==='social')return '<span class="chip verif sns" title="소셜·채널 게시물 — 언론 보도가 아니며 원문 확인이 필요함">SNS</span>';
   return ''}
+// What the reader sees as the source. Once the aggregator link is resolved the story's own
+// publisher is named: the name the feed carried, or the hostname of the resolved link when the feed
+// carried none. `a.source` stays what the source chip and the source pills address, so the label
+// and the filter value are deliberately different things.
+function hostOf(u){try{const h=new URL(u).hostname.toLowerCase().replace(/^www[.]/,'');return h}catch(e){return ''}}
+function srcLabel(a){
+  if(!a.original_link)return a.source||'';
+  return String(a.original_source||'').trim()||hostOf(a.original_link)||a.source||''}
 function card(a,th,lead){
   const tag=V.tag||{};
   const srcOn=tag.k==='src'&&tag.v===a.source;
@@ -645,7 +654,7 @@ function card(a,th,lead){
   return '<article class="card'+(th?' th':'')+(a.fresh?' new':'')+'">'+
     '<div class="meta">'+
       verifChip(a)+
-      '<button type="button" class="'+srcCls+'" data-k="src" data-v="'+esc(a.source)+'" aria-pressed="'+(srcOn?'true':'false')+'">'+esc(a.source)+'</button>'+
+      '<button type="button" class="'+srcCls+'" data-k="src" data-v="'+esc(a.source)+'" aria-pressed="'+(srcOn?'true':'false')+'">'+esc(srcLabel(a))+'</button>'+
       speakChip(a)+
       // Every label the story matched is a chip, and each one filters on its own. Measured over a
       // 24-hour window: 19% of rows carry two labels, 4.7% carry three or more.
@@ -1547,7 +1556,51 @@ def seed_from_db(db_path: str, region: str, want_thai: bool, lang: str,
                 connection.close()
         except sqlite3.Error:
             continue
-    return _seed_cards(_with_picks(db_path, [dict(r) for r in rows]), want_thai, lang, limit)
+    return _seed_cards(_with_publishers(db_path, _with_picks(db_path, [dict(r) for r in rows])),
+                       want_thai, lang, limit)
+
+
+def _original_sources(connection, links: list) -> dict:
+    """{link: publisher name} for these links; empty when the column does not exist yet."""
+    if not links:
+        return {}
+    columns = {row[1] for row in connection.execute("PRAGMA table_info(articles)")}
+    if "original_source" not in columns:
+        return {}
+    marks = ",".join("?" * len(links))
+    rows = connection.execute(
+        "SELECT link, original_source FROM articles WHERE link IN (%s)" % marks, list(links)).fetchall()
+    return {str(link): str(name or "") for link, name in rows}
+
+
+def _with_publishers(db_path: str, rows: list) -> list:
+    """Name the publisher on a seeded row whose aggregator link has been resolved.
+
+    The first screen is in the HTML before any script runs, so it has to say the same thing the
+    scripted cards say: without this the page showed the collecting query ("Google News · ETF") for
+    the moment before the feed loaded and the publisher's name afterwards. Read-only, and a database
+    with no cache table keeps the collection label and loses nothing.
+    """
+    import sqlite3
+    if not rows:
+        return rows
+    links = [str(row.get("link") or "") for row in rows]
+    try:
+        connection = sqlite3.connect("file:%s?mode=ro" % db_path, uri=True)
+        try:
+            resolutions = google_news.load(connection)
+            names = _original_sources(connection, links)
+        finally:
+            connection.close()
+    except sqlite3.Error:
+        return rows
+    for row in rows:
+        link = str(row.get("link") or "")
+        original = resolutions.get(link)
+        if original:
+            row["original_link"] = original
+        row["original_source"] = names.get(link, "")
+    return rows
 
 
 def _with_picks(db_path: str, rows: list[dict]) -> list[dict]:
@@ -1625,7 +1678,7 @@ def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str
         badge = _pick_badge(item)
         rows.append(
             '<article class="card seed' + (" th" if want_thai else "") + '">'
-            '<div class="meta"><span class="chip src">' + html.escape(str(item.get("source") or "")) + '</span>'
+            '<div class="meta"><span class="chip src">' + html.escape(google_news.display_source(item)) + '</span>'
             + chips +
             '<span>' + html.escape(_ict_stamp(item.get("published_at"))) + '</span></div>'
             + badge +

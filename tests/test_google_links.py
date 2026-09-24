@@ -183,6 +183,55 @@ class PublishedRow(unittest.TestCase):
         self.assertEqual(merged[0]["original_link"], PUBLISHER)
         self.assertEqual(collect_public.digest_of(merged), collect_public.digest_of(fresh))
 
+    def test_a_republished_row_keeps_its_publisher_url_when_the_cache_is_empty(self):
+        """The publishing job runs against a fresh database in CI, so its cache is empty every run.
+
+        A row published as an original on one run must not flip back to the redirect on the next
+        one: the row's own verified URL is kept when the cache has nothing to say about the link.
+        """
+        published = collect_public.public_row(article(AGG), {AGG: PUBLISHER})
+        self.assertEqual(published["original_link"], PUBLISHER)
+        published["original_source"] = "Bitcoin Magazine"
+        republished = collect_public.public_row(published, {})
+        self.assertEqual(republished["original_link"], PUBLISHER)
+        # identity is untouched: the aggregator link stays the row's key and the stored source stays
+        # the query the operator's source filter addresses.
+        self.assertEqual(republished["link"], AGG)
+        self.assertEqual(republished["source"], published["source"])
+        self.assertEqual(republished["original_source"], published["original_source"])
+
+    def test_a_google_pointing_original_link_is_never_preserved(self):
+        """No earlier run can make the redirect stick as a publisher URL."""
+        poisoned = collect_public.public_row(article(AGG), {AGG: PUBLISHER})
+        poisoned["original_link"] = "https://news.google.com/rss/articles/CBMiBOUNCE"
+        self.assertNotIn("original_link", collect_public.public_row(poisoned, {}))
+
+    def test_a_malformed_original_link_is_not_preserved(self):
+        poisoned = collect_public.public_row(article(AGG), {AGG: PUBLISHER})
+        for bogus in ("", "not-a-url", "ftp://example.com/a", "javascript:alert(1)"):
+            poisoned["original_link"] = bogus
+            self.assertNotIn("original_link", collect_public.public_row(poisoned, {}), bogus)
+
+    def test_the_current_cache_mapping_wins_over_the_published_one(self):
+        earlier = collect_public.public_row(article(AGG), {AGG: PUBLISHER})
+        fresher = collect_public.public_row(earlier, {AGG: "https://other.example/new-story"})
+        self.assertEqual(fresher["original_link"], "https://other.example/new-story")
+
+    def test_a_republish_with_an_empty_cache_keeps_one_entry_and_the_publisher_url(self):
+        fresh = [collect_public.public_row(article(AGG, title="같은 기사"), {AGG: PUBLISHER})]
+        previous = [dict(fresh[0])]
+        merged = [collect_public.public_row(row, {}) for row in collect_public.merge(previous, fresh)]
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["original_link"], PUBLISHER)
+        self.assertEqual(merged[0]["link"], AGG)
+
+    def test_a_stored_publisher_link_is_not_given_an_original_link(self):
+        """Only an aggregator row needs the extra field; a plain publisher row is left alone."""
+        row = collect_public.public_row(article(PUBLISHER), {AGG: PUBLISHER})
+        self.assertNotIn("original_link", row)
+        row["original_link"] = "https://example.com/leftover"
+        self.assertNotIn("original_link", collect_public.public_row(row, {}))
+
 
 class PageDisplay(unittest.TestCase):
     def test_the_seeded_card_links_to_the_publisher(self):

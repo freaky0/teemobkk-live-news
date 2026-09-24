@@ -169,9 +169,13 @@ def ensure_table(connection: sqlite3.Connection) -> None:
 
 
 def load(connection: sqlite3.Connection) -> dict[str, str]:
-    """Every resolution cached so far, as {aggregator link: publisher url}."""
+    """Every resolution cached so far, as {aggregator link: publisher url}.
+
+    Read-only on purpose: nothing is created here, so a caller may open the database with
+    `mode=ro` (the page builder seeds from a read-only look at the collector's database) and a
+    database that has no cache table yet simply answers with an empty map.
+    """
     try:
-        ensure_table(connection)
         rows = connection.execute("SELECT link, original FROM " + TABLE).fetchall()
     except sqlite3.Error:
         return {}
@@ -196,3 +200,36 @@ def remember(connection: sqlite3.Connection, resolved: dict[str, str]) -> int:
 def original_for(link: str, cached: dict[str, str]) -> str:
     """What the reader should be sent to: the publisher when known, the stored link otherwise."""
     return cached.get(str(link or "")) or str(link or "")
+
+
+def hostname(url: str) -> str:
+    """The website name in a URL, without `www.` - the fallback label when no publisher name is known."""
+    try:
+        host = urllib.parse.urlsplit(str(url or "")).netloc.lower().split("@")[-1].split(":")[0]
+    except ValueError:
+        return ""
+    if host.startswith("www."):
+        host = host[4:]
+    return host
+
+
+def display_source(article: dict) -> str:
+    """The source name a reader is shown.
+
+    Three cases, in this order:
+
+      * the link was not resolved - the stored `source` is all we have, and the reader sees the
+        collection label the row was filed under (this is the state every row starts in);
+      * the link was resolved and the feed told us the publisher's name - show that name;
+      * the link was resolved but the feed carried no publisher name - show the hostname of the
+        verified link, which is still the publisher's own site rather than Google's.
+
+    `source` itself is never written to or replaced: it is the query identity the operator's source
+    filter, the source pills and the push history all address a story by.
+    """
+    stored = str((article or {}).get("source") or "")
+    original = str((article or {}).get("original_link") or "")
+    if not original:
+        return stored
+    name = str((article or {}).get("original_source") or "").strip()
+    return name or hostname(original) or stored

@@ -191,8 +191,15 @@ def parse_rss(payload: bytes, source: str, source_type: str, region: str = "글�
             link = link_node.attrib.get("href", "") if link_node is not None else ""
         summary = first_text(item, ("description", "summary", "{http://www.w3.org/2005/Atom}summary", "{http://www.w3.org/2005/Atom}content"))
         published = first_text(item, ("pubDate", "published", "updated", "{http://www.w3.org/2005/Atom}published", "{http://www.w3.org/2005/Atom}updated"))
+        # Google News names the publisher in <source>, and that name is the only one the feed
+        # carries for the story: the row is filed under the collecting query ("Google News · ETF")
+        # because that is what the source filter addresses, so the publisher name is kept apart in
+        # its own field instead of replacing it. Feeds that carry no <source> leave it empty and the
+        # page falls back to the hostname of the resolved link.
+        original_source = first_text(item, ("source", "{http://www.w3.org/2005/Atom}source"))
         if title and link:
-            output.append(make_article(title, link, summary, parse_date(published), source, source_type, region))
+            output.append(make_article(title, link, summary, parse_date(published), source, source_type,
+                                       region, original_source))
     return output
 
 
@@ -210,7 +217,8 @@ def canonical_link(link: str) -> str:
     return link
 
 
-def make_article(title: str, link: str, summary: str, published: str, source: str, source_type: str, region: str = "글로벌") -> dict[str, Any]:
+def make_article(title: str, link: str, summary: str, published: str, source: str, source_type: str,
+                 region: str = "글로벌", original_source: str = "") -> dict[str, Any]:
     link = canonical_link(link)
     title = re.sub(r"^FinancialJuice:\s*", "", title or "")
     text = f"{title} {summary}".lower()
@@ -251,6 +259,8 @@ def make_article(title: str, link: str, summary: str, published: str, source: st
         "summary": clean_text(summary)[:800],
         "link": link.strip(),
         "source": source,
+        # The publisher's own name from the feed, kept beside `source` rather than replacing it.
+        "original_source": clean_text(original_source),
         "source_type": source_type,
         "region": region,
         "category": category,
@@ -500,6 +510,11 @@ def init_db() -> None:
         columns = {row[1] for row in connection.execute("PRAGMA table_info(articles)")}
         if "categories" not in columns:
             connection.execute("ALTER TABLE articles ADD COLUMN categories TEXT")
+        # The publisher's own name from the feed, for the rows whose Google News link has been
+        # resolved. A database written before this column existed keeps NULL for every old row:
+        # the page then falls back to the hostname of the resolved link, which needs no backfill.
+        if "original_source" not in columns:
+            connection.execute("ALTER TABLE articles ADD COLUMN original_source TEXT")
         # No index on `categories`: the filter is a contains-match, which no index can serve.
         for column in ("published_at", "region", "category", "source", "priority"):
             connection.execute(f"CREATE INDEX IF NOT EXISTS idx_articles_{column} ON articles({column})")
@@ -557,6 +572,7 @@ def insert_articles(articles: list[dict[str, Any]]) -> int:
                 article.get("categories") or [article.get("category", GENERIC_CATEGORY)]),
             article.get("asset", ""), int(article.get("priority", 3)),
             article.get("published_at", ""), article.get("collected_at", ""),
+            article.get("original_source", ""),
         )
         for article in articles
         if article.get("link") and article.get("published_at")
@@ -566,11 +582,31 @@ def insert_articles(articles: list[dict[str, Any]]) -> int:
     with DB_LOCK, db_connect() as connection:
         before = connection.total_changes
         connection.executemany(
-            "INSERT OR IGNORE INTO articles (link, title, summary, source, source_type, region, category, categories, asset, priority, published_at, collected_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT OR IGNORE INTO articles (link, title, summary, source, source_type, region, category, categories, asset, priority, published_at, collected_at, original_source) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             rows,
         )
         inserted = connection.total_changes - before
+        # A row collected before this column existed - or one whose feed had not published a
+        # publisher name yet - carries a blank name, and INSERT OR IGNORE would leave it blank for
+        # good. The name therefore moves one way only: from empty to filled, and only for the row's
+        # own link. Everything else about the row is left alone, and `source` is never part of this
+        # update - it is the query identity the source filter, the source pills and the push history
+        # address a story by, so a publisher name must not be able to rewrite it.
+        backfills = [
+            (str(article.get("original_source") or "").strip(), str(article.get("link") or ""))
+            for article in articles
+            if str(article.get("original_source") or "").strip() and article.get("link")
+        ]
+        if backfills:
+            connection.executemany(
+                "UPDATE articles SET original_source = ? "
+                "WHERE link = ? AND (original_source IS NULL OR TRIM(original_source) = '')",
+                backfills,
+            )
+            filled = connection.total_changes - before - inserted
+            if filled:
+                logging.info("publisher names backfilled: %d", filled)
         # The rules are asked about the stories in the same breath as the insert, so a filtered
         # story is registered and skipped in one transaction and cannot show up in between.
         _record_filter_hits(connection, rows)
