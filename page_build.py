@@ -310,6 +310,75 @@ body.local .card{cursor:auto}
   .tabs{overflow-x:auto}
   .tab{padding:10px 12px;font-size:16px}
 }
+/* The reader edition is a newsroom, not the operator's dark dashboard. Keep all existing
+   controls and their hooks; change only the public reading hierarchy. */
+body.public{
+  color-scheme:light;--bg:#f8f9f8;--panel:#fff;--panel2:#f0f3f2;
+  --text:#192422;--muted:#52625e;--line:#d7dfdc;--line2:#c5d1cd;
+  --accent:#08645d;--thai:#705323;--hot:#9b451f;--official:#25634a;--warn:#a04719;
+  background:var(--bg);font-family:"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
+}
+body.public .bar{background:var(--bg);backdrop-filter:none}
+body.public .bar-in{max-width:1040px;min-height:76px;gap:16px;padding-block:12px}
+body.public .brand{font-size:13px;letter-spacing:-.035em;text-transform:none;font-weight:800;color:var(--text)}
+body.public h1{font-size:26px;line-height:1.25;letter-spacing:-.055em;font-weight:750}
+body.public .stamp{font-size:12px;font-variant-numeric:tabular-nums}
+body.public .wrap{max-width:1040px;padding-top:12px}
+body.public .tabs{margin:8px 0 20px;gap:22px}
+body.public .tab{font-size:15px;padding:12px 2px;color:var(--muted)}
+body.public .tab.active,body.public .tab.th.active{color:var(--text);border-bottom-color:var(--accent)}
+body.public .toolbar{padding:0 0 16px;margin-bottom:12px;border-bottom:1px solid var(--line)}
+body.public input[type=search],body.public select{background:var(--panel);border-radius:4px}
+body.public .qadd,body.public .pill,body.public .trend .tbtn,body.public .langbar a,body.public .langbar b{
+  background:transparent;border-radius:4px;color:var(--muted)}
+body.public .pill.active,body.public .pill.on,body.public .pill.pick.active,
+body.public .trend .tbtn.on{background:var(--text);border-color:var(--text);color:#f8f9f8}
+body.public .pill.pick{border-color:var(--line);color:var(--muted)}
+body.public .pill.th.active,body.public .pill.src.th.active{color:#f8f9f8;border-color:var(--text)}
+body.public .pills{margin-bottom:12px}
+body.public .feed{display:block;margin-top:4px}
+body.public .sec{margin:24px 0 8px;font-size:12px;letter-spacing:.02em;color:var(--text)}
+body.public .card,body.public .card.th,body.public .card.new,body.public .card.lead{
+  background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;
+  box-shadow:none;padding:18px 2px 20px;max-width:none}
+body.public .card.lead{padding-top:24px}
+body.public .card:hover{background:var(--panel)}
+body.public .meta{margin-bottom:7px;gap:7px 10px;font-size:12px;color:var(--muted)}
+body.public .chip,body.public .chip.src,body.public .chip.th,body.public .chip.hot,
+body.public .chip.official,body.public .chip.speak,body.public .chip.verif{
+  background:transparent;border:0;border-radius:0;padding:0;color:var(--muted);font-size:12px}
+body.public .chip.tap{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+body.public .title{font-size:20px;line-height:1.43;letter-spacing:-.035em;font-weight:700;margin-bottom:7px;overflow-wrap:anywhere}
+body.public .card.lead .title{font-size:clamp(22px,2.6vw,29px);line-height:1.35}
+body.public .title a:hover{color:var(--accent)}
+body.public .summary,body.public .cal-n{color:var(--muted);font-size:14px;line-height:1.65}
+body.public .pickbadge{border:0;border-radius:0;padding:0;color:var(--accent)}
+body.public .pickbadge .pnote{color:var(--muted)}
+body.public .empty,body.public .skel{background:var(--panel);border-radius:4px}
+body.public .skel span{background:var(--line)}
+body.public .cal{background:var(--panel);border-radius:4px}
+body.public .cal-row{border-left-color:transparent}
+body.public .foot{max-width:72ch}
+@media(max-width:820px){
+  body.public .bar-in{min-height:0;gap:6px 12px;padding:11px 16px}
+  body.public .bar-in>div:first-child{width:100%}
+  body.public h1{font-size:23px}
+  body.public .spacer{display:none}
+  body.public .stamp{margin-left:auto;text-align:right;font-size:11px}
+  body.public .wrap{padding:8px 16px 28px}
+  body.public .tabs{margin:4px 0 18px;gap:18px}
+  body.public .tab{font-size:14px;white-space:nowrap}
+  body.public .card,body.public .card.th,body.public .card.new{padding:16px 0 18px}
+  body.public .title,body.public .card.lead .title{font-size:19px;line-height:1.45}
+  body.public .summary{font-size:13px}
+}
+@media(prefers-color-scheme:dark){body.public{
+  color-scheme:dark;--bg:#151c1b;--panel:#1e2927;--panel2:#26332f;
+  --text:#edf3f0;--muted:#b1c2bc;--line:#3c4e48;--line2:#53655e;
+  --accent:#89d7cb;--thai:#dec28c;--hot:#efae85;--official:#a3dcc3;--warn:#f1a87d}
+  body.public .pill.active,body.public .pill.on,body.public .pill.pick.active,
+  body.public .trend .tbtn.on,body.public .pill.th.active,body.public .pill.src.th.active{color:#15201d}
+}}
 """
 
 SCRIPT = """\
@@ -344,7 +413,6 @@ const shown=(s,label)=>{const t=String(s==null?'':s).replace(/[&<>"']/g,c=>({'&'
 var V={tab:CFG.wantThai?'thai':'global',cats:[],hours:24,q:'',terms:[],limit:PAGE,tag:null,mode:'all',value:'',offset:0,pickOnly:false};
 var MEM={},LATEST={},PENDING={},INDEX={},SEEN={},FULL={},DATA={articles:[],sources:{},total:0,has_more:false};
 var archiveTotal=0,refreshTimer=null,hidden=false,lastRegion={};
-if(CFG.wantThai)document.title=document.title.replace('Live News','Live News · 태국 소식');
 try{const s=localStorage.getItem(CACHE_KEY);if(s){const p=JSON.parse(s);if(p&&p.articles)DATA=p}}catch(e){}
 
 function region(){return V.tab==='thai'?'태국':'글로벌'}
@@ -1518,7 +1586,17 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
           '<meta property="og:type" content="website">\n'
           '<meta property="og:image" content="' + icon_prefix + 'og-image.png">\n'
           '<meta name="twitter:card" content="summary_large_image">\n')
-    title = "TeemoBKK Live News" + (" · 태국 소식" if want_thai else "")
+    reader_names = {
+        "ko": ("오늘의 시장", "태국의 오늘"),
+        "en": ("Market Today", "Thailand Today"),
+        "th": ("ตลาดวันนี้", "ข่าวไทยวันนี้"),
+    }
+    reader_name = reader_names.get(lang, reader_names["en"])[int(want_thai)]
+    title = "TeemoBKK Live News" + (" · 태국 소식" if want_thai else "") if admin else f"{reader_name} | TeemoBKK"
+    heading = "실시간 뉴스 대시보드" if admin else reader_name
+    brand = "TeemoBKK Live News" if admin else "TeemoBKK"
+    if not admin:
+        og = og.replace('content="TeemoBKK Live News"', f'content="{reader_name} | TeemoBKK"')
     # Back to the section that introduced this dashboard.
     home = "/thai/" if want_thai else "/"
     langbar = _langbar(lang, alt)
@@ -1542,12 +1620,12 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
 <style>
 {CSS}</style>
 </head>
-<body class="{"public" if public else "local"}">
+<body class="{"local" if admin else "public"}">
 <header class="bar">
   <div class="bar-in">
     <div>
-      <a class="brand" href="{home}">TeemoBKK Live News</a>
-      <h1>실시간 뉴스 대시보드</h1>
+      <a class="brand" href="{home}">{brand}</a>
+      <h1>{heading}</h1>
     </div>
     <div class="spacer"></div>
     {langbar}

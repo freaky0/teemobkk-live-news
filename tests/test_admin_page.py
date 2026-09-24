@@ -63,6 +63,17 @@ class PublicDocument(unittest.TestCase):
         self.assertIn("window.__PUBLIC__", page + "window.__PUBLIC__",
                       "the flag the collector injects has a place to land")
 
+    def test_reader_edition_has_a_distinct_name_and_theme(self):
+        korean = public_document(lang="ko")
+        self.assertIn('<body class="public">', korean)
+        self.assertIn('<title>오늘의 시장 | TeemoBKK</title>', korean)
+        self.assertIn('<h1>오늘의 시장</h1>', korean)
+        self.assertIn('body.public .feed{display:block', korean)
+        thai = public_document(lang="ko", want_thai=True)
+        self.assertIn('<h1>태국의 오늘</h1>', thai)
+        english = public_document()
+        self.assertIn('<h1>Market Today</h1>', english)
+
     def test_the_write_helper_is_inert_without_a_session(self):
         # The helper is in every document; it only adds the header when the server has told the
         # document it has a session, which a public document never is.

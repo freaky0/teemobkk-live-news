@@ -22,4 +22,11 @@ class LandingContract(unittest.TestCase):
         self.assertIn('무료 공개', text)
         self.assertIn('태국 소식', text)
 
+    def test_the_homepage_keeps_news_readable_on_phones(self):
+        page = landing.render_landing()
+        self.assertNotIn('class="marq"', page)
+        self.assertNotIn('class="pointer-light"', page)
+        self.assertIn('.news-list{display:block;width:auto;animation:none;overflow:visible}', page)
+        self.assertIn('트레이딩을 위한</i></span> <span', page)
+
 if __name__=='__main__': unittest.main()
