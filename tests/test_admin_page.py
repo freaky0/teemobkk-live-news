@@ -86,6 +86,7 @@ class PublicDocument(unittest.TestCase):
         self.assertIn('html[data-theme="light"] body.public .trend .tbtn.on', page)
         self.assertIn('html[data-theme="light"] body.public .conds .cbtn:not(.kw)', page)
         self.assertIn('html[data-theme="light"] body.public .pill.pick.active', page)
+        self.assertIn('body.public .foot{max-width:none}', page)
         self.assertIn('background:var(--panel2);border-color:var(--accent);color:var(--text)', page)
         self.assertIn('href="/privacy/en/"', page)
         korean = public_document(lang="ko")
@@ -181,6 +182,7 @@ class OperatorDocument(unittest.TestCase):
         self.assertIn('html[data-theme="dark"] body.local .bar', page)
         self.assertIn('html[data-theme="light"] body.local .trend .tbtn.on', page)
         self.assertIn('html[data-theme="light"] body.local .conds .cbtn:not(.kw)', page)
+        self.assertIn('body.local .foot{max-width:none}', page)
         for marker in OPERATOR_MARKERS:
             self.assertIn(marker, page)
 

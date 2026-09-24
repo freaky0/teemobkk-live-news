@@ -360,7 +360,7 @@ body.public .empty,body.public .skel{background:var(--panel);border-radius:4px}
 body.public .skel span{background:var(--line)}
 body.public .cal{background:var(--panel);border-radius:4px}
 body.public .cal-row{border-left-color:transparent}
-body.public .foot{max-width:72ch}
+body.public .foot{max-width:none}
 @media(max-width:820px){
   body.public .bar-in{min-height:0;gap:6px 12px;padding:11px 16px}
   body.public .bar-in>div:first-child{width:100%}
@@ -430,7 +430,7 @@ body.local .sw[aria-checked="true"]{background:var(--panel2)}
 body.local .sw[aria-checked="true"] .knob{background:var(--accent)}
 body.local .cal-row{border-left-color:transparent}
 body.local .skel span{background:var(--line)}
-body.local .foot{max-width:72ch}
+body.local .foot{max-width:none}
 @media(min-width:1001px){body.local:not(.tab-cal) .layout{grid-template-columns:minmax(0,1fr) 280px}}
 @media(max-width:820px){
   body.local .bar-in{min-height:0;gap:6px 12px;padding:11px 16px}
