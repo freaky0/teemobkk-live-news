@@ -81,6 +81,9 @@ class PublicDocument(unittest.TestCase):
         self.assertIn("localStorage.setItem('tbn-theme',next)", page)
         self.assertIn('html[data-theme="dark"] body.public', page)
         self.assertIn('html[data-theme="light"] body.public', page)
+        self.assertIn('html[data-theme="light"] body.public .bar', page)
+        self.assertIn('html[data-theme="dark"] body.public .bar', page)
+        self.assertIn('background:var(--bg);color:var(--text);backdrop-filter:none', page)
         self.assertIn('aria-pressed="false"', page)
 
     def test_the_write_helper_is_inert_without_a_session(self):
@@ -168,6 +171,8 @@ class OperatorDocument(unittest.TestCase):
         self.assertIn('body.local .feed{display:block', page)
         self.assertIn('body.local .side{display:grid', page)
         self.assertIn('body.local:not(.tab-cal) .layout', page)
+        self.assertIn('html[data-theme="light"] body.local .bar', page)
+        self.assertIn('html[data-theme="dark"] body.local .bar', page)
         for marker in OPERATOR_MARKERS:
             self.assertIn(marker, page)
 

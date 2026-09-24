@@ -463,6 +463,9 @@ html[data-theme="light"] body.public,html[data-theme="light"] body.local{
   color-scheme:light;--bg:#f8f9f8;--panel:#fff;--panel2:#f0f3f2;
   --text:#192422;--muted:#52625e;--line:#d7dfdc;--line2:#c5d1cd;
   --accent:#08645d;--thai:#705323;--hot:#9b451f;--official:#25634a;--warn:#a04719}
+html[data-theme="dark"] body.public .bar,html[data-theme="dark"] body.local .bar,
+html[data-theme="light"] body.public .bar,html[data-theme="light"] body.local .bar{
+  background:var(--bg);color:var(--text);backdrop-filter:none}
 """
 
 THEME_SCRIPT = """\
