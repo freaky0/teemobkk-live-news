@@ -587,12 +587,14 @@ def render(item: dict[str, Any], title: str, body: str, note: str,
     if clean_tags:
         lines.extend(["", "관련 : " + " ".join("#" + html.escape(tag, quote=False) for tag in clean_tags[:4])])
     stamp = when(item)
-    link = str(item.get("link") or "").strip() or "원문 확인 필요"
+    link = str(item.get("original_link") or item.get("link") or "").strip() or "원문 확인 필요"
     safe_link = html.escape(link, quote=True)
+    source_label = "구글 뉴스(원문 미확인)" if google_news.is_aggregator(link) else "출처"
+    safe_source_label = html.escape(source_label, quote=False)
     if stamp:
-        lines.append('출처: <a href="%s">출처</a> | %s %s' % (safe_link, stamp, TZ_NAME))
+        lines.append('출처: <a href="%s">%s</a> | %s %s' % (safe_link, safe_source_label, stamp, TZ_NAME))
     else:
-        lines.append('출처: <a href="%s">출처</a>' % safe_link)
+        lines.append('출처: <a href="%s">%s</a>' % (safe_link, safe_source_label))
     safe_channel_link = html.escape(CHANNEL_LINK, quote=True)
     lines.append('<a href="%s">TeemoBKK 라이브 뉴스</a>' % safe_channel_link)
     return "\n".join(lines)[:LINK_CHARS]
