@@ -25,24 +25,34 @@ LOGIN = """<!doctype html>
 <meta name="robots" content="noindex">
 <title>관리자 로그인 · TeemoBKK</title>
 <style>
-html{background:#05070d;color:#e8eefc}
-body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
-  font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
-form{width:100%;max-width:340px;background:#0b1120;border:1px solid #1e2a45;border-radius:14px;padding:22px}
-h1{margin:0 0 4px;font-size:16px;letter-spacing:-.01em}
-p.note{margin:0 0 16px;color:#8b9bbd;font-size:13px}
-label{display:block;font-size:12px;color:#8b9bbd;margin-bottom:6px}
-input{width:100%;box-sizing:border-box;padding:11px 12px;border-radius:9px;border:1px solid #1e2a45;
-  background:#070c16;color:#e8eefc;font-size:15px}
-input:focus{outline:none;border-color:#2f7fd8}
-button{margin-top:14px;width:100%;padding:11px;border:0;border-radius:9px;background:#2f7fd8;color:#fff;
-  font-size:15px;font-weight:600;cursor:pointer}
+:root{color-scheme:light;--bg:#f8f9f8;--surface:#fff;--text:#192422;--muted:#52625e;
+  --line:#d7dfdc;--accent:#08645d;--error:#a04719}
+*{box-sizing:border-box}
+html{background:var(--bg);color:var(--text)}
+body{margin:0;min-height:100dvh;display:grid;place-items:center;padding:24px;
+  font:15px/1.6 "Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif}
+form{width:100%;max-width:380px;background:var(--surface);border:1px solid var(--line);
+  border-radius:4px;padding:28px}
+.brand{display:block;margin-bottom:28px;font-size:14px;font-weight:800;letter-spacing:-.04em}
+h1{margin:0 0 4px;font-size:26px;line-height:1.3;letter-spacing:-.055em}
+p.note{margin:0 0 26px;color:var(--muted);font-size:13px}
+label{display:block;font-size:13px;color:var(--text);font-weight:600;margin-bottom:8px}
+input{width:100%;padding:11px 12px;border-radius:4px;border:1px solid var(--line);
+  background:var(--surface);color:var(--text);font-size:15px}
+input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button{margin-top:16px;width:100%;min-height:44px;padding:10px;border:1px solid var(--accent);
+  border-radius:4px;background:var(--accent);color:#f8f9f8;font-size:15px;font-weight:700;cursor:pointer}
+button:hover{filter:brightness(.88)}
 button[disabled]{opacity:.55;cursor:default}
-#msg{margin-top:12px;font-size:13px;color:#ff9d9d;min-height:18px}
+#msg{margin-top:12px;font-size:13px;color:var(--error);min-height:18px}
+@media(prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#151c1b;--surface:#1e2927;
+  --text:#edf3f0;--muted:#b1c2bc;--line:#3c4e48;--accent:#89d7cb;--error:#f1a87d}
+  button{color:#15201d}}
 </style>
 </head>
 <body>
 <form id="f">
+  <span class="brand">TeemoBKK</span>
   <h1>관리자 로그인</h1>
   <p class="note">TeemoBKK 라이브 뉴스 관리자 영역입니다.</p>
   <label for="pw">비밀번호</label>

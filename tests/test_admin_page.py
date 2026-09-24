@@ -110,6 +110,15 @@ class LoginDocument(unittest.TestCase):
             self.assertNotIn(marker, page, "the login page must be nothing else: " + marker)
         self.assertNotIn("실시간 뉴스 대시보드", page, "no dashboard furniture either")
 
+    def test_login_matches_reader_palette_without_dashboard_markup(self):
+        page = admin_page.login_page()
+        self.assertIn('<span class="brand">TeemoBKK</span>', page)
+        self.assertIn('--bg:#f8f9f8', page)
+        self.assertIn('--accent:#08645d', page)
+        self.assertIn('prefers-color-scheme:dark', page)
+        self.assertIn('for="pw"', page)
+        self.assertNotIn('id="feed"', page)
+
     def test_the_login_document_is_small(self):
         self.assertLess(len(admin_page.login_page()), 4000,
                         "a login page that carries the dashboard is the bug this guards")
@@ -128,6 +137,16 @@ class OperatorDocument(unittest.TestCase):
         self.assertIn("window.__ADMIN__=true", page)
         self.assertIn('id="feed"', page)
         self.assertIn("갱신", page, "the interval control is the point of this page")
+
+    def test_operator_edition_uses_reader_palette_and_keeps_controls(self):
+        page = admin_page.operator_page()
+        self.assertIn('<body class="local">', page)
+        self.assertIn('body.public,body.local{', page)
+        self.assertIn('body.local .feed{display:block', page)
+        self.assertIn('body.local .side{display:grid', page)
+        self.assertIn('body.local:not(.tab-cal) .layout', page)
+        for marker in OPERATOR_MARKERS:
+            self.assertIn(marker, page)
 
     def test_the_flag_lands_before_anything_reads_it(self):
         page = admin_page.operator_page()

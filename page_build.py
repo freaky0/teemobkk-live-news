@@ -310,9 +310,8 @@ body.local .card{cursor:auto}
   .tabs{overflow-x:auto}
   .tab{padding:10px 12px;font-size:16px}
 }
-/* The reader edition is a newsroom, not the operator's dark dashboard. Keep all existing
-   controls and their hooks; change only the public reading hierarchy. */
-body.public{
+/* Reader and operator share the editorial palette; operator controls keep their own layout. */
+body.public,body.local{
   color-scheme:light;--bg:#f8f9f8;--panel:#fff;--panel2:#f0f3f2;
   --text:#192422;--muted:#52625e;--line:#d7dfdc;--line2:#c5d1cd;
   --accent:#08645d;--thai:#705323;--hot:#9b451f;--official:#25634a;--warn:#a04719;
@@ -372,13 +371,81 @@ body.public .foot{max-width:72ch}
   body.public .title,body.public .card.lead .title{font-size:19px;line-height:1.45}
   body.public .summary{font-size:13px}
 }
-@media(prefers-color-scheme:dark){body.public{
+@media(prefers-color-scheme:dark){body.public,body.local{
   color-scheme:dark;--bg:#151c1b;--panel:#1e2927;--panel2:#26332f;
   --text:#edf3f0;--muted:#b1c2bc;--line:#3c4e48;--line2:#53655e;
   --accent:#89d7cb;--thai:#dec28c;--hot:#efae85;--official:#a3dcc3;--warn:#f1a87d}
   body.public .pill.active,body.public .pill.on,body.public .pill.pick.active,
   body.public .trend .tbtn.on,body.public .pill.th.active,body.public .pill.src.th.active{color:#15201d}
 }}
+/* The signed-in workspace uses the same reading language without hiding operator actions. */
+body.local .bar{background:var(--bg);backdrop-filter:none}
+body.local .bar-in{max-width:1040px;min-height:76px;gap:16px;padding-block:12px}
+body.local .brand{font-size:13px;letter-spacing:-.035em;text-transform:none;font-weight:800;color:var(--text)}
+body.local h1{font-size:26px;line-height:1.25;letter-spacing:-.055em;font-weight:750}
+body.local .stamp{font-size:12px;font-variant-numeric:tabular-nums}
+body.local .wrap{max-width:1040px;padding-top:12px}
+body.local .tabs{margin:8px 0 20px;gap:22px}
+body.local .tab{font-size:17px;padding:12px 2px;color:var(--muted)}
+body.local .tab.active,body.local .tab.th.active{color:var(--text);border-bottom-color:var(--accent)}
+body.local .toolbar{padding:0 0 16px;margin-bottom:12px;border-bottom:1px solid var(--line)}
+body.local input[type=search],body.local select,body.local .frow input{
+  background:var(--panel);border-color:var(--line);border-radius:4px}
+body.local #logout,body.local .qadd,body.local .pill,body.local .trend .tbtn,
+body.local .langbar a,body.local .langbar b{border-radius:4px;color:var(--muted)}
+body.local .pill.active,body.local .pill.on,body.local .pill.pick.active,
+body.local .trend .tbtn.on{background:var(--text);border-color:var(--text);color:var(--bg)}
+body.local .pill.pick{border-color:var(--line);color:var(--muted)}
+body.local .pill.th.active,body.local .pill.src.th.active{border-color:var(--text);color:var(--bg)}
+body.local .pills{margin-bottom:12px}
+body.local .feed{display:block;margin-top:4px}
+body.local .sec{margin:24px 0 8px;font-size:12px;letter-spacing:.02em;color:var(--text)}
+body.local .card,body.local .card.th,body.local .card.new,body.local .card.lead{
+  background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;
+  box-shadow:none;padding:18px 2px 20px;max-width:none}
+body.local .card.lead{padding-top:24px}
+body.local .meta{margin-bottom:7px;gap:7px 10px;font-size:12px;color:var(--muted)}
+body.local .chip,body.local .chip.src,body.local .chip.th,body.local .chip.hot,
+body.local .chip.official,body.local .chip.speak,body.local .chip.verif{
+  background:transparent;border:0;border-radius:0;padding:0;color:var(--muted);font-size:12px}
+body.local .chip.tap{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+body.local .title{font-size:20px;line-height:1.43;letter-spacing:-.035em;font-weight:700;margin-bottom:7px;overflow-wrap:anywhere}
+body.local .card.lead .title{font-size:clamp(22px,2.6vw,29px);line-height:1.35}
+body.local .summary,body.local .cal-n{color:var(--muted);font-size:14px;line-height:1.65}
+body.local .open,body.local .expand,body.local .acts .hide{color:var(--accent)}
+body.local .pickbadge{border:0;border-radius:0;padding:0;color:var(--accent)}
+body.local .pickbadge .pnote{color:var(--muted)}
+body.local .layout{grid-template-columns:minmax(0,1fr);gap:32px}
+body.local .side{display:grid;align-content:start;gap:16px}
+body.local .box,body.local .cal,body.local .empty,body.local .skel{
+  background:var(--panel);border-color:var(--line);border-radius:4px}
+body.local .box{padding:16px}
+body.local .box h2{text-transform:none;letter-spacing:-.01em;color:var(--text);font-size:15px}
+body.local .source .ok{color:var(--official)}
+body.local .source .bad{color:var(--hot)}
+body.local .sw[aria-checked="true"]{background:var(--panel2)}
+body.local .sw[aria-checked="true"] .knob{background:var(--accent)}
+body.local .cal-row{border-left-color:transparent}
+body.local .skel span{background:var(--line)}
+body.local .foot{max-width:72ch}
+@media(min-width:1001px){body.local:not(.tab-cal) .layout{grid-template-columns:minmax(0,1fr) 280px}}
+@media(max-width:820px){
+  body.local .bar-in{min-height:0;gap:6px 12px;padding:11px 16px}
+  body.local .bar-in>div:first-child{width:100%}
+  body.local h1{font-size:23px}
+  body.local .spacer{display:none}
+  body.local .stamp{margin-left:auto;text-align:right;font-size:11px}
+  body.local .wrap{padding:8px 16px 28px}
+  body.local .tabs{margin:4px 0 18px;gap:18px}
+  body.local .tab{font-size:14px;white-space:nowrap}
+  body.local .card,body.local .card.th,body.local .card.new{padding:16px 0 18px}
+  body.local .title,body.local .card.lead .title{font-size:19px;line-height:1.45}
+  body.local .summary{font-size:13px}
+}
+@media(prefers-color-scheme:dark){
+  body.local .pill.active,body.local .pill.on,body.local .pill.pick.active,
+  body.local .trend .tbtn.on,body.local .pill.th.active,body.local .pill.src.th.active{color:#15201d}
+}
 """
 
 SCRIPT = """\
