@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -21,6 +22,7 @@ ROOT = HERE.parent
 sys.path.insert(0, str(ROOT))
 
 import category_rules  # noqa: E402
+import google_news  # noqa: E402
 import live_news_dashboard as core  # noqa: E402  (path is set just above)
 import page_build  # noqa: E402
 
@@ -37,13 +39,16 @@ PAGE_SIZE = 1000
 FIELDS = (
     "title", "link", "summary", "published_at",
     "source", "source_type", "category", "categories", "priority",
+    # Filled from the resolution cache, never from the database row: the stored link is the
+    # row's identity and stays what the operator's actions address.
+    "original_link",
 )
 
 
 SUMMARY_CHARS = 240
 
 
-def public_row(row: dict[str, Any]) -> dict[str, Any]:
+def public_row(row: dict[str, Any], cache: dict[str, str] | None = None) -> dict[str, Any]:
     out: dict[str, Any] = {key: row.get(key) for key in FIELDS}
     out["priority"] = int(out.get("priority") or 3)
     # Every published row leaves here with a list, so the page never has to fall back to a single
@@ -58,6 +63,16 @@ def public_row(row: dict[str, Any]) -> dict[str, Any]:
     summary = str(out.get("summary") or "")
     if len(summary) > SUMMARY_CHARS:
         out["summary"] = summary[:SUMMARY_CHARS].rstrip() + "…"
+    # What the reader clicks. A Google News row is published with the publisher's own URL
+    # beside the aggregator one, so the page can send a reader to the article instead of to
+    # the redirect - and a reader who lands on a story still sees the link the row is filed
+    # under. Rows with no resolution yet keep the stored link only; nothing is invented.
+    link = str(out.get("link") or "")
+    original = google_news.original_for(link, cache or {})
+    if original and original != link:
+        out["original_link"] = original
+    else:
+        out.pop("original_link", None)
     return out
 
 
@@ -154,6 +169,29 @@ def write_thai_page() -> int:
     sizes = page_build.build_public()
     return sizes["docs/thai/index.html"]
 
+def resolve_pending(rows: list[dict[str, Any]], connection, cache: dict[str, str]) -> dict[str, str]:
+    """Resolve a bounded number of aggregator links per run and remember them.
+
+    Bounded on purpose: the publishing job runs on a timer, and the cache fills a little on
+    every run, so a first pass does not sit on thousands of two-request resolutions. A link
+    that cannot be resolved is simply not cached and is tried again on the next run.
+    """
+    budget = max(0, int(os.environ.get("LINK_RESOLVE_PER_RUN", "60")))
+    if not budget:
+        return cache
+    pending = [str(row.get("link") or "") for row in rows
+               if google_news.is_aggregator(str(row.get("link") or ""))
+               and str(row.get("link") or "") not in cache]
+    if not pending:
+        return cache
+    found = google_news.resolve_many(pending, limit=budget)
+    google_news.remember(connection, found)
+    cache.update(found)
+    logging.info("google news links: %d of %d pending resolved, %d cached",
+                 len(found), len(pending), len(cache))
+    return cache
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     core.init_db()
@@ -161,15 +199,22 @@ def main() -> None:
     rows = fetch_window()
     DOCS.mkdir(parents=True, exist_ok=True)
 
+    conn = core.db_connect()
+    try:
+        cache = resolve_pending(rows, conn, google_news.load(conn))
+    finally:
+        conn.close()
+
     now = datetime.now(timezone.utc)
     region_counts: dict[str, int] = {}
     regions: dict[str, dict[str, Any]] = {}
     total = 0
     for region, path in REGION_FILES.items():
-        mine = [public_row(row) for row in rows if str(row.get("region") or core.GLOBAL_REGION) == region]
+        mine = [public_row(row, cache) for row in rows
+                if str(row.get("region") or core.GLOBAL_REGION) == region]
         # Trim again after the merge: rows kept from the previous file were written
         # before the cap existed and would otherwise keep their full-length summaries.
-        articles = [public_row(row) for row in merge(read_articles(path), mine)]
+        articles = [public_row(row, cache) for row in merge(read_articles(path), mine)]
         recent = articles[:RECENT_PER_REGION]
         write_json(path, {
             "region": region,

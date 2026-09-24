@@ -6,6 +6,7 @@ import admin_page
 import category_rules as taxonomy
 import econ_calendar
 import filter_learn
+import google_news
 import bluesky_source
 import sbh_open_news
 import sbh_source
@@ -459,6 +460,30 @@ def db_connect() -> sqlite3.Connection:
     connection.execute("PRAGMA synchronous=NORMAL")
     connection.create_function("kwmatch", 2, _kwmatch, deterministic=True)
     return connection
+
+
+_ORIGINALS: dict[str, Any] = {"loaded_at": 0.0, "map": {}}
+ORIGINALS_TTL_SECONDS = 300
+
+
+def original_links() -> dict[str, str]:
+    """Cached {Google News link: publisher url} for the pages that read the feed.
+
+    The resolution itself happens outside the collector (publish job and the repair tool);
+    here it is only read, at most once every five minutes, so a reader request never waits
+    on Google. A read failure keeps the previous map rather than dropping every link back
+    to the aggregator.
+    """
+    if time.monotonic() - _ORIGINALS["loaded_at"] < ORIGINALS_TTL_SECONDS:
+        return _ORIGINALS["map"]
+    try:
+        with db_connect() as connection:
+            fresh = google_news.load(connection)
+    except sqlite3.Error:
+        return _ORIGINALS["map"]
+    _ORIGINALS["loaded_at"] = time.monotonic()
+    _ORIGINALS["map"] = fresh
+    return fresh
 
 
 def init_db() -> None:
@@ -1339,6 +1364,16 @@ class Handler(BaseHTTPRequestHandler):
                 "picked_only": pick("picked") in ("1", "true", "yes"),
             }
             articles, total, region_counts = self.state.query(**filters, limit=limit, offset=offset)
+            # The reader is sent to the publisher, the operator keeps the stored link: the row's
+            # primary key is the Google News URL, and hide/pick/push all identify a story by it,
+            # so it is never rewritten - the resolved URL rides alongside as `original_link`.
+            cached = original_links()
+            if cached:
+                for article in articles:
+                    link = str(article.get("link") or "")
+                    original = google_news.original_for(link, cached)
+                    if original != link:
+                        article["original_link"] = original
             payload = dict(self.state.snapshot())
             payload.update({
                 "hours": hours, "limit": limit, "offset": offset, "total": total, "returned": len(articles),

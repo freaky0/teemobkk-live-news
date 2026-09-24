@@ -657,7 +657,7 @@ function card(a,th,lead){
     // sits above the headline rather than in the chip row, because it is not a filter over text.
     (a.picked?'<div class="pickbadge">'+PICK_ICON+' '+PICK+
       (a.pick_note?'<span class="pnote">'+esc(a.pick_note)+'</span>':'')+'</div>':'')+
-    '<h2 class="title"'+langAttr(a.lang)+'><a href="'+esc(a.link)+'" target="_blank" rel="noopener nofollow">'+hl(a.title)+'</a></h2>'+
+    '<h2 class="title"'+langAttr(a.lang)+'><a href="'+esc(a.original_link||a.link)+'" target="_blank" rel="noopener nofollow">'+hl(a.title)+'</a></h2>'+
     summaryBlock(a)+
     (CFG.admin?cardActs(a):'')+
   '</article>'}
@@ -1047,7 +1047,7 @@ let HIDE_UNDO=null;
 // The operator's controls on a card. Kept here, inside the marked block, because the labels are
 // Korean and a reader's document carries this same script: the call site is one condition away.
 function cardActs(a){
-  return '<div class="acts"><a class="open" href="'+esc(a.link)+'" target="_blank" rel="noopener nofollow">원문 열기</a>'+
+  return '<div class="acts"><a class="open" href="'+esc(a.original_link||a.link)+'" target="_blank" rel="noopener nofollow">원문 열기</a>'+
     '<button type="button" class="open" data-picklink="'+esc(a.link)+'" data-title="'+esc(a.title||'')+
       '" data-picked="'+(a.picked?'1':'0')+'">'+(a.picked?'Pick 해제':PICK_ICON+' Pick')+'</button>'+
     '<button type="button" class="open hide" data-hide="'+esc(a.link)+'" data-title="'+esc(a.title||'')+'">숨기기</button></div>'}
@@ -1629,7 +1629,7 @@ def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str
             + chips +
             '<span>' + html.escape(_ict_stamp(item.get("published_at"))) + '</span></div>'
             + badge +
-            '<h2 class="title"' + title_attr + '><a href="' + html.escape(str(item.get("link") or ""))
+            '<h2 class="title"' + title_attr + '><a href="' + html.escape(str(item.get("original_link") or item.get("link") or ""))
             + '" target="_blank" rel="noopener nofollow">' + html.escape(title) + '</a></h2>'
             '<p class="summary clamp"' + summary_attr + '>' + html.escape(summary) + '</p>'
             '</article>')

@@ -47,6 +47,7 @@ sys.path.insert(0, str(ROOT))
 
 import live_news_dashboard as core  # noqa: E402  (path is set just above)
 import jev_gate  # noqa: E402
+import google_news  # noqa: E402
 
 ICT = timezone(timedelta(hours=7), name="ICT")
 BOT_API = "https://api.telegram.org/bot%s/%s"
@@ -537,6 +538,22 @@ def merge_tags(written: list[str], stored: list[str],
     return out[:maximum]
 
 
+def attach_original_link(connection: sqlite3.Connection, item: dict[str, Any]) -> str:
+    """Add a verified publisher URL for display without changing the stored story identity."""
+    link = str(item.get("link") or "").strip()
+    if not google_news.is_aggregator(link):
+        return link
+    original = google_news.original_for(link, google_news.load(connection))
+    if original == link:
+        resolved = google_news.resolve(link)
+        if resolved:
+            google_news.remember(connection, {link: resolved})
+            original = resolved
+    if original != link:
+        item["original_link"] = original
+    return original
+
+
 def render(item: dict[str, Any], title: str, body: str, note: str,
            tags: list[str]) -> str:
     """Render the single approved channel shape.
@@ -594,7 +611,7 @@ NOTE_LABEL = "Teemo's Note"
 NOTE_HEAD = re.compile(r"^%s$" % re.escape(NOTE_LABEL))
 RELATED_LINE = re.compile(r"^관련 : #\S+(?: #\S+){0,3}$")
 SOURCE_LINE = re.compile(
-    r'^출처: <a href="[^"]+">출처</a> \| \d{4}-\d{2}-\d{2} '
+    r'^출처: <a href="[^"]+">(?:출처|구글 뉴스\(원문 미확인\))</a> \| \d{4}-\d{2}-\d{2} '
     r'\d{2}:\d{2}:\d{2} ICT$'
 )
 # Reject legacy markdown, raw URL wrappers, and the old English footer.
@@ -694,6 +711,7 @@ def post_parts(connection: sqlite3.Connection, parts: dict[str, Any],
     item = article_row(connection, link)
     if not item:
         return False, "link is not in news.db - verify the original before posting"
+    attach_original_link(connection, item)
     note_here = operator_note(connection, link)
     item["channel_pick"] = bool(parts.get("pick")) or bool(note_here)
     # The same alt-notice gate protects the outbox path. Picks bypass the filter.
@@ -910,6 +928,7 @@ def tick(connection: sqlite3.Connection, now: datetime | None = None, limit: int
         if item.get("channel_pick") and str(item.get("pick_note") or "").strip():
             # A pick carries the operator's own sentence; that outranks a written note.
             note = str(item["pick_note"]).strip()
+        attach_original_link(connection, item)
         text = render(item, title, body, note, tags)
         problems = validate_post(text)
         if problems:

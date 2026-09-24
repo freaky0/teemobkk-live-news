@@ -6,11 +6,13 @@ The channel is fed by the one-minute timer and an optional outbox bridge, but bo
 """
 import json
 import os
+import sqlite3
 import sys
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -96,6 +98,7 @@ class GoldenShape(unittest.TestCase):
 
     def test_golden_sample_passes_the_shape_check(self):
         self.assertEqual([], tg_push.validate_post(GOLDEN))
+
 
     def test_a_pick_gets_its_own_tag(self):
         item = dict(ITEM)
@@ -329,6 +332,42 @@ class OutboxDrain(AgentFixture):
         # triggering until systemd's start limit fails both units.
         self.assertFalse((outbox / "bad.json").exists())
         self.assertTrue((outbox / "failed" / "bad.json").exists())
+
+
+class OriginalPublisherLink(unittest.TestCase):
+    AGGREGATOR = "https://news.google.com/rss/articles/CBMihgFBVV95cUxNRDlVOS1zS05fUkhyWk5ac3NKUG9XN2JD?oc=5"
+    PUBLISHER = "https://www.xportsnews.com/article/2200096"
+
+    def setUp(self):
+        self.connection = sqlite3.connect(":memory:")
+
+    def tearDown(self):
+        self.connection.close()
+
+    def test_cached_publisher_url_is_used_without_changing_story_identity(self):
+        tg_push.google_news.remember(self.connection, {self.AGGREGATOR: self.PUBLISHER})
+        item = {"link": self.AGGREGATOR}
+        self.assertEqual(tg_push.attach_original_link(self.connection, item), self.PUBLISHER)
+        self.assertEqual(item["link"], self.AGGREGATOR)
+        text = tg_push.render({**ITEM, **item}, TITLE, BODY, NOTE, TAGS)
+        self.assertIn('href="%s"' % self.PUBLISHER, text)
+        self.assertNotIn(self.AGGREGATOR, text)
+
+    def test_missing_cache_resolves_and_remembers_verified_publisher(self):
+        item = {"link": self.AGGREGATOR}
+        with patch.object(tg_push.google_news, "resolve", return_value=self.PUBLISHER) as resolve:
+            self.assertEqual(tg_push.attach_original_link(self.connection, item), self.PUBLISHER)
+        resolve.assert_called_once_with(self.AGGREGATOR)
+        self.assertEqual(tg_push.google_news.load(self.connection)[self.AGGREGATOR], self.PUBLISHER)
+
+    def test_failed_resolution_falls_back_to_stored_aggregator_url(self):
+        item = {"link": self.AGGREGATOR}
+        with patch.object(tg_push.google_news, "resolve", return_value=None):
+            self.assertEqual(tg_push.attach_original_link(self.connection, item), self.AGGREGATOR)
+        self.assertNotIn("original_link", item)
+        text = tg_push.render({**ITEM, **item}, TITLE, BODY, NOTE, TAGS)
+        self.assertIn("구글 뉴스(원문 미확인)", text)
+        self.assertEqual([], tg_push.validate_post(text))
 
 
 if __name__ == "__main__":
