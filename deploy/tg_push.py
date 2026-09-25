@@ -150,8 +150,9 @@ PROVIDERS = {
 }
 TRANSLATE_PROVIDER = (os.environ.get("TG_TRANSLATE_PROVIDER") or "openai").strip().lower()
 TRANSLATE_MODEL = os.environ.get("TG_TRANSLATE_MODEL", "").strip()
-SUMMARY_CHARS = env_int("TG_SUMMARY_CHARS", 180)
-BODY_CHARS = env_int("TG_BODY_CHARS", 240)
+SUMMARY_CHARS = env_int("TG_SUMMARY_CHARS", 500)
+BODY_CHARS = env_int("TG_BODY_CHARS", 550)
+NOTE_CHARS = env_int("TG_NOTE_CHARS", 120)
 # `foreign` rewrites only what is not in Korean; `always` puts every post through the editor, so
 # the body/note/tag lines read the same whether the source was Korean or not. The channel format
 # is fixed, and a post that skips the editor is visibly a different shape from the rest.
@@ -171,9 +172,10 @@ SYSTEM_PROMPT = (
     "너는 한국어 텔레그램 속보 채널의 편집자다. 주어진 제목과 요약만 근거로 게시물을 쓴다. 규칙: "
     "① 사실과 숫자는 원문에 있는 것만 쓴다. 없는 수치·기관·인과를 만들지 않는다. "
     "② title: 40자 이내, 사실만. 과장·낚시·이모지 금지. 원문이 한국어면 표현을 살린다. "
-    "③ body: 1~2문장. 원문에 있는 숫자를 그대로 살려 구체적으로 쓴다. 해석·전망은 넣지 않는다. "
-    "④ note: 시장·정책 함의를 한 줄(60자 이내). 원문 수치에 근거해 구체적으로 쓰고 단정하지 않는다"
-    "('~할 수 있다'). 시장과 무관한 사건이면 그 사건이 이어질 다음 단계를 사실에 근거해 짚는다. "
+    "③ body: community-tone-editor 기사 본문처럼 2~4개의 짧은 문단, 총 3~5문장으로 쓴다. "
+    "첫 문단에 핵심 사건·주체·수치·출처 귀속을 담는다. 원문에 없는 해석·전망은 넣지 않는다. "
+    "④ note: 본문에 있는 사실만 바탕으로 해석을 두 문장, 약 100자(최대 120자)로 쓴다. "
+    "시장·정책 함의는 단정하지 말고 가능성으로 표현한다. 본문에 없는 수치·원인·주장을 만들지 않는다. "
     "⑤ tags: 사건·주제·지역을 나타내는 한국어 단어 3개. '#' 없이 단어만. "
     "⑥ 한자·한문을 쓰지 않는다. 회사·기관·인명은 통용 표기. "
     "⑦ 출력은 다른 말 없이 JSON 하나만: {\"title\": \"...\", \"body\": \"...\", \"note\": \"...\", "
@@ -480,7 +482,7 @@ def brief(item: dict[str, Any], title: str, summary: str) -> dict[str, Any] | No
     out = {
         "title": str(data.get("title") or "").strip()[:80],
         "body": clean_body(data.get("body"), BODY_CHARS),
-        "note": re.sub(r"\s+", " ", str(data.get("note") or "")).strip()[:120],
+        "note": re.sub(r"\s+", " ", str(data.get("note") or "")).strip()[:NOTE_CHARS],
         "tags": [str(tag).strip().lstrip("#") for tag in (data.get("tags") or []) if str(tag).strip()],
     }
     if not out["title"]:
@@ -578,7 +580,7 @@ def render(item: dict[str, Any], title: str, body: str, note: str,
     """
     safe_title = html.escape(title, quote=False)
     safe_body = html.escape(body, quote=False)
-    safe_note = html.escape(note.strip() or "원문 추가 확인 필요", quote=False)
+    safe_note = html.escape((note.strip() or "원문 추가 확인 필요")[:NOTE_CHARS], quote=False)
     clean_tags = [str(tag).strip().lstrip("#") for tag in tags if str(tag).strip()]
     lines = ["%s %s" % (pick_tag(item), safe_title)]
     if safe_body:
@@ -723,7 +725,8 @@ def post_parts(connection: sqlite3.Connection, parts: dict[str, Any],
     if not title:
         return False, "no title"
     body = clean_body(parts.get("body"), BODY_CHARS)
-    note = re.sub(r"\s+", " ", str(parts.get("note") or "")).strip()[:120] or note_here
+    note = (re.sub(r"\s+", " ", str(parts.get("note") or "")).strip()[:NOTE_CHARS]
+            or note_here[:NOTE_CHARS])
     if not note:
         return False, "no note"
     tags = merge_tags(parts.get("tags") or [], fallback_tags(item))
@@ -929,7 +932,7 @@ def tick(connection: sqlite3.Connection, now: datetime | None = None, limit: int
             note = ""
         if item.get("channel_pick") and str(item.get("pick_note") or "").strip():
             # A pick carries the operator's own sentence; that outranks a written note.
-            note = str(item["pick_note"]).strip()
+            note = str(item["pick_note"]).strip()[:NOTE_CHARS]
         attach_original_link(connection, item)
         text = render(item, title, body, note, tags)
         problems = validate_post(text)

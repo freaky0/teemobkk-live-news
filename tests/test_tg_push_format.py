@@ -370,5 +370,52 @@ class OriginalPublisherLink(unittest.TestCase):
         self.assertEqual([], tg_push.validate_post(text))
 
 
+class OutputLength(unittest.TestCase):
+    def test_defaults_match_community_body_and_note_targets(self):
+        self.assertEqual(tg_push.SUMMARY_CHARS, 500)
+        self.assertEqual(tg_push.BODY_CHARS, 550)
+        self.assertEqual(tg_push.NOTE_CHARS, 120)
+        self.assertIn("2~4개의 짧은 문단", tg_push.SYSTEM_PROMPT)
+        self.assertIn("두 문장", tg_push.SYSTEM_PROMPT)
+        self.assertIn("약 100자", tg_push.SYSTEM_PROMPT)
+
+    def test_body_and_rendered_note_obey_character_caps(self):
+        body = tg_push.clean_body("가" * 700, tg_push.BODY_CHARS)
+        text = tg_push.render(ITEM, TITLE, body, "노" * 150, TAGS)
+        note = text.split("Teemo's Note\n", 1)[1].split("\n\n", 1)[0]
+        self.assertEqual(len(body), tg_push.BODY_CHARS)
+        self.assertEqual(len(note), tg_push.NOTE_CHARS)
+        self.assertEqual([], tg_push.validate_post(text))
+
+    def test_editor_output_is_clamped_before_it_reaches_any_publish_path(self):
+        response_data = {
+            "choices": [{"message": {"content": json.dumps({
+                "title": TITLE,
+                "body": "가" * 700,
+                "note": "나" * 150,
+                "tags": TAGS,
+            }, ensure_ascii=False)}}]
+        }
+
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self):
+                return json.dumps(response_data, ensure_ascii=False).encode("utf-8")
+
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}), \
+                patch.object(tg_push, "TRANSLATE", True), \
+                patch.object(tg_push, "TRANSLATE_PROVIDER", "openai"), \
+                patch.object(tg_push.urllib.request, "urlopen", return_value=Response()):
+            result = tg_push.brief(ITEM, TITLE, "요약")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result["body"]), tg_push.BODY_CHARS)
+        self.assertEqual(len(result["note"]), tg_push.NOTE_CHARS)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
