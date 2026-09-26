@@ -68,6 +68,7 @@ PYTHON_CHECKS = [
     ("test_dedupe.py", ["tests/test_dedupe.py"], "같은 사건 중복 차단 계약", "local"),
     ("test_admin_http.py", ["tests/test_admin_http.py"], "관리자 HTTP 게이트", "local"),
     ("test_source_switch.py", ["tests/test_source_switch.py"], "소스 스위치 계약", "local"),
+    ("test_source_poll.py", ["tests/test_source_poll.py"], "소스 폴링 주기 계약", "local"),
     ("test_filter_rules.py", ["tests/test_filter_rules.py"], "거르는 규칙·학습 계약", "local"),
     ("probe_english_text.py", ["tools/probe_english_text.py"], "영문 문서 한국어 잔존", "local"),
     ("probe_english_text.py --thai", ["tools/probe_english_text.py", "--thai"], "태국 영문 문서 한국어 잔존", "local"),

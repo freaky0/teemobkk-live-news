@@ -108,6 +108,25 @@ THAI_RSS_SOURCES = [
     ("Matichon", "thai", "https://www.matichon.co.th/feed"),
 ]
 
+
+def poll_plan(turn: int) -> tuple[list[tuple[str, str, str, str]], list[tuple[str, str, str, str]]]:
+    """Which RSS jobs this cycle asks, and which sit the cycle out.
+
+    A source absent from SLOW_SOURCES is asked every single cycle; one in it is asked every Nth
+    cycle. The test of that is `turn % N == 0`, and getting it wrong is silent in a way worth
+    writing down: the interval-1 case divides by 1, so `turn % 1 == 1` never matches - every
+    source without a slower poll was left out of every cycle for six days (2026-09-20 to
+    09-26) while the operator panel carried them as `ok: true, count: 0` under "slower poll:
+    not asked this cycle". Only FinancialJuice, the one source with an interval of 5, was
+    fetched at all.
+    """
+    jobs = [(source, source_type, url, GLOBAL_REGION) for source, source_type, url in RSS_SOURCES]
+    jobs += [(source, source_type, url, THAI_REGION) for source, source_type, url in THAI_RSS_SOURCES]
+    asked = [job for job in jobs if turn % max(1, SLOW_SOURCES.get(job[0], 1)) == 0]
+    sat_out = [job for job in jobs if job not in asked]
+    return asked, sat_out
+
+
 COINNESS_BREAKING_URL = "https://api.coinness.com/feed/v2/breaking-news"
 COINNESS_STOCK_URL = "https://api.coinness.com/feed/v1/stock-breaking-news"
 SBH_SITEMAP_URL = "https://www.sbhnews.com/sitemap.xml"
@@ -1226,14 +1245,11 @@ def query_articles(hours: int = RETENTION_HOURS, region: str = "", category: Any
 def collect_news() -> dict[str, Any]:
     articles: list[dict[str, Any]] = []
     status: dict[str, Any] = {}
-    all_rss_jobs = [(source, source_type, url, GLOBAL_REGION) for source, source_type, url in RSS_SOURCES]
-    all_rss_jobs += [(source, source_type, url, THAI_REGION) for source, source_type, url in THAI_RSS_SOURCES]
     # A source on a slower poll is left out of this cycle entirely; its previous status is carried
     # over below, so the operator's panel shows the last real answer instead of a false failure.
     _cycle["count"] += 1
     turn = _cycle["count"]
-    rss_jobs = [job for job in all_rss_jobs if turn % SLOW_SOURCES.get(job[0], 1) == 1]
-    held_over = [job for job in all_rss_jobs if job not in rss_jobs]
+    rss_jobs, held_over = poll_plan(turn)
     google_jobs = [(source, query, GLOBAL_REGION, ()) for source, query in GOOGLE_QUERIES]
     google_jobs += [(source, query, THAI_REGION, terms) for source, query, terms in THAI_GOOGLE_QUERIES]
 
