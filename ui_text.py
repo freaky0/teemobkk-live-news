@@ -111,9 +111,9 @@ UI_EN = {
                       "breaking lines are not treated as confirmed until an official release "
                       "or the original text is checked."),
     "guideThaiH2": "Thailand",
-    "guideThaiP1": ("Bangkok Post, Khaosod, Thai Enquirer and Prachatai in English; Thairath "
-                    "and Matichon in Thai; Google News searches for Thailand, Bangkok and "
-                    "Korean residents."),
+    "guideThaiP1": ("Bangkok Post, Khaosod, Thai Enquirer, Prachatai, The Thaiger and ASEAN NOW in "
+                    "English; Thairath, Matichon, MGR Online, Prachachat and The Standard in Thai; "
+                    "Google News searches for Thailand, Bangkok and Korean residents."),
     "guideThaiP2": ("Visa and immigration, accidents and disasters come first, and unconfirmed "
                     "lines are not stated as fact before the source is checked."),
     "trendLabel": "Trending now",
@@ -219,8 +219,9 @@ UI_KO = {
     "guideGlobalP2": ("뉴스 사실과 시장 해석을 분리합니다. X 게시물과 속보는 공식 발표나 "
                       "원문 확인 전까지 확정 사실로 취급하지 않습니다."),
     "guideThaiH2": "태국 소식",
-    "guideThaiP1": ("방콕포스트·카오솟·타이인콰이어러·프라차타이(영문), 타이랏·마티촌(태국어), "
-                    "구글뉴스 태국·방콕·교민 검색을 모읍니다."),
+    "guideThaiP1": ("방콕포스트·카오솟·타이인콰이어러·프라차타이·더타이거·아세안나우(영문), "
+                    "타이랏·마티촌·MGR·프라차차트·더스탠다드(태국어), 구글뉴스 태국·방콕·교민 검색을 "
+                    "모읍니다."),
     "guideThaiP2": ("비자·이민과 사고·재난을 우선 표시하며, 확정되지 않은 속보는 원문 확인 "
                     "전까지 단정하지 않습니다."),
     "trendLabel": "지금 뜨는 키워드",

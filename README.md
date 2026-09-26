@@ -16,8 +16,9 @@
 - 미국 증권거래위원회와 연방준비제도 RSS
 
 ### 태국 소식
-- 영문 매체: Bangkok Post(종합·경제), Khaosod English, Thai Enquirer, Prachatai English
-- 태국어 매체: Thairath, Matichon
+- 영문 매체: Bangkok Post(종합·경제·속보), Khaosod English, Thai Enquirer, Prachatai English, The Thaiger, The Pattaya News, Chiang Rai Times, Thai Examiner, Kaohoon International, ASEAN NOW Thailand, TAT Newsroom, Phuket Express, Hua Hin Today
+- 태국어 매체: Thairath, Matichon, MGR Online, Prachachat, The Standard, Thaiger Thai
+- 채택은 배포 호스트에서 직접 실측한 하루 발행량과 순증(이미 창에 있던 기사를 뺀 값)을 근거로 정한다 — 후보·차단·죽은 피드 목록과 실측값은 `live_news_dashboard.py` 의 `THAI_RSS_SOURCES` 주석에 있다
 - Google News 검색 RSS: Thailand, Bangkok, 태국(한국어, 태국 관련 항목만 통과)
 - 저품질·비태국 매체 제외 목록 적용
 

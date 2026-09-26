@@ -22,6 +22,7 @@ sys.path.insert(0, ROOT)
 
 import admin_page  # noqa: E402
 import page_build  # noqa: E402
+import ui_text  # noqa: E402
 
 OPERATOR_MARKERS = ('id="interval"', 'id="logout"', 'id="sources"', 'id="hidden"', 'id="undobar"',
                     'data-hide=')
@@ -203,6 +204,20 @@ class OperatorDocument(unittest.TestCase):
         self.assertIn('<html lang="ko">', page)
         self.assertIn("실시간 뉴스 대시보드", page)
         self.assertNotIn("Trending now", page)
+
+    def test_the_guide_paragraph_is_translatable(self):
+        """The guide text exists twice - in the string table and inline in the page source.
+
+        The English document is built by replacing the Korean phrase with the English one
+        (`localize`), so a change to only one of the two copies leaves Korean text on the English
+        page. Changing the Thailand guide's source list in `ui_text` alone did exactly that, and the
+        gate's `probe_english_text.py` reported it. This check fails on the cause, not the symptom.
+        """
+        source = (page_build.ROOT / "page_build.py").read_text(encoding="utf-8")
+        for key in ("guideGlobalP1", "guideGlobalP2", "guideThaiP1", "guideThaiP2"):
+            korean = ui_text.UI["ko"][key]
+            self.assertIn(korean, source, "%s 의 한국어 문구가 페이지 소스에 없다" % key)
+            self.assertNotEqual(korean, ui_text.UI["en"][key], "%s 의 영문 문구가 한국어와 같다" % key)
 
 
 if __name__ == "__main__":

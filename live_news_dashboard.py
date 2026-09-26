@@ -98,14 +98,50 @@ _cycle = {"count": 0}
 SLOW_SOURCES = {"FinancialJuice": 5}
 
 # 태국 교민용 일반 뉴스. 영문 매체와 태국어 매체를 함께 수집한다.
+#
+# 후보는 2026-09-26에 배포 호스트에서 직접 실측했다(VPS에서 60초마다 가져오는 입장이 기준 —
+# 집에서는 200인데 호스트에서 403인 곳이 여럿이라 시험 위치가 결과를 바꾼다). 각 줄의 숫자는
+# 하루 발행량 / 그중 이미 창에 있던 기사 / 순증이다. 24시간 동안의 실측:
+#
+#   태국어 매체  MGR Online 20/0/20 · Prachachat 30/0/30 · The Standard 20/0/20 ·
+#                Thaiger Thai 20/0/20
+#   교민·영문    ASEAN NOW Thailand 15/0/15 · The Thaiger 8/1/7 · The Pattaya News 8/0/8 ·
+#                Chiang Rai Times 10/0/10 · Thai Examiner 5/0/5 · Kaohoon International 10/0/10
+#   생활·지역    TAT Newsroom 1/0/1 · Phuket Express 1/0/1 · Hua Hin Today (느림) ·
+#                Bangkok Post Breaking 10/8/2
+#
+# 영문 태국 매체는 Google News와 크게 겹친다(Bangkok Post는 10건이 10건 모두 이미 창에 있었다).
+# 순증이 작은 곳은 그래도 태국 탭의 출처가 Google News 한 곳뿐이던 상태를 깨는 값이 있고,
+# 태국어 매체는 겹침이 0이다 - 중복 판정 키가 태국 문자를 지워 빈 키가 되기 때문이며,
+# 이는 중복 차단이 태국어 기사에는 사실상 걸리지 않는다는 뜻이기도 하다.
+#
+# 호스트에서 막혀 못 넣은 곳(집에서는 200): Thairath(403, 아래 기존 줄), khaosod.co.th(401),
+# kaohoon.com(403), tnnthailand.com(403), immigration.go.th·disaster.go.th·bangkok.go.th(403),
+# pattayamail.com(양쪽 403). tmd.go.th·air4thai.pcd.go.th는 인증서가 깨져 있다.
+# 죽은 피드: Coconuts Bangkok(최신 829일 전), Chiang Mai Citylife(1143일), Isaan Record(5567일),
+# Nation Thailand(RSS 없음), Thai PBS World(파싱 불가), BenarNews·Phuket News·Samui Times(404).
 THAI_RSS_SOURCES = [
     ("Bangkok Post", "thai", "https://www.bangkokpost.com/rss/data/topstories.xml"),
     ("Bangkok Post Business", "thai", "https://www.bangkokpost.com/rss/data/business.xml"),
+    ("Bangkok Post Breaking", "thai", "https://www.bangkokpost.com/rss/data/breakingnews.xml"),
     ("Khaosod English", "thai", "https://www.khaosodenglish.com/feed/"),
     ("Thai Enquirer", "thai", "https://www.thaienquirer.com/feed/"),
     ("Prachatai English", "thai", "https://prachataienglish.com/feed/"),
+    ("The Thaiger", "thai", "https://thethaiger.com/feed"),
+    ("The Pattaya News", "thai", "https://thepattayanews.com/feed/"),
+    ("Chiang Rai Times", "thai", "https://www.chiangraitimes.com/feed/"),
+    ("Thai Examiner", "thai", "https://www.thaiexaminer.com/feed"),
+    ("Kaohoon International", "thai", "https://www.kaohooninternational.com/feed"),
+    ("ASEAN NOW Thailand", "thai", "https://aseannow.com/rss/44-thailand-news.xml"),
+    ("TAT Newsroom", "thai", "https://www.tatnews.org/feed/"),
+    ("Phuket Express", "thai", "https://thephuketexpress.com/feed/"),
+    ("Hua Hin Today", "thai", "https://www.huahintoday.com/feed/"),
     ("Thairath", "thai", "https://www.thairath.co.th/rss/news"),
     ("Matichon", "thai", "https://www.matichon.co.th/feed"),
+    ("MGR Online", "thai", "https://mgronline.com/store/rss/index.xml"),
+    ("Prachachat", "thai", "https://www.prachachat.net/feed"),
+    ("The Standard", "thai", "https://thestandard.co/feed/"),
+    ("Thaiger Thai", "thai", "https://thethaiger.com/th/feed"),
 ]
 
 

@@ -537,7 +537,7 @@ const THAI_CATS=__CATS_THAI__;
 // feeds are listed separately when the collector names them differently (CoinNess / CoinNess
 // Stock, Bangkok Post / Bangkok Post Business).
 const GLOBAL_SRC=['Whale Alert','Walter Bloomberg','FinancialJuice','SBHNews','CoinNess','CoinNess Stock'];
-const THAI_SRC=['Matichon','Thairath','Bangkok Post','Bangkok Post Business'];
+const THAI_SRC=['Matichon','Thairath','MGR Online','Prachachat','The Standard','Bangkok Post','Bangkok Post Business','ASEAN NOW Thailand'];
 const CAL_URL=CFG.calendar;
 const CACHE_KEY='teemo-live-news-cache-v4';
 
@@ -1306,7 +1306,7 @@ function renderSources(){
 function renderGuide(){
   const el=document.querySelector('#tguide');if(!el)return;
   el.innerHTML=V.tab==='thai'
-    ?'<h2>태국 소식</h2><p class="note">방콕포스트·카오솟·타이인콰이어러·프라차타이(영문), 타이랏·마티촌(태국어), 구글뉴스 태국·방콕·교민 검색을 모읍니다.</p><p class="note">비자·이민과 사고·재난을 우선 표시하며, 확정되지 않은 속보는 원문 확인 전까지 단정하지 않습니다.</p>'
+    ?'<h2>태국 소식</h2><p class="note">방콕포스트·카오솟·타이인콰이어러·프라차타이·더타이거·아세안나우(영문), 타이랏·마티촌·MGR·프라차차트·더스탠다드(태국어), 구글뉴스 태국·방콕·교민 검색을 모읍니다.</p><p class="note">비자·이민과 사고·재난을 우선 표시하며, 확정되지 않은 속보는 원문 확인 전까지 단정하지 않습니다.</p>'
     :'<h2>관찰 기준</h2><p class="note">금리·유동성, 미국 정책·트럼프, 지정학, ETF·기관 수급, 파생상품, 온체인, 스테이블코인, X 발언을 우선 수집합니다.</p><p class="note">뉴스 사실과 시장 해석을 분리합니다. X 게시물과 속보는 공식 발표나 원문 확인 전까지 확정 사실로 취급하지 않습니다.</p>'}
 
 function setTab(next,silent){
