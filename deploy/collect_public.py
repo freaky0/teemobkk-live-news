@@ -212,7 +212,9 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     core.init_db()
     core.collect_news()
-    rows = fetch_window()
+    # The published JSON is what the section pages read before their script runs, so it carries the
+    # same dedupe the API does: a reader of the file and a reader of the API see one copy per story.
+    rows = core.dedupe_rows(fetch_window())
     DOCS.mkdir(parents=True, exist_ok=True)
 
     conn = core.db_connect()

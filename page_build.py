@@ -555,7 +555,20 @@ function region(){return V.tab==='thai'?'태국':'글로벌'}
 // print "168시간" for a week and "2160시간" for the whole archive.
 function hoursLabel(){const h=Number(V.hours)||24;
   return h>=2160?'전체 기간':(h>=48?Math.round(h/24)+'일':h+'시간')}
-function articles(){return PUBLIC?(MEM[region()]||[]):(DATA.articles||[])}
+function articles(){
+  const rows=PUBLIC?(MEM[region()]||[]):(DATA.articles||[]),seenLinks=new Set(),seenOriginals=new Set();
+  const keyFor=value=>{
+    const raw=String(value||'').trim();if(!raw)return '';
+    try{const u=new URL(raw,location.href);if(u.protocol==='http:'||u.protocol==='https:'){u.hash='';return u.href}}catch(e){}
+    return raw;
+  };
+  return rows.filter(a=>{
+    if(!a)return false;
+    const link=keyFor(a.link),original=keyFor(a.original_link);
+    if((link&&seenLinks.has(link))||(original&&seenOriginals.has(original)))return false;
+    if(link)seenLinks.add(link);if(original)seenOriginals.add(original);
+    return true});
+}
 function age(iso){if(!iso)return '시각 미상';const d=new Date(iso);if(isNaN(d))return '시각 미상';
   const sec=Math.max(0,(Date.now()-d.getTime())/1000);
   if(sec<60)return Math.floor(sec)+'초 전';if(sec<3600)return Math.floor(sec/60)+'분 전';

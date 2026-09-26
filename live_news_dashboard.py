@@ -396,19 +396,69 @@ def normalize_title(title: str) -> str:
     return re.sub(r"[^a-z0-9가-힣]", "", title.lower())
 
 
+# Only remove a publisher suffix that matches the row's known publisher. A generic " - tail" rule
+# can erase meaningful parts of headlines (for example, "... - after talks continue").
+_PUBLISHER_ALIASES = {
+    "新华网": ("Xinhua",),
+    "xinhua": ("新华网",),
+}
+
+
+def dedupe_key(title: str, publisher: str = "") -> str:
+    """The identity two copies of one story share.
+
+    Measured on the live Thailand window (300 rows, 2026-09-26): the same wire story arrived as
+    "Thailand issues warning of heavy rain" from Global Times, from english.news.cn twice under two
+    different Google links, and from Xinhua. Their headlines are identical once the trailing outlet
+    name is removed, which is what this key does before comparing anything.
+    """
+    text = str(title or "")
+    publisher_names = [str(publisher or "").strip()]
+    publisher_names.extend(_PUBLISHER_ALIASES.get(publisher_names[0].casefold(), ()))
+    for name in publisher_names:
+        if name:
+            text = re.sub(r"\s*[-\u2013\u2014|]\s*" + re.escape(name) + r"\s*$", "", text,
+                          flags=re.IGNORECASE)
+    return normalize_title(text)
+
+
+def publisher_url(link: str) -> str:
+    """A story identity taken from a link that is the publisher's own: no query, no fragment.
+
+    An aggregator link is not an identity - Google hands the same article out under several of them
+    - so it answers "" here and the caller falls back to the title key.
+    """
+    link = canonical_link(link or "")
+    if not link or google_news.is_aggregator(link):
+        return ""
+    return link.split("#", 1)[0].split("?", 1)[0]
+
+
+def _story_identity(article: dict[str, Any], resolved: str = "") -> tuple[str, str]:
+    """(title key, publisher url) for a row; the publisher url is "" when the story has none."""
+    key = dedupe_key(str(article.get("title") or ""), str(article.get("original_source") or ""))
+    url = publisher_url(str(article.get("link") or "")) or str(resolved or "")
+    return key, url.split("#", 1)[0].split("?", 1)[0] if url else ""
+
+
 def dedupe(articles: list[dict[str, Any]], limit: int | None = None) -> list[dict[str, Any]]:
     articles = sorted(articles, key=lambda item: (item.get("published_at", ""), item["priority"]), reverse=True)
     kept: list[dict[str, Any]] = []
     seen_links: set[str] = set()
+    urls: set[str] = set()
     keys: list[str] = []
     for article in articles:
         link = canonical_link(article["link"])
-        key = normalize_title(article["title"])
+        key, url = _story_identity(article)
         if link in seen_links:
+            continue
+        if url and url in urls:
             continue
         if key and any(_similar_title(key, old) for old in keys):
             continue
         seen_links.add(link)
+        if url:
+            urls.add(url)
         keys.append(key)
         article["link"] = link
         kept.append(article)
@@ -425,6 +475,102 @@ def dedupe_by_region(articles: list[dict[str, Any]]) -> list[dict[str, Any]]:
     thai = [article for article in articles if article.get("region") == THAI_REGION]
     other = [article for article in articles if article.get("region") != THAI_REGION]
     return dedupe(other) + dedupe(thai)
+
+
+def stored_identities(hours: int = RETENTION_HOURS) -> dict[str, tuple[set[str], set[str]]]:
+    """{region: (title keys, publisher urls)} of the stories already stored inside the window.
+
+    Per region on purpose: the same story is filed under both the global and the Thailand view, and
+    each tab is meant to show it - the two views are not duplicates of each other.
+    """
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=max(1, int(hours)))).isoformat()
+    with DB_LOCK, db_connect() as connection:
+        rows = connection.execute(
+            "SELECT link, title, region, original_source FROM articles WHERE published_at >= ?",
+            (cutoff,)).fetchall()
+        try:
+            resolved = google_news.load(connection)
+        except sqlite3.Error:
+            resolved = {}
+    known: dict[str, tuple[set[str], set[str]]] = {}
+    for row in rows:
+        region = str(row["region"] or GLOBAL_REGION)
+        keys, urls = known.setdefault(region, (set(), set()))
+        key, url = _story_identity({"title": row["title"], "link": row["link"],
+                                    "original_source": row["original_source"]},
+                                   resolved.get(str(row["link"] or ""), ""))
+        if key:
+            keys.add(key)
+        if url:
+            urls.add(url)
+    return known
+
+
+def _identity_equal(key: str, url: str, keys: set[str], urls: set[str]) -> bool:
+    """Whether this story is already in the set: the same link identity, or the same headline.
+
+    The headline compare is exact and the fuzzy one is only used by the in-cycle dedupe, so two
+    different stories that merely share a topic ("Flooding hits Bangkok…" and "Bangkok Flood Risk
+    Rises…", measured 0.55 apart) stay two stories.
+    """
+    if url and url in urls:
+        return True
+    return bool(key) and key in keys
+
+
+def drop_already_stored(articles: list[dict[str, Any]],
+                        hours: int = RETENTION_HOURS) -> list[dict[str, Any]]:
+    """The same story, seen again in a later cycle, is not stored twice.
+
+    The link is the table's key, so an identical link could never be inserted twice - what got
+    through was the same story arriving under a second Google link for the same article, or from a
+    second outlet carrying the same wire copy. Measured on the live Thailand window: 52 of 300 rows
+    (17%) repeated a story that was already there.
+    """
+    known = stored_identities(hours)
+    kept: list[dict[str, Any]] = []
+    for article in articles:
+        region = str(article.get("region") or GLOBAL_REGION)
+        keys, urls = known.setdefault(region, (set(), set()))
+        key, url = _story_identity(article)
+        if _identity_equal(key, url, keys, urls):
+            continue
+        if key:
+            keys.add(key)
+        if url:
+            urls.add(url)
+        kept.append(article)
+    return kept
+
+
+def dedupe_rows(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The same screen dedupe, applied to rows on their way out to a reader.
+
+    Rows arrive newest first, and the newest copy is the one kept. This runs on the read paths that
+    feed a screen - the API the pages read and the published JSON - so the duplicates already in the
+    database stop being shown, while nothing is deleted and the push path keeps its own selection.
+    """
+    seen: dict[str, tuple[set[str], set[str]]] = {}
+    seen_links: dict[str, set[str]] = {}
+    out: list[dict[str, Any]] = []
+    for item in items:
+        region = str(item.get("region") or GLOBAL_REGION)
+        keys, urls = seen.setdefault(region, (set(), set()))
+        links = seen_links.setdefault(region, set())
+        link = canonical_link(str(item.get("link") or ""))
+        if link and link in links:
+            continue
+        key, url = _story_identity(item, str(item.get("original_link") or ""))
+        if _identity_equal(key, url, keys, urls):
+            continue
+        if link:
+            links.add(link)
+        if key:
+            keys.add(key)
+        if url:
+            urls.add(url)
+        out.append(item)
+    return out
 
 
 def keep_recent(articles: list[dict[str, Any]], hours: int = RETENTION_HOURS) -> list[dict[str, Any]]:
@@ -1134,7 +1280,9 @@ def collect_news() -> dict[str, Any]:
     articles.extend(whitehouse_source.fetch_into(status))
     articles.extend(telegram_source.fetch_into(status))
     fresh_articles = keep_recent(articles)
-    deduped = dedupe_by_region(fresh_articles)
+    # Twice: inside the cycle, and against what the window already holds - the same wire story
+    # arriving in a later cycle under another outlet's link is the repetition a reader notices.
+    deduped = drop_already_stored(dedupe_by_region(fresh_articles))
     inserted = insert_articles(deduped)
     if inserted:
         prune_archive()
@@ -1410,6 +1558,11 @@ class Handler(BaseHTTPRequestHandler):
                     original = google_news.original_for(link, cached)
                     if original != link:
                         article["original_link"] = original
+            # A reader should not meet one story twice: the duplicates already stored (a second
+            # Google link for the same article, a second outlet carrying the same wire copy) are
+            # dropped here, newest copy first, and nothing is deleted from the database. The
+            # published JSON gets the same treatment, so a screen that reads either one agrees.
+            articles = dedupe_rows(articles)
             payload = dict(self.state.snapshot())
             payload.update({
                 "hours": hours, "limit": limit, "offset": offset, "total": total, "returned": len(articles),
