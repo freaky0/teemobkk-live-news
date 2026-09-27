@@ -105,7 +105,9 @@ PAGE = r'''<!doctype html>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TeemoBKK | 경제 뉴스와 트레이더의 시장 관점</title>
 <meta name="description" content="주식·코인·금 등 여러 시장을 움직이는 경제 뉴스, 트레이더의 시장 관점, 무료 트레이딩뷰 지표를 공유합니다.">
-<meta name="theme-color" content="#0b1118">
+<meta name="theme-color" content="#fbfaf7">
+<meta name="color-scheme" content="light dark">
+<script>(function(){try{var t=localStorage.getItem('tbn-theme');document.documentElement.dataset.theme=t==='dark'?'dark':'light'}catch(e){document.documentElement.dataset.theme='light'}})();</script>
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ko_KR">
 <meta property="og:title" content="TeemoBKK | 경제 뉴스와 시장 관점">
@@ -117,8 +119,8 @@ PAGE = r'''<!doctype html>
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <style>
-:root{color-scheme:dark;--bg:#0b1118;--surface:#111b26;--text:#edf2f7;--muted:#a2b0bf;--line:#293541;--accent:#79d8dd;--radius:12px}
-*{box-sizing:border-box}html{scroll-padding-top:92px}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;line-height:1.65;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}button{font:inherit}a,button{-webkit-tap-highlight-color:transparent}a:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:5px}a:hover{color:var(--accent)}button{cursor:pointer}[hidden]{display:none!important}.wrap{max-width:1184px;margin:auto;padding-inline:32px}.skip{position:absolute;left:16px;top:-100px;background:var(--accent);color:var(--bg);padding:12px;z-index:50}.skip:focus{top:12px}.top{border-bottom:1px solid var(--line);background:var(--bg)}.nav{min-height:76px;display:flex;align-items:center;gap:38px}.brand{font-weight:800;font-size:23px;letter-spacing:-.8px;white-space:nowrap}.brand span{color:var(--accent)}nav{display:flex;gap:28px;align-items:center;flex:1}nav a{font-size:14px;font-weight:600;padding-block:14px}.secondary{margin-left:auto;color:var(--muted);font-size:13px}.hero{padding:66px 0 46px;max-width:960px}.eyebrow{font-size:13px;color:var(--accent);font-weight:600;margin:0 0 16px}h1{font-size:clamp(32px,4.5vw,56px);line-height:1.22;letter-spacing:-.045em;margin:0;word-break:keep-all}h1 span{display:block}.intro{max-width:700px;color:var(--muted);font-size:17px;line-height:1.8;margin:22px 0 26px;word-break:keep-all}.actions{display:flex;flex-wrap:wrap;gap:12px}.button{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:10px 20px;border-radius:8px;border:1px solid var(--line);font-size:14px;font-weight:700;white-space:nowrap;background:transparent;color:var(--text)}.button.primary{background:var(--accent);border-color:var(--accent);color:#0b2428}.button:hover{border-color:var(--accent)}.button:active{transform:translateY(1px)}section{scroll-margin-top:24px}.section{padding:38px 0 48px;border-top:1px solid var(--line)}h2{font-size:27px;line-height:1.3;letter-spacing:-.035em;margin:0 0 10px}.section-intro{margin:0;color:var(--muted);font-size:15px;max-width:740px;word-break:keep-all}.section-link{display:inline-block;margin-top:15px;color:var(--accent);font-size:14px;font-weight:600}.news-status{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:22px 0 6px;color:var(--muted);font-size:12px}.retry{background:transparent;color:var(--accent);border:1px solid var(--line);border-radius:6px;min-height:36px;padding:5px 12px}.news-list{display:grid;grid-template-columns:1fr 1fr;column-gap:44px}.news-item{min-width:0;padding:20px 0;border-bottom:1px solid var(--line)}.meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted)}.topic{color:var(--accent)}.news-item h3{font-size:18px;line-height:1.55;letter-spacing:-.02em;font-weight:600;margin:8px 0 0;overflow-wrap:anywhere}.news-item a{display:block}.empty{color:var(--muted);padding:25px 0;grid-column:1/-1}.loading-line{height:15px;background:var(--surface);margin:13px 0;border-radius:4px;max-width:90%}.loading-line.short{max-width:45%;height:11px}.posts{display:grid;grid-template-columns:1.15fr 1fr;gap:36px;margin-top:25px}.post{padding:26px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--line)}.post h3{font-size:23px;line-height:1.45;letter-spacing:-.025em;margin:12px 0}.post p{font-size:15px;color:var(--muted);margin:0}.post .read{display:inline-block;color:var(--accent);font-size:13px;margin-top:23px}.indicators{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:27px}.indicator{min-width:0}.chart-open{display:block;width:100%;padding:0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:#080c11;color:var(--text);text-align:left}.chart-open img{display:block;width:100%;height:auto;aspect-ratio:1404/1281;object-fit:contain}.chart-caption{display:block;padding:11px 15px;color:var(--muted);font-size:12px;border-top:1px solid var(--line)}.indicator h3{font-size:23px;margin:20px 0 8px;letter-spacing:-.025em}.indicator p{color:var(--muted);font-size:15px;margin:0 0 18px;word-break:keep-all}.free{font-size:12px;color:var(--accent);margin-top:18px;display:block}.note{font-size:12px;color:var(--muted);margin-top:23px;max-width:850px}.about{display:grid;grid-template-columns:1fr 1fr;gap:60px}.about p{color:var(--muted);font-size:15px;margin:10px 0}.about h3{font-size:17px;margin:0 0 10px}.about ul{list-style:none;padding:0;margin:0;color:var(--muted);font-size:14px}.about li{margin:10px 0}.footer{border-top:1px solid var(--line);padding:25px 0 36px;color:var(--muted);font-size:12px}.footer-row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:15px}.footer p{margin:16px 0 0;max-width:890px}dialog{max-width:min(1100px,96vw);max-height:95dvh;padding:16px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);color:var(--text)}dialog::backdrop{background:rgba(0,0,0,.85)}dialog img{display:block;max-width:100%;max-height:77dvh;object-fit:contain;margin:auto}.dialog-head{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:12px}.dialog-head p{margin:0;font-size:14px}.dialog-head button{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:8px 16px;min-height:44px}.mobile-thai{display:none}
+:root{color-scheme:light;--bg:#fbfaf7;--surface:#fff;--text:#17181a;--muted:#454a50;--line:#e3ded4;--accent:#a02c22;--radius:4px;--sans:system-ui,-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;--serif:"Noto Serif KR","Nanum Myeongjo","AppleMyungjo","Batang","바탕",Georgia,serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"D2Coding","Courier New",monospace}
+*{box-sizing:border-box}html{scroll-padding-top:92px}body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.65;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}button{font:inherit}a,button{-webkit-tap-highlight-color:transparent}a:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:5px}a:hover{color:var(--accent)}button{cursor:pointer}[hidden]{display:none!important}.wrap{max-width:1184px;margin:auto;padding-inline:32px}.skip{position:absolute;left:16px;top:-100px;background:var(--accent);color:var(--bg);padding:12px;z-index:50}.skip:focus{top:12px}.top{border-bottom:1px solid var(--line);background:var(--bg)}.nav{min-height:76px;display:flex;align-items:center;gap:38px}.brand{font-weight:800;font-size:23px;letter-spacing:-.8px;white-space:nowrap}.brand span{color:var(--accent)}nav{display:flex;gap:28px;align-items:center;flex:1}nav a{font-size:14px;font-weight:600;padding-block:14px}.secondary{margin-left:auto;color:var(--muted);font-size:13px}.hero{padding:66px 0 46px;max-width:960px}.eyebrow{font-size:13px;color:var(--accent);font-weight:600;margin:0 0 16px}h1{font-size:clamp(32px,4.5vw,56px);line-height:1.22;letter-spacing:-.045em;margin:0;word-break:keep-all}h1 span{display:block}.intro{max-width:700px;color:var(--muted);font-size:17px;line-height:1.8;margin:22px 0 26px;word-break:keep-all}.actions{display:flex;flex-wrap:wrap;gap:12px}.button{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:10px 20px;border-radius:8px;border:1px solid var(--line);font-size:14px;font-weight:700;white-space:nowrap;background:transparent;color:var(--text)}.button.primary{background:var(--accent);border-color:var(--accent);color:#0b2428}.button:hover{border-color:var(--accent)}.button:active{transform:translateY(1px)}section{scroll-margin-top:24px}.section{padding:38px 0 48px;border-top:1px solid var(--line)}h2{font-size:27px;line-height:1.3;letter-spacing:-.035em;margin:0 0 10px}.section-intro{margin:0;color:var(--muted);font-size:15px;max-width:740px;word-break:keep-all}.section-link{display:inline-block;margin-top:15px;color:var(--accent);font-size:14px;font-weight:600}.news-status{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:22px 0 6px;color:var(--muted);font-size:12px}.retry{background:transparent;color:var(--accent);border:1px solid var(--line);border-radius:6px;min-height:36px;padding:5px 12px}.news-list{display:grid;grid-template-columns:1fr 1fr;column-gap:44px}.news-item{min-width:0;padding:20px 0;border-bottom:1px solid var(--line)}.meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted)}.topic{color:var(--accent)}.news-item h3{font-size:18px;line-height:1.55;letter-spacing:-.02em;font-weight:600;margin:8px 0 0;overflow-wrap:anywhere}.news-item a{display:block}.empty{color:var(--muted);padding:25px 0;grid-column:1/-1}.loading-line{height:15px;background:var(--surface);margin:13px 0;border-radius:4px;max-width:90%}.loading-line.short{max-width:45%;height:11px}.posts{display:grid;grid-template-columns:1.15fr 1fr;gap:36px;margin-top:25px}.post{padding:26px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--line)}.post h3{font-size:23px;line-height:1.45;letter-spacing:-.025em;margin:12px 0}.post p{font-size:15px;color:var(--muted);margin:0}.post .read{display:inline-block;color:var(--accent);font-size:13px;margin-top:23px}.indicators{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:27px}.indicator{min-width:0}.chart-open{display:block;width:100%;padding:0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:#080c11;color:var(--text);text-align:left}.chart-open img{display:block;width:100%;height:auto;aspect-ratio:1404/1281;object-fit:contain}.chart-caption{display:block;padding:11px 15px;color:var(--muted);font-size:12px;border-top:1px solid var(--line)}.indicator h3{font-size:23px;margin:20px 0 8px;letter-spacing:-.025em}.indicator p{color:var(--muted);font-size:15px;margin:0 0 18px;word-break:keep-all}.free{font-size:12px;color:var(--accent);margin-top:18px;display:block}.note{font-size:12px;color:var(--muted);margin-top:23px;max-width:850px}.about{display:grid;grid-template-columns:1fr 1fr;gap:60px}.about p{color:var(--muted);font-size:15px;margin:10px 0}.about h3{font-size:17px;margin:0 0 10px}.about ul{list-style:none;padding:0;margin:0;color:var(--muted);font-size:14px}.about li{margin:10px 0}.footer{border-top:1px solid var(--line);padding:25px 0 36px;color:var(--muted);font-size:12px}.footer-row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:15px}.footer p{margin:16px 0 0;max-width:890px}dialog{max-width:min(1100px,96vw);max-height:95dvh;padding:16px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);color:var(--text)}dialog::backdrop{background:rgba(0,0,0,.85)}dialog img{display:block;max-width:100%;max-height:77dvh;object-fit:contain;margin:auto}.dialog-head{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:12px}.dialog-head p{margin:0;font-size:14px}.dialog-head button{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:8px 16px;min-height:44px}.mobile-thai{display:none}
 @media(max-width:767px){.wrap{padding-inline:20px}.nav{min-height:70px;gap:20px;flex-wrap:wrap;padding-block:14px}.brand{font-size:21px}nav{gap:20px;flex-basis:100%;order:2}nav a{font-size:13px;padding:5px 0;min-height:36px;display:flex;align-items:center}.secondary{display:none}.hero{padding:38px 0 34px}.intro{font-size:15px}.news-list,.posts,.indicators,.about{grid-template-columns:1fr;gap:0}.section{padding:30px 0 35px}h2{font-size:24px}.news-item h3{font-size:17px}.post{margin-bottom:16px;padding:22px}.post h3{font-size:21px}.indicator+.indicator{margin-top:34px}.about>div+div{margin-top:25px}.mobile-thai{display:inline}.news-status{font-size:11px}.footer-row{align-items:center}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
 
@@ -184,7 +186,7 @@ h1 span.rise:nth-child(2)>i{animation-delay:.15s}
   .news-list{animation:none;width:auto;overflow-x:auto}
 }
 /* The front page is an editorial index. News comes first; decorative motion does not. */
-:root{color-scheme:light;--bg:#f8f9f8;--surface:#fff;--text:#192422;--muted:#52625e;--line:#d7dfdc;--accent:#08645d;--radius:4px}
+:root{color-scheme:light;--bg:#fbfaf7;--surface:#fff;--text:#17181a;--muted:#454a50;--line:#e3ded4;--accent:#a02c22;--radius:4px;--sans:system-ui,-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;--serif:"Noto Serif KR","Nanum Myeongjo","AppleMyungjo","Batang","바탕",Georgia,serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"D2Coding","Courier New",monospace}
 .wrap{max-width:1040px}
 .top{position:relative;z-index:2}
 .nav{min-height:70px}
@@ -229,17 +231,41 @@ dialog::backdrop{background:rgba(20,29,27,.78)}
   .news-item h3{font-size:18px}
   .post{padding:18px 0;margin:0}
 }
-@media(prefers-color-scheme:dark){:root{
-  color-scheme:dark;--bg:#151c1b;--surface:#1e2927;--text:#edf3f0;
-  --muted:#b1c2bc;--line:#3c4e48;--accent:#89d7cb}
-  .button.primary{color:#15201d}
-  .button.primary:hover{color:#15201d;background:#a3e4d9}
-}
+/* Shared with the reader dashboard: warm newsprint, editorial serif, one vermilion signal. */
+.brand{font-family:var(--serif);font-weight:700;letter-spacing:-.04em}
+.brand span{color:var(--accent)}
+.brand .brand-rest{color:var(--text)}
+h1,h2,.news-item h3,.post h3,.indicator h3,.about h3{font-family:var(--serif)}
+h1{font-weight:700;letter-spacing:-.035em}
+h2{font-weight:700;letter-spacing:-.02em}
+.eyebrow{color:var(--muted)}
+.meta,.post time{font:11.5px/1.5 var(--mono);color:var(--muted)}
+.button{border-radius:4px}
+.button.primary{color:#fff}
+.button.primary:hover{color:#fff;background:#84231c}
+.news-list{max-width:850px}
+.news-item h3{font-weight:600;letter-spacing:-.015em}
+.posts{display:block;max-width:850px}
+.post{padding:18px 0;background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;margin:0}
+.post h3{font-size:21px;font-weight:600;letter-spacing:-.015em;margin:8px 0}
+.post .read{margin-top:12px}
+.chart-open{border-radius:4px}
+.chart-open:hover{transform:none;box-shadow:none}
+.indicator h3{font-size:22px;font-weight:600;letter-spacing:-.015em}
+.indicator .button{margin-top:2px}
+.theme-toggle{min-height:36px;padding:6px 12px;border:1px solid var(--line);border-radius:4px;
+  background:transparent;color:var(--muted);font-size:12px;white-space:nowrap}
+.theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
+html[data-theme="dark"]{color-scheme:dark;--bg:#131417;--surface:#1b1d21;--text:#ececeb;
+  --muted:#b9bcc0;--line:#2c2f34;--accent:#e0776c}
+html[data-theme="dark"] .button.primary{color:#17181a}
+html[data-theme="dark"] .button.primary:hover{color:#17181a;background:#f09086}
+html[data-theme="dark"] .chart-open{background:#080c11}
 </style>
 </head>
 <body>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
-<header class="top"><div class="wrap nav"><a class="brand" href="/" aria-label="TeemoBKK 홈">Teemo<span>BKK</span></a><nav aria-label="주요 메뉴"><a href="/news/ko/">경제 뉴스</a><a href="#perspectives">시장 관점</a><a href="#indicators">트레이딩뷰 지표</a><a class="secondary" href="/thai/">태국 소식 ↗</a></nav></div></header>
+<header class="top"><div class="wrap nav"><a class="brand" href="/" aria-label="TeemoBKK 홈"><span class="brand-accent">티모</span> <span class="brand-rest">라이브뉴스</span></a><nav aria-label="주요 메뉴"><a href="/news/ko/">경제 뉴스</a><a href="#perspectives">시장 관점</a><a href="#indicators">트레이딩뷰 지표</a><a class="secondary" href="/thai/">태국 소식 ↗</a><button id="theme-toggle" class="theme-toggle" type="button" aria-label="다크 모드" aria-pressed="false">다크</button></nav></div></header>
 <main id="main" class="wrap">
 <section class="hero" aria-labelledby="headline"><p class="eyebrow">뉴스를 읽고, 관점을 세우고, 차트로 살펴봅니다.</p><h1 id="headline"><span class="rise"><i>트레이딩을 위한</i></span> <span class="rise"><i>경제 뉴스와 시장 관점</i></span></h1><p class="intro">주식·코인·금 등 여러 시장을 움직이는 뉴스를 모읍니다.<br>직접 기록한 시장 관점과 무료 트레이딩뷰 지표도 함께 공유합니다.</p><div class="actions"><a class="button primary" href="/news/ko/">경제 뉴스 보기</a><a class="button" href="#perspectives">시장 관점 읽기</a></div></section>
 <section class="section" id="news" aria-labelledby="news-title"><h2 id="news-title">최근 경제 뉴스</h2><p class="section-intro">금리와 경기, 기업과 정책, 지정학까지. 시장에 연결되는 소식을 확인하세요.</p><div class="news-status"><span>자동 수집 · 원문 언어로 표시</span><span id="update-status" role="status">수집 상태 확인 중</span><button class="retry" id="retry" type="button" hidden>다시 불러오기</button></div><div class="news-list" id="news-list" aria-busy="true"><div class="news-item" aria-hidden="true"><div class="loading-line short"></div><div class="loading-line"></div><div class="loading-line"></div></div><div class="news-item" aria-hidden="true"><div class="loading-line short"></div><div class="loading-line"></div><div class="loading-line"></div></div></div><noscript><p>뉴스 목록을 불러오려면 자바스크립트가 필요합니다. <a href="/news/ko/">경제 뉴스 페이지에서 확인하세요.</a></p></noscript><a class="section-link" href="/news/ko/">경제 뉴스 전체 보기 →</a></section>
@@ -271,6 +297,17 @@ catch(error){status.textContent=hasNews?'갱신 실패 · 이전 목록 표시 �
 finally{clearTimeout(timeout);busy=false;retry.disabled=false;list.setAttribute('aria-busy','false');}}
 retry.addEventListener('click',refresh);refresh();setInterval(()=>{if(!document.hidden)refresh();},120000);
 const dialog=document.getElementById('chart-dialog');document.querySelectorAll('[data-chart]').forEach(button=>button.addEventListener('click',()=>{document.getElementById('expanded-chart').src=button.dataset.chart;document.getElementById('expanded-chart').alt=button.dataset.title+' 실제 적용 화면';document.getElementById('chart-title').textContent=button.dataset.title;dialog.showModal();}));document.getElementById('close-chart').addEventListener('click',()=>dialog.close());
+})();
+</script>
+<script>
+(function(){
+  var root=document.documentElement,button=document.getElementById('theme-toggle');
+  if(!button)return;
+  function update(){var dark=root.dataset.theme==='dark';button.textContent=dark?'일반':'다크';
+    button.setAttribute('aria-label',dark?'일반 모드':'다크 모드');button.setAttribute('aria-pressed',String(dark));}
+  button.addEventListener('click',function(){var dark=root.dataset.theme!=='dark';
+    root.dataset.theme=dark?'dark':'light';try{localStorage.setItem('tbn-theme',root.dataset.theme)}catch(e){}update();});
+  update();
 })();
 </script>
 </body></html>'''

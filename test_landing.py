@@ -36,5 +36,13 @@ class LandingContract(unittest.TestCase):
         self.assertNotIn('class="pointer-light"', page)
         self.assertIn('.news-list{display:block;width:auto;animation:none;overflow:visible}', page)
         self.assertIn('트레이딩을 위한</i></span> <span', page)
+        self.assertIn('--bg:#fbfaf7', page)
+        self.assertIn('--accent:#a02c22', page)
+        self.assertIn('--serif:', page)
+        self.assertIn('font-family:var(--serif)', page)
+        self.assertIn('<span class="brand-accent">티모</span> <span class="brand-rest">라이브뉴스</span>', page)
+        self.assertIn('id="theme-toggle"', page)
+        self.assertIn("root.dataset.theme=dark?'dark':'light'", page)
+        self.assertIn('color-scheme:dark', page)
 
 if __name__=='__main__': unittest.main()

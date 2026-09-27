@@ -88,7 +88,7 @@ class PublicDocument(unittest.TestCase):
         self.assertIn('html[data-theme="light"] body.public .conds .cbtn:not(.kw)', page)
         self.assertIn('html[data-theme="light"] body.public .pill.pick.active', page)
         self.assertIn('body.public .foot{max-width:none}', page)
-        self.assertIn('background:var(--panel2);border-color:var(--accent);color:var(--text)', page)
+        self.assertIn('background:color-mix(in srgb,var(--accent) 8%,var(--panel));border-color:var(--accent);color:var(--accent)', page)
         self.assertIn('href="/privacy/en/"', page)
         korean = public_document(lang="ko")
         self.assertIn('href="/privacy/"', korean)
@@ -106,6 +106,47 @@ class PublicDocument(unittest.TestCase):
         for marker in OPERATOR_MARKERS:
             self.assertNotIn(marker, markup_only(page))
         self.assertIn('id="feed"', page)
+
+    def test_briefing_uses_priority_recency_unique_sources_and_honest_picks(self):
+        items = [
+            {"title": "social", "source": "Social", "source_type": "social", "priority": 5,
+             "published_at": "2026-09-27T10:00:00+00:00"},
+            {"title": "A old", "source": "A", "source_type": "breaking", "priority": 5,
+             "published_at": "2026-09-27T09:00:00+00:00"},
+            {"title": "A new", "source": "A", "source_type": "breaking", "priority": 5,
+             "published_at": "2026-09-27T10:00:00+00:00"},
+            {"title": "B", "source": "B", "source_type": "breaking", "priority": 4,
+             "published_at": "2026-09-27T09:30:00+00:00"},
+            {"title": "C", "source": "C", "source_type": "breaking", "priority": 3,
+             "published_at": "2026-09-27T09:15:00+00:00"},
+            {"title": "D", "source": "D", "source_type": "breaking", "priority": 3,
+             "published_at": "2026-09-27T09:10:00+00:00"},
+        ]
+        mode, selected = page_build._briefing_items(items)
+        self.assertEqual(mode, "auto")
+        self.assertEqual([item["title"] for item in selected], ["A new", "B", "C"])
+        for item in items[1:4]:
+            item["picked"] = True
+        mode, selected = page_build._briefing_items(items)
+        self.assertEqual(mode, "picked")
+        self.assertEqual(len(selected), 3)
+        items[1]["picked"] = False
+        mode, selected = page_build._briefing_items(items)
+        self.assertEqual(mode, "auto")
+
+    def test_seeded_story_uses_the_time_rail_and_editorial_row(self):
+        page = page_build._seed_cards([{
+            "title": "인천시 드림사업 협력", "summary": "요약 내용 " * 40,
+            "source": "SBHNews", "source_type": "breaking", "priority": 4,
+            "category": "거시경제", "categories": ["거시경제"],
+            "link": "https://example.com/story", "published_at": "2026-09-27T04:21:00+00:00",
+        }], False, "ko")
+        self.assertIn('class="card seed timeline-row"', page)
+        self.assertIn('class="t"><time', page)
+        self.assertIn('class="timeline-dot"', page)
+        self.assertIn('>속보</span>', page)
+        self.assertIn('요약 펼치기', page)
+        self.assertIn('원문 열기 ↗', page)
 
     def test_the_operator_only_block_is_marked_and_balanced(self):
         # tools/probe_english_text.py skips this block, so the markers are part of the contract: an
@@ -132,9 +173,10 @@ class LoginDocument(unittest.TestCase):
 
     def test_login_matches_reader_palette_without_dashboard_markup(self):
         page = admin_page.login_page()
-        self.assertIn('<span class="brand">TeemoBKK</span>', page)
-        self.assertIn('--bg:#f8f9f8', page)
-        self.assertIn('--accent:#08645d', page)
+        self.assertIn('<span class="brand"><span>티모</span> 라이브뉴스</span>', page)
+        self.assertIn('--bg:#fbfaf7', page)
+        self.assertIn('--accent:#a02c22', page)
+        self.assertIn('--serif:', page)
         self.assertIn('prefers-color-scheme:dark', page)
         self.assertIn('for="pw"', page)
         self.assertNotIn('id="feed"', page)
@@ -142,6 +184,7 @@ class LoginDocument(unittest.TestCase):
     def test_login_uses_saved_theme_without_adding_dashboard_controls(self):
         page = admin_page.login_page()
         self.assertIn("localStorage.getItem('tbn-theme')", page)
+        self.assertIn("document.documentElement.dataset.theme=t==='dark'?'dark':'light'", page)
         self.assertIn('html[data-theme="dark"]', page)
         self.assertIn('html[data-theme="light"]', page)
         self.assertNotIn('id="theme-toggle"', page)
@@ -167,8 +210,11 @@ class OperatorDocument(unittest.TestCase):
         for marker in OPERATOR_MARKERS:
             self.assertIn(marker, page, "the operator page needs " + marker)
         self.assertIn("window.__ADMIN__=true", page)
+        self.assertIn("document.documentElement.dataset.theme=t==='dark'?'dark':'light'", page)
         self.assertIn('id="feed"', page)
-        self.assertIn('id="theme-toggle"', page)
+        self.assertIn('id="briefing-section"', page)
+        self.assertIn('id="briefing"', page)
+        self.assertIn('뉴스 편집실', page)
         self.assertIn("localStorage.setItem('tbn-theme',next)", page)
         self.assertIn("갱신", page, "the interval control is the point of this page")
 
@@ -176,6 +222,9 @@ class OperatorDocument(unittest.TestCase):
         page = admin_page.operator_page()
         self.assertIn('<body class="local">', page)
         self.assertIn('body.public,body.local{', page)
+        self.assertIn('--bg:#fbfaf7', page)
+        self.assertIn('--accent:#a02c22', page)
+        self.assertIn('font-family:var(--serif)', page)
         self.assertIn('body.local .feed{display:block', page)
         self.assertIn('body.local .side{display:grid', page)
         self.assertIn('body.local:not(.tab-cal) .layout', page)
@@ -202,7 +251,7 @@ class OperatorDocument(unittest.TestCase):
     def test_it_is_korean(self):
         page = admin_page.operator_page()
         self.assertIn('<html lang="ko">', page)
-        self.assertIn("실시간 뉴스 대시보드", page)
+        self.assertIn("뉴스 편집실", page)
         self.assertNotIn("Trending now", page)
 
     def test_the_guide_paragraph_is_translatable(self):

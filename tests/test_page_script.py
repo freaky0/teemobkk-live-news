@@ -25,6 +25,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
 import admin_page  # noqa: E402
+import landing  # noqa: E402
 import page_build  # noqa: E402
 
 SEED = ('<article class="card seed"><h2 class="t"><a href="https://example.com/x">Example story</a>'
@@ -51,6 +52,7 @@ def documents() -> dict[str, str]:
         public=False, datadir="", want_thai=False, icon_prefix="/",
         admin=True, lang="ko", alt="en/index.html", seed_html=SEED)
     built["login"] = admin_page.login_page()
+    built["homepage"] = landing.render_landing()
     return built
 
 

@@ -22,20 +22,21 @@ LOGIN = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script>(function(){try{var t=localStorage.getItem('tbn-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}})();</script>
+<script>(function(){try{var t=localStorage.getItem('tbn-theme');document.documentElement.dataset.theme=t==='dark'?'dark':'light'}catch(e){document.documentElement.dataset.theme='light'}})();</script>
 <meta name="robots" content="noindex">
 <title>관리자 로그인 · TeemoBKK</title>
 <style>
-:root{color-scheme:light;--bg:#f8f9f8;--surface:#fff;--text:#192422;--muted:#52625e;
-  --line:#d7dfdc;--accent:#08645d;--error:#a04719}
+:root{color-scheme:light;--bg:#fbfaf7;--surface:#fff;--text:#17181a;--muted:#454a50;
+  --line:#e3ded4;--accent:#a02c22;--error:#8a5a12;--serif:"Noto Serif KR","Nanum Myeongjo","AppleMyungjo","Batang","바탕",Georgia,serif}
 *{box-sizing:border-box}
 html{background:var(--bg);color:var(--text)}
 body{margin:0;min-height:100dvh;display:grid;place-items:center;padding:24px;
-  font:15px/1.6 "Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif}
+  font:15px/1.6 system-ui,-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif}
 form{width:100%;max-width:380px;background:var(--surface);border:1px solid var(--line);
   border-radius:4px;padding:28px}
-.brand{display:block;margin-bottom:28px;font-size:14px;font-weight:800;letter-spacing:-.04em}
-h1{margin:0 0 4px;font-size:26px;line-height:1.3;letter-spacing:-.055em}
+.brand{display:block;margin-bottom:28px;font:700 26px/1.2 var(--serif);letter-spacing:-.035em}
+.brand span{color:var(--accent)}
+h1{margin:0 0 4px;font:700 26px/1.3 var(--serif);letter-spacing:-.045em}
 p.note{margin:0 0 26px;color:var(--muted);font-size:13px}
 label{display:block;font-size:13px;color:var(--text);font-weight:600;margin-bottom:8px}
 input{width:100%;padding:11px 12px;border-radius:4px;border:1px solid var(--line);
@@ -46,19 +47,19 @@ button{margin-top:16px;width:100%;min-height:44px;padding:10px;border:1px solid 
 button:hover{filter:brightness(.88)}
 button[disabled]{opacity:.55;cursor:default}
 #msg{margin-top:12px;font-size:13px;color:var(--error);min-height:18px}
-@media(prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#151c1b;--surface:#1e2927;
-  --text:#edf3f0;--muted:#b1c2bc;--line:#3c4e48;--accent:#89d7cb;--error:#f1a87d}
-  button{color:#15201d}}
-html[data-theme="dark"]{color-scheme:dark;--bg:#151c1b;--surface:#1e2927;--text:#edf3f0;
-  --muted:#b1c2bc;--line:#3c4e48;--accent:#89d7cb;--error:#f1a87d}
-html[data-theme="dark"] button:not(.theme-toggle){color:#15201d}
-html[data-theme="light"]{color-scheme:light;--bg:#f8f9f8;--surface:#fff;--text:#192422;
-  --muted:#52625e;--line:#d7dfdc;--accent:#08645d;--error:#a04719}
+@media(prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#131417;--surface:#1b1d21;
+  --text:#ececeb;--muted:#b9bcc0;--line:#2c2f34;--accent:#e0776c;--error:#d8ab5c}
+  button{color:#17181a}}
+html[data-theme="dark"]{color-scheme:dark;--bg:#131417;--surface:#1b1d21;--text:#ececeb;
+  --muted:#b9bcc0;--line:#2c2f34;--accent:#e0776c;--error:#d8ab5c}
+html[data-theme="dark"] button:not(.theme-toggle){color:#17181a}
+html[data-theme="light"]{color-scheme:light;--bg:#fbfaf7;--surface:#fff;--text:#17181a;
+  --muted:#454a50;--line:#e3ded4;--accent:#a02c22;--error:#8a5a12}
 </style>
 </head>
 <body>
 <form id="f">
-  <span class="brand">TeemoBKK</span>
+  <span class="brand"><span>티모</span> 라이브뉴스</span>
   <h1>관리자 로그인</h1>
   <p class="note">TeemoBKK 라이브 뉴스 관리자 영역입니다.</p>
   <label for="pw">비밀번호</label>

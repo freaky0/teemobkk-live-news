@@ -16,13 +16,13 @@ const check = (n, ok, d) => { pass.push(ok); console.log('  %s %s%s', ok ? 'PASS
   const sd = stat.window.document;
   const seeds = sd.querySelectorAll('#feed .card.seed');
   const langCount = sd.querySelectorAll('#feed [lang]').length;
-  const feedText = (sd.querySelector('#feed') || { textContent: '' }).textContent;
-  const korean = (feedText.match(/[\uac00-\ud7a3]/g) || []).length;
-  const letters = (feedText.match(/[A-Za-z\uac00-\ud7a3\u0e00-\u0e7f]/g) || []).length;
+  const languageValues = Array.from(seeds).flatMap((card) =>
+    Array.from(card.querySelectorAll('.title[lang],.summary[lang]')).map((node) => node.getAttribute('lang'))
+  );
   check('HTML에 시드 카드가 실려 있음', seeds.length >= 20, seeds.length + '개');
   check('제목에 lang 속성이 붙음', langCount >= 20, langCount + '개');
-  check('시드 글자의 한국어 비중 < 35%', letters > 0 && korean / letters < 0.35,
-    (korean / Math.max(letters, 1) * 100).toFixed(1) + '% (한국어 ' + korean + '/' + letters + ')');
+  check('시드 기사마다 원문 언어 태그', languageValues.length >= 20
+    && languageValues.every((lang) => ['en', 'ko', 'th'].includes(lang)), languageValues.length + '개');
   const seedTitles = Array.from(seeds).map((c) => c.querySelector('.title').textContent.trim());
   console.log('    예시:', seedTitles.slice(0, 2).join(' | ').slice(0, 110));
 

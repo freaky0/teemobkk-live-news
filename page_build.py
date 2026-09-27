@@ -316,16 +316,20 @@ body.local .card{cursor:auto}
 }
 /* Reader and operator share the editorial palette; operator controls keep their own layout. */
 body.public,body.local{
-  color-scheme:light;--bg:#f8f9f8;--panel:#fff;--panel2:#f0f3f2;
-  --text:#192422;--muted:#52625e;--line:#d7dfdc;--line2:#c5d1cd;
-  --accent:#08645d;--thai:#705323;--hot:#9b451f;--official:#25634a;--warn:#a04719;
-  background:var(--bg);font-family:"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
+  color-scheme:light;--bg:#fbfaf7;--panel:#fff;--panel2:#f4f0e9;
+  --text:#17181a;--muted:#454a50;--line:#e3ded4;--line2:#cec7b9;
+  --accent:#a02c22;--thai:#8a5a12;--hot:#8a5a12;--official:#1f6b46;--warn:#8a5a12;
+  --serif:"Noto Serif KR","Nanum Myeongjo","AppleMyungjo","Batang","바탕",Georgia,serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"D2Coding","Courier New",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+  background:var(--bg);font-family:var(--sans);
 }
 body.public .bar{background:var(--bg);backdrop-filter:none}
 body.public .bar-in{max-width:1040px;min-height:76px;gap:16px;padding-block:12px}
-body.public .brand{font-size:13px;letter-spacing:-.035em;text-transform:none;font-weight:800;color:var(--text)}
-body.public h1{font-size:26px;line-height:1.25;letter-spacing:-.055em;font-weight:750}
-body.public .stamp{font-size:12px;font-variant-numeric:tabular-nums}
+body.public .brand{font-family:var(--serif);font-size:25px;line-height:1.2;letter-spacing:-.035em;text-transform:none;font-weight:700;color:var(--text)}
+body.public .brand-accent{color:var(--accent)}
+body.public h1{font-family:var(--serif);font-size:26px;line-height:1.25;letter-spacing:-.045em;font-weight:700}
+body.public .stamp{font:11.5px/1.5 var(--mono);font-variant-numeric:tabular-nums}
 body.public .wrap{max-width:1040px;padding-top:12px}
 body.public .tabs{margin:8px 0 20px;gap:22px}
 body.public .tab{font-size:15px;padding:12px 2px;color:var(--muted)}
@@ -335,24 +339,25 @@ body.public input[type=search],body.public select{background:var(--panel);border
 body.public .qadd,body.public .pill,body.public .trend .tbtn,body.public .langbar a,body.public .langbar b{
   background:transparent;border-radius:4px;color:var(--muted)}
 body.public .pill.active,body.public .pill.on,body.public .pill.pick.active,
-body.public .trend .tbtn.on{background:var(--text);border-color:var(--text);color:#f8f9f8}
+body.public .trend .tbtn.on{background:color-mix(in srgb,var(--accent) 8%,var(--panel));border-color:var(--accent);color:var(--accent)}
+body.public .pill.pick.active{border-color:var(--official);color:var(--official)}
 body.public .pill.pick{border-color:var(--line);color:var(--muted)}
-body.public .pill.th.active,body.public .pill.src.th.active{color:#f8f9f8;border-color:var(--text)}
+body.public .pill.th.active,body.public .pill.src.th.active{background:color-mix(in srgb,var(--thai) 8%,var(--panel));color:var(--thai);border-color:var(--thai)}
 body.public .pills{margin-bottom:12px}
 body.public .feed{display:block;margin-top:4px}
-body.public .sec{margin:24px 0 8px;font-size:12px;letter-spacing:.02em;color:var(--text)}
+body.public .sec{margin:24px 0 8px;font-family:var(--serif);font-size:17px;letter-spacing:-.01em;color:var(--text)}
 body.public .card,body.public .card.th,body.public .card.new,body.public .card.lead{
   background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;
   box-shadow:none;padding:18px 2px 20px;max-width:none}
 body.public .card.lead{padding-top:24px}
 body.public .card:hover{background:var(--panel)}
-body.public .meta{margin-bottom:7px;gap:7px 10px;font-size:12px;color:var(--muted)}
+body.public .meta{margin-bottom:7px;gap:7px 10px;font:11.5px/1.5 var(--mono);color:var(--muted)}
 body.public .chip,body.public .chip.src,body.public .chip.th,body.public .chip.hot,
 body.public .chip.official,body.public .chip.speak,body.public .chip.verif{
-  background:transparent;border:0;border-radius:0;padding:0;color:var(--muted);font-size:12px}
+  background:transparent;border:0;border-radius:0;padding:0;color:var(--muted);font:inherit}
 body.public .chip.tap{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
-body.public .title{font-size:20px;line-height:1.43;letter-spacing:-.035em;font-weight:700;margin-bottom:7px;overflow-wrap:anywhere}
-body.public .card.lead .title{font-size:clamp(22px,2.6vw,29px);line-height:1.35}
+body.public .title{font-family:var(--serif);font-size:20px;line-height:1.5;letter-spacing:-.015em;font-weight:600;margin-bottom:7px;overflow-wrap:anywhere}
+body.public .card.lead .title{font-size:clamp(22px,2.6vw,29px);line-height:1.38}
 body.public .title a:hover{color:var(--accent)}
 body.public .summary,body.public .cal-n{color:var(--muted);font-size:14px;line-height:1.65}
 body.public .pickbadge{border:0;border-radius:0;padding:0;color:var(--accent)}
@@ -376,18 +381,19 @@ body.public .foot{max-width:none}
   body.public .summary{font-size:13px}
 }
 @media(prefers-color-scheme:dark){body.public,body.local{
-  color-scheme:dark;--bg:#151c1b;--panel:#1e2927;--panel2:#26332f;
-  --text:#edf3f0;--muted:#b1c2bc;--line:#3c4e48;--line2:#53655e;
-  --accent:#89d7cb;--thai:#dec28c;--hot:#efae85;--official:#a3dcc3;--warn:#f1a87d}
+  color-scheme:dark;--bg:#131417;--panel:#1b1d21;--panel2:#25272c;
+  --text:#ececeb;--muted:#b9bcc0;--line:#2c2f34;--line2:#3b3f46;
+  --accent:#e0776c;--thai:#d8ab5c;--hot:#d8ab5c;--official:#6fbf95;--warn:#d8ab5c}
   body.public .pill.active,body.public .pill.on,body.public .pill.pick.active,
-  body.public .trend .tbtn.on,body.public .pill.th.active,body.public .pill.src.th.active{color:#15201d}
+  body.public .trend .tbtn.on,body.public .pill.th.active,body.public .pill.src.th.active{color:#17181a}
 }}
 /* The signed-in workspace uses the same reading language without hiding operator actions. */
 body.local .bar{background:var(--bg);backdrop-filter:none}
 body.local .bar-in{max-width:1040px;min-height:76px;gap:16px;padding-block:12px}
-body.local .brand{font-size:13px;letter-spacing:-.035em;text-transform:none;font-weight:800;color:var(--text)}
-body.local h1{font-size:26px;line-height:1.25;letter-spacing:-.055em;font-weight:750}
-body.local .stamp{font-size:12px;font-variant-numeric:tabular-nums}
+body.local .brand{font-family:var(--serif);font-size:25px;line-height:1.2;letter-spacing:-.035em;text-transform:none;font-weight:700;color:var(--text)}
+body.local .brand-accent{color:var(--accent)}
+body.local h1{font-family:var(--serif);font-size:26px;line-height:1.25;letter-spacing:-.045em;font-weight:700}
+body.local .stamp{font:11.5px/1.5 var(--mono);font-variant-numeric:tabular-nums}
 body.local .wrap{max-width:1040px;padding-top:12px}
 body.local .tabs{margin:8px 0 20px;gap:22px}
 body.local .tab{font-size:17px;padding:12px 2px;color:var(--muted)}
@@ -398,23 +404,25 @@ body.local input[type=search],body.local select,body.local .frow input{
 body.local #logout,body.local .qadd,body.local .pill,body.local .trend .tbtn,
 body.local .langbar a,body.local .langbar b{border-radius:4px;color:var(--muted)}
 body.local .pill.active,body.local .pill.on,body.local .pill.pick.active,
-body.local .trend .tbtn.on{background:var(--text);border-color:var(--text);color:var(--bg)}
+body.local .trend .tbtn.on{background:color-mix(in srgb,var(--accent) 8%,var(--panel));border-color:var(--accent);color:var(--accent)}
+body.local .pill.pick.active{border-color:var(--official);color:var(--official)}
 body.local .pill.pick{border-color:var(--line);color:var(--muted)}
-body.local .pill.th.active,body.local .pill.src.th.active{border-color:var(--text);color:var(--bg)}
+body.local .pill.th.active,body.local .pill.src.th.active{
+  background:color-mix(in srgb,var(--thai) 8%,var(--panel));border-color:var(--thai);color:var(--thai)}
 body.local .pills{margin-bottom:12px}
 body.local .feed{display:block;margin-top:4px}
-body.local .sec{margin:24px 0 8px;font-size:12px;letter-spacing:.02em;color:var(--text)}
+body.local .sec{margin:24px 0 8px;font-family:var(--serif);font-size:17px;letter-spacing:-.01em;color:var(--text)}
 body.local .card,body.local .card.th,body.local .card.new,body.local .card.lead{
   background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;
   box-shadow:none;padding:18px 2px 20px;max-width:none}
 body.local .card.lead{padding-top:24px}
-body.local .meta{margin-bottom:7px;gap:7px 10px;font-size:12px;color:var(--muted)}
+body.local .meta{margin-bottom:7px;gap:7px 10px;font:11.5px/1.5 var(--mono);color:var(--muted)}
 body.local .chip,body.local .chip.src,body.local .chip.th,body.local .chip.hot,
 body.local .chip.official,body.local .chip.speak,body.local .chip.verif{
-  background:transparent;border:0;border-radius:0;padding:0;color:var(--muted);font-size:12px}
+  background:transparent;border:0;border-radius:0;padding:0;color:var(--muted);font:inherit}
 body.local .chip.tap{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
-body.local .title{font-size:20px;line-height:1.43;letter-spacing:-.035em;font-weight:700;margin-bottom:7px;overflow-wrap:anywhere}
-body.local .card.lead .title{font-size:clamp(22px,2.6vw,29px);line-height:1.35}
+body.local .title{font-family:var(--serif);font-size:20px;line-height:1.5;letter-spacing:-.015em;font-weight:600;margin-bottom:7px;overflow-wrap:anywhere}
+body.local .card.lead .title{font-size:clamp(22px,2.6vw,29px);line-height:1.38}
 body.local .summary,body.local .cal-n{color:var(--muted);font-size:14px;line-height:1.65}
 body.local .open,body.local .expand,body.local .acts .hide{color:var(--accent)}
 body.local .pickbadge{border:0;border-radius:0;padding:0;color:var(--accent)}
@@ -422,9 +430,9 @@ body.local .pickbadge .pnote{color:var(--muted)}
 body.local .layout{grid-template-columns:minmax(0,1fr);gap:32px}
 body.local .side{display:grid;align-content:start;gap:16px}
 body.local .box,body.local .cal,body.local .empty,body.local .skel{
-  background:var(--panel);border-color:var(--line);border-radius:4px}
-body.local .box{padding:16px}
-body.local .box h2{text-transform:none;letter-spacing:-.01em;color:var(--text);font-size:15px}
+  background:transparent;border-color:var(--line);border-radius:4px}
+body.local .box{padding:14px 0;border:0;border-bottom:1px solid var(--line)}
+body.local .box h2{font-family:var(--serif);text-transform:none;letter-spacing:-.01em;color:var(--text);font-size:17px}
 body.local .source .ok{color:var(--official)}
 body.local .source .bad{color:var(--hot)}
 body.local .sw[aria-checked="true"]{background:var(--panel2)}
@@ -451,19 +459,19 @@ body.local .foot{max-width:none}
   body.local .trend .tbtn.on,body.local .pill.th.active,body.local .pill.src.th.active{color:#15201d}
 }
 html[data-theme="dark"] body.public,html[data-theme="dark"] body.local{
-  color-scheme:dark;--bg:#151c1b;--panel:#1e2927;--panel2:#26332f;
-  --text:#edf3f0;--muted:#b1c2bc;--line:#3c4e48;--line2:#53655e;
-  --accent:#89d7cb;--thai:#dec28c;--hot:#efae85;--official:#a3dcc3;--warn:#f1a87d}
+  color-scheme:dark;--bg:#131417;--panel:#1b1d21;--panel2:#25272c;
+  --text:#ececeb;--muted:#b9bcc0;--line:#2c2f34;--line2:#3b3f46;
+  --accent:#e0776c;--thai:#d8ab5c;--hot:#d8ab5c;--official:#6fbf95;--warn:#d8ab5c}
 html[data-theme="dark"] body.public .pill.active,html[data-theme="dark"] body.public .pill.on,
 html[data-theme="dark"] body.public .pill.pick.active,html[data-theme="dark"] body.public .trend .tbtn.on,
 html[data-theme="dark"] body.public .pill.th.active,html[data-theme="dark"] body.public .pill.src.th.active,
 html[data-theme="dark"] body.local .pill.active,html[data-theme="dark"] body.local .pill.on,
 html[data-theme="dark"] body.local .pill.pick.active,html[data-theme="dark"] body.local .trend .tbtn.on,
-html[data-theme="dark"] body.local .pill.th.active,html[data-theme="dark"] body.local .pill.src.th.active{color:#15201d}
+html[data-theme="dark"] body.local .pill.th.active,html[data-theme="dark"] body.local .pill.src.th.active{color:#17181a}
 html[data-theme="light"] body.public,html[data-theme="light"] body.local{
-  color-scheme:light;--bg:#f8f9f8;--panel:#fff;--panel2:#f0f3f2;
-  --text:#192422;--muted:#52625e;--line:#d7dfdc;--line2:#c5d1cd;
-  --accent:#08645d;--thai:#705323;--hot:#9b451f;--official:#25634a;--warn:#a04719}
+  color-scheme:light;--bg:#fbfaf7;--panel:#fff;--panel2:#f4f0e9;
+  --text:#17181a;--muted:#454a50;--line:#e3ded4;--line2:#cec7b9;
+  --accent:#a02c22;--thai:#8a5a12;--hot:#8a5a12;--official:#1f6b46;--warn:#8a5a12}
 html[data-theme="dark"] body.public .bar,html[data-theme="dark"] body.local .bar,
 html[data-theme="light"] body.public .bar,html[data-theme="light"] body.local .bar{
   background:var(--bg);color:var(--text);backdrop-filter:none}
@@ -471,12 +479,12 @@ html[data-theme="light"] body.public .pill.active,html[data-theme="light"] body.
 html[data-theme="light"] body.public .pill.pick.active,html[data-theme="light"] body.public .trend .tbtn.on,
 html[data-theme="light"] body.local .pill.active,html[data-theme="light"] body.local .pill.on,
 html[data-theme="light"] body.local .pill.pick.active,html[data-theme="light"] body.local .trend .tbtn.on{
-  background:var(--panel2);border-color:var(--accent);color:var(--text)}
+  background:color-mix(in srgb,var(--accent) 8%,var(--panel));border-color:var(--accent);color:var(--accent)}
 html[data-theme="light"] body.public .pill.pick.active,html[data-theme="light"] body.local .pill.pick.active{
-  border-color:var(--official);color:var(--official)}
+  background:color-mix(in srgb,var(--official) 8%,var(--panel));border-color:var(--official);color:var(--official)}
 html[data-theme="light"] body.public .pill.th.active,html[data-theme="light"] body.public .pill.src.th.active,
 html[data-theme="light"] body.local .pill.th.active,html[data-theme="light"] body.local .pill.src.th.active{
-  border-color:var(--thai);color:var(--thai)}
+  background:color-mix(in srgb,var(--thai) 8%,var(--panel));border-color:var(--thai);color:var(--thai)}
 html[data-theme="light"] body.public .trend .tbtn.on .n,html[data-theme="light"] body.local .trend .tbtn.on .n{
   color:var(--muted);opacity:1}
 html[data-theme="light"] body.public .conds .cbtn:not(.kw),html[data-theme="light"] body.local .conds .cbtn:not(.kw){
@@ -485,6 +493,60 @@ html[data-theme="light"] body.public .conds .cbtn:not(.kw) .n,
 html[data-theme="light"] body.local .conds .cbtn:not(.kw) .n{color:var(--muted);opacity:1}
 html[data-theme="light"] body.public .newpill[data-show="1"],html[data-theme="light"] body.local .newpill[data-show="1"]{
   background:var(--panel2);border-color:var(--accent);color:var(--accent)}
+/* A short editor's desk briefing, then the full feed as a time-led newsroom timeline. */
+.briefing{margin:30px 0 28px}
+.briefing[hidden],body.tab-cal .briefing{display:none!important}
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  padding-bottom:8px;border-bottom:1px solid var(--text)}
+.sec-head h2{margin:0;font:700 17px/1.4 var(--serif);letter-spacing:-.01em;color:var(--text)}
+.sec-note{margin:0 0 0 auto;color:var(--muted);font:11.5px/1.5 var(--mono)}
+.brief-list{list-style:none;margin:0;padding:0}
+.brief{display:grid;grid-template-columns:72px minmax(0,1fr);gap:14px;padding:18px 0 20px;border-bottom:1px solid var(--line)}
+.brief .bnum{font:600 26px/1.2 var(--serif);color:var(--line2);font-variant-numeric:tabular-nums}
+.brief.picked .bnum{color:var(--accent)}
+.brief .btitle{margin:0;font:600 19px/1.45 var(--serif);letter-spacing:-.015em;overflow-wrap:anywhere}
+.brief .btitle a:hover{color:var(--accent)}
+.brief .bsum{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.65;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.brief .bnote{margin:7px 0 0;padding-left:12px;border-left:2px solid var(--accent);color:var(--muted);font-size:12px}
+.brief .bmeta{display:flex;flex-wrap:wrap;gap:5px 10px;margin:8px 0 0;color:var(--muted);font:11px/1.5 var(--mono)}
+.brief .tag-pick{color:var(--official)}
+.bucket{margin-top:22px}
+.bucket-h{display:flex;justify-content:space-between;gap:12px;margin:0 0 0;padding:0 0 6px;border-bottom:1px solid var(--text);
+  color:var(--muted);font:11.5px/1.5 var(--mono)}
+body.public .timeline-row,body.local .timeline-row{display:grid;grid-template-columns:72px 14px minmax(0,1fr);gap:0;position:relative;
+  min-width:0;padding:17px 0 19px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;box-shadow:none}
+body.public .timeline-row .t,body.local .timeline-row .t{grid-column:1;grid-row:1;margin:2px 12px 0 0;text-align:right;color:var(--muted);font:11.5px/1.5 var(--mono);font-variant-numeric:tabular-nums}
+body.public .timeline-row .timeline-dot,body.local .timeline-row .timeline-dot{grid-column:2;grid-row:1;position:relative;min-height:100%;}
+body.public .timeline-row .timeline-dot::before,body.local .timeline-row .timeline-dot::before{content:"";position:absolute;left:50%;top:-17px;bottom:-20px;width:1px;background:var(--line2)}
+body.public .timeline-row.first-in-day .timeline-dot::before,body.local .timeline-row.first-in-day .timeline-dot::before{top:6px}
+body.public .timeline-row.last-in-day .timeline-dot::before,body.local .timeline-row.last-in-day .timeline-dot::before{bottom:6px}
+body.public .timeline-row .timeline-dot::after,body.local .timeline-row .timeline-dot::after{content:"";position:absolute;left:50%;top:5px;width:7px;height:7px;transform:translateX(-50%);
+  border:1px solid var(--line2);border-radius:50%;background:var(--bg)}
+body.public .timeline-row .body,body.local .timeline-row .body{grid-column:3;grid-row:1;min-width:0}
+body.public .timeline-row .meta,body.local .timeline-row .meta{display:flex;align-items:center;flex-wrap:wrap;gap:5px 9px;margin:0 0 5px;color:var(--muted);font:11.5px/1.5 var(--mono)}
+body.public .timeline-row .meta .chip,body.local .timeline-row .meta .chip{font:inherit}
+body.public .timeline-row .title,body.local .timeline-row .title{margin:0;font:600 20px/1.48 var(--serif);letter-spacing:-.015em;overflow-wrap:anywhere}
+body.public .timeline-row .summary,body.local .timeline-row .summary{margin:7px 0 0;color:var(--muted);font-size:14px;line-height:1.7;overflow-wrap:anywhere}
+body.public .timeline-row .summary.clamp,body.local .timeline-row .summary.clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+body.public .timeline-row .expand,body.local .timeline-row .expand{display:inline-block;margin:5px 12px 0 0;padding:0;font-size:12px}
+body.public .timeline-row .acts,body.local .timeline-row .acts{display:flex;flex-wrap:wrap;gap:8px 12px;margin:6px 0 0;align-items:center}
+body.public .timeline-row .acts .open,body.local .timeline-row .acts .open,body.local .timeline-row .acts .hide{font-size:12px}
+body.public .timeline-row .pickbadge,body.local .timeline-row .pickbadge{margin:0 0 5px}
+body.public .timeline-row:hover,body.local .timeline-row:hover{background:transparent}
+@media(max-width:767px){
+  .briefing{margin:24px 0}
+  .brief{grid-template-columns:36px minmax(0,1fr);gap:10px;padding:15px 0 17px}
+  .brief .bnum{font-size:22px}
+  .brief .btitle{font-size:17px;line-height:1.5}
+  .brief .bsum{font-size:12px}
+  .brief .bmeta{font-size:10.5px}
+  .bucket{margin-top:18px}
+  body.public .timeline-row,body.local .timeline-row{grid-template-columns:52px 12px minmax(0,1fr);padding:15px 0 17px}
+  body.public .timeline-row .t,body.local .timeline-row .t{margin-right:8px;font-size:10.5px}
+  body.public .timeline-row .meta,body.local .timeline-row .meta{font-size:10.5px;gap:4px 7px}
+  body.public .timeline-row .title,body.local .timeline-row .title{font-size:18px;line-height:1.48}
+  body.public .timeline-row .summary,body.local .timeline-row .summary{font-size:13px;line-height:1.65}
+}
 .foot .legal-links{margin:14px 0 0;font-size:12px}
 .foot .legal-links a{color:var(--muted);text-decoration:underline;text-underline-offset:3px}
 """
@@ -498,7 +560,7 @@ THEME_SCRIPT = """\
   var words=labels[root.lang]||labels.ko;
   function mode(){
     if(root.dataset.theme==='dark'||root.dataset.theme==='light')return root.dataset.theme;
-    return window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
+    return 'light';
   }
   function update(){
     var dark=mode()==='dark';
@@ -547,6 +609,7 @@ const shown=(s,label)=>{const t=String(s==null?'':s).replace(/[&<>"']/g,c=>({'&'
 
 var V={tab:CFG.wantThai?'thai':'global',cats:[],hours:24,q:'',terms:[],limit:PAGE,tag:null,mode:'all',value:'',offset:0,pickOnly:false};
 var MEM={},LATEST={},PENDING={},INDEX={},SEEN={},FULL={},DATA={articles:[],sources:{},total:0,has_more:false};
+var BRIEF_CACHE={},BRIEF_PENDING={};
 var archiveTotal=0,refreshTimer=null,hidden=false,lastRegion={};
 try{const s=localStorage.getItem(CACHE_KEY);if(s){const p=JSON.parse(s);if(p&&p.articles)DATA=p}}catch(e){}
 
@@ -574,6 +637,7 @@ function age(iso){if(!iso)return '시각 미상';const d=new Date(iso);if(isNaN(
   if(sec<60)return Math.floor(sec)+'초 전';if(sec<3600)return Math.floor(sec/60)+'분 전';
   if(sec<86400)return Math.floor(sec/3600)+'시간 전';
   return d.toLocaleString('ko-KR',{timeZone:'Asia/Bangkok',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+' ICT'}
+function ictClock(iso){const d=new Date(iso);return Number.isFinite(d.getTime())?new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit',hour12:false}).format(d):'--:--'}
 function bangkokDay(iso){const d=new Date(iso);if(isNaN(d))return '';
   return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(d)}
 function bucket(iso){const t=new Date(iso).getTime();if(!isFinite(t))return '그 이전';
@@ -609,6 +673,62 @@ function termMatch(text,needle){
     return true}
   return false}
 function catList(a){const c=a.categories;return (Array.isArray(c)&&c.length)?c:(a.category?[a.category]:[])}
+function storyHref(value){try{const u=new URL(String(value||''),location.href);return u.protocol==='http:'||u.protocol==='https:'?u.href:''}catch(e){return ''}}
+function briefingKey(){return region()+'|'+String(V.hours)}
+function loadBriefingRows(){
+  if(PUBLIC)return Promise.resolve(articles());
+  const key=briefingKey(),cached=BRIEF_CACHE[key];
+  if(cached&&Date.now()-cached.at<120000)return Promise.resolve(cached.items);
+  if(BRIEF_PENDING[key])return BRIEF_PENDING[key];
+  const query=new URLSearchParams({region:region(),hours:String(V.hours),limit:'300',offset:'0'});
+  BRIEF_PENDING[key]=getJSON(API+'/api/news?'+query.toString()).then(data=>{
+    const rows=Array.isArray(data.articles)?data.articles:[];
+    BRIEF_CACHE[key]={at:Date.now(),items:rows};return rows
+  }).catch(()=>articles()).then(rows=>{delete BRIEF_PENDING[key];return rows});
+  return BRIEF_PENDING[key]}
+function briefingDate(value){const d=new Date(value);if(!Number.isFinite(d.getTime()))return CFG.lang==='en'?CFG.briefing.timeUnknown:'시각 미상';
+  const locale=CFG.lang==='en'?'en-GB':'ko-KR';return d.toLocaleString(locale,{timeZone:'Asia/Bangkok',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})+' ICT'}
+function briefingStatus(mode,count){const copy=CFG.briefing;
+  return (mode==='picked'?copy.briefingPicked:copy.briefingAuto).replace('{n}',count)}
+function briefingItems(){
+  const cutoff=Date.now()-(Number(V.hours)||24)*3600000;
+  const key=briefingKey(),cached=BRIEF_CACHE[key];
+  let rows=cached?cached.items.slice():articles();
+  if(cached){
+    const current=new Map(articles().map(a=>[String(a.link||''),a]));
+    rows=rows.map(a=>current.get(String(a.link||''))||a)}
+  const pool=rows.filter(a=>{const t=Date.parse(a.published_at);return Number.isFinite(t)&&t<=Date.now()+60000&&t>=cutoff});
+  const picked=pool.filter(a=>a.picked);
+  if(picked.length===3)return {mode:'picked',items:picked};
+  const ranked=pool.filter(a=>a.source_type!=='social'&&Number(a.priority||0)>=3).slice().sort((a,b)=>{
+    const priority=Number(b.priority||0)-Number(a.priority||0);
+    return priority||String(b.published_at||'').localeCompare(String(a.published_at||''))});
+  const chosen=[],seen=new Set();
+  ranked.forEach(a=>{if(chosen.length>=3)return;const source=String(a.source||'').trim()||String(a.link||a.title||'');if(seen.has(source))return;seen.add(source);chosen.push(a)});
+  return {mode:'auto',items:chosen}}
+function renderBriefing(){
+  const list=document.querySelector('#briefing'),source=document.querySelector('#brief-src');if(!list)return;
+  const result=briefingItems(),items=result.items||[];
+  if(!items.length){
+    list.innerHTML='<li class="brief"><span class="bnum">00</span><div><p class="btitle">'+esc(CFG.briefing.briefingEmpty)+'</p></div></li>';
+    if(source)source.textContent=CFG.briefing.briefingNoEligible;return}
+  list.innerHTML=items.map((a,i)=>{
+    const href=storyHref(a.original_link||a.link),title=esc(a.title||''),summary=esc(a.summary||'');
+    const cats=catList(a).map(catLabel).join(' · ');
+    const note=a.picked&&a.pick_note?'<p class="bnote">'+esc(a.pick_note)+'</p>':'';
+    return '<li class="brief'+(a.picked?' picked':'')+'"><span class="bnum">'+String(i+1).padStart(2,'0')+'</span><div>'+
+      '<p class="btitle">'+(href?'<a href="'+esc(href)+'" target="_blank" rel="noopener nofollow">'+title+'</a>':title)+'</p>'+
+      (summary?'<p class="bsum">'+summary+'</p>':'')+note+
+      '<p class="bmeta"><span>'+esc(srcLabel(a))+'</span><span>'+briefingDate(a.published_at)+'</span>'+
+      (cats?'<span>'+esc(cats)+'</span>':'')+(a.picked?'<span class="tag-pick">'+esc(CFG.briefing.briefingPickedTag)+'</span>':'')+'</p>'+
+      '</div></li>'}).join('');
+  if(source)source.textContent=briefingStatus(result.mode,items.length)}
+function dayLabel(iso){
+  const d=new Date(iso);if(!Number.isFinite(d.getTime()))return CFG.briefing.dayUnknown;
+  const locale=CFG.lang==='en'?'en-GB':'ko-KR';
+  const parts=new Intl.DateTimeFormat(locale,{timeZone:'Asia/Bangkok',month:'short',day:'numeric',weekday:'short'}).formatToParts(d);
+  const get=k=>(parts.find(p=>p.type===k)||{}).value||'';
+  return CFG.lang==='en'?get('day')+' '+get('month')+' ('+get('weekday')+')':get('month')+'월 '+get('day')+'일 ('+get('weekday')+')'}
 function keep(a){
   const hours=Number(V.hours)||24,t=new Date(a.published_at).getTime();
   if(!isFinite(t)||Date.now()-t>hours*3600000)return false;
@@ -649,8 +769,9 @@ function speakChip(a){const t=(a.title||'')+' '+(a.summary||'');
 // annotation on the other site, and this collector sees zero such markers in the
 // wire text it receives.
 function verifChip(a){
-  if(a.source_type==='official')return '<span class="chip verif off" title="공식 기관이 직접 발표한 문서">공식</span>';
-  if(a.source_type==='social')return '<span class="chip verif sns" title="소셜·채널 게시물 — 언론 보도가 아니며 원문 확인이 필요함">SNS</span>';
+  if(a.source_type==='official')return '<span class="chip verif off" title="'+esc(CFG.briefing.verifOfficialTitle||'')+'">'+esc(CFG.briefing.verifOfficial)+'</span>';
+  if(a.source_type==='social')return '<span class="chip verif sns" title="'+esc(CFG.briefing.verifSnsTitle||'')+'">'+esc(CFG.briefing.verifSns)+'</span>';
+  if(a.source_type==='breaking')return '<span class="chip verif hot">'+esc(CFG.briefing.briefingBreaking)+'</span>';
   return ''}
 // What the reader sees as the source. Once the aggregator link is resolved the story's own
 // publisher is named: the name the feed carried, or the hostname of the resolved link when the feed
@@ -660,29 +781,26 @@ function hostOf(u){try{const h=new URL(u).hostname.toLowerCase().replace(/^www[.
 function srcLabel(a){
   if(!a.original_link)return a.source||'';
   return String(a.original_source||'').trim()||hostOf(a.original_link)||a.source||''}
-function card(a,th,lead){
+function card(a,th,lead,first,last){
   const tag=V.tag||{};
   const srcOn=tag.k==='src'&&tag.v===a.source;
   const srcCls='chip src tap'+(a.source_type==='official'?' official':'')+(th?' th':'')+(srcOn?' on':'');
-  return '<article class="card'+(th?' th':'')+(a.fresh?' new':'')+'">'+
-    '<div class="meta">'+
-      verifChip(a)+
+  const meta=verifChip(a)+
       '<button type="button" class="'+srcCls+'" data-k="src" data-v="'+esc(a.source)+'" aria-pressed="'+(srcOn?'true':'false')+'">'+esc(srcLabel(a))+'</button>'+
       speakChip(a)+
-      // Every label the story matched is a chip, and each one filters on its own. Measured over a
-      // 24-hour window: 19% of rows carry two labels, 4.7% carry three or more.
       catList(a).map(v=>{const on=tag.k==='cat'&&tag.v===v;
-        return '<button type="button" class="chip tap'+(on?' on':'')+'" data-k="cat" data-v="'+esc(v)+'" aria-pressed="'+(on?'true':'false')+'">'+esc(catLabel(v))+'</button>'}).join('')+
-      '<span>'+age(a.published_at)+'</span>'+stars(a)+
-    '</div>'+
-    // The operator's judgement, shown to everybody: a badge and, when there is one, the phrase. It
-    // sits above the headline rather than in the chip row, because it is not a filter over text.
-    (a.picked?'<div class="pickbadge">'+PICK_ICON+' '+PICK+
-      (a.pick_note?'<span class="pnote">'+esc(a.pick_note)+'</span>':'')+'</div>':'')+
-    '<h2 class="title"'+langAttr(a.lang)+'><a href="'+esc(a.original_link||a.link)+'" target="_blank" rel="noopener nofollow">'+hl(a.title)+'</a></h2>'+
-    summaryBlock(a)+
-    (CFG.admin?cardActs(a):'')+
-  '</article>'}
+        return '<button type="button" class="chip tap'+(on?' on':'')+'" data-k="cat" data-v="'+esc(v)+'" aria-pressed="'+(on?'true':'false')+'">'+esc(catLabel(v))+'</button>'}).join('')+stars(a);
+  const href=storyHref(a.original_link||a.link);
+  const title=href?'<a href="'+esc(href)+'" target="_blank" rel="noopener nofollow">'+hl(a.title)+'</a>':hl(a.title);
+  const actions=CFG.admin?cardActs(a):(href?'<div class="acts"><a class="open" href="'+esc(href)+'" target="_blank" rel="noopener nofollow">'+esc(CFG.briefing.openOriginal)+' ↗</a></div>':'');
+  return '<article class="card timeline-row'+(th?' th':'')+(a.fresh?' new':'')+(lead?' lead':'')+
+      (first?' first-in-day':'')+(last?' last-in-day':'')+'">'+
+    '<p class="t"><time datetime="'+esc(a.published_at||'')+'">'+ictClock(a.published_at)+'</time></p>'+
+    '<span class="timeline-dot" aria-hidden="true"></span><div class="body">'+
+      '<p class="meta">'+meta+'</p>'+
+      (a.picked?'<div class="pickbadge">'+PICK_ICON+' '+PICK+(a.pick_note?'<span class="pnote">'+esc(a.pick_note)+'</span>':'')+'</div>':'')+
+      '<h2 class="title"'+langAttr(a.lang)+'>'+title+'</h2>'+summaryBlock(a)+actions+
+    '</div></article>'}
 
 function catLabel(value){const map=CFG.catLabels||{};return map[value]||value}
 function fmt(t,n,m){return String(t).replace("{n}",n).replace("{m}",m)}
@@ -856,7 +974,7 @@ document.querySelector('#trend').onclick=ev=>{
 };
 
 function renderFeed(){
-  loadTrends();renderTrends();loadCondCounts();renderConditions();
+  renderBriefing();loadTrends();renderTrends();loadCondCounts();renderConditions();
   const all=visible(),view=all.slice(0,V.limit),th=V.tab==='thai';
   const feed=document.querySelector('#feed');
   if(!view.length){
@@ -865,24 +983,21 @@ function renderFeed(){
       :'<div class="empty"><b>조건에 맞는 뉴스가 없습니다</b>검색어를 지우거나 기간을 넓혀 보세요.</div>';
     document.querySelector('#counts').innerHTML=fmt('총 <b>{n}</b>건',all.length);
     document.querySelector('#more').hidden=true;return}
-  // Strictly newest first, with light time headings. An earlier version pinned the
-  // highest-priority story of the last three hours to the top; a reader watching a
-  // quiet feed could not tell it was intentional, so the promotion is gone.
-  let html='',current='';
+  const groups=[];
   view.forEach(a=>{
-    if(PUBLIC){
-      const b=bucket(a.published_at);
-      if(b!==current){current=b;html+='<div class="sec">'+esc(b)+'</div>'}
-    }
-    html+=card(a,th,false)});
-  feed.innerHTML=html;
+    const key=bangkokDay(a.published_at)||'unknown';
+    let group=groups[groups.length-1];
+    if(!group||group.key!==key){group={key:key,sample:a.published_at,items:[]};groups.push(group)}
+    group.items.push(a)});
+  feed.innerHTML=groups.map(group=>{
+    const day=group.items,stamp=dayLabel(group.sample);
+    return '<section class="bucket"><p class="bucket-h"><span>'+esc(stamp)+'</span><span class="bcount">'+day.length+'건</span></p>'+
+      day.map((a,i)=>card(a,th,false,i===0,i===day.length-1)).join('')+'</section>'
+  }).join('');
   document.querySelector('#counts').innerHTML=(PUBLIC
     ? fmt('총 <b>{n}</b>건, <b>{m}</b>건 표시',all.length,view.length)
     : fmt('총 <b>{n}</b>건, <b>{m}</b>건 표시',DATA.total==null?all.length:DATA.total,view.length)
       +(CFG.admin?'<span class="admin">'+fmt(', 보관 <b>{n}</b>건',archiveTotal)+'</span>':''));
-  // Local: also require that the last request actually returned the whole window, so the
-  // button disappears when the API's own limit caps the page instead of silently doing
-  // nothing on every further click.
   document.querySelector('#more').hidden=!(PUBLIC
     ? all.length>view.length
     : (DATA.has_more&&view.length>=V.limit));
@@ -1273,7 +1388,8 @@ function applyLocal(fresh){
   const iv=document.querySelector('#interval');
   if(iv&&fresh.interval_seconds!=null)iv.value=String(fresh.interval_seconds);
   flagStale(fresh.updated_at);
-  renderSources();renderPills();renderFeed()}
+  renderSources();renderPills();renderFeed();
+  loadBriefingRows().then(()=>renderBriefing())}
 
 async function fetchFeed(){
   if(PUBLIC){try{await loadPublic(false)}catch(e){offline()}return}
@@ -1549,10 +1665,10 @@ def seed_from_db(db_path: str, region: str, want_thai: bool, lang: str,
     """
     import sqlite3
     selects = (
-        "SELECT title, summary, source, category, categories, link, published_at FROM articles "
+        "SELECT title, summary, source, source_type, priority, category, categories, link, published_at FROM articles "
         "WHERE region = ? AND title IS NOT NULL AND title != '' "
         "{hidden}ORDER BY published_at DESC LIMIT ?",
-        "SELECT title, summary, source, category, NULL AS categories, link, published_at FROM articles "
+        "SELECT title, summary, source, source_type, priority, category, NULL AS categories, link, published_at FROM articles "
         "WHERE region = ? AND title IS NOT NULL AND title != '' "
         "{hidden}ORDER BY published_at DESC LIMIT ?",
     )
@@ -1571,6 +1687,34 @@ def seed_from_db(db_path: str, region: str, want_thai: bool, lang: str,
             continue
     return _seed_cards(_with_publishers(db_path, _with_picks(db_path, [dict(r) for r in rows])),
                        want_thai, lang, limit)
+
+
+def seed_briefing_from_db(db_path: str, region: str, lang: str = "ko",
+                          hours: int = 24) -> tuple[str, str]:
+    """Seed the opening briefing from recent stored rows without changing the database."""
+    import sqlite3
+    cutoff = (datetime.datetime.now(datetime.timezone.utc)
+              - datetime.timedelta(hours=hours)).isoformat()
+    hidden = "" if not _has_table(db_path, "hidden_links") else "AND link NOT IN (SELECT link FROM hidden_links) "
+    try:
+        connection = sqlite3.connect("file:%s?mode=ro" % db_path, uri=True)
+        connection.row_factory = sqlite3.Row
+        try:
+            columns = {row[1] for row in connection.execute("PRAGMA table_info(articles)")}
+            categories = "categories" if "categories" in columns else "NULL AS categories"
+            source_type = "source_type" if "source_type" in columns else "'' AS source_type"
+            priority = "priority" if "priority" in columns else "0 AS priority"
+            rows = connection.execute(
+                "SELECT title, summary, source, %s, %s, category, %s, link, published_at "
+                "FROM articles WHERE region = ? AND title IS NOT NULL AND title != '' "
+                "AND published_at >= ? %s ORDER BY priority DESC, published_at DESC LIMIT 500"
+                % (source_type, priority, categories, hidden), (region, cutoff)).fetchall()
+        finally:
+            connection.close()
+    except sqlite3.Error:
+        return "기준 충족 기사 없음", _briefing_skeleton()
+    items = _with_picks(db_path, [dict(row) for row in rows])
+    return _seed_briefing(items, lang)
 
 
 def _original_sources(connection, links: list) -> dict:
@@ -1674,32 +1818,134 @@ def _seed_labels(item: dict) -> list:
     return [name for name in names if name]
 
 
+def _seed_status(item: dict, lang: str = "ko") -> str:
+    labels = ui_text.UI.get(lang, ui_text.UI["en"])
+    source_type = str(item.get("source_type") or "")
+    if source_type == "official":
+        return '<span class="chip verif off">%s</span>' % labels["verifOfficial"]
+    if source_type == "social":
+        return '<span class="chip verif sns">%s</span>' % labels["verifSns"]
+    if source_type == "breaking":
+        return '<span class="chip verif hot">%s</span>' % labels["briefingBreaking"]
+    return ""
+
+
 def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str:
     rows = []
     labels = ui_text.cat_labels(lang)
     for item in items[:limit]:
         title = str(item.get("title") or "")
         summary = str(item.get("summary") or "")
+        published = str(item.get("published_at") or "")
         if not title:
             continue
-        # Per element, like the script does: a Thai headline with an English summary is one card and
-        # two languages, and one attribute for both makes a browser translator mangle half of it.
         title_attr = _lang_attr(taxonomy.detect_lang(title))
         summary_attr = _lang_attr(taxonomy.detect_lang(summary))
         chips = "".join('<span class="chip">' + html.escape(labels.get(name, name)) + '</span>'
                         for name in _seed_labels(item))
         badge = _pick_badge(item)
+        href = str(item.get("original_link") or item.get("link") or "")
+        if not href.startswith(("https://", "http://")):
+            href = ""
+        stamp = _ict_stamp(published)
+        clock = stamp[-5:] if len(stamp) >= 5 else stamp
+        long_summary = len(summary) > 220
+        source = google_news.display_source(item)
+        actions = '<div class="acts">' + (
+            '<button class="expand" type="button" aria-expanded="false">요약 펼치기</button>'
+            if long_summary else "") + (
+            '<a class="open" href="%s" target="_blank" rel="noopener nofollow">원문 열기 ↗</a>'
+            % html.escape(href, quote=True) if href else "") + '</div>'
         rows.append(
-            '<article class="card seed' + (" th" if want_thai else "") + '">'
-            '<div class="meta"><span class="chip src">' + html.escape(google_news.display_source(item)) + '</span>'
-            + chips +
-            '<span>' + html.escape(_ict_stamp(item.get("published_at"))) + '</span></div>'
-            + badge +
-            '<h2 class="title"' + title_attr + '><a href="' + html.escape(str(item.get("original_link") or item.get("link") or ""))
-            + '" target="_blank" rel="noopener nofollow">' + html.escape(title) + '</a></h2>'
-            '<p class="summary clamp"' + summary_attr + '>' + html.escape(summary) + '</p>'
-            '</article>')
+            '<article class="card seed timeline-row' + (" th" if want_thai else "") + '">'
+            '<p class="t"><time datetime="' + html.escape(published, quote=True) + '">'
+            + html.escape(clock) + '</time></p><span class="timeline-dot" aria-hidden="true"></span>'
+            '<div class="body"><p class="meta"><span class="chip src">' + html.escape(source) + '</span>'
+            + _seed_status(item, lang) + chips
+            + '</p>' + badge +
+            '<h2 class="title"' + title_attr + '>'
+            + (('<a href="' + html.escape(href, quote=True) + '" target="_blank" rel="noopener nofollow">')
+               if href else "") + html.escape(title) + ('</a>' if href else "") + '</h2>'
+            + ('<div class="summary clamp"' if long_summary else '<div class="summary"')
+            + summary_attr + '>' + html.escape(summary) + '</div>' + actions + '</div></article>')
     return "".join(rows)
+
+
+def _briefing_items(items: list[dict], size: int = 3) -> tuple[str, list[dict]]:
+    """Choose three distinct-source priorities, unless exactly three are editor-picked."""
+    picked = [item for item in items if item.get("picked")]
+    if len(picked) == size:
+        return "picked", picked
+    ranked = [item for item in items
+              if item.get("source_type") != "social" and int(item.get("priority") or 0) >= 3]
+    ranked.sort(key=lambda item: (-int(item.get("priority") or 0),
+                                  -_seed_time(item.get("published_at"))))
+    selected, seen = [], set()
+    for item in ranked:
+        source = str(item.get("source") or "").strip() or str(item.get("link") or item.get("title") or "")
+        if source in seen:
+            continue
+        seen.add(source)
+        selected.append(item)
+        if len(selected) == size:
+            break
+    return "auto", selected
+
+
+def _seed_time(value) -> float:
+    try:
+        moment = datetime.datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if moment.tzinfo is None:
+            moment = moment.replace(tzinfo=datetime.timezone.utc)
+        return moment.timestamp()
+    except (TypeError, ValueError, OverflowError):
+        return 0.0
+
+
+def _seed_briefing(items: list[dict], lang: str = "ko") -> tuple[str, str]:
+    labels = ui_text.cat_labels(lang)
+    copy = ui_text.UI.get(lang, ui_text.UI["en"])
+    mode, selected = _briefing_items(items)
+    if not selected:
+        return copy["briefingNoEligible"], '<li class="brief"><span class="bnum">00</span><div><p class="btitle">%s</p></div></li>' % copy["briefingEmpty"]
+    rows = []
+    for index, item in enumerate(selected, 1):
+        title = str(item.get("title") or "")
+        link = str(item.get("original_link") or item.get("link") or "")
+        if not link.startswith(("https://", "http://")):
+            link = ""
+        title_attr = _lang_attr(taxonomy.detect_lang(title))
+        summary = str(item.get("summary") or "")
+        summary_attr = _lang_attr(taxonomy.detect_lang(summary))
+        categories = " · ".join(labels.get(name, name) or name for name in _seed_labels(item))
+        note = ('<p class="bnote">' + html.escape(str(item.get("pick_note") or "")) + '</p>'
+                if item.get("picked") and item.get("pick_note") else "")
+        linked_title = ('<a href="' + html.escape(link, quote=True)
+                        + '" target="_blank" rel="noopener nofollow">' + html.escape(title) + '</a>'
+                        if link else html.escape(title))
+        rows.append(
+            '<li class="brief' + (' picked' if item.get("picked") else '') + '"><span class="bnum">'
+            + ("%02d" % index) + '</span><div><p class="btitle"' + title_attr + '>' + linked_title + '</p>'
+            + ('<p class="bsum"' + summary_attr + '>' + html.escape(summary) + '</p>' if summary else "")
+            + note + '<p class="bmeta"><span>' + html.escape(google_news.display_source(item))
+            + '</span><span>' + html.escape(_ict_stamp(item.get("published_at"))) + ' ICT</span>'
+            + ('<span>' + html.escape(categories) + '</span>' if categories else "")
+            + ('<span class="tag-pick">' + html.escape(copy["briefingPickedTag"]) + '</span>' if item.get("picked") else "")
+            + '</p></div></li>')
+    count = len(selected)
+    if mode == "picked":
+        source = copy["briefingPicked"].replace("{n}", str(count))
+    else:
+        source = copy["briefingAuto"].replace("{n}", str(count))
+    return source, "".join(rows)
+
+
+def _briefing_skeleton(lang: str = "ko") -> str:
+    text = ui_text.UI.get(lang, ui_text.UI["en"])["briefingLoading"]
+    return "".join(
+        '<li class="brief skel"><span class="bnum">%02d</span><div><p class="btitle">%s</p></div></li>'
+        % (index, text)
+        for index in range(1, 4))
 
 
 def _langbar(lang: str, alt: str) -> str:
@@ -1738,7 +1984,7 @@ def localize(page: str, lang: str) -> str:
 
 def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, admin: bool,
            lang: str = "ko", alt: str = "", seed_path: str = "",
-           seed_html: str = "") -> str:
+           seed_html: str = "", briefing_html: str = "", briefing_source: str = "") -> str:
     config = {
         "public": public,
         "datadir": datadir,
@@ -1748,6 +1994,11 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
         "calendar": "/api/calendar",
         "lang": lang,
         "catLabels": ui_text.cat_labels(lang),
+        "briefing": {key: ui_text.UI[lang][key] for key in (
+            "briefingTitle", "briefingAuto", "briefingPicked", "briefingPickedTag",
+            "briefingBreaking", "briefingEmpty", "briefingNoEligible", "briefingLoading",
+            "verifOfficial", "verifOfficialTitle", "verifSns", "verifSnsTitle",
+            "speakerChip", "openOriginal", "expand", "timeUnknown", "dayUnknown")},
     }
     stamp = ('<div class="stamp"><span id="state">연결 중</span> <b id="updated">-</b>'
              if admin else '<div class="stamp">업데이트 <b id="updated">-</b>')
@@ -1792,9 +2043,10 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
         "th": ("ตลาดวันนี้", "ข่าวไทยวันนี้"),
     }
     reader_name = reader_names.get(lang, reader_names["en"])[int(want_thai)]
-    title = "TeemoBKK Live News" + (" · 태국 소식" if want_thai else "") if admin else f"{reader_name} | TeemoBKK"
-    heading = "실시간 뉴스 대시보드" if admin else reader_name
-    brand = "TeemoBKK Live News" if admin else "TeemoBKK"
+    heading = "뉴스 편집실" if admin else reader_name
+    title = f"{heading} | TeemoBKK" if admin else f"{reader_name} | TeemoBKK"
+    brand = ('<span class="brand-accent">티모</span> 라이브뉴스' if lang == "ko"
+             else "TeemoBKK Live News")
     if not admin:
         og = og.replace('content="TeemoBKK Live News"', f'content="{reader_name} | TeemoBKK"')
     # Back to the section that introduced this dashboard.
@@ -1814,12 +2066,24 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
     script = script.replace("__CATS_THAI__", json.dumps(
         ui_text.cats(lang)["thai"], ensure_ascii=False, separators=(",", ":")))
     seed = seed_html or (seed_feed(seed_path, want_thai, lang) if seed_path else "")
+    if not briefing_html and seed_path:
+        try:
+            with io.open(seed_path, encoding="utf-8") as handle:
+                seed_items = json.load(handle).get("articles") or []
+            briefing_source, briefing_html = _seed_briefing(seed_items, lang)
+        except (OSError, ValueError, TypeError):
+            briefing_html = ""
+    briefing_labels = ui_text.UI.get(lang, ui_text.UI["en"])
+    if not briefing_html:
+        briefing_html = _briefing_skeleton(lang)
+        briefing_source = briefing_source or briefing_labels["briefingLoading"]
+    briefing_title = briefing_labels["briefingTitle"]
     page = f"""<!doctype html>
 <html lang="{lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<script>(function(){{try{{var t=localStorage.getItem('tbn-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}}catch(e){{}}}})();</script>
+<script>(function(){{try{{var t=localStorage.getItem('tbn-theme');document.documentElement.dataset.theme=t==='dark'?'dark':'light'}}catch(e){{document.documentElement.dataset.theme='light'}}}})();</script>
 <meta name="robots" content="noindex">
 {og}<link rel="icon" href="{icon_prefix}favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="{icon_prefix}favicon-32.png">
@@ -1849,6 +2113,12 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
     <button id="tab-cal" class="tab" data-tab="cal" role="tab" aria-selected="false">경제 지표</button>
     <button id="tab-thai" class="tab th" data-tab="thai" role="tab" aria-selected="false">태국 소식</button>
   </div>
+
+  <section class="briefing" id="briefing-section" aria-labelledby="briefing-title">
+    <div class="sec-head"><h2 id="briefing-title">__BRIEFING_TITLE__</h2>
+      <p class="sec-note" id="brief-src">__BRIEF_SRC__</p></div>
+    <ol class="brief-list" id="briefing" aria-live="polite">__BRIEFING__</ol>
+  </section>
 
   <section class="cal" id="cal">
     <h2>경제지표 · 연설 · 실적 · 대통령 일정 <span class="note" id="cal-stamp"></span></h2>
@@ -1903,7 +2173,10 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
 <script>{THEME_SCRIPT}</script>
 </body></html>
 """
-    page = localize(page, lang).replace("__SEED__", seed)
+    page = (localize(page, lang).replace("__SEED__", seed)
+            .replace("__BRIEFING__", briefing_html)
+            .replace("__BRIEF_SRC__", html.escape(briefing_source))
+            .replace("__BRIEFING_TITLE__", html.escape(briefing_title)))
     return page
 
 
@@ -2030,16 +2303,18 @@ def build_server(db_path: str = "news.db") -> dict[str, int]:
     # Sections: /news is the market dashboard, /thai introduces the Thailand material and
     # /thai/news is its dashboard. Each has an English default and a Korean copy one level
     # down, so the language switcher stays a plain relative link.
-    for section, want_thai, seed in (("news", False, global_seed),
-                                     ("news/ko", False, global_seed),
-                                     ("thai/news", True, thai_seed),
-                                     ("thai/news/ko", True, thai_seed)):
+    for section, want_thai, seed, region_name in (("news", False, global_seed, "글로벌"),
+                                                  ("news/ko", False, global_seed, "글로벌"),
+                                                  ("thai/news", True, thai_seed, "태국"),
+                                                  ("thai/news/ko", True, thai_seed, "태국")):
         code = "ko" if section.endswith("/ko") else "en"
         alt = "../index.html" if code == "ko" else "ko/index.html"
+        briefing_source, briefing_html = seed_briefing_from_db(db_path, region_name, code)
         sizes["%s/index.html" % section] = write(
             ROOT / section / "index.html",
             render(public=False, datadir="", want_thai=want_thai, icon_prefix="/",
-                   admin=False, lang=code, alt=alt, seed_html=seed))
+                   admin=False, lang=code, alt=alt, seed_html=seed,
+                   briefing_html=briefing_html, briefing_source=briefing_source))
     return sizes
 
 
