@@ -33,23 +33,28 @@ import live_news_dashboard as core  # noqa: E402
 
 # Measured on the live Thailand window: the same wire story, from four outlets, under four links.
 # The two english.news.cn rows are two different Google links for the same article.
+def recent(minutes: int) -> str:
+    """Windowed fixtures must stay inside the retention period as the calendar advances."""
+    return (datetime.now(timezone.utc) - timedelta(minutes=minutes)).isoformat()
+
+
 STORY = [
     {"title": "Thailand issues warning of heavy rain - Global Times",
      "link": "https://news.google.com/rss/articles/CBMiYkFVX3lxTE1TcEtxTmRYMll6?oc=5",
      "source": "Google News · 방콕", "source_type": "aggregated", "region": "태국",
-     "original_source": "Global Times", "published_at": "2026-09-25T23:46:00+00:00", "priority": 2},
+     "original_source": "Global Times", "published_at": recent(6), "priority": 2},
     {"title": "Thailand issues warning of heavy rain - english.news.cn",
      "link": "https://news.google.com/rss/articles/CBMifEFVX3lxTE9FRkFjTWRiUTRH?oc=5",
      "source": "Google News · 태국", "source_type": "aggregated", "region": "태국",
-     "original_source": "english.news.cn", "published_at": "2026-09-25T23:24:00+00:00", "priority": 2},
+     "original_source": "english.news.cn", "published_at": recent(28), "priority": 2},
     {"title": "Thailand issues warning of heavy rain - english.news.cn",
      "link": "https://news.google.com/rss/articles/CBMijAFBVV95cUxQcFRsVS12YkM2?oc=5",
      "source": "Google News · 태국", "source_type": "aggregated", "region": "태국",
-     "original_source": "english.news.cn", "published_at": "2026-09-25T23:24:00+00:00", "priority": 2},
+     "original_source": "english.news.cn", "published_at": recent(28), "priority": 2},
     {"title": "Thailand issues warning of heavy rain-Xinhua - 新华网",
      "link": "https://news.google.com/rss/articles/CBMimAFBVV95cUxPaTlRb0NRTnht?oc=5",
      "source": "Google News · 방콕", "source_type": "aggregated", "region": "태국",
-     "original_source": "新华网", "published_at": "2026-09-25T23:24:00+00:00", "priority": 2},
+     "original_source": "新华网", "published_at": recent(29), "priority": 2},
 ]
 
 # Different events that share a topic. They must stay separate rows.
@@ -57,15 +62,15 @@ OTHER_EVENTS = [
     {"title": "Eastern Bangkok on flood alert as water in canals reaches critical - Bangkok Post",
      "link": "https://news.google.com/rss/articles/CBMi0gFBVV95cUxNVmpZc3VaR3Yw?oc=5",
      "source": "Google News · 방콕", "source_type": "aggregated", "region": "태국",
-     "original_source": "Bangkok Post", "published_at": "2026-09-25T12:07:00+00:00", "priority": 2},
+     "original_source": "Bangkok Post", "published_at": recent(35), "priority": 2},
     {"title": "Flooding hits Bangkok as prolonged rain disrupts major routes - Phuket News",
      "link": "https://news.google.com/rss/articles/CBMiYkFVX3lxTFBDNVlJb3hmR0du?oc=5",
      "source": "Google News · 방콕", "source_type": "aggregated", "region": "태국",
-     "original_source": "Phuket News", "published_at": "2026-09-25T11:49:00+00:00", "priority": 2},
+     "original_source": "Phuket News", "published_at": recent(40), "priority": 2},
     {"title": "Heavy flooding submerges vehicles, halts traffic in eastern Thailand",
      "link": "https://news.google.com/rss/articles/CBMisgFBVV95cUxPSGdpUExCTmRX?oc=5",
      "source": "Google News · 태국", "source_type": "aggregated", "region": "태국",
-     "original_source": "Thai PBS", "published_at": "2026-09-25T20:06:00+00:00", "priority": 2},
+     "original_source": "Thai PBS", "published_at": recent(45), "priority": 2},
 ]
 
 
