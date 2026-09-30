@@ -148,7 +148,9 @@ def merge(previous: list[dict[str, Any]], fresh: list[dict[str, Any]]) -> list[d
         key=lambda item: (str(item.get("published_at") or ""), int(item.get("priority") or 0)),
         reverse=True,
     )
-    return ordered[:MAX_PER_REGION]
+    # Older published JSON can contain pre-dedupe copies. The briefing and feed
+    # seeded from this file should receive the same filtered rows.
+    return core.dedupe_rows(ordered)[:MAX_PER_REGION]
 
 
 def digest_of(articles: list[dict[str, Any]]) -> str:

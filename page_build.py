@@ -27,6 +27,7 @@ import html
 import io
 import json
 import os
+import re
 import shutil
 from pathlib import Path
 
@@ -34,6 +35,7 @@ import landing
 import landing_thai
 import category_rules as taxonomy
 import google_news
+import semantic_event
 import ui_text
 
 ROOT = Path(__file__).resolve().parent
@@ -549,14 +551,15 @@ body.public .timeline-row:hover,body.local .timeline-row:hover{background:transp
 }
 .foot .legal-links{margin:14px 0 0;font-size:12px}
 .foot .legal-links a{color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+.timeline-row .title,.brief .btitle{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden;overflow-wrap:normal;word-break:normal}
 """
 
 THEME_SCRIPT = """\
 (function(){
   var root=document.documentElement,button=document.getElementById('theme-toggle');
   if(!button)return;
-  var labels={ko:{dark:'다크 모드',light:'일반 모드'},en:{dark:'Dark mode',light:'Light mode'},
-    th:{dark:'โหมดมืด',light:'โหมดสว่าง'}};
+  var labels={ko:{dark:'다크 모드 켜기',light:'다크 모드 끄기'},en:{dark:'Enable dark mode',light:'Disable dark mode'},
+    th:{dark:'เปิดโหมดมืด',light:'ปิดโหมดมืด'}};
   var words=labels[root.lang]||labels.ko;
   function mode(){
     if(root.dataset.theme==='dark'||root.dataset.theme==='light')return root.dataset.theme;
@@ -604,6 +607,7 @@ const CAL_URL=CFG.calendar;
 const CACHE_KEY='teemo-live-news-cache-v4';
 
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function cleanTitle(value){return String(value||'').replace(/(?:https?:\\/\\/|www[.])\\S+|\\b[a-z0-9.-]+[.](?:com|org|net|rs|co[.]th|go[.]th)\\/\\S+/gi,'').replace(/\\s+-\\s+[^-]+$/,'').replace(/\\s+/g,' ').trim()}
 const shown=(s,label)=>{const t=String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   return '실제 <b class="'+label+'">'+t+'</b>'};
 
@@ -632,11 +636,11 @@ function articles(){
     if(link)seenLinks.add(link);if(original)seenOriginals.add(original);
     return true});
 }
-function age(iso){if(!iso)return '시각 미상';const d=new Date(iso);if(isNaN(d))return '시각 미상';
+function age(iso){if(!iso)return CFG.briefing.timeUnknown;const d=new Date(iso);if(isNaN(d))return CFG.briefing.timeUnknown;
   const sec=Math.max(0,(Date.now()-d.getTime())/1000);
   if(sec<60)return Math.floor(sec)+'초 전';if(sec<3600)return Math.floor(sec/60)+'분 전';
   if(sec<86400)return Math.floor(sec/3600)+'시간 전';
-  return d.toLocaleString('ko-KR',{timeZone:'Asia/Bangkok',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+' ICT'}
+  return briefingDate(iso)}
 function ictClock(iso){const d=new Date(iso);return Number.isFinite(d.getTime())?new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit',hour12:false}).format(d):'--:--'}
 function bangkokDay(iso){const d=new Date(iso);if(isNaN(d))return '';
   return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(d)}
@@ -686,8 +690,17 @@ function loadBriefingRows(){
     BRIEF_CACHE[key]={at:Date.now(),items:rows};return rows
   }).catch(()=>articles()).then(rows=>{delete BRIEF_PENDING[key];return rows});
   return BRIEF_PENDING[key]}
-function briefingDate(value){const d=new Date(value);if(!Number.isFinite(d.getTime()))return CFG.lang==='en'?CFG.briefing.timeUnknown:'시각 미상';
-  const locale=CFG.lang==='en'?'en-GB':'ko-KR';return d.toLocaleString(locale,{timeZone:'Asia/Bangkok',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})+' ICT'}
+function briefingDate(value){const d=new Date(value);if(!Number.isFinite(d.getTime()))return CFG.briefing.timeUnknown;
+  const locale=CFG.lang==='en'?'en-GB':'ko-KR';return new Intl.DateTimeFormat(locale,{timeZone:'Asia/Bangkok',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(d)+' ICT'}
+function sameBriefingEvent(a,b){
+  const ta=Date.parse(a.published_at),tb=Date.parse(b.published_at);
+  if(!Number.isFinite(ta)||!Number.isFinite(tb)||Math.abs(ta-tb)>21600000)return false;
+  const key=t=>{const s=cleanTitle(t).toLowerCase();
+    const actors=[[/kashkari|카시카리/,'kashkari'],[/powell|파월/,'powell'],[/trump|트럼프/,'trump'],[/fed|연준/,'fed']];
+    const actions=[[/rate cut|cut.{0,12}rate|금리.{0,8}인하/,'cut'],[/rate hike|rais.{0,12}rate|금리.{0,8}인상/,'hike'],[/inflation|인플레|물가/,'inflation'],[/tariff|관세/,'tariff']];
+    const actor=actors.find(x=>x[0].test(s)),action=actions.find(x=>x[0].test(s));
+    return actor&&action?actor[1]+'|'+action[1]:''};
+  const x=key(a.title),y=key(b.title);return !!x&&x===y}
 function briefingStatus(mode,count){const copy=CFG.briefing;
   return (mode==='picked'?copy.briefingPicked:copy.briefingAuto).replace('{n}',count)}
 function briefingItems(){
@@ -698,9 +711,10 @@ function briefingItems(){
     const current=new Map(articles().map(a=>[String(a.link||''),a]));
     rows=rows.map(a=>current.get(String(a.link||''))||a)}
   const pool=rows.filter(a=>{const t=Date.parse(a.published_at);return Number.isFinite(t)&&t<=Date.now()+60000&&t>=cutoff});
-  const picked=pool.filter(a=>a.picked);
+  const distinct=pool.filter((a,i)=>!pool.slice(0,i).some(b=>sameBriefingEvent(a,b)));
+  const picked=distinct.filter(a=>a.picked);
   if(picked.length===3)return {mode:'picked',items:picked};
-  const ranked=pool.filter(a=>a.source_type!=='social'&&Number(a.priority||0)>=3).slice().sort((a,b)=>{
+  const ranked=distinct.filter(a=>a.source_type!=='social'&&Number(a.priority||0)>=3).slice().sort((a,b)=>{
     const priority=Number(b.priority||0)-Number(a.priority||0);
     return priority||String(b.published_at||'').localeCompare(String(a.published_at||''))});
   const chosen=[],seen=new Set();
@@ -713,7 +727,7 @@ function renderBriefing(){
     list.innerHTML='<li class="brief"><span class="bnum">00</span><div><p class="btitle">'+esc(CFG.briefing.briefingEmpty)+'</p></div></li>';
     if(source)source.textContent=CFG.briefing.briefingNoEligible;return}
   list.innerHTML=items.map((a,i)=>{
-    const href=storyHref(a.original_link||a.link),title=esc(a.title||''),summary=esc(a.summary||'');
+    const href=storyHref(a.original_link||a.link),title=esc(cleanTitle(a.title)),summary=esc(a.summary||'');
     const cats=catList(a).map(catLabel).join(' · ');
     const note=a.picked&&a.pick_note?'<p class="bnote">'+esc(a.pick_note)+'</p>':'';
     return '<li class="brief'+(a.picked?' picked':'')+'"><span class="bnum">'+String(i+1).padStart(2,'0')+'</span><div>'+
@@ -728,7 +742,7 @@ function dayLabel(iso){
   const locale=CFG.lang==='en'?'en-GB':'ko-KR';
   const parts=new Intl.DateTimeFormat(locale,{timeZone:'Asia/Bangkok',month:'short',day:'numeric',weekday:'short'}).formatToParts(d);
   const get=k=>(parts.find(p=>p.type===k)||{}).value||'';
-  return CFG.lang==='en'?get('day')+' '+get('month')+' ('+get('weekday')+')':get('month')+'월 '+get('day')+'일 ('+get('weekday')+')'}
+  return CFG.lang==='en'?get('day')+' '+get('month')+' ('+get('weekday')+')':get('month')+' '+get('day')+'일 ('+get('weekday')+')'}
 function keep(a){
   const hours=Number(V.hours)||24,t=new Date(a.published_at).getTime();
   if(!isFinite(t)||Date.now()-t>hours*3600000)return false;
@@ -746,8 +760,7 @@ function keep(a){
   if(q&&!termMatch((a.title||'')+' '+(a.summary||'')+' '+(a.source||'')+' '+labels.join(' '),q))return false;
   return true}
 function visible(){return PUBLIC?articles().filter(keep):articles()}
-function stars(a){const n=Number(a.priority)||0;
-  return n>=4?'<button type="button" class="chip hot static" tabindex="-1" aria-hidden="true">'+String.fromCharCode(9733).repeat(Math.min(5,n))+'</button>':''}
+function stars(a){return ''}
 function summaryBlock(a){
   const s=a.summary||'';if(!s)return '';
   const long=s.length>220;
@@ -759,7 +772,7 @@ function summaryBlock(a){
 function langAttr(code){return code?' lang="'+code+'"':''}
 const SPEAKERS=['트럼프','Trump','TRUMP','머스크','Musk','MUSK','파월','Powell','워시','Warsh','베센트','Bessent','라가르드','Lagarde','푸틴','Putin','시진핑','Xi Jinping','네타냐후','Netanyahu','우에다','Ueda'];
 function speakChip(a){const t=(a.title||'')+' '+(a.summary||'');
-  return SPEAKERS.some(n=>t.indexOf(n)>=0)?'<span class="chip speak">인물 발언</span>':''}
+  return SPEAKERS.some(n=>t.indexOf(n)>=0)?'<span class="chip speak">'+esc(CFG.briefing.speakerChip)+'</span>':''}
 // Verification level, not a second source name. The source chip already says who
 // published it, so only the levels that change how much a line should be trusted are
 // shown, and they are meant to be rare: measured over a day, official is 0.5% and
@@ -791,7 +804,7 @@ function card(a,th,lead,first,last){
       catList(a).map(v=>{const on=tag.k==='cat'&&tag.v===v;
         return '<button type="button" class="chip tap'+(on?' on':'')+'" data-k="cat" data-v="'+esc(v)+'" aria-pressed="'+(on?'true':'false')+'">'+esc(catLabel(v))+'</button>'}).join('')+stars(a);
   const href=storyHref(a.original_link||a.link);
-  const title=href?'<a href="'+esc(href)+'" target="_blank" rel="noopener nofollow">'+hl(a.title)+'</a>':hl(a.title);
+  const title=href?'<a href="'+esc(href)+'" target="_blank" rel="noopener nofollow">'+hl(cleanTitle(a.title))+'</a>':hl(cleanTitle(a.title));
   const actions=CFG.admin?cardActs(a):(href?'<div class="acts"><a class="open" href="'+esc(href)+'" target="_blank" rel="noopener nofollow">'+esc(CFG.briefing.openOriginal)+' ↗</a></div>':'');
   return '<article class="card timeline-row'+(th?' th':'')+(a.fresh?' new':'')+(lead?' lead':'')+
       (first?' first-in-day':'')+(last?' last-in-day':'')+'">'+
@@ -885,7 +898,7 @@ function tFold(w){if(!/^[a-z]+$/.test(w))return w;const s=w.replace(/s$/,'');ret
 function trends(){
   const skip=T_SKIP[V.tab]||T_SKIP.global,uni={},bi={},form={};
   trendSource().forEach(a=>{
-    let t=a.title||'';
+    let t=cleanTitle(a.title);
     if((a.source||'').indexOf('Google News')===0)t=t.replace(T_TAIL,'');
     t=t.replace(T_URL,' ');
     const tl=t.toLowerCase(),keep=[];
@@ -952,14 +965,14 @@ function renderTrends(){
   const list=T_CACHE.list||[];
   if(!list.length){el.hidden=true;el.innerHTML='';return}
   el.hidden=false;
-  el.innerHTML='<span class="tlabel">' + "지금 뜨는 키워드" + '</span><span class="ttrack">'+
+  el.innerHTML='<span class="tlabel">' + esc(CFG.trendLabel) + '</span><span class="ttrack">'+
     list.map(function(x){
       const on=V.terms.indexOf(x.t)>=0;
       return '<button type="button" class="tbtn'+(on?' on':'')+'" data-trend="'+esc(x.t)+
       '" aria-pressed="'+(on?'true':'false')+'">'+(on?'\u2713 ':'')+esc(x.t)+
       '<span class="n">'+x.c+'</span></button>'}).join('')+
     (V.terms.length?'<button type="button" class="tbtn clear" data-trend-clear="1">'
-      +V.terms.length+'개 해제 \u2715</button>':'')+'</span>'; }
+      +V.terms.length+esc(CFG.clearTerms)+'</button>':'')+'</span>'; }
 document.querySelector('#trend').onclick=ev=>{
   if(ev.target.closest('[data-trend-clear]')){
     V.terms=[];V.limit=PAGE;V.offset=0;renderTrends();fetchFeed();return}
@@ -1830,11 +1843,18 @@ def _seed_status(item: dict, lang: str = "ko") -> str:
     return ""
 
 
+def _clean_title(title: object) -> str:
+    """Remove embedded links and publisher tails in server-rendered titles."""
+    text = re.sub(r"(?:https?://|www\.)\S+|\b[a-z0-9.-]+\.(?:com|org|net|rs|co\.th|go\.th)/\S+",
+                  "", str(title or ""), flags=re.I)
+    return re.sub(r"\s+", " ", re.sub(r"\s+-\s+[^-]+$", "", text)).strip()
+
+
 def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str:
     rows = []
     labels = ui_text.cat_labels(lang)
     for item in items[:limit]:
-        title = str(item.get("title") or "")
+        title = _clean_title(item.get("title"))
         summary = str(item.get("summary") or "")
         published = str(item.get("published_at") or "")
         if not title:
@@ -1873,10 +1893,12 @@ def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str
 
 def _briefing_items(items: list[dict], size: int = 3) -> tuple[str, list[dict]]:
     """Choose three distinct-source priorities, unless exactly three are editor-picked."""
-    picked = [item for item in items if item.get("picked")]
+    distinct = [item for index, item in enumerate(items)
+                if not any(semantic_event.same_event(item, other) for other in items[:index])]
+    picked = [item for item in distinct if item.get("picked")]
     if len(picked) == size:
         return "picked", picked
-    ranked = [item for item in items
+    ranked = [item for item in distinct
               if item.get("source_type") != "social" and int(item.get("priority") or 0) >= 3]
     ranked.sort(key=lambda item: (-int(item.get("priority") or 0),
                                   -_seed_time(item.get("published_at"))))
@@ -1910,7 +1932,7 @@ def _seed_briefing(items: list[dict], lang: str = "ko") -> tuple[str, str]:
         return copy["briefingNoEligible"], '<li class="brief"><span class="bnum">00</span><div><p class="btitle">%s</p></div></li>' % copy["briefingEmpty"]
     rows = []
     for index, item in enumerate(selected, 1):
-        title = str(item.get("title") or "")
+        title = _clean_title(item.get("title"))
         link = str(item.get("original_link") or item.get("link") or "")
         if not link.startswith(("https://", "http://")):
             link = ""
@@ -1999,6 +2021,8 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
             "briefingBreaking", "briefingEmpty", "briefingNoEligible", "briefingLoading",
             "verifOfficial", "verifOfficialTitle", "verifSns", "verifSnsTitle",
             "speakerChip", "openOriginal", "expand", "timeUnknown", "dayUnknown")},
+        "trendLabel": ui_text.UI[lang]["trendLabel"],
+        "clearTerms": ui_text.UI[lang]["clearTerms"],
     }
     stamp = ('<div class="stamp"><span id="state">연결 중</span> <b id="updated">-</b>'
              if admin else '<div class="stamp">업데이트 <b id="updated">-</b>')
@@ -2051,11 +2075,11 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
         og = og.replace('content="TeemoBKK Live News"', f'content="{reader_name} | TeemoBKK"')
     # Back to the section that introduced this dashboard.
     home = "/thai/" if want_thai else "/"
-    theme_button = '<button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false">다크 모드</button>'
+    theme_button = '<button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false">다크 모드 켜기</button>'
     if lang == "en":
-        theme_button = theme_button.replace("다크 모드", "Dark mode")
+        theme_button = theme_button.replace("다크 모드 켜기", "Enable dark mode")
     elif lang == "th":
-        theme_button = theme_button.replace("다크 모드", "โหมดมืด")
+        theme_button = theme_button.replace("다크 모드 켜기", "เปิดโหมดมืด")
     privacy_url = "/privacy/en/" if lang == "en" else "/privacy/"
     privacy_label = "Privacy policy" if lang == "en" else "개인정보 처리방침"
     privacy_link = '<p class="legal-links"><a href="%s">%s</a></p>' % (privacy_url, privacy_label)

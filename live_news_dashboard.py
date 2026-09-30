@@ -497,6 +497,7 @@ def _story_identity(article: dict[str, Any], resolved: str = "") -> tuple[str, s
 
 
 def dedupe(articles: list[dict[str, Any]], limit: int | None = None) -> list[dict[str, Any]]:
+    import semantic_event
     articles = sorted(articles, key=lambda item: (item.get("published_at", ""), item["priority"]), reverse=True)
     kept: list[dict[str, Any]] = []
     seen_links: set[str] = set()
@@ -510,6 +511,8 @@ def dedupe(articles: list[dict[str, Any]], limit: int | None = None) -> list[dic
         if url and url in urls:
             continue
         if key and any(_similar_title(key, old) for old in keys):
+            continue
+        if any(semantic_event.same_event(article, old) for old in kept):
             continue
         seen_links.add(link)
         if url:
@@ -605,8 +608,10 @@ def dedupe_rows(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     feed a screen - the API the pages read and the published JSON - so the duplicates already in the
     database stop being shown, while nothing is deleted and the push path keeps its own selection.
     """
+    import semantic_event
     seen: dict[str, tuple[set[str], set[str]]] = {}
     seen_links: dict[str, set[str]] = {}
+    seen_events: dict[str, list[dict[str, Any]]] = {}
     out: list[dict[str, Any]] = []
     for item in items:
         region = str(item.get("region") or GLOBAL_REGION)
@@ -618,6 +623,9 @@ def dedupe_rows(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         key, url = _story_identity(item, str(item.get("original_link") or ""))
         if _identity_equal(key, url, keys, urls):
             continue
+        events = seen_events.setdefault(region, [])
+        if any(semantic_event.same_event(item, previous) for previous in events):
+            continue
         if link:
             links.add(link)
         if key:
@@ -625,6 +633,7 @@ def dedupe_rows(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if url:
             urls.add(url)
         out.append(item)
+        events.append(item)
     return out
 
 

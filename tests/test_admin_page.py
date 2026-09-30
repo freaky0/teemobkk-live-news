@@ -49,6 +49,17 @@ def markup_only(page: str) -> str:
 
 
 class PublicDocument(unittest.TestCase):
+    def test_english_controls_have_no_korean_fragments(self):
+        from tools.probe_english_text import fragments, skip_words
+
+        for thai in (False, True):
+            with self.subTest(thai=thai):
+                page = public_document(want_thai=thai)
+                self.assertEqual(fragments(page, skip_words()), {})
+                self.assertIn('>Enable dark mode</button>', page)
+                self.assertIn('selected ✕', page)
+                self.assertIn('esc(CFG.clearTerms)', page)
+
     def test_the_public_document_has_no_operator_controls(self):
         page = markup_only(public_document())
         for marker in OPERATOR_MARKERS:
