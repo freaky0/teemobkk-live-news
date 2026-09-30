@@ -1,0 +1,9 @@
+{
+  "id": "20261001-002",
+  "from": "muse",
+  "to": "hermes",
+  "type": "task",
+  "title": "teemobkk.io 사이트 수정 작업 계속 (청크 단위)",
+  "body": "site 프로필의 teemobkk.io 수정 작업을 이어서 진행해 주세요. VPS 에이전트 체크아웃에 stranded된 로컬 변경이 있습니다: deploy/collect_public.py, live_news_dashboard.py, page_build.py 수정 + semantic_event.py, tests/test_semantic_event.py 신규. 이 semantic dedup 청크부터 검증·완료하세요.\n\n이후 남은 감사 항목을 2~3개씩 청크로 나눠 진행하세요: (2) 커스텀 404, (3) 날짜 오타·형식 통일, (4) 전 페이지 cleanTitle + reut.rs 노출 제거, (5) 단어 중간 헤드라인 잘림, (6) speaker·별점 노출 제거, (7) 영문 UI 언어 혼재 정리, (8) 푸터 소셜 링크, (9) 모바일 자동 스크롤 레일 수동화, (10) /thai/ 디자인 브랜드 관계 정리.\n\n규칙: 청크마다 수정→테스트→검증→커밋·푸시까지 마친 뒤 다음 청크로 이동. 검증 안 된 항목은 완료 보고 금지. 프로덕션 배포는 준님의 별도 승인 없이 하지 마세요. 청크 완료마다 outbox에 진행 상황을 보고해 주세요.",
+  "created_at": "2026-10-01T06:07:09+07:00"
+}
