@@ -194,6 +194,7 @@ def main():
     nj = jsdom_path()
     if nj:
         env["NODE_PATH"] = nj
+    env["PYTHON"] = sys.executable
     if os.environ.get("HERMES_BROWSER_TOOLS"):
         env["HERMES_BROWSER_TOOLS"] = os.environ["HERMES_BROWSER_TOOLS"]
 

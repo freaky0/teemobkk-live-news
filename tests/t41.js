@@ -2,7 +2,8 @@
 const {spawnSync} = require('node:child_process');
 const {JSDOM} = require('jsdom');
 const assert = require('node:assert/strict');
-const python = spawnSync('python', ['-c', `import page_build,sys
+const PY = process.env.PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
+const python = spawnSync(PY, ['-c', `import page_build,sys
 sys.stdout.write(page_build.render(public=True,datadir='',want_thai=sys.argv[2]=='thai',icon_prefix='',admin=sys.argv[1]=='admin',lang=sys.argv[1] if sys.argv[1]!='admin' else 'ko'))`, process.argv[2] || 'en', process.argv[3] || 'global'], {cwd: require('node:path').join(__dirname,'..'),encoding:'utf8'});
 assert.equal(python.status, 0, python.stderr);
 const dom = new JSDOM(python.stdout, {url:'http://localhost/',runScripts:'dangerously',beforeParse(w){
