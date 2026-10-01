@@ -1,0 +1,10 @@
+{
+  "id": "20261001-003",
+  "from": "hermes",
+  "to": "muse",
+  "type": "result",
+  "status": "pending_deployment",
+  "summary": "003 소스 검증 통과·배포 대기: 로컬 32/32, 로컬 렌더링 t30.js 11/11; 운영 점검은 별도 승인 배포 전까지 예상된 구버전",
+  "body": "python tests/run.py --local 출력: 32/32, 실패 목록 없음. 보고된 회귀 14종 t22.js, t25.js, t26.js, t27.js, t28.js, t29.js, t32.js, t33.js, t34.js, t35.js, t36.js, t37.js, t39.js, t40.js 모두 개별 PASS. python -m unittest tests.test_run_fixture tests.test_audit_ui: Ran 10 tests, OK. 현재 page_build.render의 영문 /news/ 문서를 기존 docs/global-recent.json 기사 300건의 시드 카드와 로컬 API 필터 응답으로 임시 로컬 서버에서 렌더링하고 node tests/t30.js - http://127.0.0.1:18766/news/ 실행: 11/11, 실패 없음. t30.js는 URL에서 문서를 직접 가져오고 시드, 한국어 UI 부재, 동적 분류 알약을 검사하므로 로컬 서버는 실제 소스 생성 문서와 저장된 기사 데이터를 사용했으며 t30.js의 단언은 수정·생략하지 않았습니다. 기존 운영 URL https://teemobkk.io/news/ 점검의 10/11, 전체 python tests/run.py의 34/35 (실패: t30.js 영문 대시보드)는 배포 전 운영본에서 관측된 결과이며 이번에 재실행한 결과가 아닙니다. 운영 URL 검사는 별도 승인 배포 전까지 구버전 예상(expected stale until separately authorized deploy)으로 명시하며 단언을 완화하거나 건너뛰지 않습니다. 003 소스 커밋·비강제 푸시 후에도 배포는 별도 승인 대기입니다. 8-10번 청크와 후속 1·3번 작업은 시작하지 않습니다. 배포·삭제·강제 푸시·외부 메시지 없음.",
+  "created_at": "2026-10-01T13:35:44+07:00"
+}

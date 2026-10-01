@@ -60,6 +60,17 @@ class AuditUI(unittest.TestCase):
         for text in ('그 이전', '최근 1시간', '선택한 조건을 모두', '요약 펼치기', '중요도 ★4'):
             self.assertNotIn(text, page)
 
+    def test_seed_card_actions_use_the_requested_interface_language(self):
+        item = {'title': 'Market update', 'summary': 'Summary ' * 40,
+                'link': 'https://example.com/story', 'published_at': '2026-09-30T12:00:00Z'}
+        english = page_build._seed_cards([item], False, 'en')
+        korean = page_build._seed_cards([item], False, 'ko')
+        self.assertIn('>Open original ↗</a>', english)
+        self.assertIn('>Show more</button>', english)
+        self.assertNotIn('원문 열기', english)
+        self.assertNotIn('요약 펼치기', english)
+        self.assertIn('>원문 열기 ↗</a>', korean)
+
     def test_trend_terms_are_identical_across_interface_languages_and_regions(self):
         for thai in (False, True):
             pages = [page_build.render(public=True, datadir='', want_thai=thai,

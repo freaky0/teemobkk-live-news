@@ -3,11 +3,9 @@
 The page checks are jsdom scripts that each take a URL. They used to live only in a scratch folder
 that is pruned after 72 hours, which meant the suite could quietly disappear between sessions.
 
-The local run also used to need a dashboard already running on this machine, started by hand with
-start_dashboard_bg.bat, and it refused to run without one. The local page is no longer the operator's
-view - /admin on the deployed site is - so the local server is a fixture of this script now: it
-rebuilds the page, starts a collector for the run, and stops what it started. A server that is
-already listening is used as it is and left alone.
+The local page is no longer the operator's view - /admin on the deployed site is. The local
+server is a fixture: it rebuilds the page, starts a collector, and stops what it started. An
+unrelated server listening on the default port is never reused.
 
     python tests/run.py            # local pages and the deployed ones
     python tests/run.py --local    # only what the local page serves
@@ -99,6 +97,19 @@ def port_is_taken(port=None):
         return probe.connect_ex(("127.0.0.1", port or LOCAL_PORT)) == 0
 
 
+def allocate_local_port(preferred=LOCAL_PORT):
+    """Leave an unrelated listener untouched."""
+    if not port_is_taken(preferred):
+        return preferred
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        return probe.getsockname()[1]
+
+
+def suite_args(args, kind, local_url):
+    return [local_url if kind == "local" and arg == LOCAL_URL else arg for arg in args]
+
+
 def build_local_page():
     """Rebuild the page the local server serves.
 
@@ -112,22 +123,23 @@ def build_local_page():
     return size
 
 
-def start_local_server(log_path):
+def start_local_server(log_path, port):
     """Start a collector for this run and return the process, or None if it will not come up."""
     handle = open(log_path, "w", encoding="utf-8")
     process = subprocess.Popen(
-        [sys.executable, "live_news_dashboard.py", "--port", str(LOCAL_PORT), "--interval", "3600"],
+        [sys.executable, "live_news_dashboard.py", "--port", str(port), "--interval", "3600"],
         cwd=ROOT, stdout=handle, stderr=subprocess.STDOUT)
+    handle.close()
     for _ in range(60):
-        if server_is_up():
-            return process
         if process.poll() is not None:
             break
+        if server_is_up("http://127.0.0.1:%d/" % port):
+            return process
         time.sleep(0.5)
     return None
 
 
-def stop_local_server(process):
+def stop_local_server(process, port):
     """Stop the server this script started, and say whether the port came free."""
     if process is None or process.poll() is not None:
         return True
@@ -138,7 +150,7 @@ def stop_local_server(process):
         process.kill()
         process.wait(timeout=10)
     for _ in range(20):
-        if not port_is_taken():
+        if not port_is_taken(port):
             return True
         time.sleep(0.25)
     return False
@@ -185,27 +197,26 @@ def main():
 
     results = []
     started = None
+    local_port = None
+    local_url = LOCAL_URL
     log_path = os.path.join(HERE, "local_test_server.log")
     if "local" in want:
-        if server_is_up():
-            print("  로컬 서버: 이미 떠 있는 %s 를 씁니다 (그대로 둡니다)" % LOCAL_URL)
+        local_port = allocate_local_port()
+        local_url = "http://127.0.0.1:%d/" % local_port
+        print("  로컬 페이지 재생성: index.html (%d bytes)" % build_local_page())
+        started = start_local_server(log_path, local_port)
+        if started is None:
+            results.append(("로컬 서버 기동", False, failure_reason(log_path)))
+            want.discard("local")
         else:
-            print("  로컬 페이지 재생성: index.html (%d bytes)" % build_local_page())
-            started = start_local_server(log_path)
-            if started is None:
-                # Not a skip: the point of this run is to test what this machine serves, so a server
-                # that will not start is a failure of the run, not a reason to check less.
-                results.append(("로컬 서버 기동", False, failure_reason(log_path)))
-                want.discard("local")
-            else:
-                print("  로컬 서버: %s (pid %d, 이 실행이 띄웠습니다)" % (LOCAL_URL, started.pid))
+            print("  로컬 서버: %s (pid %d, 이 실행이 띄웠습니다)" % (local_url, started.pid))
     print()
 
     try:
         for name, args, what, kind in SUITE:
             if kind not in want:
                 continue
-            p = subprocess.run(["node", os.path.join(HERE, name)] + args,
+            p = subprocess.run(["node", os.path.join(HERE, name)] + suite_args(args, kind, local_url),
                                capture_output=True, text=True, env=env, cwd=HERE, timeout=600)
             ok = p.returncode == 0
             results.append((name + " " + what, ok, "OK" if ok else tail(p.stdout)))
@@ -229,10 +240,10 @@ def main():
                         print("      " + line.strip()[:150])
     finally:
         if started is not None:
-            freed = stop_local_server(started)
+            freed = stop_local_server(started, local_port)
             print("  로컬 서버 종료: %s" % ("포트 반환됨" if freed else "포트가 아직 잡혀 있음"))
             if not freed:
-                results.append(("로컬 서버 종료", False, "포트 %d 가 아직 잡혀 있습니다" % LOCAL_PORT))
+                results.append(("로컬 서버 종료", False, "포트 %d 가 아직 잡혀 있습니다" % local_port))
 
     for name, ok, detail in results:
         print("  %s %-44s %s" % ("PASS" if ok else "FAIL", name, detail[:70]))

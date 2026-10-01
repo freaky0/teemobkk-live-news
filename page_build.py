@@ -1841,6 +1841,8 @@ def _clean_title(title: object) -> str:
 def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str:
     rows = []
     labels = ui_text.cat_labels(lang)
+    expand_label = "Show more" if lang == "en" else "요약 펼치기"
+    original_label = ui_text.UI[lang]["openOriginal"]
     for item in items[:limit]:
         title = _clean_title(item.get("title"))
         summary = str(item.get("summary") or "")
@@ -1860,10 +1862,11 @@ def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str
         long_summary = len(summary) > 220
         source = google_news.display_source(item)
         actions = '<div class="acts">' + (
-            '<button class="expand" type="button" aria-expanded="false">요약 펼치기</button>'
+            '<button class="expand" type="button" aria-expanded="false">' + expand_label + '</button>'
             if long_summary else "") + (
-            '<a class="open" href="%s" target="_blank" rel="noopener nofollow">원문 열기 ↗</a>'
-            % html.escape(href, quote=True) if href else "") + '</div>'
+            '<a class="open" href="' + html.escape(href, quote=True) +
+            '" target="_blank" rel="noopener nofollow">' + original_label + ' ↗</a>'
+            if href else "") + '</div>'
         rows.append(
             '<article class="card seed timeline-row' + (" th" if want_thai else "") + '">'
             '<p class="t"><time datetime="' + html.escape(published, quote=True) + '">'
