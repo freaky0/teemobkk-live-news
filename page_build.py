@@ -607,7 +607,7 @@ const CAL_URL=CFG.calendar;
 const CACHE_KEY='teemo-live-news-cache-v4';
 
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function cleanTitle(value){return String(value||'').replace(/(?:https?:\\/\\/|www[.])\\S+|\\b[a-z0-9.-]+[.](?:com|org|net|rs|co[.]th|go[.]th)\\/\\S+/gi,'').replace(/\\s+-\\s+[^-]+$/,'').replace(/\\s+/g,' ').trim()}
+function cleanTitle(value){return String(value||'').replace(/(?:https?:\\/\\/|www[.])\\S+|\\b[a-z0-9.-]+[.](?:com|org|net|rs|co[.]th|go[.]th)\\/\\S+|\\breut[.]rs\\S*/gi,'').replace(/\\s+-\\s+[^-]+$/,'').replace(/\\s+/g,' ').trim()}
 const shown=(s,label)=>{const t=String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   return '실제 <b class="'+label+'">'+t+'</b>'};
 
@@ -1845,7 +1845,7 @@ def _seed_status(item: dict, lang: str = "ko") -> str:
 
 def _clean_title(title: object) -> str:
     """Remove embedded links and publisher tails in server-rendered titles."""
-    text = re.sub(r"(?:https?://|www\.)\S+|\b[a-z0-9.-]+\.(?:com|org|net|rs|co\.th|go\.th)/\S+",
+    text = re.sub(r"(?:https?://|www\.)\S+|\b[a-z0-9.-]+\.(?:com|org|net|rs|co\.th|go\.th)/\S+|\breut\.rs\S*",
                   "", str(title or ""), flags=re.I)
     return re.sub(r"\s+", " ", re.sub(r"\s+-\s+[^-]+$", "", text)).strip()
 
@@ -2259,6 +2259,11 @@ def redirect_page(to: str) -> str:
     return REDIRECT.replace("__TO__", to)
 
 
+def not_found_page() -> str:
+    """One standalone document for both the proxy and GitHub Pages."""
+    return (ROOT / "404.html").read_text(encoding="utf-8")
+
+
 def build_public() -> dict[str, int]:
     """Write the published pages as redirects to the live site.
 
@@ -2271,7 +2276,7 @@ def build_public() -> dict[str, int]:
     The redirects are rewritten every cycle on purpose: whatever the publish step does, the old
     address must not come back as a copy of the dashboard.
     """
-    sizes = {}
+    sizes = {"docs/404.html": write(DOCS / "404.html", not_found_page())}
     for name, to in MOVED.items():
         sizes[name] = write(ROOT / name, redirect_page(to))
     return sizes

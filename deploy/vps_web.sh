@@ -65,6 +65,16 @@ $DOMAIN, www.$DOMAIN {
 		reverse_proxy 127.0.0.1:$APP_PORT
 	}
 
+	# file_server 404s use the same standalone document as the collector's unknown pages.
+	handle_errors {
+		@notfound expression {http.error.status_code} == 404
+		handle @notfound {
+			root * $APP_DIR
+			rewrite * /404.html
+			file_server
+		}
+	}
+
 	header {
 		-Server
 		X-Content-Type-Options nosniff

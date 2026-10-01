@@ -4,6 +4,7 @@ Keep external publishing links in EDITORIAL_POSTS, not in navigation labels.
 Script previews are actual publication images, never reconstructed charts.
 """
 from html import escape
+from datetime import date
 import json
 import time
 from pathlib import Path
@@ -265,7 +266,7 @@ html[data-theme="dark"] .chart-open{background:#080c11}
 </head>
 <body>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
-<header class="top"><div class="wrap nav"><a class="brand" href="/" aria-label="TeemoBKK 홈"><span class="brand-accent">티모</span> <span class="brand-rest">라이브뉴스</span></a><nav aria-label="주요 메뉴"><a href="/news/ko/">경제 뉴스</a><a href="#perspectives">시장 관점</a><a href="#indicators">트레이딩뷰 지표</a><a class="secondary" href="/thai/">태국 소식 ↗</a><button id="theme-toggle" class="theme-toggle" type="button" aria-label="다크 모드" aria-pressed="false">다크</button></nav></div></header>
+<header class="top"><div class="wrap nav"><a class="brand" href="/" aria-label="TeemoBKK 홈"><span class="brand-accent">티모</span> <span class="brand-rest">라이브뉴스</span></a><nav aria-label="주요 메뉴"><a href="/news/ko/">경제 뉴스</a><a href="#perspectives">시장 관점</a><a href="#indicators">트레이딩뷰 지표</a><a class="secondary" href="/thai/">태국 소식 ↗</a><button id="theme-toggle" class="theme-toggle" type="button" aria-label="다크 모드 켜기" aria-pressed="false">다크 모드 켜기</button></nav></div></header>
 <main id="main" class="wrap">
 <section class="hero" aria-labelledby="headline"><p class="eyebrow">뉴스를 읽고, 관점을 세우고, 차트로 살펴봅니다.</p><h1 id="headline"><span class="rise"><i>트레이딩을 위한</i></span> <span class="rise"><i>경제 뉴스와 시장 관점</i></span></h1><p class="intro">주식·코인·금 등 여러 시장을 움직이는 뉴스를 모읍니다.<br>직접 기록한 시장 관점과 무료 트레이딩뷰 지표도 함께 공유합니다.</p><div class="actions"><a class="button primary" href="/news/ko/">경제 뉴스 보기</a><a class="button" href="#perspectives">시장 관점 읽기</a></div></section>
 <section class="section" id="news" aria-labelledby="news-title"><h2 id="news-title">최근 경제 뉴스</h2><p class="section-intro">금리와 경기, 기업과 정책, 지정학까지. 시장에 연결되는 소식을 확인하세요.</p><div class="news-status"><span>자동 수집 · 원문 언어로 표시</span><span id="update-status" role="status">수집 상태 확인 중</span><button class="retry" id="retry" type="button" hidden>다시 불러오기</button></div><div class="news-list" id="news-list" aria-busy="true"><div class="news-item" aria-hidden="true"><div class="loading-line short"></div><div class="loading-line"></div><div class="loading-line"></div></div><div class="news-item" aria-hidden="true"><div class="loading-line short"></div><div class="loading-line"></div><div class="loading-line"></div></div></div><noscript><p>뉴스 목록을 불러오려면 자바스크립트가 필요합니다. <a href="/news/ko/">경제 뉴스 페이지에서 확인하세요.</a></p></noscript><a class="section-link" href="/news/ko/">경제 뉴스 전체 보기 →</a></section>
@@ -284,7 +285,7 @@ html[data-theme="dark"] .chart-open{background:#080c11}
 const list=document.getElementById('news-list'), status=document.getElementById('update-status'), retry=document.getElementById('retry');
 let busy=false, hasNews=false;
 const fmt=new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Bangkok',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
-function cleanTitle(value){return String(value||'').replace(/(?:https?:\/\/|www\.)\S+|\b[a-z0-9.-]+\.(?:com|org|net|rs)\/\S+/gi,'').replace(/\s+-\s+[^-]+$/,'').replace(/\s+/g,' ').trim();}
+function cleanTitle(value){return String(value||'').replace(/(?:https?:\/\/|www\.)\S+|\b[a-z0-9.-]+\.(?:com|org|net|rs|co\.th|go\.th)\/\S+|\breut\.rs\S*/gi,'').replace(/\s+-\s+[^-]+$/,'').replace(/\s+/g,' ').trim();}
 function safeLink(value){try{const u=new URL(value);return ['http:','https:'].includes(u.protocol)?u.href:null;}catch(e){return null;}}
 function relevant(a){if(a.category&&a.category!=='일반')return true;return /금리|금값|금 가격|금 선물|은값|원유|유가|물가|고용|실업|관세|중앙은행|연준|증시|주식|채권|환율|달러|실적|비트코인|암호화폐|가상자산|이더리움|인플레|경기|\b(?:stocks?|equities|bonds?|yields?|gold|silver|oil|crude|inflation|payrolls|tariffs?|fed|fomc|gdp|cpi|pce|earnings|bitcoin|crypto|ethereum|etf|forex|rates?|central bank)\b/i.test(String(a.title||''));}
 function selectNews(articles){const seen=new Set();return articles.filter(a=>{if(a.region!=='글로벌'||!relevant(a))return false;const title=cleanTitle(a.title);const key=title.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]/gu,'');const date=Date.parse(a.published_at);if(key.length<8||!safeLink(a.link)||!Number.isFinite(date)||date>Date.now()+60000||Date.now()-date>86400000||seen.has(key))return false;seen.add(key);return true;}).sort((a,b)=>Date.parse(b.published_at)-Date.parse(a.published_at)).slice(0,6);}
@@ -303,8 +304,8 @@ const dialog=document.getElementById('chart-dialog');document.querySelectorAll('
 (function(){
   var root=document.documentElement,button=document.getElementById('theme-toggle');
   if(!button)return;
-  function update(){var dark=root.dataset.theme==='dark';button.textContent=dark?'일반':'다크';
-    button.setAttribute('aria-label',dark?'일반 모드':'다크 모드');button.setAttribute('aria-pressed',String(dark));}
+  function update(){var dark=root.dataset.theme==='dark';button.textContent=dark?'일반 모드 켜기':'다크 모드 켜기';
+    button.setAttribute('aria-label',button.textContent);button.setAttribute('aria-pressed',String(dark));}
   button.addEventListener('click',function(){var dark=root.dataset.theme!=='dark';
     root.dataset.theme=dark?'dark':'light';try{localStorage.setItem('tbn-theme',root.dataset.theme)}catch(e){}update();});
   update();
@@ -324,8 +325,19 @@ def stylesheet() -> str:
     return PAGE[start:end]
 
 
+def display_date(value: str) -> str:
+    """Use Korean date words for visible copy, keeping ISO 8601 in datetime."""
+    try:
+        day = date.fromisoformat(value)
+        return f"{day.year}년 {day.month}월 {day.day}일"
+    except (TypeError, ValueError):
+        return value
+
+
 def render_landing() -> str:
     posts = []
     for post in editorial_posts():
-        posts.append('<article class="post"><time datetime="{date}">{date}</time><h3><a href="{url}" target="_blank" rel="noopener noreferrer">{title}</a></h3><p>{summary}</p><a class="read" href="{url}" target="_blank" rel="noopener noreferrer">관점 읽기 · 외부 글 ↗</a></article>'.format(**{k: escape(v, quote=True) for k, v in post.items()}))
+        fields = {k: escape(v, quote=True) for k, v in post.items()}
+        fields['visible_date'] = escape(display_date(post['date']))
+        posts.append('<article class="post"><time datetime="{date}">{visible_date}</time><h3><a href="{url}" target="_blank" rel="noopener noreferrer">{title}</a></h3><p>{summary}</p><a class="read" href="{url}" target="_blank" rel="noopener noreferrer">관점 읽기 · 외부 글 ↗</a></article>'.format(**fields))
     return PAGE.replace('__POSTS__', ''.join(posts))

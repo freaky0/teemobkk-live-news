@@ -1696,7 +1696,17 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
-        self.send_error(404)
+        if request_path.startswith('/api/'):
+            self.send_error(404)
+            return
+        body = (ROOT / '404.html').read_bytes()
+        self.send_response(404)
+        self.send_header('Content-Type', 'text/html; charset=utf-8')
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('X-Robots-Tag', 'noindex')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def do_POST(self) -> None:
         request_path = urllib.parse.urlsplit(self.path).path

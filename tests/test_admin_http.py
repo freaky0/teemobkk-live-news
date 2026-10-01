@@ -116,6 +116,18 @@ class Gate(unittest.TestCase):
     def test_the_operator_endpoints_are_closed(self):
         self.assertEqual(self.call("/api/stats")[0], 404)
 
+    def test_unknown_page_has_custom_404_but_unknown_api_does_not(self):
+        with self.assertRaises(urllib.error.HTTPError) as caught:
+            urllib.request.urlopen(self.base + "/missing-page", timeout=10)
+        error = caught.exception
+        self.assertEqual(error.code, 404)
+        self.assertIn("text/html", error.headers.get("Content-Type", ""))
+        self.assertEqual(error.headers.get("X-Robots-Tag"), "noindex")
+        page = error.read().decode("utf-8")
+        self.assertIn('href="/"', page)
+        self.assertIn('href="/news/ko/"', page)
+        self.assertNotIn('href="/"', str(self.call("/api/not-found")))
+
     def test_a_forged_cookie_is_refused(self):
         status, _, _ = self.call("/api/settings", "POST", {"interval": 300},
                                  cookie="teemo_admin=9999999999.deadbeef", header=True)

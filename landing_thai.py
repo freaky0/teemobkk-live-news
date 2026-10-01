@@ -131,7 +131,7 @@ border-radius:var(--radius);transition:border-color .35s,transform .45s cubic-be
   // display, and the text is inserted as text so a title can never become an element.
   function cleanTitle(value){
     return String(value || "")
-      .replace(/(?:https?:\/\/|www\.)\S+|\b[a-z0-9.-]+\.(?:com|org|net|rs|co\.th|go\.th)\/\S+/gi, "")
+      .replace(/(?:https?:\/\/|www\.)\S+|\b[a-z0-9.-]+\.(?:com|org|net|rs|co\.th|go\.th)\/\S+|\breut\.rs\S*/gi, "")
       .replace(/\s+-\s+[^-]+$/, "")
       .replace(/\s+/g, " ").trim();
   }
