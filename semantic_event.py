@@ -5,6 +5,7 @@ Unknown actors/actions fall back to existing headline/link deduplication rather 
 merging unrelated stories merely because they share a topic.
 """
 import re
+import json
 from datetime import datetime, timezone
 
 WINDOW_SECONDS = 6 * 60 * 60
@@ -74,3 +75,35 @@ def same_event(first: dict, second: dict) -> bool:
     if one[2] != two[2]:
         return False
     return not (one[3] and two[3] and one[3] != two[3])
+
+
+def browser_source() -> str:
+    """Generate the browser's event predicate from the server's alias tables.
+
+    Keep the conservative actor/action/target/amount and six-hour rules in one place.
+    The aliases use only regex syntax shared by Python and JavaScript.
+    """
+    rules = json.dumps({"actors": ACTORS, "actions": ACTIONS, "targets": TARGETS,
+                        "window": WINDOW_SECONDS * 1000}, ensure_ascii=False)
+    return """const EVENT_RULES=__RULES__;
+function eventSignature(title){
+  const text=String(title||'').toLowerCase();
+  const matching=table=>Object.keys(table).filter(key=>
+    table[key].some(alias=>new RegExp(alias).test(text)));
+  const actors=matching(EVENT_RULES.actors),actions=matching(EVENT_RULES.actions);
+  if(!actors.length||actions.length!==1)return null;
+  const targets=matching(EVENT_RULES.targets);
+  const amounts=[...new Set(text.match(/\\b\\d+(?:[.,]\\d+)?\\s*[%％]|\\b\\d+(?:[.,]\\d+)?\\s*(?:억|조|billion|million)\\b/g)||[])].sort();
+  return {actors,action:actions[0],targets,amounts};
+}
+function sameBriefingEvent(a,b){
+  if(![a,b].every(item=>/^(?:\\d{4}-\\d{2}-\\d{2})T.*(?:Z|[+-]\\d{2}:?\\d{2})$/.test(String(item.published_at||''))))return false;
+  const ta=Date.parse(a.published_at),tb=Date.parse(b.published_at);
+  if(!Number.isFinite(ta)||!Number.isFinite(tb)||Math.abs(ta-tb)>EVENT_RULES.window)return false;
+  const one=eventSignature(a.title),two=eventSignature(b.title);
+  if(!one||!two||one.action!==two.action||!one.actors.some(x=>two.actors.includes(x)))return false;
+  if(JSON.stringify(one.targets)!==JSON.stringify(two.targets))return false;
+  return !(one.amounts.length&&two.amounts.length&&
+    JSON.stringify(one.amounts)!==JSON.stringify(two.amounts));
+}
+""".replace("__RULES__", rules)

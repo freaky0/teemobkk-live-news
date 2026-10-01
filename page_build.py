@@ -690,16 +690,12 @@ function loadBriefingRows(){
   }).catch(()=>articles()).then(rows=>{delete BRIEF_PENDING[key];return rows});
   return BRIEF_PENDING[key]}
 function briefingDate(value){const d=new Date(value);if(!Number.isFinite(d.getTime()))return CFG.briefing.timeUnknown;
-  const locale=CFG.lang==='en'?'en-GB':'ko-KR';return new Intl.DateTimeFormat(locale,{timeZone:'Asia/Bangkok',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(d)+' ICT'}
-function sameBriefingEvent(a,b){
-  const ta=Date.parse(a.published_at),tb=Date.parse(b.published_at);
-  if(!Number.isFinite(ta)||!Number.isFinite(tb)||Math.abs(ta-tb)>21600000)return false;
-  const key=t=>{const s=cleanTitle(t).toLowerCase();
-    const actors=[[/kashkari|카시카리/,'kashkari'],[/powell|파월/,'powell'],[/trump|트럼프/,'trump'],[/fed|연준/,'fed']];
-    const actions=[[/rate cut|cut.{0,12}rate|금리.{0,8}인하/,'cut'],[/rate hike|rais.{0,12}rate|금리.{0,8}인상/,'hike'],[/inflation|인플레|물가/,'inflation'],[/tariff|관세/,'tariff']];
-    const actor=actors.find(x=>x[0].test(s)),action=actions.find(x=>x[0].test(s));
-    return actor&&action?actor[1]+'|'+action[1]:''};
-  const x=key(a.title),y=key(b.title);return !!x&&x===y}
+  const locale=CFG.lang==='en'?'en-GB':'ko-KR';
+  const fmt=new Intl.DateTimeFormat(locale,{timeZone:'Asia/Bangkok',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
+  if(CFG.lang==='en')return fmt.format(d)+' ICT';
+  const parts=fmt.formatToParts(d),get=k=>(parts.find(p=>p.type===k)||{}).value||'';
+  return get('month')+CFG.monthSuffix+' '+get('day')+'일 '+get('hour')+':'+get('minute')+' ICT'}
+__EVENT_RULES__
 function briefingStatus(mode,count){const copy=CFG.briefing;
   return (mode==='picked'?copy.briefingPicked:copy.briefingAuto).replace('{n}',count)}
 function briefingItems(){
@@ -739,9 +735,9 @@ function renderBriefing(){
 function dayLabel(iso){
   const d=new Date(iso);if(!Number.isFinite(d.getTime()))return CFG.briefing.dayUnknown;
   const locale=CFG.lang==='en'?'en-GB':'ko-KR';
-  const parts=new Intl.DateTimeFormat(locale,{timeZone:'Asia/Bangkok',month:'short',day:'numeric',weekday:'short'}).formatToParts(d);
+  const parts=new Intl.DateTimeFormat(locale,{timeZone:'Asia/Bangkok',month:CFG.lang==='en'?'short':'numeric',day:'numeric',weekday:'short'}).formatToParts(d);
   const get=k=>(parts.find(p=>p.type===k)||{}).value||'';
-  return CFG.lang==='en'?get('day')+' '+get('month')+' ('+get('weekday')+')':get('month')+' '+get('day')+'일 ('+get('weekday')+')'}
+  return CFG.lang==='en'?get('day')+' '+get('month')+' ('+get('weekday')+')':get('month')+CFG.monthSuffix+' '+get('day')+'일 ('+get('weekday')+')'}
 function keep(a){
   const hours=Number(V.hours)||24,t=new Date(a.published_at).getTime();
   if(!isFinite(t)||Date.now()-t>hours*3600000)return false;
@@ -1624,7 +1620,7 @@ def _pick_badge(item: dict) -> str:
             + '</div>')
 
 
-def _ict_stamp(value) -> str:
+def _ict_stamp(value, lang: str = "ko") -> str:
     try:
         moment = datetime.datetime.fromisoformat(str(value).replace("Z", "+00:00"))
     except ValueError:
@@ -1632,6 +1628,8 @@ def _ict_stamp(value) -> str:
     if moment.tzinfo is None:
         moment = moment.replace(tzinfo=datetime.timezone.utc)
     shifted = moment.astimezone(datetime.timezone(datetime.timedelta(hours=7)))
+    if lang == "ko":
+        return f"{shifted.month}월 {shifted.day}일 {shifted:%H:%M}"
     return shifted.strftime("%m-%d %H:%M")
 
 
@@ -1857,7 +1855,7 @@ def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str
         href = str(item.get("original_link") or item.get("link") or "")
         if not href.startswith(("https://", "http://")):
             href = ""
-        stamp = _ict_stamp(published)
+        stamp = _ict_stamp(published, lang)
         clock = stamp[-5:] if len(stamp) >= 5 else stamp
         long_summary = len(summary) > 220
         source = google_news.display_source(item)
@@ -1941,7 +1939,7 @@ def _seed_briefing(items: list[dict], lang: str = "ko") -> tuple[str, str]:
             + ("%02d" % index) + '</span><div><p class="btitle"' + title_attr + '>' + linked_title + '</p>'
             + ('<p class="bsum"' + summary_attr + '>' + html.escape(summary) + '</p>' if summary else "")
             + note + '<p class="bmeta"><span>' + html.escape(google_news.display_source(item))
-            + '</span><span>' + html.escape(_ict_stamp(item.get("published_at"))) + ' ICT</span>'
+            + '</span><span>' + html.escape(_ict_stamp(item.get("published_at"), lang)) + ' ICT</span>'
             + ('<span>' + html.escape(categories) + '</span>' if categories else "")
             + ('<span class="tag-pick">' + html.escape(copy["briefingPickedTag"]) + '</span>' if item.get("picked") else "")
             + '</p></div></li>')
@@ -2006,6 +2004,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
         "api": "",
         "calendar": "/api/calendar",
         "lang": lang,
+        "monthSuffix": "월" if lang == "ko" else "",
         "catLabels": ui_text.cat_labels(lang),
         "briefing": {key: ui_text.UI[lang][key] for key in (
             "briefingTitle", "briefingAuto", "briefingPicked", "briefingPickedTag",
@@ -2074,16 +2073,17 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
         og = og.replace('content="TeemoBKK Live News"', f'content="{reader_name} | TeemoBKK"')
     # Back to the section that introduced this dashboard.
     home = "/thai/" if want_thai else "/"
-    theme_button = '<button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false">다크 모드 켜기</button>'
-    if lang == "en":
-        theme_button = theme_button.replace("다크 모드 켜기", "Enable dark mode")
-    elif lang == "th":
-        theme_button = theme_button.replace("다크 모드 켜기", "เปิดโหมดมืด")
+    theme_label = {"ko": ui_text.UI["ko"]["themeDark"],
+                   "en": ui_text.UI["en"]["themeDark"], "th": "เปิดโหมดมืด"}[lang]
+    theme_button = ('<button id="theme-toggle" class="theme-toggle" type="button" '
+                    'aria-label="%s" aria-pressed="false">%s</button>'
+                    % (html.escape(theme_label, quote=True), html.escape(theme_label)))
     privacy_url = "/privacy/en/" if lang == "en" else "/privacy/"
     privacy_label = "Privacy policy" if lang == "en" else "개인정보 처리방침"
     privacy_link = '<p class="legal-links"><a href="%s">%s</a></p>' % (privacy_url, privacy_label)
     langbar = _langbar(lang, alt)
     script = SCRIPT.replace("__CONFIG__", json.dumps(config, ensure_ascii=False, separators=(",", ":")))
+    script = script.replace("__EVENT_RULES__", semantic_event.browser_source())
     script = script.replace("__CATS_GLOBAL__", json.dumps(
         ui_text.cats(lang)["global"], ensure_ascii=False, separators=(",", ":")))
     script = script.replace("__CATS_THAI__", json.dumps(

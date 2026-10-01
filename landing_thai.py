@@ -127,8 +127,10 @@ border-radius:var(--radius);transition:border-color .35s,transform .45s cubic-be
         status = document.getElementById("update-status"),
         retry = document.getElementById("retry");
   let busy = false, hasNews = false;
-  const fmt = new Intl.DateTimeFormat("ko-KR", {timeZone:"Asia/Bangkok", month:"2-digit", day:"2-digit",
+  const fmt = new Intl.DateTimeFormat("ko-KR", {timeZone:"Asia/Bangkok", month:"numeric", day:"numeric",
     hour:"2-digit", minute:"2-digit", hour12:false});
+  function displayStamp(value){const p=fmt.formatToParts(new Date(value)),get=k=>(p.find(x=>x.type===k)||{}).value||"";
+    return get("month")+"월 "+get("day")+"일 "+get("hour")+":"+get("minute");}
 
   // A collected title is not trusted markup: the URL and the trailing publisher are stripped for
   // display, and the text is inserted as text so a title can never become an element.
@@ -173,7 +175,7 @@ border-radius:var(--radius);transition:border-color .35s,transform .45s cubic-be
       const topic = document.createElement("span"); topic.className = "topic";
       topic.textContent = a.category || "일반";
       const time = document.createElement("time"); time.dateTime = a.published_at;
-      time.textContent = fmt.format(new Date(a.published_at)) + " ICT";
+      time.textContent = displayStamp(a.published_at) + " ICT";
       meta.append(source, topic, time);
       const title = document.createElement("h3"); title.textContent = cleanTitle(a.title) + " ↗";
       link.append(meta, title); item.append(link); list.append(item);
@@ -204,7 +206,7 @@ border-radius:var(--radius);transition:border-color .35s,transform .45s cubic-be
       if (Number.isFinite(updated) && updated <= Date.now() + 60000){
         const age = Date.now() - updated;
         status.textContent = (age > 35*60000 ? "갱신 지연 · 마지막 수집 " : "마지막 수집 ")
-          + fmt.format(new Date(updated)) + " ICT";
+          + displayStamp(updated) + " ICT";
         retry.hidden = age <= 35*60000;
       } else {
         // Never present the current time as the time the collector last ran: that would make a
@@ -251,7 +253,7 @@ border-radius:var(--radius);transition:border-color .35s,transform .45s cubic-be
 (function(){
   var root=document.documentElement,button=document.getElementById('theme-toggle');
   if(!button)return;
-  function update(){var dark=root.dataset.theme==='dark';button.textContent=dark?'일반 모드 켜기':'다크 모드 켜기';
+  function update(){var dark=root.dataset.theme==='dark';button.textContent=dark?'다크 모드 끄기':'다크 모드 켜기';
     button.setAttribute('aria-label',button.textContent);button.setAttribute('aria-pressed',String(dark));}
   button.addEventListener('click',function(){var dark=root.dataset.theme!=='dark';
     root.dataset.theme=dark?'dark':'light';try{localStorage.setItem('tbn-theme',root.dataset.theme)}catch(e){}update();});
