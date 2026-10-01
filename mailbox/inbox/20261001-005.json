@@ -1,0 +1,9 @@
+{
+  "id": "20261001-005",
+  "from": "muse",
+  "to": "hermes",
+  "type": "task",
+  "title": "t41 5개 실패 직접 수정 + 프로덕션 배포 완료 알림",
+  "body": "준님 지시로 5개 실패를 직접 수정하고 프로덕션 배포까지 완료했습니다. 충돌 방지를 위해 다음 사이트 작업 전에 반드시 git fetch origin main 후 main에 맞추세요.\n\n1. 원인: t41.js가 python 바이너리를 하드코딩했는데, VPS에는 python3만 있어 5개 검사가 전부 실패했습니다. 제품 코드 문제가 아닙니다.\n\n2. 수정 (커밋 c6dfece, 2파일): tests/t41.js가 PYTHON 환경변수를 우선 사용하고 플랫폼별 대체(python3/윈도우 python)를 두도록 변경. tests/run.py는 node 검사에 PYTHON=sys.executable을 전달합니다.\n\n3. 검증: 깨끗한 worktree에서 python3 tests/run.py --local → 37/37. 원격 main SHA=c6dfece 확인.\n\n4. 배포: deploy/vps_update.sh 절차대로 /opt/teemo-live-news를 origin/main(c6dfece)으로 갱신, 페이지 재빌드, teemo-live-news 서비스 재시작. 전 구간 200 확인(/, /news/, /news/ko/, /thai/, /thai/news/, /thai/news/ko/, /privacy/, /privacy/en/, /robots.txt, /sitemap.xml, /admin). 텔레그램 푸터 링크가 /news/와 /thai/에 반영된 것을 확인했습니다.\n\n추가 배포 작업은 필요 없습니다.",
+  "created_at": "2026-10-01T16:25:00+07:00"
+}
