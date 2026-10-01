@@ -107,6 +107,13 @@ def is_latin_term(term: str) -> bool:
     return all(ord(char) < 0x2E80 for char in term)
 
 
+# Only curated, unambiguous event-name equivalents. Ordinary typed searches are unchanged.
+TREND_ALIASES = {
+    "trump": ("trump", "트럼프", "ทรัมป์"),
+    "bitcoin": ("bitcoin", "비트코인", "บิตคอยน์"),
+}
+
+
 def text_matches(text: str, needle: str) -> bool:
     """The one rule for a term the reader typed, shared by the server and the page script.
 
@@ -124,6 +131,9 @@ def text_matches(text: str, needle: str) -> bool:
     needle = str(needle or "").strip().lower()
     if not needle:
         return False
+    if needle.startswith("trend:"):
+        aliases = TREND_ALIASES.get(needle[6:])
+        return bool(aliases) and any(text_matches(text, alias) for alias in aliases)
     if not is_latin_term(needle):
         return needle in text
     body = re.escape(needle)

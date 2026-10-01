@@ -10,9 +10,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import landing
 import landing_thai
 import page_build
+import category_rules
 
 
 class AuditUI(unittest.TestCase):
+    def test_trend_alias_matches_are_explicit_and_do_not_change_plain_search(self):
+        for headline in ('Trump visits Bangkok', '트럼프 방문', 'ทรัมป์ เยือนกรุงเทพ'):
+            self.assertTrue(category_rules.text_matches(headline, 'trend:trump'))
+        for headline in ('Trumpet concert', '트럼펫 공연', 'Trumpism debated'):
+            self.assertFalse(category_rules.text_matches(headline, 'trend:trump'))
+        self.assertFalse(category_rules.text_matches('트럼프 방문', 'trump'))
+        for headline in ('Bitcoin rallies', '비트코인 상승', 'บิตคอยน์พุ่ง'):
+            self.assertTrue(category_rules.text_matches(headline, 'trend:bitcoin'))
+        self.assertFalse(category_rules.text_matches('Bitcoiners gather', 'trend:bitcoin'))
+
     def test_not_found_document_is_dark_accessible_and_unindexed(self):
         page = page_build.not_found_page()
         for fragment in ('<html lang="ko">', '<meta name="robots" content="noindex">',

@@ -1255,9 +1255,14 @@ def query_articles(hours: int = RETENTION_HOURS, region: str = "", category: Any
         # called into Python for every term.
         # A % or _ inside the term only makes the prefilter more permissive, which is safe: it can
         # let a row through to the real rule, never reject one that rule would accept.
-        where.append("(title LIKE ? OR summary LIKE ?) AND (kwmatch(title, ?) OR kwmatch(summary, ?))")
-        needle = f"%{term}%"
-        params.extend([needle, needle, term, term])
+        aliases = taxonomy.TREND_ALIASES.get(term[6:].lower()) if term.lower().startswith("trend:") else None
+        prefilter = aliases or (term,)
+        where.append("(" + " OR ".join("(title LIKE ? OR summary LIKE ?)" for _ in prefilter) +
+                     ") AND (kwmatch(title, ?) OR kwmatch(summary, ?))")
+        for alias in prefilter:
+            needle = f"%{alias}%"
+            params.extend([needle, needle])
+        params.extend([term, term])
     clause = " AND ".join(where)
     with DB_LOCK, db_connect() as connection:
         total = connection.execute(f"SELECT COUNT(*) FROM articles WHERE {clause}", params).fetchone()[0] or 0

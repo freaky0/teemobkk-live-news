@@ -663,6 +663,7 @@ function isLatinTerm(n){for(let i=0;i<n.length;i++){if(n.charCodeAt(i)>0x2E7F)re
 function termMatch(text,needle){
   const t=String(text==null?'':text).toLowerCase(), n=String(needle==null?'':needle).trim().toLowerCase();
   if(!n)return false;
+  if(n.startsWith('trend:'))return (CFG.trendAliases[n.slice(6)]||[]).some(alias=>termMatch(t,alias));
   if(!isLatinTerm(n))return t.indexOf(n)>=0;
   const plural=n.indexOf(' ')<0;
   for(let at=t.indexOf(n);at>=0;at=t.indexOf(n,at+1)){
@@ -878,6 +879,15 @@ const T_SKIP={global:new Set(__TREND_GLOBAL_SKIP__),thai:new Set(__TREND_THAI_SK
 const T_URL=/https?:\\/\\/\\S+|\\b[\\w-]+\\.(?:com|net|org|co|io|kr|uk|rs|me|ly|gov|ai|news)\\S*/gi;
 const T_TAIL=/\\s+-\\s+[^-]{2,40}$/;
 const T_TOK=/[0-9A-Za-z가-힣\\u0e00-\\u0e7f]+/g;
+const T_CANON={};
+Object.keys(CFG.trendAliases).forEach(key=>CFG.trendAliases[key].forEach(word=>{T_CANON[word]=key}));
+function trendDisplay(term){
+  if(term.startsWith('trend:')){
+    const key=term.slice(6),forms=CFG.trendAliases[key]||[];
+    return CFG.lang==='en'?key.charAt(0).toUpperCase()+key.slice(1):
+      (forms[CFG.lang==='ko'?1:2]||key)}
+  return /[\\u0e00-\\u0e7f]/.test(term)?
+    CFG.trendThaiSource+term:term}
 function tFold(w){if(!/^[a-z]+$/.test(w)||/(ss|us|is)$/.test(w))return w;
   const s=w.replace(/s$/,'');return (s!==w&&s.length>=3)?s:w}
 function trends(){
@@ -897,7 +907,14 @@ function trends(){
       keep.push({w:w,raw:w,i:i})});
     const good=[],seenU={},seenB={};
     keep.forEach(g=>{const f=tFold(g.w);
-      if(T_STOP.has(g.w)||T_STOP.has(f)||skip.has(f))return;good.push({w:f,raw:g.raw,i:g.i})});
+      if(T_STOP.has(g.w)||T_STOP.has(f)||skip.has(f))return;
+      good.push({w:T_CANON[f]?'trend:'+T_CANON[f]:f,raw:g.raw,i:g.i})});
+    // Thai runs often join a name to the following verb with no space. The tokenizer
+    // sees one long run; count only a curated name inside it, never guess a translation.
+    Object.keys(CFG.trendAliases).forEach(key=>{
+      const alias=CFG.trendAliases[key][2],canonical='trend:'+key;
+      if(alias&&tl.includes(alias)&&!good.some(g=>g.w===canonical))
+        good.push({w:canonical,raw:alias,i:-1})});
     good.forEach(g=>{
       if(!seenU[g.w]){seenU[g.w]=1;uni[g.w]=(uni[g.w]||0)+1;
         const m=form[g.w]||(form[g.w]={});m[g.raw]=(m[g.raw]||0)+1}});
@@ -905,7 +922,8 @@ function trends(){
       if(good[k+1].i!==good[k].i+1)continue;
       // Only keep a pair the title actually contains as one phrase, so clicking it
       // finds the same stories it was counted from.
-      if(tl.indexOf(good[k].raw+' '+good[k+1].raw)<0)continue;
+      if(tl.indexOf(good[k].raw+' '+good[k+1].raw)<0 ||
+         good[k].w.startsWith('trend:') || good[k+1].w.startsWith('trend:'))continue;
       const key=good[k].w+' '+good[k+1].w;
       if(seenB[key])continue;seenB[key]=1;bi[key]=(bi[key]||0)+1}
   });
@@ -920,9 +938,12 @@ function trends(){
       if(used[p[0]]||used[p[1]])return;
       const lo=Math.min(uni[p[0]]||0,uni[p[1]]||0);
       if(c<0.5*lo)return;
-      used[p[0]]=1;used[p[1]]=1;out.push({t:show(p[0])+' '+show(p[1]),c:c})});
+      used[p[0]]=1;used[p[1]]=1;
+      const term=show(p[0])+' '+show(p[1]);out.push({t:term,label:trendDisplay(term),c:c})});
   Object.keys(uni).sort((x,y)=>uni[y]-uni[x]).forEach(k=>{
-    if(used[k]||uni[k]<3)return;out.push({t:show(k),c:uni[k]})});
+    if(used[k]||uni[k]<3)return;
+    const term=k.startsWith('trend:')?k:show(k);
+    out.push({t:term,label:trendDisplay(term),c:uni[k]})});
   out.sort((x,y)=>y.c-x.c);
   return out.slice(0,10);
 }
@@ -954,7 +975,7 @@ function renderTrends(){
     list.map(function(x){
       const on=V.terms.indexOf(x.t)>=0;
       return '<button type="button" class="tbtn'+(on?' on':'')+'" data-trend="'+esc(x.t)+
-      '" aria-pressed="'+(on?'true':'false')+'">'+(on?'\u2713 ':'')+esc(x.t)+
+      '" aria-pressed="'+(on?'true':'false')+'">'+(on?'\u2713 ':'')+esc(x.label||x.t)+
       '<span class="n">'+x.c+'</span></button>'}).join('')+
     (V.terms.length?'<button type="button" class="tbtn clear" data-trend-clear="1">'
       +V.terms.length+esc(CFG.clearTerms)+'</button>':'')+'</span>'; }
@@ -1144,10 +1165,10 @@ function renderConditions(){
       // category chip is filled. A text prefix would have to be translated, and a fragment like
       // "키워드 " also matches inside "지금 뜨는 키워드" in the translation pass.
       return '<button type="button" class="cbtn'+(c[0]==='term'?' kw':'')+
-        '" data-cond-off="'+esc(key)+'" title="이 조건을 풉니다">'+esc(c[1])+
+        '" data-cond-off="'+esc(key)+'" title="이 조건을 풉니다">'+esc(c[0]==='term'?trendDisplay(c[1]):c[1])+
         (n==null?'':'<span class="n">'+n+'</span>')+'<span aria-hidden="true">\u2715</span></button>'}).join('')+
     '<span class="sum">'+(total==null?'':'\u2192 '+total+'\uAC74')+
-      (narrow&&total===0?' \u00b7 <span class="warn">가장 좁은 조건: '+esc(narrow[1])+' ('+
+      (narrow&&total===0?' \u00b7 <span class="warn">가장 좁은 조건: '+esc(narrow[0]==='term'?trendDisplay(narrow[1]):narrow[1])+' ('+
         counts[condKey(narrow[0],narrow[1])]+'\uAC74)</span>':'')+'</span>'+
     (total===0&&V.hours<2160?'<button type="button" class="wide" data-cond-wide="1">'+
       '더 긴 기간에서 찾기</button>':'');
@@ -1190,7 +1211,7 @@ function renderUndo(){
   const el=document.querySelector('#undobar');if(!el)return;
   if(!HIDE_UNDO){el.hidden=true;el.innerHTML='';return}
   el.hidden=false;
-  el.innerHTML='<span class="clabel">숨겼습니다</span><span class="utext">'+esc(HIDE_UNDO.title)+'</span>'+
+  el.innerHTML='<span class="clabel">숨겼습니다</span><span class="utext">'+esc(cleanTitle(HIDE_UNDO.title))+'</span>'+
     '<button type="button" class="cbtn" data-undo="1">되돌리기</button>';
   el.querySelector('[data-undo]').onclick=async()=>{
     const undone=HIDE_UNDO;HIDE_UNDO=null;renderUndo();
@@ -1217,7 +1238,7 @@ async function loadHidden(){
     const d=await (await fetch(API+'/api/hidden',{cache:'no-cache'})).json();
     const rows=d.hidden||[];
     el.innerHTML=rows.length?rows.map(h=>'<div class="hidrow"><a href="'+esc(h.link)+
-      '" target="_blank" rel="noopener nofollow">'+esc(h.title||h.link)+'</a>'+
+      '" target="_blank" rel="noopener nofollow">'+esc(cleanTitle(h.title||h.link))+'</a>'+
       '<button type="button" class="unhide" data-unhide="'+esc(h.link)+'">되돌리기</button></div>').join('')
       :'<div class="note">숨긴 기사가 없습니다</div>';
     el.querySelectorAll('[data-unhide]').forEach(b=>b.onclick=async()=>{
@@ -2012,6 +2033,8 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
             "verifOfficial", "verifOfficialTitle", "verifSns", "verifSnsTitle",
             "openOriginal", "expand", "timeUnknown", "dayUnknown")},
         "trendLabel": ui_text.UI[lang]["trendLabel"],
+        "trendAliases": taxonomy.TREND_ALIASES,
+        "trendThaiSource": "태국어: " if lang == "ko" else "Thai: ",
         "clearTerms": ui_text.UI[lang]["clearTerms"],
         "units": ({"count": " stories", "hour": "h", "day": "d"} if lang == "en" else
                   {"count": "건", "hour": "시간", "day": "일"}),

@@ -38,6 +38,20 @@ RATES = axis("interest rate")
 
 
 class MultiLabel(unittest.TestCase):
+    def test_trend_query_merges_only_curated_aliases_before_paging(self):
+        titles = ('Trump meets leaders', '트럼프 회담', 'ทรัมป์ประกาศ', 'Trumpet concert')
+        # The caller's ordinary q stays literal; only the trend namespace expands.
+        articles = [core.make_article(title, 'https://e.test/trend%d' % i, '',
+                                      self.fresh(), 'Src', 'media')
+                    for i, title in enumerate(titles)]
+        core.insert_articles(articles)
+        rows, total, _ = core.query_articles(hours=24, text='trend:trump', limit=2)
+        self.assertEqual(total, 3)
+        self.assertEqual(len(rows), 2)
+        self.assertNotIn('Trumpet concert', [row['title'] for row in rows])
+        _, literal_total, _ = core.query_articles(hours=24, text='trump', limit=10)
+        self.assertEqual(literal_total, 1)
+
     def setUp(self):
         self.dir = tempfile.mkdtemp()
         self._original_db = core.DB_FILE
