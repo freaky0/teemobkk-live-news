@@ -1,8 +1,10 @@
 """Homepage contract: platform-neutral, market-first navigation."""
 import unittest
 from html.parser import HTMLParser
+from pathlib import Path
 import landing
 import landing_thai
+import page_build
 
 class Text(HTMLParser):
     def __init__(self):
@@ -54,6 +56,32 @@ class LandingContract(unittest.TestCase):
         self.assertIn('외부 대화방으로 이동합니다', page)
         self.assertIn('트레이딩뷰 TeemoBKK 공식 프로필', page)
         self.assertEqual(page.count('https://t.me/+OegpDrwxnaBiOGNl'), 1)
+
+    def test_telegram_chat_is_in_each_rendered_footer_once(self):
+        invite = 'https://t.me/+OegpDrwxnaBiOGNl'
+        pages = {'/': landing.render_landing(), '/thai/': landing_thai.render_thai_landing()}
+        for region in ('/news/', '/thai/news/'):
+            for lang in ('en', 'ko'):
+                route = region + ('ko/' if lang == 'ko' else '')
+                pages[route] = page_build.render(public=False, datadir='',
+                    want_thai=region == '/thai/news/', icon_prefix='/', admin=False, lang=lang)
+        pages['/admin/'] = page_build.render(public=False, datadir='',
+            want_thai=False, icon_prefix='/', admin=True, lang='ko')
+        for route, name in (('/privacy/', 'privacy.html'),
+                            ('/privacy/en/', 'privacy_en.html')):
+            pages[route] = (Path(__file__).resolve().parent / name).read_text(encoding='utf-8')
+        for route, page in pages.items():
+            with self.subTest(route=route):
+                self.assertEqual(page.count(invite), 1)
+                footer = page.split('<footer ', 1)[1].split('</footer>', 1)[0]
+                self.assertIn('href="%s" target="_blank" rel="noopener noreferrer"' % invite, footer)
+                self.assertIn('TeemoBKK', footer)
+                if route not in ('/',):
+                    if route in ('/news/', '/thai/news/', '/privacy/en/'):
+                        self.assertIn('external Telegram chat', footer)
+                    else:
+                        self.assertIn('외부 텔레그램 대화방', footer)
+                    self.assertNotIn('뉴스 전용', footer)
 
     def test_mobile_motion_and_thai_identity(self):
         home = landing.render_landing()

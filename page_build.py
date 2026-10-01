@@ -2104,6 +2104,12 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
     privacy_url = "/privacy/en/" if lang == "en" else "/privacy/"
     privacy_label = "Privacy policy" if lang == "en" else "개인정보 처리방침"
     privacy_link = '<p class="legal-links"><a href="%s">%s</a></p>' % (privacy_url, privacy_label)
+    telegram_label = "TeemoBKK on Telegram ↗" if lang == "en" else "TeemoBKK 텔레그램 대화방 ↗"
+    telegram_note = ("Opens an external Telegram chat." if lang == "en" else
+                     "외부 텔레그램 대화방으로 이동합니다.")
+    telegram_link = ('<p class="legal-links"><a href="https://t.me/+OegpDrwxnaBiOGNl" '
+                     'target="_blank" rel="noopener noreferrer">%s</a> · %s</p>'
+                     % (telegram_label, telegram_note))
     langbar = _langbar(lang, alt)
     script = SCRIPT.replace("__CONFIG__", json.dumps(config, ensure_ascii=False, separators=(",", ":")))
     script = script.replace("__EVENT_RULES__", semantic_event.browser_source())
@@ -2211,6 +2217,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
     각 기사의 저작권은 원 매체에 있습니다. 제목과 요약, 그리고 원문 링크만 표시하며 원문 확인은 링크를 통해 해 주세요.<br>
     자동 수집 결과이므로 표기 오류나 지연이 있을 수 있습니다. 투자 판단의 근거로 사용하지 마세요.
     {privacy_link}
+    {telegram_link}
   </footer>
 </main>
 
