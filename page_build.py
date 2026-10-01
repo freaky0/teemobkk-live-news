@@ -266,21 +266,17 @@ padding:5px 7px;font-size:12px;cursor:pointer}
 .cal-sum{color:var(--muted);font-size:11.5px;margin:0 0 12px}
 .cal-grid{display:grid;grid-template-columns:1fr;gap:2px 22px}
 .cal-day h3{margin:0 0 6px;font-size:13px}
-.cal-row{display:grid;grid-template-columns:68px 26px 1fr auto;gap:8px;align-items:baseline;
+.cal-row{display:grid;grid-template-columns:68px minmax(0,1fr) auto;gap:8px;align-items:baseline;
   padding:4px 0 4px 8px;border-bottom:1px solid var(--line);border-left:2px solid transparent;font-size:13px}
 .cal-row.i5{border-left-color:#e04242}
 .cal-row.i4{border-left-color:#ff7a45}
 .cal-t{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
-.cal-s{font-size:10.5px;color:var(--hot)}
 .cal-n{color:#c3cfe6}
 .cal-v{color:var(--muted);font-size:12px}
 .cal-v b.up{color:#5fd08a}
 .cal-v b.down{color:#ff6b6b}
 .cal-v b.flat{color:#ffd479}
 .cal-v b{color:var(--official)}
-.cal-s.i3{color:#e04242}
-.cal-s.i2{color:#ff9a3c}
-.cal-s.i1{color:#ffd479}
 .cal-row.speech .cal-t{color:#8ea3c4}
 .cal-row.earnings .cal-t{color:#e1ceb6}
 .cal-row.potus .cal-t,.cal-row.potus .cal-n a{color:#ffb86b}
@@ -289,7 +285,7 @@ padding:5px 7px;font-size:12px;cursor:pointer}
 .cal-err{border:1px dashed var(--line);border-radius:var(--r-ctl);padding:14px;color:var(--muted);font-size:12.5px}
 .cal-err button{margin-left:10px;background:var(--panel2);border:1px solid var(--line);
   border-radius:var(--r-ctl);padding:6px 14px;cursor:pointer}
-@media (max-width:900px){.cal-row{grid-template-columns:68px 26px 1fr}.cal-row .cal-v{grid-column:1 / -1;padding-left:0}}
+@media (max-width:900px){.cal-row{grid-template-columns:68px minmax(0,1fr)}.cal-row .cal-v{grid-column:1 / -1;padding-left:0}}
 body.tab-cal .cal{display:block}
 body.tab-cal .toolbar,body.tab-cal .pills,body.tab-cal .trend,body.tab-cal #feed,body.tab-cal .more-wrap,body.tab-cal .side{display:none!important}
 body.tab-cal .layout{grid-template-columns:minmax(0,1fr)}
@@ -551,7 +547,10 @@ body.public .timeline-row:hover,body.local .timeline-row:hover{background:transp
 }
 .foot .legal-links{margin:14px 0 0;font-size:12px}
 .foot .legal-links a{color:var(--muted);text-decoration:underline;text-underline-offset:3px}
-.timeline-row .title,.brief .btitle{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden;overflow-wrap:normal;word-break:normal}
+.timeline-row .title,.brief .btitle{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal;word-break:normal}
+/* Do not split ordinary words at the edge of the three-line preview. Keep the full
+   headline in the DOM for links, readers and indexing; break only unspaced URLs. */
+body.public .timeline-row .title,body.local .timeline-row .title{overflow-wrap:break-word;word-break:normal}
 """
 
 THEME_SCRIPT = """\
@@ -621,7 +620,7 @@ function region(){return V.tab==='thai'?'태국':'글로벌'}
 // The period in words: the select offers hours up to a day and then days, and the stamp used to
 // print "168시간" for a week and "2160시간" for the whole archive.
 function hoursLabel(){const h=Number(V.hours)||24;
-  return h>=2160?'전체 기간':(h>=48?Math.round(h/24)+'일':h+'시간')}
+  return h>=2160?'전체 기간':(h>=48?Math.round(h/24)+CFG.units.day:h+CFG.units.hour)}
 function articles(){
   const rows=PUBLIC?(MEM[region()]||[]):(DATA.articles||[]),seenLinks=new Set(),seenOriginals=new Set();
   const keyFor=value=>{
@@ -760,7 +759,6 @@ function keep(a){
   if(q&&!termMatch((a.title||'')+' '+(a.summary||'')+' '+(a.source||'')+' '+labels.join(' '),q))return false;
   return true}
 function visible(){return PUBLIC?articles().filter(keep):articles()}
-function stars(a){return ''}
 function summaryBlock(a){
   const s=a.summary||'';if(!s)return '';
   const long=s.length>220;
@@ -770,9 +768,6 @@ function summaryBlock(a){
 // with this attribute; without it, a Thai headline with an English summary is guessed wrong and the
 // translator mangles the half it misread.
 function langAttr(code){return code?' lang="'+code+'"':''}
-const SPEAKERS=['트럼프','Trump','TRUMP','머스크','Musk','MUSK','파월','Powell','워시','Warsh','베센트','Bessent','라가르드','Lagarde','푸틴','Putin','시진핑','Xi Jinping','네타냐후','Netanyahu','우에다','Ueda'];
-function speakChip(a){const t=(a.title||'')+' '+(a.summary||'');
-  return SPEAKERS.some(n=>t.indexOf(n)>=0)?'<span class="chip speak">'+esc(CFG.briefing.speakerChip)+'</span>':''}
 // Verification level, not a second source name. The source chip already says who
 // published it, so only the levels that change how much a line should be trusted are
 // shown, and they are meant to be rare: measured over a day, official is 0.5% and
@@ -800,9 +795,8 @@ function card(a,th,lead,first,last){
   const srcCls='chip src tap'+(a.source_type==='official'?' official':'')+(th?' th':'')+(srcOn?' on':'');
   const meta=verifChip(a)+
       '<button type="button" class="'+srcCls+'" data-k="src" data-v="'+esc(a.source)+'" aria-pressed="'+(srcOn?'true':'false')+'">'+esc(srcLabel(a))+'</button>'+
-      speakChip(a)+
       catList(a).map(v=>{const on=tag.k==='cat'&&tag.v===v;
-        return '<button type="button" class="chip tap'+(on?' on':'')+'" data-k="cat" data-v="'+esc(v)+'" aria-pressed="'+(on?'true':'false')+'">'+esc(catLabel(v))+'</button>'}).join('')+stars(a);
+        return '<button type="button" class="chip tap'+(on?' on':'')+'" data-k="cat" data-v="'+esc(v)+'" aria-pressed="'+(on?'true':'false')+'">'+esc(catLabel(v))+'</button>'}).join('');
   const href=storyHref(a.original_link||a.link);
   const title=href?'<a href="'+esc(href)+'" target="_blank" rel="noopener nofollow">'+hl(cleanTitle(a.title))+'</a>':hl(cleanTitle(a.title));
   const actions=CFG.admin?cardActs(a):(href?'<div class="acts"><a class="open" href="'+esc(href)+'" target="_blank" rel="noopener nofollow">'+esc(CFG.briefing.openOriginal)+' ↗</a></div>':'');
@@ -880,28 +874,23 @@ function renderPills(){
 // Google News titles carry a " - Publisher" tail (1820 of 1833), which is where
 // post/nation/the/yahoo/tradingview noise came from, and social posts embed short links
 // (reut.rs/4Ao...) which produced "reut" and "rs".
-const T_STOP=new Set(("그리고 그러나 또한 이번 지난 오늘 어제 내일 관련 발표 예정 가능 필요 대해 통해 위해 때문 이라 라고 이라고 있다 없다 했다 한다 된다 등등 경우 상황 내용 사실 우리 전체 주요 최근 현재 기록 "
- +"the and for with from that this will said says after over into its his her has have was were are not but you your more than about could would should may might what "
- +"new now out off all one two three how why who when where first last next week month year day time report news update live exclusive "
- +"actual forecast previous consensus revised mom yoy qoq things best top world center "
-  +"unknown transferred minted burned treasury wallet details "
-   +"very reach foreign amid ahead survive "
-   +"jan feb mar apr may jun jul aug sep sept oct nov dec").split(' '));
+const T_STOP=new Set(__TREND_STOP__);
+/* The stop list is injected after interface localization, so the English document still
+   counts Korean and Thai headlines with the same data rules as the Korean document. */
 // The whole page is about these, so they would head the list every hour and say nothing.
-const T_SKIP={
-  global:new Set('bitcoin btc crypto cryptocurrency 비트코인 암호화폐 코인'.split(' ')),
-  thai:new Set('태국 방콕 태국인 교민 thai thailand bangkok'.split(' '))};
+const T_SKIP={global:new Set(__TREND_GLOBAL_SKIP__),thai:new Set(__TREND_THAI_SKIP__)};
 const T_URL=/https?:\\/\\/\\S+|\\b[\\w-]+\\.(?:com|net|org|co|io|kr|uk|rs|me|ly|gov|ai|news)\\S*/gi;
 const T_TAIL=/\\s+-\\s+[^-]{2,40}$/;
 const T_TOK=/[0-9A-Za-z가-힣\\u0e00-\\u0e7f]+/g;
-function tFold(w){if(!/^[a-z]+$/.test(w))return w;const s=w.replace(/s$/,'');return (s!==w&&s.length>=3)?s:w}
+function tFold(w){if(!/^[a-z]+$/.test(w)||/(ss|us|is)$/.test(w))return w;
+  const s=w.replace(/s$/,'');return (s!==w&&s.length>=3)?s:w}
 function trends(){
   const skip=T_SKIP[V.tab]||T_SKIP.global,uni={},bi={},form={};
   trendSource().forEach(a=>{
     let t=cleanTitle(a.title);
     if((a.source||'').indexOf('Google News')===0)t=t.replace(T_TAIL,'');
     t=t.replace(T_URL,' ');
-    const tl=t.toLowerCase(),keep=[];
+    const tl=t.normalize('NFC').toLowerCase(),keep=[];
     (tl.match(T_TOK)||[]).forEach((w,i)=>{
       if(/^\\d+$/.test(w))return;
       // Minimum length per script: Korean words are short and space-separated, while
@@ -1004,7 +993,7 @@ function renderFeed(){
     group.items.push(a)});
   feed.innerHTML=groups.map(group=>{
     const day=group.items,stamp=dayLabel(group.sample);
-    return '<section class="bucket"><p class="bucket-h"><span>'+esc(stamp)+'</span><span class="bcount">'+day.length+'건</span></p>'+
+    return '<section class="bucket"><p class="bucket-h"><span>'+esc(stamp)+'</span><span class="bcount">'+day.length+esc(CFG.units.count)+'</span></p>'+
       day.map((a,i)=>card(a,th,false,i===0,i===day.length-1)).join('')+'</section>'
   }).join('');
   document.querySelector('#counts').innerHTML=(PUBLIC
@@ -1030,8 +1019,8 @@ function skeleton(){
 function setStamp(text,regions){
   const el=document.querySelector('#updated');
   el.textContent=text||'-';
-  if(regions)el.title=Object.keys(regions).map(k=>k+' '+
-    (regions[k].count==null?'':fmt('{n}건',regions[k].count))).join(', ')}
+  if(regions)el.title=Object.keys(regions).map(k=>(CFG.regionLabels[k]||k)+' '+
+    (regions[k].count==null?'':regions[k].count+CFG.units.count)).join(', ')}
 function flagStale(iso){
   const box=document.querySelector('#stale');
   const t=iso?new Date(iso).getTime():NaN;
@@ -1055,7 +1044,7 @@ async function loadFull(){
 async function loadPublic(force){
   INDEX=await getJSON(DATADIR+'index.json');
   const meta=regionMeta(),seen=SEEN[region()];
-  setStamp(INDEX.updated_at_ict+' ICT · '+(INDEX.window_hours||24)+'시간',INDEX.regions);
+  setStamp(INDEX.updated_at_ict+' ICT · '+(INDEX.window_hours||24)+CFG.units.hour,INDEX.regions);
   flagStale(INDEX.updated_at);
   // Compare the content stamp, not the clock: index.json is rewritten every cycle but a
   // region file only changes when its rows do, so an untouched region is not re-read.
@@ -1479,8 +1468,8 @@ function paintCalendar(data){
   let total=0,top=0;
   days.forEach(d=>{total+=d.events.length;d.events.forEach(e=>{if(e.importance>=4)top++})});
   document.querySelector('#cal-stamp').textContent=(data.updated_at_kst||'')+' KST';
-  document.querySelector('#cal-sum').textContent=fmt('앞으로 3일 일정 {n}건',total)
-    +' · '+fmt('중요도 ★4 이상 {n}건',top)
+  document.querySelector('#cal-sum').textContent=fmt(total===1?CFG.calendarLabels.windowOne:CFG.calendarLabels.window,total)
+    +' · '+fmt(top===1?CFG.calendarLabels.majorOne:CFG.calendarLabels.major,top)
     +' · '+'출처 나스닥 캘린더 · 연준 · 백악관 · Factba.se'
     +' · '+'시각 기준 KST(UTC+9) · 방콕은 여기서 2시간 뒤'
     +' · '+fmt('연준 인사 기준일 {n}',data.fed_roster_as_of||'?');
@@ -1503,7 +1492,6 @@ function paintCalendar(data){
       if(e.approx&&at)at='~'+at;
       return '<div class="cal-row '+(e.kind||'econ')+' i'+e.importance+'">'+
         '<span class="cal-t">'+at+'</span>'+
-        '<span class="cal-s i'+e.importance+'">'+new Array(e.importance+1).join('*')+'</span>'+
         '<span class="cal-n">'+name+'</span><span class="cal-v">'+val+'</span></div>'}).join('')
       :'<div class="note">주요 지표 없음</div>';
     return '<div class="cal-day"><h3>'+calEsc(d.label)+' <span>'+calEsc(String(d.date).slice(5))+' ('+calEsc(d.weekday)+')</span></h3>'+rows+'</div>'}).join('')}
@@ -2020,9 +2008,17 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
             "briefingTitle", "briefingAuto", "briefingPicked", "briefingPickedTag",
             "briefingBreaking", "briefingEmpty", "briefingNoEligible", "briefingLoading",
             "verifOfficial", "verifOfficialTitle", "verifSns", "verifSnsTitle",
-            "speakerChip", "openOriginal", "expand", "timeUnknown", "dayUnknown")},
+            "openOriginal", "expand", "timeUnknown", "dayUnknown")},
         "trendLabel": ui_text.UI[lang]["trendLabel"],
         "clearTerms": ui_text.UI[lang]["clearTerms"],
+        "units": ({"count": " stories", "hour": "h", "day": "d"} if lang == "en" else
+                  {"count": "건", "hour": "시간", "day": "일"}),
+        "calendarLabels": {"window": ui_text.UI[lang]["calWindowCount"],
+                           "major": ui_text.UI[lang]["calTopCount"],
+                           "windowOne": ui_text.UI[lang]["calWindowCountOne"],
+                           "majorOne": ui_text.UI[lang]["calTopCountOne"]},
+        "regionLabels": {"글로벌": "Global" if lang == "en" else "글로벌",
+                         "태국": "Thailand" if lang == "en" else "태국"},
     }
     stamp = ('<div class="stamp"><span id="state">연결 중</span> <b id="updated">-</b>'
              if admin else '<div class="stamp">업데이트 <b id="updated">-</b>')
@@ -2197,7 +2193,17 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
 <script>{THEME_SCRIPT}</script>
 </body></html>
 """
-    page = (localize(page, lang).replace("__SEED__", seed)
+    page = (localize(page, lang)
+            .replace("__TREND_STOP__", json.dumps(sorted(set((
+                "그리고 그러나 또한 이번 지난 오늘 어제 내일 관련 발표 예정 가능 필요 대해 통해 위해 때문 이라 라고 이라고 있다 없다 했다 한다 된다 등등 경우 상황 내용 사실 우리 전체 주요 최근 현재 기록 "
+                "the and for with from that this will said says after over into its his her has have was were are not but you your more than about could would should may might what "
+                "new now out off all one two three how why who when where first last next week month year day time report news update live exclusive "
+                "actual forecast previous consensus revised mom yoy qoq things best top world center "
+                "unknown transferred minted burned treasury wallet details very reach foreign amid ahead survive "
+                "jan feb mar apr may jun jul aug sep sept oct nov dec").split())), ensure_ascii=False))
+            .replace("__TREND_GLOBAL_SKIP__", json.dumps("bitcoin btc crypto cryptocurrency 비트코인 암호화폐 코인".split(), ensure_ascii=False))
+            .replace("__TREND_THAI_SKIP__", json.dumps("태국 방콕 태국인 교민 thai thailand bangkok".split(), ensure_ascii=False))
+            .replace("__SEED__", seed)
             .replace("__BRIEFING__", briefing_html)
             .replace("__BRIEF_SRC__", html.escape(briefing_source))
             .replace("__BRIEFING_TITLE__", html.escape(briefing_title)))

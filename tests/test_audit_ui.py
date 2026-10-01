@@ -1,4 +1,6 @@
 """Regression contracts for the public not-found page and headline/date UI."""
+import json
+import re
 import sys
 import unittest
 from unittest import mock
@@ -33,6 +35,45 @@ class AuditUI(unittest.TestCase):
             self.assertIn('cleanTitle(a.title)', page)
             self.assertIn('reut', page)
         self.assertIn('reut', page_build.SCRIPT)
+
+    def test_headlines_keep_complete_words_and_full_accessible_text(self):
+        title = 'Market participants discuss liquidity and the latest policy decision in Washington'
+        item = {'title': title, 'link': 'https://example.com/story', 'source': 'Example',
+                'published_at': '2026-09-30T12:00:00Z'}
+        seed = page_build._seed_cards([item], False, 'en')
+        self.assertIn(title, seed)
+        self.assertIn('word-break:normal', page_build.CSS)
+        self.assertIn('-webkit-line-clamp:3', page_build.CSS)
+        self.assertIn('text-overflow:ellipsis', page_build.CSS)
+
+    def test_no_speaker_or_star_rating_on_reader_cards_and_calendar(self):
+        self.assertNotIn('speakChip(a)', page_build.SCRIPT)
+        self.assertNotIn('stars(a)', page_build.SCRIPT)
+        self.assertNotIn("join('*')", page_build.SCRIPT)
+        self.assertNotIn('★4', page_build.SCRIPT)
+        self.assertNotIn('★4', page_build.render(public=True, datadir='', want_thai=False,
+                                                icon_prefix='', admin=False, lang='en'))
+
+    def test_english_page_does_not_expose_korean_interface_literals(self):
+        page = page_build.render(public=True, datadir='', want_thai=False,
+                                 icon_prefix='', admin=False, lang='en')
+        for text in ('그 이전', '최근 1시간', '선택한 조건을 모두', '요약 펼치기', '중요도 ★4'):
+            self.assertNotIn(text, page)
+
+    def test_trend_terms_are_identical_across_interface_languages_and_regions(self):
+        for thai in (False, True):
+            pages = [page_build.render(public=True, datadir='', want_thai=thai,
+                                       icon_prefix='', admin=False, lang=lang)
+                     for lang in ('en', 'ko')]
+            for key in ('T_STOP', 'T_SKIP'):
+                lines = [next(line for line in page.splitlines() if line.startswith('const ' + key + '='))
+                         for page in pages]
+                self.assertEqual(*lines)
+            match = re.search(r'const T_STOP=new Set\((\[.*?\])\)', pages[0])
+            self.assertIsNotNone(match)
+            words = json.loads(match.group(1)) if match else []
+            self.assertIn('오늘', words)
+            self.assertIn('the', words)
 
 
 if __name__ == '__main__':

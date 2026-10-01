@@ -47,7 +47,11 @@ UI_EN = {
     "calEmpty": "No events to show.",
     "calNone": "No major indicators",
     "calWindow": "Next 3 days",
-    "calTop": "at ★4 or above",
+    "calTop": "major events",
+    "calWindowCount": "Next 3 days: {n} events",
+    "calTopCount": "{n} major events",
+    "calWindowCountOne": "Next 3 days: {n} event",
+    "calTopCountOne": "{n} major event",
     "calSources": "Sources: Nasdaq calendar · Federal Reserve · White House · Factba.se",
     "calTimeBasis": "Times are KST (UTC+9) · Bangkok is 2 hours behind",
     "calRoster": "Fed roster as of",
@@ -88,7 +92,6 @@ UI_EN = {
     "openOriginal": "Open original",
     "expand": "Show more",
     "collapse": "Show less",
-    "speakerChip": "speaker",
     "verifOfficial": "Official",
     "verifOfficialTitle": "Published by an official body",
     "verifSns": "Social",
@@ -166,7 +169,11 @@ UI_KO = {
     "calEmpty": "표시할 일정이 없습니다.",
     "calNone": "주요 지표 없음",
     "calWindow": "앞으로 3일 일정",
-    "calTop": "중요도 ★4 이상",
+    "calTop": "주요 일정",
+    "calWindowCount": "앞으로 3일 일정 {n}건",
+    "calTopCount": "주요 일정 {n}건",
+    "calWindowCountOne": "앞으로 3일 일정 {n}건",
+    "calTopCountOne": "주요 일정 {n}건",
     "calSources": "출처 나스닥 캘린더 · 연준 · 백악관 · Factba.se",
     "calTimeBasis": "시각 기준 KST(UTC+9) · 방콕은 여기서 2시간 뒤",
     "calRoster": "연준 인물 명단",
@@ -207,7 +214,6 @@ UI_KO = {
     "openOriginal": "원문 열기",
     "expand": "펼쳐보기",
     "collapse": "접기",
-    "speakerChip": "인물 발언",
     "verifOfficial": "공식",
     "verifOfficialTitle": "공식 기관이 직접 발표한 문서",
     "verifSns": "SNS",
@@ -329,13 +335,6 @@ STOPWORDS = {
 # Subject words the dashboard is about, dropped from the trend strip in every language.
 TOPIC_WORDS = ("bitcoin btc crypto cryptocurrency 비트코인 암호화폐 코인 thai thailand "
                "bangkok 태국 방콕 태국인 교민")
-
-# Names that count as a "speaker" line. Matched against headline text, so the list covers both
-# spellings instead of being translated.
-SPEAKERS = ("트럼프", "Trump", "TRUMP", "머스크", "Musk", "MUSK", "파월", "Powell", "워시",
-            "Warsh", "베센트", "Bessent", "라가르드", "Lagarde", "푸틴", "Putin", "시진핑",
-            "Xi Jinping", "네타냐후", "Netanyahu", "우에다", "Ueda")
-
 
 def check_tables() -> None:
     """Every language must define the same keys, or a label silently renders blank."""
