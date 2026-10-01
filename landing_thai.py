@@ -20,7 +20,9 @@ PAGE = r'''<!doctype html>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TeemoBKK | 태국 소식</title>
 <meta name="description" content="방콕과 태국에서 먼저 볼 소식. 비자·이민, 사고·재난, 생활·경제, 관광·보건을 원문 그대로 모읍니다.">
-<meta name="theme-color" content="#0b1118">
+<meta name="theme-color" content="#131417">
+<meta name="color-scheme" content="light dark">
+<script>(function(){try{var t=localStorage.getItem('tbn-theme');document.documentElement.dataset.theme=t==='light'?'light':'dark'}catch(e){document.documentElement.dataset.theme='dark'}})();</script>
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ko_KR">
 <meta property="og:title" content="TeemoBKK | 태국 소식">
@@ -44,17 +46,18 @@ border-radius:var(--radius);transition:border-color .35s,transform .45s cubic-be
 <div class="pointer-light" aria-hidden="true"></div>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
 <header class="top"><div class="wrap nav">
-<a class="brand" href="/" aria-label="TeemoBKK 홈">Teemo<span>BKK</span></a>
+<a class="brand" href="/" aria-label="TeemoBKK 홈"><span class="brand-accent">티모</span> <span class="brand-rest">라이브뉴스</span></a>
 <nav aria-label="주요 메뉴">
 <a href="/">홈</a>
 <a href="/news/ko/">경제 뉴스</a>
 <a href="/thai/news/ko/">태국 뉴스 전체</a>
 <a class="secondary" href="/thai/news/">English ↗</a>
+<button id="theme-toggle" class="theme-toggle" type="button" aria-label="다크 모드 켜기" aria-pressed="false">다크 모드 켜기</button>
 </nav></div></header>
 
 <main id="main" class="wrap">
 <section class="hero" aria-labelledby="headline">
-<p class="eyebrow">비자·이민 · 사고·재난 · 생활 · 관광 · 보건</p>
+<p class="eyebrow">태국 소식 · TeemoBKK</p>
 <h1 id="headline"><span class="rise"><i>방콕에서</i></span><span class="rise"><i>먼저 볼 소식</i></span></h1>
 <div class="hero-rule"></div>
 <p class="intro">태국에 사는 사람에게 먼저 닿아야 하는 소식을 모읍니다.<br>비자와 이민, 사고와 재난, 생활비와 교통, 관광과 보건까지 원문 그대로 정리합니다.</p>
@@ -242,6 +245,17 @@ border-radius:var(--radius);transition:border-color .35s,transform .45s cubic-be
       if (!raf) raf = requestAnimationFrame(glide);
     }, {passive:true});
   }
+})();
+</script>
+<script>
+(function(){
+  var root=document.documentElement,button=document.getElementById('theme-toggle');
+  if(!button)return;
+  function update(){var dark=root.dataset.theme==='dark';button.textContent=dark?'일반 모드 켜기':'다크 모드 켜기';
+    button.setAttribute('aria-label',button.textContent);button.setAttribute('aria-pressed',String(dark));}
+  button.addEventListener('click',function(){var dark=root.dataset.theme!=='dark';
+    root.dataset.theme=dark?'dark':'light';try{localStorage.setItem('tbn-theme',root.dataset.theme)}catch(e){}update();});
+  update();
 })();
 </script>
 </body>

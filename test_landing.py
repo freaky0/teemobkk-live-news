@@ -45,4 +45,33 @@ class LandingContract(unittest.TestCase):
         self.assertIn("root.dataset.theme=dark?'dark':'light'", page)
         self.assertIn('color-scheme:dark', page)
 
+    def test_tradingview_invite_is_explicit_and_external(self):
+        page = landing.render_landing()
+        footer = page.split('<footer class="footer">', 1)[1].split('</footer>', 1)[0]
+        self.assertIn('https://t.me/+OegpDrwxnaBiOGNl', footer)
+        self.assertIn('트레이딩뷰 TeemoBKK 텔레그램 대화방 초대 링크', page)
+        self.assertIn('href="https://t.me/+OegpDrwxnaBiOGNl" target="_blank" rel="noopener noreferrer"', page)
+        self.assertIn('외부 대화방으로 이동합니다', page)
+        self.assertIn('트레이딩뷰 TeemoBKK 공식 프로필', page)
+        self.assertEqual(page.count('https://t.me/+OegpDrwxnaBiOGNl'), 1)
+
+    def test_mobile_motion_and_thai_identity(self):
+        home = landing.render_landing()
+        thai = landing_thai.render_thai_landing()
+        for page in (home, thai):
+            self.assertIn('@media(max-width:767px){\n  .hero .eyebrow', page)
+            self.assertIn('.marq{display:none}', page)
+            self.assertIn('.pointer-light{display:none}', page)
+            self.assertIn('.news-list{display:block;width:auto;animation:none;overflow:visible}', page)
+            self.assertIn('<span class="brand-accent">티모</span> <span class="brand-rest">라이브뉴스</span>', page)
+            self.assertIn('id="theme-toggle"', page)
+            self.assertNotIn('animation:rail 42s', page)
+            self.assertNotIn('@keyframes rail', page)
+        self.assertIn('href="/thai/news/ko/"', thai)
+        self.assertIn('href="/thai/news/"', thai)
+        self.assertIn('<meta name="theme-color" content="#131417">', thai)
+        self.assertIn("t==='light'?'light':'dark'", thai)
+        self.assertIn("document.documentElement.dataset.theme='dark'", thai)
+        self.assertIn('태국 소식 · TeemoBKK', thai)
+
 if __name__=='__main__': unittest.main()
