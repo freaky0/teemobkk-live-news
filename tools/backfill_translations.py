@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Backfill Korean titles and summaries, oldest incomplete articles first.
+"""Backfill Korean titles and summaries, newest incomplete articles first.
 
 Example:
   TG_TRANSLATE_PROVIDER=openai-codex python tools/backfill_translations.py \
@@ -43,7 +43,7 @@ def pending_count() -> int:
 
 
 def pending_batch(limit: int) -> list[tuple[str, str]]:
-    """Return the oldest incomplete rows as (published_at, link)."""
+    """Return the newest incomplete rows as (published_at, link)."""
     if limit <= 0:
         return []
     connection = _connect()
@@ -51,7 +51,7 @@ def pending_batch(limit: int) -> list[tuple[str, str]]:
         rows = connection.execute(
             f"SELECT COALESCE(published_at, ''), link FROM articles "
             f"WHERE {PENDING_SQL} "
-            "ORDER BY COALESCE(published_at, '') ASC, link ASC LIMIT ?",
+            "ORDER BY COALESCE(published_at, '') DESC, link DESC LIMIT ?",
             (limit,),
         ).fetchall()
         return [(str(row[0] or ""), str(row[1])) for row in rows]
@@ -157,7 +157,7 @@ def main() -> int:
             "Backfill progress: scanned=%d translated=%d pending=%d elapsed=%.1fs "
             "oldest_batch=%s newest_batch=%s",
             scanned, translated, pending_after, elapsed,
-            batch[0][0] or "unknown", batch[-1][0] or "unknown",
+            batch[-1][0] or "unknown", batch[0][0] or "unknown",
         )
         if changed == 0 and pending_after >= pending_before:
             logging.error("Backfill made no progress; stopping to avoid an infinite loop.")

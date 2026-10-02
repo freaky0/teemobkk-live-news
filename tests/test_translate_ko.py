@@ -255,8 +255,8 @@ class BackfillSafety(unittest.TestCase):
                     result = backfill_translations.main()
 
         self.assertEqual(result, 0)
-        self.assertEqual(batches, [self.links[:2]])
-        self.assertEqual([link for _, link in backfill_translations.pending_batch(3)], self.links[2:])
+        self.assertEqual(batches, [list(reversed(self.links))[:2]])
+        self.assertEqual([link for _, link in backfill_translations.pending_batch(3)], self.links[:1])
 
     def test_backfill_ignores_articles_without_source_text(self):
         with closing(sqlite3.connect(self.path)) as connection:
@@ -278,17 +278,34 @@ class BackfillSafety(unittest.TestCase):
             translated = connection.execute("SELECT link FROM articles WHERE title_ko IS NOT NULL").fetchall()
         self.assertEqual([row[0] for row in translated], [self.links[-1]])
 
-    def test_backfill_batches_oldest_incomplete_articles_first(self):
+    def test_backfill_batches_newest_incomplete_articles_first(self):
         first = backfill_translations.pending_batch(2)
-        self.assertEqual([link for _, link in first], self.links[:2])
+        newest_first = list(reversed(self.links))
+        self.assertEqual([link for _, link in first], newest_first[:2])
         with closing(sqlite3.connect(self.path)) as connection:
             connection.executemany(
                 "UPDATE articles SET title_ko = ?, summary_ko = ? WHERE link = ?",
-                [("제목", "요약", link) for link in self.links[:2]],
+                [("제목", "요약", link) for link in newest_first[:2]],
             )
             connection.commit()
         second = backfill_translations.pending_batch(2)
-        self.assertEqual([link for _, link in second], self.links[2:])
+        self.assertEqual([link for _, link in second], self.links[:1])
+
+    def test_backfill_translates_selected_links_newest_first(self):
+        translated_titles = []
+
+        def translate(title, summary):
+            translated_titles.append(title)
+            return '{"title":"한국어 제목","summary":"한국어 요약"}'
+
+        with patch.dict(os.environ, {"TG_TRANSLATE_PROVIDER": "openai-codex"}):
+            with patch.object(translate_ko, "_complete_with_codex", side_effect=translate):
+                count = translate_ko.translate_pending(
+                    limit=3, links=self.links, throttle_seconds=0
+                )
+
+        self.assertEqual(count, 3)
+        self.assertEqual(translated_titles, ["Title 2", "Title 1", "Title 0"])
 
     def test_backfill_repairs_rows_with_either_translation_field_missing(self):
         with closing(sqlite3.connect(self.path)) as connection:
