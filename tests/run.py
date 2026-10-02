@@ -69,6 +69,7 @@ PYTHON_CHECKS = [
     ("test_picks.py", ["tests/test_picks.py"], "Pick 계약", "local"),
     ("test_google_links.py", ["tests/test_google_links.py"], "구글뉴스 원본 링크 계약", "local"),
     ("test_original_source.py", ["tests/test_original_source.py"], "원출처 이름 표시 계약", "local"),
+    ("test_translate_ko.py", ["tests/test_translate_ko.py"], "한국어 번역 저장·실패 폴백", "local"),
     ("test_dedupe.py", ["tests/test_dedupe.py"], "같은 사건 중복 차단 계약", "local"),
     ("test_admin_http.py", ["tests/test_admin_http.py"], "관리자 HTTP 게이트", "local"),
     ("test_source_switch.py", ["tests/test_source_switch.py"], "소스 스위치 계약", "local"),
@@ -131,9 +132,12 @@ def build_local_page():
 def start_local_server(log_path, port):
     """Start a collector for this run and return the process, or None if it will not come up."""
     handle = open(log_path, "w", encoding="utf-8")
+    env = os.environ.copy()
+    # Browser/API fixtures must never make a paid translation request.
+    env["TEEMO_TRANSLATE_KO_ENABLED"] = "0"
     process = subprocess.Popen(
         [sys.executable, "live_news_dashboard.py", "--port", str(port), "--interval", "3600"],
-        cwd=ROOT, stdout=handle, stderr=subprocess.STDOUT)
+        cwd=ROOT, env=env, stdout=handle, stderr=subprocess.STDOUT)
     handle.close()
     for _ in range(60):
         if process.poll() is not None:

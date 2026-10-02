@@ -37,7 +37,7 @@ MAX_PER_REGION = 1500
 RECENT_PER_REGION = 300
 PAGE_SIZE = 1000
 FIELDS = (
-    "title", "link", "summary", "published_at",
+    "title", "title_ko", "link", "summary", "summary_ko", "published_at",
     "source", "source_type", "category", "categories", "priority",
     # Filled from the resolution cache, never from the database row: the stored link is the
     # row's identity and stays what the operator's actions address.
@@ -67,6 +67,9 @@ def public_row(row: dict[str, Any], cache: dict[str, str] | None = None) -> dict
     summary = str(out.get("summary") or "")
     if len(summary) > SUMMARY_CHARS:
         out["summary"] = summary[:SUMMARY_CHARS].rstrip() + "…"
+    summary_ko = str(out.get("summary_ko") or "")
+    if len(summary_ko) > SUMMARY_CHARS:
+        out["summary_ko"] = summary_ko[:SUMMARY_CHARS].rstrip() + "…"
     # What the reader clicks. A Google News row is published with the publisher's own URL beside the
     # aggregator one, so the page can send a reader to the article instead of to the redirect - and a
     # reader who lands on a story still sees the link the row is filed under.
@@ -161,7 +164,13 @@ def digest_of(articles: list[dict[str, Any]]) -> str:
     """
     hasher = hashlib.sha1()
     for article in articles:
-        hasher.update(str(article.get("link")).encode("utf-8"))
+        hasher.update(str(article.get("link") or "").encode("utf-8"))
+        hasher.update(b"\n")
+        # Translation backfills change the published card without adding a new link; include both
+        # translated fields so the browser invalidates its cached regional JSON immediately.
+        hasher.update(str(article.get("title_ko") or "").encode("utf-8"))
+        hasher.update(b"\n")
+        hasher.update(str(article.get("summary_ko") or "").encode("utf-8"))
         hasher.update(b"\n")
     return hasher.hexdigest()[:16]
 

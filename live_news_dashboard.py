@@ -17,6 +17,7 @@ import email.utils
 import html
 import json
 import logging
+import os
 import re
 import sqlite3
 import threading
@@ -725,6 +726,10 @@ def init_db() -> None:
         # the page then falls back to the hostname of the resolved link, which needs no backfill.
         if "original_source" not in columns:
             connection.execute("ALTER TABLE articles ADD COLUMN original_source TEXT")
+        if "title_ko" not in columns:
+            connection.execute("ALTER TABLE articles ADD COLUMN title_ko TEXT")
+        if "summary_ko" not in columns:
+            connection.execute("ALTER TABLE articles ADD COLUMN summary_ko TEXT")
         # No index on `categories`: the filter is a contains-match, which no index can serve.
         for column in ("published_at", "region", "category", "source", "priority"):
             connection.execute(f"CREATE INDEX IF NOT EXISTS idx_articles_{column} ON articles({column})")
@@ -1194,7 +1199,7 @@ def _as_list(value: Any) -> list[str]:
 def query_articles(hours: int = RETENTION_HOURS, region: str = "", category: Any = "", source: Any = "",
                    source_type: str = "", minimum_priority: int = 0, text: Any = "",
                    picked_only: bool = False,
-                   limit: int = DEFAULT_LIMIT, offset: int = 0) -> tuple[list[dict[str, Any]], int, dict[str, int]]:
+                   limit: int = DEFAULT_LIMIT, offset: int = 0, lang: str = "") -> tuple[list[dict[str, Any]], int, dict[str, int]]:
     """Articles in the window, with every selected condition applied.
 
     `category` and `text` accept one value or a list, and a list means ALL of them: that is what a
@@ -1279,10 +1284,17 @@ def query_articles(hours: int = RETENTION_HOURS, region: str = "", category: Any
     for row in rows:
         item = dict(row)
         item["categories"] = taxonomy.split_categories(item.get("categories"), item.get("category"))
-        # Which language each part is in, so the card can say so and a browser translator works on
-        # the right one. Per element: a headline and its summary sometimes differ.
         item["lang"] = taxonomy.detect_lang(item.get("title") or "")
         item["summary_lang"] = taxonomy.detect_lang(item.get("summary") or "")
+        if lang == "ko":
+            item["original_title"] = item.get("title") or ""
+            item["original_summary"] = item.get("summary") or ""
+            item["title"] = item.get("title_ko") or item["original_title"]
+            item["summary"] = item.get("summary_ko") or item["original_summary"]
+            if item.get("title_ko"):
+                item["lang"] = "ko"
+            if item.get("summary_ko"):
+                item["summary_lang"] = "ko"
         # The operator's judgement travels with the row, note and all, because the badge is for
         # readers: a pick is only worth something if the person reading the page can see it.
         note = picks.get(item.get("link"))
@@ -1350,6 +1362,16 @@ def collect_news() -> dict[str, Any]:
     # arriving in a later cycle under another outlet's link is the repetition a reader notices.
     deduped = drop_already_stored(dedupe_by_region(fresh_articles))
     inserted = insert_articles(deduped)
+    # Translation is deliberately best-effort: if providers are unavailable, originals stay readable
+    # and the next collection cycle can retry the pending rows.
+    if os.environ.get("TEEMO_TRANSLATE_KO_ENABLED", "1").strip().lower() not in {"0", "false", "no"}:
+        try:
+            import translate_ko
+            translated = translate_ko.translate_pending(limit=translate_ko.COLLECT_BATCH)
+            if translated:
+                logging.info("Korean translations saved: %d", translated)
+        except Exception:
+            logging.exception("Korean translation post-processing failed; collection continues")
     if inserted:
         prune_archive()
     _, window_total, region_counts = query_articles(hours=RETENTION_HOURS, limit=1)
@@ -1612,6 +1634,7 @@ class Handler(BaseHTTPRequestHandler):
                 "source": pick_all("source"), "source_type": pick("source_type"),
                 "minimum_priority": minimum_priority, "text": pick_all("q"),
                 "picked_only": pick("picked") in ("1", "true", "yes"),
+                "lang": "ko" if pick("lang") == "ko" else "",
             }
             articles, total, region_counts = self.state.query(**filters, limit=limit, offset=offset)
             # The reader is sent to the publisher, the operator keeps the stored link: the row's

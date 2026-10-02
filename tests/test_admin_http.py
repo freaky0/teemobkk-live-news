@@ -14,6 +14,7 @@ import tempfile
 import threading
 import unittest
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -112,6 +113,41 @@ class Gate(unittest.TestCase):
         status, _, payload = self.call("/api/news?hours=24&limit=1")
         self.assertEqual(status, 200)
         self.assertNotIn("sources", payload)
+
+    def test_korean_news_api_returns_translation_and_falls_back_to_original(self):
+        links = ("https://example.com/ko-api-translated", "https://example.com/ko-api-fallback")
+        core.insert_articles([
+            {"link": links[0], "title": "Market rises 2%", "summary": "Funds bought BTC.",
+             "source": "Example", "source_type": "news", "region": core.GLOBAL_REGION,
+             "category": "시장·가격", "published_at": now_iso()},
+            {"link": links[1], "title": "Original fallback", "summary": "English summary.",
+             "source": "Example", "source_type": "news", "region": core.GLOBAL_REGION,
+             "category": "시장·가격", "published_at": now_iso()},
+        ])
+        connection = core.db_connect()
+        try:
+            connection.execute("UPDATE articles SET title_ko=?,summary_ko=? WHERE link=?",
+                               ("시장이 2% 상승", "펀드가 비트코인을 매수했다.", links[0]))
+            connection.commit()
+        finally:
+            connection.close()
+        try:
+            query = urllib.parse.urlencode({"hours": 24, "limit": 100, "lang": "ko", "region": core.GLOBAL_REGION})
+            status, _, payload = self.call("/api/news?" + query)
+            self.assertEqual(status, 200)
+            rows = {row["link"]: row for row in payload["articles"]}
+            self.assertEqual(rows[links[0]]["title"], "시장이 2% 상승")
+            self.assertEqual(rows[links[0]]["lang"], "ko")
+            self.assertEqual(rows[links[0]]["original_title"], "Market rises 2%")
+            self.assertEqual(rows[links[1]]["title"], "Original fallback")
+            self.assertEqual(rows[links[1]]["lang"], "en")
+        finally:
+            connection = core.db_connect()
+            try:
+                connection.executemany("DELETE FROM articles WHERE link=?", [(link,) for link in links])
+                connection.commit()
+            finally:
+                connection.close()
 
     def test_the_operator_endpoints_are_closed(self):
         self.assertEqual(self.call("/api/stats")[0], 404)

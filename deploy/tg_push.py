@@ -31,6 +31,7 @@ import logging
 import os
 import re
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import time
@@ -438,6 +439,46 @@ def clean_body(text: Any, limit: int) -> str:
         if clean:
             paragraphs.append(clean)
     return "\n\n".join(paragraphs)[:limit]
+
+
+def codex_complete_translation(messages: list[dict[str, str]]) -> str:
+    """Use the configured Hermes Codex subscription without putting tokens in this process."""
+    prompt = "\n\n".join(
+        f"{message.get('role', 'user').upper()}:\n{message.get('content', '')}"
+        for message in messages
+    )
+    command = [
+        os.environ.get("HERMES_CLI", "hermes"), "chat", "--query-file", "-", "--oneshot",
+        "--quiet", "--provider", "openai-codex", "--model", "gpt-6-luna",
+        "--reasoning", "none", "--toolsets", "", "--ignore-rules", "--source", "tool",
+    ]
+    result = subprocess.run(command, input=prompt, text=True, encoding="utf-8",
+                            capture_output=True, timeout=45, check=False)
+    if result.returncode:
+        detail = (result.stderr or result.stdout or "Codex subscription request failed").strip()
+        raise RuntimeError(detail[:240])
+    return result.stdout.strip()
+
+
+def api_complete_translation(messages: list[dict[str, str]]) -> str:
+    """Use the existing OpenAI API-key provider from this module's PROVIDERS map."""
+    url, key_name, default_model = PROVIDERS["openai"]
+    key = os.environ.get(key_name, "").strip()
+    if not key:
+        raise RuntimeError("OPENAI_API_KEY is not configured")
+    body = {
+        "model": os.environ.get("TG_TRANSLATE_MODEL", "").strip() or default_model,
+        "messages": messages,
+        "temperature": 0,
+        "max_tokens": 700,
+    }
+    request = urllib.request.Request(
+        url, data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Authorization": "Bearer " + key},
+    )
+    with urllib.request.urlopen(request, timeout=25) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+    return str(payload["choices"][0]["message"]["content"])
 
 
 def brief(item: dict[str, Any], title: str, summary: str) -> dict[str, Any] | None:

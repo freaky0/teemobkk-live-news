@@ -787,6 +787,18 @@ function srcLabel(a){
   if(!a.original_link)return a.source||'';
   return String(a.original_source||'').trim()||hostOf(a.original_link)||a.source||''}
 function card(a,th,lead,first,last){
+  const view=Object.assign({},a);
+  const originalTitle=a.original_title||a.title||'';
+  const originalSummary=a.original_summary||a.summary||'';
+  if(CFG.lang==='ko'){
+    view.title=a.title_ko||a.title||'';
+    view.summary=a.summary_ko||a.summary||'';
+    if(a.title_ko)view.lang='ko';
+    if(a.summary_ko)view.summary_lang='ko'}
+  const showOriginal=CFG.lang==='ko'&&
+    ((a.title_ko&&a.title_ko!==originalTitle)||(a.summary_ko&&a.summary_ko!==originalSummary));
+  const originalToggle=showOriginal?'<details class="original-toggle"><summary>'+esc(CFG.briefing.originalToggle)+'</summary><h3 lang="en">'+
+    esc(originalTitle)+'</h3>'+(originalSummary?'<p>'+esc(originalSummary)+'</p>':'')+'</details>':'';
   const tag=V.tag||{};
   const srcOn=tag.k==='src'&&tag.v===a.source;
   const srcCls='chip src tap'+(a.source_type==='official'?' official':'')+(th?' th':'')+(srcOn?' on':'');
@@ -795,7 +807,7 @@ function card(a,th,lead,first,last){
       catList(a).map(v=>{const on=tag.k==='cat'&&tag.v===v;
         return '<button type="button" class="chip tap'+(on?' on':'')+'" data-k="cat" data-v="'+esc(v)+'" aria-pressed="'+(on?'true':'false')+'">'+esc(catLabel(v))+'</button>'}).join('');
   const href=storyHref(a.original_link||a.link);
-  const title=href?'<a href="'+esc(href)+'" target="_blank" rel="noopener nofollow">'+hl(cleanTitle(a.title))+'</a>':hl(cleanTitle(a.title));
+  const title=href?'<a href="'+esc(href)+'" target="_blank" rel="noopener nofollow">'+hl(cleanTitle(view.title))+'</a>':hl(cleanTitle(view.title));
   const actions=CFG.admin?cardActs(a):(href?'<div class="acts"><a class="open" href="'+esc(href)+'" target="_blank" rel="noopener nofollow">'+esc(CFG.briefing.openOriginal)+' ↗</a></div>':'');
   return '<article class="card timeline-row'+(th?' th':'')+(a.fresh?' new':'')+(lead?' lead':'')+
       (first?' first-in-day':'')+(last?' last-in-day':'')+'">'+
@@ -803,7 +815,7 @@ function card(a,th,lead,first,last){
     '<span class="timeline-dot" aria-hidden="true"></span><div class="body">'+
       '<p class="meta">'+meta+'</p>'+
       (a.picked?'<div class="pickbadge">'+PICK_ICON+' '+PICK+(a.pick_note?'<span class="pnote">'+esc(a.pick_note)+'</span>':'')+'</div>':'')+
-      '<h2 class="title"'+langAttr(a.lang)+'>'+title+'</h2>'+summaryBlock(a)+actions+
+      '<h2 class="title"'+langAttr(view.lang)+'>'+title+'</h2>'+summaryBlock(view)+originalToggle+actions+
     '</div></article>'}
 
 function catLabel(value){const map=CFG.catLabels||{};return map[value]||value}
@@ -1090,7 +1102,7 @@ function clearText(){
 function buildQuery(){
   const p=new URLSearchParams();
   p.set('region',V.tab==='thai'?'태국':'글로벌');
-  p.set('hours',V.hours);p.set('limit',V.limit);p.set('offset',V.offset);
+  p.set('hours',V.hours);p.set('limit',V.limit);p.set('offset',V.offset);p.set('lang',CFG.lang);
   if(V.mode==='priority')p.set('priority',V.value||'5');
   else if(V.mode==='official')p.set('source_type','official');
   // Every selected condition goes into ONE request, and a repeated parameter means all of them:
@@ -1685,6 +1697,9 @@ def seed_from_db(db_path: str, region: str, want_thai: bool, lang: str,
     """
     import sqlite3
     selects = (
+        "SELECT title, title_ko, summary, summary_ko, source, source_type, priority, category, categories, link, published_at FROM articles "
+        "WHERE region = ? AND title IS NOT NULL AND title != '' "
+        "{hidden}ORDER BY published_at DESC LIMIT ?",
         "SELECT title, summary, source, source_type, priority, category, categories, link, published_at FROM articles "
         "WHERE region = ? AND title IS NOT NULL AND title != '' "
         "{hidden}ORDER BY published_at DESC LIMIT ?",
@@ -1863,8 +1878,16 @@ def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str
     expand_label = "Show more" if lang == "en" else "요약 펼치기"
     original_label = ui_text.UI[lang]["openOriginal"]
     for item in items[:limit]:
-        title = _clean_title(item.get("title"))
-        summary = str(item.get("summary") or "")
+        original_title = _clean_title(item.get("title"))
+        original_summary = str(item.get("summary") or "")
+        title = _clean_title(item.get("title_ko") or item.get("title")) if lang == "ko" else original_title
+        summary = str((item.get("summary_ko") or item.get("summary")) if lang == "ko" else item.get("summary") or "")
+        translated = lang == "ko" and (title != original_title or summary != original_summary)
+        original_html = ('<details class="original-toggle"><summary>' +
+                        html.escape(ui_text.UI[lang]["originalToggle"]) + '</summary><h3 lang="en">'
+                         + html.escape(original_title) + '</h3>'
+                         + ('<p>' + html.escape(original_summary) + '</p>' if original_summary else '')
+                         + '</details>') if translated else ""
         published = str(item.get("published_at") or "")
         if not title:
             continue
@@ -1897,7 +1920,7 @@ def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str
             + (('<a href="' + html.escape(href, quote=True) + '" target="_blank" rel="noopener nofollow">')
                if href else "") + html.escape(title) + ('</a>' if href else "") + '</h2>'
             + ('<div class="summary clamp"' if long_summary else '<div class="summary"')
-            + summary_attr + '>' + html.escape(summary) + '</div>' + actions + '</div></article>')
+            + summary_attr + '>' + html.escape(summary) + '</div>' + original_html + actions + '</div></article>')
     return "".join(rows)
 
 

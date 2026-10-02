@@ -36,6 +36,8 @@ const check = (n, ok, d) => { pass.push(ok); console.log('  %s %s%s', ok ? 'PASS
 
   await waitFor(() => d.querySelectorAll('#trend .tbtn[data-trend]').length > 0);
   const terms = [btn(0).dataset.trend, btn(1).dataset.trend];
+  // Check visible labels: internal trend tokens can be localized (e.g. trend:trump → 트럼프).
+  const labels = [btn(0), btn(1)].map((el) => el.textContent.replace(/[0-9✕]/g, '').trim());
   btn(0).click();
   await sleep(2500);
   btn(1).click();
@@ -49,7 +51,7 @@ const check = (n, ok, d) => { pass.push(ok); console.log('  %s %s%s', ok ? 'PASS
 
   const row = conds();
   check('조건 줄이 두 낱말을 보여줌',
-    !row.hidden && terms.every((x) => condText().indexOf(x) >= 0), condText().slice(0, 80));
+    !row.hidden && labels.every((x) => condText().indexOf(x) >= 0), condText().slice(0, 80));
 
   if (list.length) {
     check('보이는 카드가 선택한 낱말을 모두 포함', both.length === list.length,
