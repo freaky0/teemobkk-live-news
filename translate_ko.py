@@ -98,8 +98,10 @@ def translate_pending(limit: int = COLLECT_BATCH, throttle_seconds: float = 0.0,
         connection = core.db_connect()
         try:
             if after_link is None:
+                # Ingest path: newest first, so fresh articles show Korean immediately.
+                # The backfill (after_link set) works oldest-first from the other end.
                 query = ("SELECT link, title, summary FROM articles WHERE title_ko IS NULL "
-                         "ORDER BY collected_at ASC, published_at ASC LIMIT ?")
+                         "ORDER BY collected_at DESC, published_at DESC LIMIT ?")
                 rows = [dict(row) for row in connection.execute(query, (limit,))]
             else:
                 query = ("SELECT link, title, summary FROM articles WHERE title_ko IS NULL AND link > ? "
