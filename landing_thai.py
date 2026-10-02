@@ -109,7 +109,7 @@ h2 .n{font-family:var(--mono);font-size:13px;color:var(--gold);letter-spacing:.1
 .news-item a:hover h3{color:var(--purple)}
 /* News cards: feature + 3-col grid */
 .news-feature{margin:24px 0 4px}
-.fcard{display:grid;grid-template-columns:1.15fr 1fr;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.fcard{display:grid;grid-template-columns:1.15fr 1fr;background:var(--surface);border:1px solid var(--line);border-radius:0;overflow:hidden}
 .fcard-img{min-height:300px;background:var(--purple-deep) center/cover no-repeat}
 .fcard-body{padding:32px;display:flex;flex-direction:column;justify-content:center}
 .fcard .topic{display:inline-block;font-size:12px;font-weight:700;color:var(--gold);letter-spacing:.1em;margin-bottom:12px}
@@ -118,7 +118,7 @@ h2 .n{font-family:var(--mono);font-size:13px;color:var(--gold);letter-spacing:.1
 .fcard .sum{color:var(--muted);font-size:14.5px;margin:0 0 18px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .fcard .meta{font-size:12px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap}
 .news-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:20px}
-.ncard{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;transition:transform .25s,box-shadow .25s}
+.ncard{background:var(--surface);border:1px solid var(--line);border-radius:0;overflow:hidden;display:flex;flex-direction:column;transition:transform .25s,box-shadow .25s}
 .ncard:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(74,29,107,.14)}
 .ncard-img{aspect-ratio:16/9;background:var(--purple-deep) center/cover no-repeat}
 .ncard-body{padding:18px 18px 16px;display:flex;flex-direction:column;flex:1}
@@ -219,12 +219,12 @@ nav a{font-size:13px;padding:4px 0}
 <hr class="thai-rule">
 
 <section class="section" id="news" aria-labelledby="news-title">
-<div class="section-head"><h2 id="news-title"><span class="n">01</span>태국의 오늘을 생활자의 눈으로</h2></div>
-<p class="section-intro">비자와 이민, 사고와 재난, 생활과 교통까지. 태국 안에서 벌어진 일을 한국어로 보여줍니다.</p>
 <div class="filters" id="filters" role="group" aria-label="분류 필터">
 <button class="chip active" data-cat="">전체</button>
 __FILTERS__
 </div>
+<div class="section-head"><h2 id="news-title"><span class="n">01</span>태국의 오늘을 생활자의 눈으로</h2></div>
+<p class="section-intro">비자와 이민, 사고와 재난, 생활과 교통까지. 태국 안에서 벌어진 일을 한국어로 보여줍니다.</p>
 <div class="news-status"><span class="live">● 자동 수집 · 한국어로 표시</span><span id="update-status" role="status">수집 상태 확인 중</span>
 <button class="retry" id="retry" type="button" hidden>다시 불러오기</button></div>
 <div class="news-feature" id="news-feature" hidden></div>
