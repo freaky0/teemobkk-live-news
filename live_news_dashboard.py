@@ -857,6 +857,60 @@ def archive_stats() -> dict[str, Any]:
             "translation": {"translated": int(translated), "total": int(total)}}
 
 
+USAGE_SNAPSHOT = Path("/opt/model-usage-dashboard/usage_snapshot.json")
+
+
+def _fmt_tok(n: float) -> str:
+    if n >= 1_000_000_000:
+        return "%.1fB tok" % (n / 1_000_000_000)
+    if n >= 1_000_000:
+        return "%.1fM tok" % (n / 1_000_000)
+    if n >= 1_000:
+        return "%.1fK tok" % (n / 1_000)
+    return "%d tok" % int(n)
+
+
+def model_usage_summary() -> dict[str, Any]:
+    """Compact summary of /opt/model-usage-dashboard/usage_snapshot.json for the admin page.
+
+    Returns provider -> headline string. Missing/unreadable snapshot yields an error note.
+    """
+    try:
+        data = json.loads(USAGE_SNAPSHOT.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {"error": "스냅샷을 읽지 못했습니다: %s" % str(exc)[:80]}
+    out: dict[str, Any] = {"collected_at": data.get("collected_at", "")}
+    # Hermes: total tokens across all time
+    h = data.get("hermes", {})
+    if h.get("status") == "ok":
+        t = h.get("total", {})
+        n = (t.get("input_tokens", 0) or 0) + (t.get("output_tokens", 0) or 0) + (t.get("cached_input_tokens", 0) or 0)
+        out["hermes"] = _fmt_tok(n)
+    else:
+        out["hermes"] = "미제공"
+    # Codex: plan usage (may be unconnected on this host)
+    c = data.get("codex", {})
+    out["codex"] = "연결 안됨" if c.get("status") != "ok" else _fmt_tok(c.get("total_tokens", 0))
+    # LongCat: total calls/tokens
+    lc = data.get("longcat", {})
+    if lc.get("status") == "ok":
+        t = lc.get("totals", {})
+        n = (t.get("input_tokens", 0) or 0) + (t.get("output_tokens", 0) or 0)
+        out["longcat"] = _fmt_tok(n)
+    else:
+        out["longcat"] = "미제공"
+    # OpenAI API: key validity (usage needs admin key)
+    o = data.get("openai", {})
+    out["openai"] = "키 유효" if o.get("key_valid") else "미제공"
+    # OpenRouter: remaining credits
+    orr = data.get("openrouter", {})
+    if orr.get("status") == "ok":
+        out["openrouter"] = "$%.2f 남음" % (orr.get("credits_remaining_usd", 0) or 0)
+    else:
+        out["openrouter"] = "미제공"
+    return out
+
+
 def picked_links(limit: int = 500) -> list[dict[str, Any]]:
     """Everything the operator has picked, newest first, with the headline from the archive."""
     with DB_LOCK, db_connect() as connection:
@@ -1681,6 +1735,12 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_error(404)
                 return
             self.send_json({"archive": archive_stats(), "updated_at_ict": self.state.snapshot().get("updated_at_ict")})
+            return
+        if request_path == "/api/usage":
+            if PUBLIC_MODE and not self.is_admin():
+                self.send_error(404)
+                return
+            self.send_json(model_usage_summary())
             return
         if request_path == "/api/status":
             data = self.state.snapshot()
