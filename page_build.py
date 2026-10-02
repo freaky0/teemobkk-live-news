@@ -1270,7 +1270,7 @@ async function loadUsage(){
   const el=document.querySelector('#usage');if(!el)return;
   try{
     const d=await (await fetch(API+'/api/stats',{cache:'no-cache'})).json();
-    const t=d.translation||{};
+    const t=((d.archive||{}).translation)||{};
     const total=t.total||0, done=t.translated||0;
     const pct=total?Math.round(done/total*100):0;
     el.innerHTML='<div class="source"><span>번역됨</span><span>'+done.toLocaleString()+' / '+total.toLocaleString()+'</span></div>'+
