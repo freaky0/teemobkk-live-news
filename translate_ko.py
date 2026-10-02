@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import time
 from typing import Any
@@ -80,6 +81,12 @@ def _provider_order() -> list:
 
 def translate_one(title: str, summary: str) -> dict[str, str] | None:
     """Try the configured provider first, then fall back to the other one."""
+    if os.environ.get("TG_TRANSLATE_PROVIDER", "").strip().lower() == "openai-codex":
+        translated = _parse_translation(_complete_with_codex(title, summary))
+        if translated is None or (summary.strip() and not translated["summary"]):
+            raise RuntimeError("openai-codex returned invalid translation")
+        return translated
+
     for provider in _provider_order():
         try:
             translated = _parse_translation(provider(title, summary))
@@ -91,26 +98,39 @@ def translate_one(title: str, summary: str) -> dict[str, str] | None:
 
 
 def translate_pending(limit: int = COLLECT_BATCH, throttle_seconds: float = 0.0,
-                     after_link: str | None = None) -> int:
-    """Translate a bounded number of pending rows, optionally advancing a backfill cursor."""
+                     links: list[str] | None = None) -> int:
+    """Translate recent ingest rows, or only the explicitly selected backfill links."""
     limit = max(1, min(int(limit), MAX_BATCH))
+    selected_links = list(dict.fromkeys(str(link) for link in (links or []) if link))
     with core.DB_LOCK:
         connection = core.db_connect()
         try:
-            if after_link is None:
-                # Ingest path: newest first, so fresh articles show Korean immediately.
-                # The backfill (after_link set) works oldest-first from the other end.
-                query = ("SELECT link, title, summary FROM articles WHERE title_ko IS NULL "
-                         "ORDER BY collected_at DESC, published_at DESC LIMIT ?")
-                rows = [dict(row) for row in connection.execute(query, (limit,))]
+            incomplete = (
+                "((COALESCE(TRIM(title), '') <> '' AND COALESCE(TRIM(title_ko), '') = '') "
+                "OR (COALESCE(TRIM(summary), '') <> '' AND COALESCE(TRIM(summary_ko), '') = ''))"
+            )
+            if links is not None:
+                if not selected_links:
+                    return 0
+                placeholders = ",".join("?" for _ in selected_links)
+                query = (
+                    "SELECT link, title, summary FROM articles "
+                    f"WHERE {incomplete} AND link IN ({placeholders}) "
+                    "ORDER BY COALESCE(published_at, '') ASC, link ASC LIMIT ?"
+                )
+                rows = [dict(row) for row in connection.execute(query, (*selected_links, limit))]
             else:
-                query = ("SELECT link, title, summary FROM articles WHERE title_ko IS NULL AND link > ? "
-                         "ORDER BY link ASC LIMIT ?")
-                rows = [dict(row) for row in connection.execute(query, (after_link, limit))]
+                query = (
+                    "SELECT link, title, summary FROM articles "
+                    f"WHERE {incomplete} "
+                    "ORDER BY collected_at DESC, published_at DESC, link DESC LIMIT ?"
+                )
+                rows = [dict(row) for row in connection.execute(query, (limit,))]
         finally:
             connection.close()
 
     completed = 0
+    strict_codex = os.environ.get("TG_TRANSLATE_PROVIDER", "").strip().lower() == "openai-codex"
     for index, row in enumerate(rows):
         title = str(row.get("title") or "")
         summary = str(row.get("summary") or "")
@@ -119,22 +139,32 @@ def translate_pending(limit: int = COLLECT_BATCH, throttle_seconds: float = 0.0,
         if title_lang not in {"", "ko"} or summary_lang not in {"", "ko"}:
             try:
                 translated = translate_one(title, summary)
-            except Exception as exc:  # defensive fail-open for unexpected adapter errors
+            except Exception as exc:  # default ingest remains best-effort; strict backfill fails closed
                 logging.warning("Korean translation skipped: %s", str(exc)[:120])
+                if strict_codex:
+                    raise
                 translated = None
         else:
             translated = {"title": title, "summary": summary}
 
         if translated:
             try:
-                with core.DB_LOCK, core.db_connect() as connection:
-                    cursor = connection.execute(
-                        "UPDATE articles SET title_ko = ?, summary_ko = ? "
-                        "WHERE link = ? AND title_ko IS NULL",
-                        (translated["title"], translated["summary"], row["link"]))
-                    completed += cursor.rowcount
+                with core.DB_LOCK:
+                    connection = core.db_connect()
+                    try:
+                        cursor = connection.execute(
+                            "UPDATE articles SET title_ko = ?, summary_ko = ? "
+                            "WHERE link = ? AND "
+                            "(COALESCE(TRIM(title_ko), '') = '' OR COALESCE(TRIM(summary_ko), '') = '')",
+                            (translated["title"], translated["summary"], row["link"]))
+                        connection.commit()
+                        completed += cursor.rowcount
+                    finally:
+                        connection.close()
             except Exception as exc:
                 logging.warning("Korean translation could not be saved: %s", str(exc)[:120])
+                if strict_codex:
+                    raise
         if throttle_seconds > 0 and index + 1 < len(rows):
             time.sleep(throttle_seconds)
     return completed
