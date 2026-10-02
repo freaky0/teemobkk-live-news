@@ -80,7 +80,7 @@ border-radius:var(--radius);transition:border-color .35s,transform .45s cubic-be
 <section class="section" id="news" aria-labelledby="news-title">
 <h2 id="news-title">최근 태국 소식</h2>
 <p class="section-intro">비자와 이민, 사고와 재난, 생활과 경제, 정치와 사회. 태국 안에서 벌어진 일을 원문 언어로 보여줍니다.</p>
-<div class="news-status"><span>자동 수집 · 원문 언어로 표시</span><span id="update-status" role="status">수집 상태 확인 중</span>
+<div class="news-status"><span>자동 수집 · 한국어로 표시</span><span id="update-status" role="status">수집 상태 확인 중</span>
 <button class="retry" id="retry" type="button" hidden>다시 불러오기</button></div>
 <div class="news-list" id="news-list" aria-busy="true">
 <div class="news-item" aria-hidden="true"><div class="loading-line short"></div><div class="loading-line"></div><div class="loading-line"></div></div>
@@ -107,7 +107,7 @@ border-radius:var(--radius);transition:border-color .35s,transform .45s cubic-be
 <h3>읽기 전에</h3>
 <ul>
 <li>뉴스는 자동 수집한 원문 제목과 출처입니다.</li>
-<li>번역하지 않고 원문 언어로 표시합니다.</li>
+<li>한국어로 번역하여 표시합니다.</li>
 <li>비자·법률 판단은 이민국 등 공식 기관의 최신 안내를 확인하세요.</li>
 </ul>
 </div>
@@ -194,7 +194,7 @@ border-radius:var(--radius);transition:border-color .35s,transform .45s cubic-be
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 12000);
     try {
-      const response = await fetch("/api/news?region=" + encodeURIComponent("태국") + "&hours=24&limit=100",
+      const response = await fetch("/api/news?region=" + encodeURIComponent("태국") + "&hours=24&limit=100&lang=ko",
         {cache:"no-cache", signal:controller.signal});
       if (!response.ok) throw new Error("http");
       const data = await response.json();
