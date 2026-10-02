@@ -1269,12 +1269,12 @@ async function loadHidden(){
 async function loadUsage(){
   const el=document.querySelector('#usage');if(!el)return;
   try{
-    const d=await (await fetch(API+'/api/stats',{cache:'no-cache'})).json();
-    const t=((d.archive||{}).translation)||{};
-    const total=t.total||0, done=t.translated||0;
-    const pct=total?Math.round(done/total*100):0;
-    el.innerHTML='<div class="source"><span>번역됨</span><span>'+done.toLocaleString()+' / '+total.toLocaleString()+'</span></div>'+
-      '<div class="source"><span>커버리지</span><span>'+pct+'%</span></div>';
+    const d=await (await fetch(API+'/api/usage',{cache:'no-cache'})).json();
+    if(d.error){el.innerHTML='<div class="note">'+esc(d.error)+'</div>';return}
+    const rows=[["Hermes",d.hermes],["Codex",d.codex],["LongCat",d.longcat],
+                ["OpenAI API",d.openai],["OpenRouter",d.openrouter]];
+    el.innerHTML=rows.map(([k,v])=>'<div class="source"><span>'+esc(k)+'</span><span>'+esc(v||"-")+'</span></div>').join('')+
+      (d.collected_at?'<div class="note">수집: '+esc(d.collected_at)+'</div>':'');
   }catch(e){el.innerHTML='<div class="note">불러오지 못했습니다</div>'}
 }
 // --- which sources the deployed pages show (operator only) --------------------------------
@@ -2113,7 +2113,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
             # The restore list lives with the other operator panels. A hidden story is never in the
             # feed again, so this is the only place it can be brought back from.
             '<div class="box"><h2>숨긴 기사</h2><div id="hidden"><div class="note">불러오는 중</div></div></div>'
-            '<div class="box"><h2>번역 사용량</h2><div id="usage"><div class="note">불러오는 중…</div></div></div>'
+            '<div class="box"><h2>모델 사용량</h2><div id="usage"><div class="note">불러오는 중…</div></div></div>'
             '<div class="box" id="tguide"></div></aside>')
     undobar = ('' if not admin else
                '<section class="undobar" id="undobar" hidden></section>')
