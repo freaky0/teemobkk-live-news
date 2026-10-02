@@ -143,8 +143,14 @@ select{cursor:pointer}
 .hidrow{display:flex;gap:10px;align-items:baseline;justify-content:space-between;padding:5px 0;
   border-bottom:1px solid var(--line);font-size:12.5px}
 .hidrow:last-child{border-bottom:0}
-.hidrow a{color:#c3cfe6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hidrow a{color:#c3cfe6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
 .hidrow a:hover{color:var(--accent)}
+/* Admin sidebar tables must not push past the page width: long source names and
+   article titles ellipsis instead of overflowing. */
+.side.admin{min-width:0;overflow:hidden}
+.side.admin .box{min-width:0;overflow:hidden}
+.source>*{min-width:0}
+.source span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .unhide{background:none;border:1px solid var(--line);border-radius:var(--r-pill);padding:3px 10px;
   color:var(--muted);cursor:pointer;font-size:11.5px;flex:0 0 auto}
 .unhide:hover{border-color:var(--accent);color:var(--accent)}
@@ -1260,6 +1266,17 @@ async function loadHidden(){
       loadHidden();fetchFeed()});
   }catch(e){el.innerHTML='<div class="note">목록을 불러오지 못했습니다</div>'}
 }
+async function loadUsage(){
+  const el=document.querySelector('#usage');if(!el)return;
+  try{
+    const d=await (await fetch(API+'/api/stats',{cache:'no-cache'})).json();
+    const t=d.translation||{};
+    const total=t.total||0, done=t.translated||0;
+    const pct=total?Math.round(done/total*100):0;
+    el.innerHTML='<div class="source"><span>번역됨</span><span>'+done.toLocaleString()+' / '+total.toLocaleString()+'</span></div>'+
+      '<div class="source"><span>커버리지</span><span>'+pct+'%</span></div>';
+  }catch(e){el.innerHTML='<div class="note">불러오지 못했습니다</div>'}
+}
 // --- which sources the deployed pages show (operator only) --------------------------------
 // The switch lives in the collection-status rows, because those rows are already the list of
 // sources. It has nothing to filter here: a switched-off source is dropped by the server on every
@@ -1624,6 +1641,7 @@ document.addEventListener('visibilitychange',()=>{hidden=document.hidden;
   // silently kept filtering the list, which reads as the dashboard being stuck.
   skeleton();
   if(CFG.admin)loadHidden();
+  if(CFG.admin)loadUsage();
   if(CFG.admin)loadSourceSwitches();
   if(CFG.admin){wireFilters();loadFilters()}
   if(PUBLIC){fetchFeed();setInterval(()=>{if(!hidden&&V.tab!=='cal')fetchFeed()},300000)}
@@ -2095,6 +2113,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
             # The restore list lives with the other operator panels. A hidden story is never in the
             # feed again, so this is the only place it can be brought back from.
             '<div class="box"><h2>숨긴 기사</h2><div id="hidden"><div class="note">불러오는 중</div></div></div>'
+            '<div class="box"><h2>번역 사용량</h2><div id="usage"><div class="note">불러오는 중…</div></div></div>'
             '<div class="box" id="tguide"></div></aside>')
     undobar = ('' if not admin else
                '<section class="undobar" id="undobar" hidden></section>')
