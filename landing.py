@@ -123,7 +123,7 @@ PAGE = r'''<!doctype html>
 *{box-sizing:border-box}html{scroll-padding-top:92px}body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.65;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}button{font:inherit}a,button{-webkit-tap-highlight-color:transparent}a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:4px}a:hover{color:var(--accent)}button{cursor:pointer}[hidden]{display:none!important}
 .wrap{max-width:1120px;margin:auto;padding-inline:28px}
 .skip{position:absolute;left:16px;top:-100px;background:var(--accent);color:#ffffff;padding:12px;z-index:50;font-weight:700}.skip:focus{top:12px}
-.ticker{background:#060a10;border-bottom:1px solid var(--line);overflow:hidden;white-space:nowrap}
+.ticker{background:var(--surface2);border-bottom:1px solid var(--line);overflow:hidden;white-space:nowrap}
 .ticker-inner{display:inline-flex;padding:7px 0;animation:tick 28s linear infinite}
 .ticker:hover .ticker-inner{animation-play-state:paused}
 .tick{display:inline-flex;align-items:center;gap:8px;padding:0 22px;font:12px/1.6 var(--mono);color:var(--muted);border-right:1px solid var(--line)}
@@ -192,7 +192,10 @@ h2{font-size:24px;line-height:1.3;letter-spacing:-.02em;margin:0;font-weight:700
 .note{font-size:12px;color:var(--dim);margin-top:20px;max-width:820px}
 .indicators{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px}
 .indicator{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:26px;transition:border-color .25s,transform .25s}
-.indicator:hover{border-color:rgba(0,229,160,.45);transform:translateY(-3px)}
+.indicator:hover{border-color:rgba(10,122,74,.45);transform:translateY(-3px)}
+.chart-open{display:block;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-bottom:18px;background:#0d1117}
+.chart-open img{display:block;width:100%;height:auto;aspect-ratio:1404/1281;object-fit:cover}
+.chart-caption{display:block;padding:9px 13px;color:var(--muted);font-size:11.5px;border-top:1px solid var(--line);background:var(--surface)}
 .indicator .icode{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.08em}
 .indicator h3{font-size:20px;margin:10px 0 8px;letter-spacing:-.015em;font-weight:700}
 .indicator p{color:var(--muted);font-size:14px;margin:0 0 20px;word-break:keep-all;line-height:1.7}
@@ -203,7 +206,7 @@ h2{font-size:24px;line-height:1.3;letter-spacing:-.02em;margin:0;font-weight:700
 .about ul{list-style:none;padding:0;margin:0;color:var(--muted);font-size:13.5px}
 .about li{margin:10px 0;padding-left:18px;position:relative}
 .about li::before{content:"›";position:absolute;left:0;color:var(--accent)}
-.footer{border-top:1px solid var(--line);padding:26px 0 38px;color:var(--dim);font-size:12px;background:#060a10}
+.footer{border-top:1px solid var(--line);padding:26px 0 38px;color:var(--dim);font-size:12px;background:var(--surface2)}
 .footer-row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px;align-items:center}
 .footer-row .fbrand{font-family:var(--mono);color:var(--muted)}
 .footer p{margin:16px 0 0;max-width:860px;line-height:1.7}
@@ -246,8 +249,8 @@ h2{font-size:21px}
 <section class="section" id="news" aria-labelledby="news-title"><div class="sec-head"><span class="sec-tag">01</span><h2 id="news-title">최근 경제 뉴스</h2></div><p class="section-intro">금리와 경기, 기업과 정책, 지정학까지. 시장에 연결되는 소식을 확인하세요.</p><div class="news-status"><span class="live">● 자동 수집 · 한국어로 표시</span><span id="update-status" role="status">수집 상태 확인 중</span><button class="retry" id="retry" type="button" hidden>다시 불러오기</button></div><div class="news-list" id="news-list" aria-busy="true"><div class="loading-line short"></div><div class="loading-line"></div><div class="loading-line"></div></div><noscript><p>뉴스 목록을 불러오려면 자바스크립트가 필요합니다. <a href="/news/ko/">경제 뉴스 페이지에서 확인하세요.</a></p></noscript><a class="section-link" href="/news/ko/">$ open /news/ko/ →</a></section>
 <section class="section" id="perspectives" aria-labelledby="perspectives-title"><div class="sec-head"><span class="sec-tag">02</span><h2 id="perspectives-title">시장 관점</h2></div><p class="section-intro">뉴스와 차트를 어떻게 읽는지, 어떤 조건에서 생각을 바꾸는지. 트레이더로서의 판단을 기록합니다.</p><div class="posts">__POSTS__</div><p class="note">각 글은 작성 당시의 개인적인 관점입니다. 가격과 시나리오는 현재 시점과 다를 수 있습니다.</p></section>
 <section class="section" id="indicators" aria-labelledby="indicators-title"><div class="sec-head"><span class="sec-tag">03</span><h2 id="indicators-title">직접 만든 트레이딩뷰 지표</h2></div><p class="section-intro">차트의 구조와 파동을 살펴보는 도구입니다. 공식 트레이딩뷰 페이지에서 무료로 사용할 수 있습니다.</p><div class="indicators">
-<article class="indicator"><span class="icode">SCRIPT · fpkVFwl2</span><h3>Teemo Supply and Demand Zone</h3><p>수요/공급 구간 자동 식별, S/D Flip 추적, 거래량(HVP) 검증. 핵심 가격대에서 반응을 살펴보는 도구입니다.</p><span class="free">무료 공개</span><br><a class="button" href="https://kr.tradingview.com/script/fpkVFwl2/" target="_blank" rel="noopener noreferrer">트레이딩뷰에서 보기 ↗</a></article>
-<article class="indicator"><span class="icode">SCRIPT · e3AY6AxC</span><h3>Teemo Elliott Wave</h3><p>엘리어트 파동 자동 카운팅, 실시간 추적. 파동 구조와 다음 시나리오를 살펴보는 보조 도구로 활용하세요.</p><span class="free">무료 공개</span><br><a class="button" href="https://kr.tradingview.com/script/e3AY6AxC/" target="_blank" rel="noopener noreferrer">트레이딩뷰에서 보기 ↗</a></article>
+<article class="indicator"><a class="chart-open" href="https://kr.tradingview.com/script/fpkVFwl2/" target="_blank" rel="noopener noreferrer"><img src="https://s3.tradingview.com/f/fpkVFwl2_big.png" width="1404" height="1281" loading="lazy" decoding="async" alt="Teemo Supply and Demand Zone 지표 적용 예시"><span class="chart-caption">적용 예시 · 눌러서 지표 페이지로</span></a><span class="icode">SCRIPT · fpkVFwl2</span><h3>Teemo Supply and Demand Zone</h3><p>수요/공급 구간 자동 식별, S/D Flip 추적, 거래량(HVP) 검증. 핵심 가격대에서 반응을 살펴보는 도구입니다.</p><span class="free">무료 공개</span><br><a class="button" href="https://kr.tradingview.com/script/fpkVFwl2/" target="_blank" rel="noopener noreferrer">트레이딩뷰에서 보기 ↗</a></article>
+<article class="indicator"><a class="chart-open" href="https://kr.tradingview.com/script/e3AY6AxC/" target="_blank" rel="noopener noreferrer"><img src="https://s3.tradingview.com/e/e3AY6AxC_big.png" width="1404" height="1281" loading="lazy" decoding="async" alt="Teemo Elliott Wave 지표 적용 예시"><span class="chart-caption">적용 예시 · 눌러서 지표 페이지로</span></a><span class="icode">SCRIPT · e3AY6AxC</span><h3>Teemo Elliott Wave</h3><p>엘리어트 파동 자동 카운팅, 실시간 추적. 파동 구조와 다음 시나리오를 살펴보는 보조 도구로 활용하세요.</p><span class="free">무료 공개</span><br><a class="button" href="https://kr.tradingview.com/script/e3AY6AxC/" target="_blank" rel="noopener noreferrer">트레이딩뷰에서 보기 ↗</a></article>
 </div><a class="section-link" href="https://kr.tradingview.com/u/TeemoBKK/#published-scripts" target="_blank" rel="noopener noreferrer me">$ open profile → 전체 지표 보기 ↗</a><p class="note">파동 카운팅과 목표 구간은 진행 중인 가격에 따라 달라질 수 있습니다. 사용 조건과 설정은 각 지표 페이지에서 확인하세요.</p></section>
 <section class="section about" aria-labelledby="about-title"><div><div class="sec-head"><span class="sec-tag">04</span><h2 id="about-title">TeemoBKK에 대하여</h2></div><p>경제 뉴스를 모으고, 시장을 바라보는 관점을 쓰며, 차트에서 사용하는 지표를 만듭니다.</p><p>뉴스는 시장의 맥락을 살피는 출발점입니다. 해석과 시나리오는 사실과 구분해 기록하겠습니다.</p></div><div><h3>읽기 전에</h3><ul><li>뉴스는 자동 수집한 원문 제목과 출처를 제공합니다.</li><li>시장 관점은 운영자의 개인적인 해석입니다.</li><li>지표는 분석 보조 도구이며 수익을 보장하지 않습니다.</li></ul></div></section>
 </main>
