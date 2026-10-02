@@ -851,8 +851,10 @@ def archive_stats() -> dict[str, Any]:
         # Stored and hidden are two different numbers on purpose: the operator's archive count is
         # what the database holds, and the hidden count is what readers are not being shown.
         hidden = connection.execute("SELECT COUNT(*) FROM hidden_links").fetchone()[0] or 0
+        translated = connection.execute("SELECT COUNT(*) FROM articles WHERE title_ko IS NOT NULL").fetchone()[0] or 0
     return {"archived_total": int(total), "window_total": int(recent), "oldest_published_at": oldest,
-            "archive_days": ARCHIVE_DAYS, "hidden_total": int(hidden)}
+            "archive_days": ARCHIVE_DAYS, "hidden_total": int(hidden),
+            "translation": {"translated": int(translated), "total": int(total)}}
 
 
 def picked_links(limit: int = 500) -> list[dict[str, Any]]:
