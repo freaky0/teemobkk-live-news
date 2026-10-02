@@ -86,7 +86,7 @@ h1 .gold{color:var(--gold-soft)}
 .stat b{display:block;font-family:var(--mono);font-size:24px;color:var(--gold-soft)}
 .stat span{font-size:12.5px;color:rgba(255,255,255,.75)}
 /* Category filter chips */
-.filters{display:flex;flex-wrap:wrap;gap:10px;margin:26px 0 6px}
+.filters{display:flex;flex-wrap:wrap;gap:10px;margin:26px 0 42px}
 .chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:9px 18px;font-size:13px;font-weight:600;color:var(--muted);transition:all .2s}
 .chip:hover{border-color:var(--gold);color:var(--purple)}
 .chip.active{background:var(--purple);border-color:var(--purple);color:#fff}
@@ -136,7 +136,7 @@ h2 .n{font-family:var(--mono);font-size:13px;color:var(--gold);letter-spacing:.1
 .section-link:hover{color:var(--gold)}
 /* Topics grid */
 .topics{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:24px}
-.topic-link{display:block;padding:20px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);border-top:3px solid var(--gold);transition:transform .25s,box-shadow .25s}
+.topic-link{display:block;padding:20px;background:var(--surface);border:1px solid var(--line);border-radius:0;border-top:3px solid var(--gold);transition:transform .25s,box-shadow .25s}
 .topic-link:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(74,29,107,.12);color:inherit}
 .topic-link b{display:block;font-size:16px;font-weight:700}
 .topic-link span{display:block;margin-top:6px;font-size:12.5px;color:var(--muted)}
