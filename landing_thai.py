@@ -58,9 +58,9 @@ border-radius:var(--radius);transition:border-color .35s,transform .45s cubic-be
 <main id="main" class="wrap">
 <section class="hero" aria-labelledby="headline">
 <p class="eyebrow">태국 소식 · TeemoBKK</p>
-<h1 id="headline"><span class="rise"><i>방콕에서</i></span><span class="rise"><i>먼저 볼 소식</i></span></h1>
+<h1 id="headline"><span class="rise"><i>태국 소식을</i></span><span class="rise"><i>한국어로</i></span></h1>
 <div class="hero-rule"></div>
-<p class="intro">태국에 사는 사람에게 먼저 닿아야 하는 소식을 모읍니다.<br>비자와 이민, 사고와 재난, 생활비와 교통, 관광과 보건까지 원문 그대로 정리합니다.</p>
+<p class="intro">태국에 사는 당신을 위한 뉴스.<br>비자부터 사고까지, 현지 소식을 가장 먼저 전합니다.</p>
 <div class="actions">
 <a class="button primary" href="/thai/news/ko/">태국 뉴스 전체 보기</a>
 <a class="button" href="#news">최근 소식 먼저 보기</a>
