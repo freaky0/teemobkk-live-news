@@ -106,7 +106,7 @@ PAGE = r'''<!doctype html>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TeemoBKK | 차트보다 먼저 읽는 뉴스</title>
 <meta name="description" content="시장이 움직이는 이유를 전합니다. 금리와 정책, 지정학과 수급까지. 트레이더의 경제 뉴스와 시장 관점, 무료 트레이딩뷰 지표.">
-<meta name="theme-color" content="#0a0e14">
+<meta name="theme-color" content="#faf8f3">
 <meta name="color-scheme" content="dark">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ko_KR">
@@ -119,10 +119,10 @@ PAGE = r'''<!doctype html>
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <style>
-:root{color-scheme:dark;--bg:#0a0e14;--surface:#0e141d;--surface2:#111927;--text:#e8edf3;--muted:#8b94a3;--dim:#5c6675;--line:#1c2330;--accent:#00e5a0;--accent-dim:rgba(0,229,160,.12);--down:#ff5c5c;--radius:6px;--sans:system-ui,-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"D2Coding","JetBrains Mono","Courier New",monospace}
+:root{color-scheme:light;--bg:#faf8f3;--surface:#ffffff;--surface2:#f3f0e8;--text:#1a1c1a;--muted:#5f665f;--dim:#9aa099;--line:#e5e0d3;--accent:#0a7a4a;--accent-dim:rgba(10,122,74,.10);--down:#d33f3f;--radius:6px;--sans:system-ui,-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"D2Coding","JetBrains Mono","Courier New",monospace}
 *{box-sizing:border-box}html{scroll-padding-top:92px}body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.65;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}button{font:inherit}a,button{-webkit-tap-highlight-color:transparent}a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:4px}a:hover{color:var(--accent)}button{cursor:pointer}[hidden]{display:none!important}
 .wrap{max-width:1120px;margin:auto;padding-inline:28px}
-.skip{position:absolute;left:16px;top:-100px;background:var(--accent);color:#04120c;padding:12px;z-index:50;font-weight:700}.skip:focus{top:12px}
+.skip{position:absolute;left:16px;top:-100px;background:var(--accent);color:#ffffff;padding:12px;z-index:50;font-weight:700}.skip:focus{top:12px}
 .ticker{background:#060a10;border-bottom:1px solid var(--line);overflow:hidden;white-space:nowrap}
 .ticker-inner{display:inline-flex;padding:7px 0;animation:tick 28s linear infinite}
 .ticker:hover .ticker-inner{animation-play-state:paused}
@@ -150,9 +150,9 @@ h1 .hl{color:var(--accent)}
 .intro{max-width:640px;color:var(--muted);font-size:16.5px;line-height:1.75;margin:20px 0 28px;word-break:keep-all}
 .actions{display:flex;flex-wrap:wrap;gap:12px}
 .button{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:10px 22px;border-radius:var(--radius);border:1px solid var(--line);font-size:14px;font-weight:700;white-space:nowrap;background:var(--surface);color:var(--text);transition:border-color .25s,transform .25s}
-.button.primary{background:var(--accent);border-color:var(--accent);color:#04120c}
+.button.primary{background:var(--accent);border-color:var(--accent);color:#ffffff}
 .button:hover{border-color:var(--accent);color:var(--accent)}
-.button.primary:hover{color:#04120c;transform:translateY(-1px)}
+.button.primary:hover{color:#ffffff;transform:translateY(-1px)}
 .button:active{transform:translateY(1px)}
 section{scroll-margin-top:24px}
 .section{padding:40px 0 48px;border-top:1px solid var(--line)}
