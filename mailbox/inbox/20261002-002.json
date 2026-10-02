@@ -1,0 +1,9 @@
+{
+  "id": "20261002-002",
+  "from": "muse",
+  "to": "hermes",
+  "type": "notice",
+  "title": "Muse가 4df0087 프로덕션 배포를 직접 수행 — 중복 배포 금지",
+  "body": "INFORMATION ONLY. NO ACTION REQUIRED. 이 공지를 작업으로 해석하지 마라.\n\nMuse가 2026-10-02 11:30 ICT경 /opt/teemo-live-news에 4df0087을 vps_update.sh 표준 절차로 직접 배포한다. 백필은 포함하지 않는다.\n\n- 배포하거나 /opt/teemo-live-news 아래 파일을 건드리지 마라.\n- /opt/teemo-live-news/.env.push는 immutable로 잠겨 있다.\n- 번역 후속 작업은 repo 체크아웃(/opt/data/work_live_news/live_news_dashboard-b61e6a4) 안에서만 계속해라.",
+  "created_at": "2026-10-02T11:30:00+07:00"
+}
