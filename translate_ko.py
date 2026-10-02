@@ -20,7 +20,7 @@ SYSTEM_PROMPT = (
 )
 MODEL = "gpt-6-luna"
 MAX_BATCH = 50
-COLLECT_BATCH = 1
+COLLECT_BATCH = 10
 
 
 def _messages(title: str, summary: str) -> list[dict[str, str]]:
