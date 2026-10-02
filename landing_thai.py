@@ -325,15 +325,21 @@ __FILTERS__
   const CAT_IMGS = __CAT_IMGS__;
   const FALLBACK_IMG = CAT_IMGS["_default"];
   function catImg(cat){ return CAT_IMGS[cat] || FALLBACK_IMG; }
-  function imgEl(cat, cls){
+  function imgEl(cat, cls, src){
     const d = document.createElement("div");
     d.className = cls;
     const img = document.createElement("img");
-    img.src = catImg(cat);
+    const primary = String(src || "").trim();
+    const fallback = catImg(cat);
+    img.src = primary || fallback;
     img.alt = "";
     img.loading = "lazy";
     img.style.cssText = "width:100%;height:100%;object-fit:cover;display:block";
-    img.onerror = function(){ d.classList.add("img-fallback"); d.textContent = "◆"; img.remove(); };
+    img.onerror = function(){
+      // The publisher image failed: try the category image once, then the placeholder.
+      if (primary && img.src !== fallback) { img.src = fallback; return; }
+      d.classList.add("img-fallback"); d.textContent = "◆"; img.remove();
+    };
     d.append(img);
     return d;
   }
@@ -361,7 +367,7 @@ __FILTERS__
     // Feature card: image left, text right
     const fc = document.createElement("article");
     fc.className = "fcard";
-    fc.append(imgEl(first.category, "fcard-img"));
+    fc.append(imgEl(first.category, "fcard-img", first.image_url));
     const fbody = document.createElement("div");
     fbody.className = "fcard-body";
     const ftopic = document.createElement("span");
@@ -391,7 +397,7 @@ __FILTERS__
     for (const a of rest){
       const card = document.createElement("article");
       card.className = "ncard";
-      card.append(imgEl(a.category, "ncard-img"));
+      card.append(imgEl(a.category, "ncard-img", a.image_url));
       const body = document.createElement("div");
       body.className = "ncard-body";
       const topic = document.createElement("div");
