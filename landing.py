@@ -148,6 +148,8 @@ nav a.secondary{margin-left:auto;font-family:var(--mono);font-size:12.5px}
 h1{font-size:clamp(36px,5.2vw,64px);line-height:1.18;letter-spacing:-.04em;margin:0;font-weight:800;word-break:keep-all}
 h1 .hl{color:var(--accent)}
 .intro{max-width:640px;color:var(--muted);font-size:16.5px;line-height:1.75;margin:20px 0 28px;word-break:keep-all}
+.hero-tags{display:flex;gap:18px;flex-wrap:wrap;margin:0;font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--muted)}
+.hero-tags span{white-space:nowrap}
 .actions{display:flex;flex-wrap:wrap;gap:12px}
 .button{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:10px 22px;border-radius:var(--radius);border:1px solid var(--line);font-size:14px;font-weight:700;white-space:nowrap;background:var(--surface);color:var(--text);transition:border-color .25s,transform .25s}
 .button.primary{background:var(--accent);border-color:var(--accent);color:#ffffff}
@@ -239,7 +241,7 @@ h2{font-size:21px}
 <div class="ticker" id="ticker" hidden aria-label="실시간 암호화폐 시세"><div class="ticker-inner" id="ticker-inner"></div></div>
 <header class="top"><div class="wrap nav"><a class="brand" href="/" aria-label="TeemoBKK 홈"><span class="prompt">teemo@bkk</span>:~$ ./live-news<span class="cursor" aria-hidden="true"></span></a><nav aria-label="주요 메뉴"><a href="/news/ko/">경제 뉴스</a><a href="#perspectives">시장 관점</a><a href="#indicators">트레이딩뷰 지표</a><a class="secondary" href="/thai/">/thai ↗</a></nav></div></header>
 <main id="main" class="wrap">
-<section class="hero" aria-labelledby="headline"><p class="eyebrow">뉴스를 읽고, 관점을 세우고, 차트로 살펴봅니다.</p><h1 id="headline">차트보다 먼저 읽는 <span class="hl">뉴스</span></h1><p class="intro">시장이 움직이는 이유를 전합니다.<br>금리와 정책, 지정학과 수급까지.</p><div class="actions"><a class="button primary" href="/news/ko/">경제 뉴스 보기</a><a class="button" href="#perspectives">시장 관점 읽기</a></div></section>
+<section class="hero" aria-labelledby="headline"><p class="eyebrow">뉴스를 읽고, 관점을 세우고, 차트로 살펴봅니다.</p><h1 id="headline">차트보다 먼저 읽는 <span class="hl">뉴스</span></h1><p class="intro">시장이 움직이는 이유를 전합니다.<br>금리와 정책, 지정학과 수급까지.</p><p class="hero-tags"><span>• MACRO</span><span>• CRYPTO</span><span>• MARKET STRUCTURE</span></p></section>
 <section class="section" id="news" aria-labelledby="news-title"><div class="sec-head"><span class="sec-tag">01</span><h2 id="news-title">최근 경제 뉴스</h2></div><p class="section-intro">금리와 경기, 기업과 정책, 지정학까지. 시장에 연결되는 소식을 확인하세요.</p><div class="news-status"><span class="live">● 자동 수집 · 한국어로 표시</span><span id="update-status" role="status">수집 상태 확인 중</span><button class="retry" id="retry" type="button" hidden>다시 불러오기</button></div><div class="news-list" id="news-list" aria-busy="true"><div class="loading-line short"></div><div class="loading-line"></div><div class="loading-line"></div></div><noscript><p>뉴스 목록을 불러오려면 자바스크립트가 필요합니다. <a href="/news/ko/">경제 뉴스 페이지에서 확인하세요.</a></p></noscript><a class="section-link" href="/news/ko/">$ open /news/ko/ →</a></section>
 <section class="section" id="perspectives" aria-labelledby="perspectives-title"><div class="sec-head"><span class="sec-tag">02</span><h2 id="perspectives-title">시장 관점</h2></div><p class="section-intro">뉴스와 차트를 어떻게 읽는지, 어떤 조건에서 생각을 바꾸는지. 트레이더로서의 판단을 기록합니다.</p><div class="posts">__POSTS__</div><p class="note">각 글은 작성 당시의 개인적인 관점입니다. 가격과 시나리오는 현재 시점과 다를 수 있습니다.</p></section>
 <section class="section" id="indicators" aria-labelledby="indicators-title"><div class="sec-head"><span class="sec-tag">03</span><h2 id="indicators-title">직접 만든 트레이딩뷰 지표</h2></div><p class="section-intro">차트의 구조와 파동을 살펴보는 도구입니다. 공식 트레이딩뷰 페이지에서 무료로 사용할 수 있습니다.</p><div class="indicators">
@@ -265,7 +267,26 @@ clearTimeout(to);
 if(!res.ok)throw new Error('http');
 var data=await res.json();
 if(!Array.isArray(data)||!data.length)throw new Error('schema');
-var rows=data.map(function(d){var sym=String(d.symbol||'').replace('USDT','');return tickHTML(sym,d.lastPrice,d.priceChangePercent);}).join('');
+var rows=data.map(function(d){var sym=String(d.symbol||'').replace('USDT','');return tickHTML(sym+'/USD',d.lastPrice,d.priceChangePercent);}).join('');
+try{
+var ctrl2=new AbortController();var to2=setTimeout(function(){ctrl2.abort();},8000);
+var res2=await fetch('https://stooq.com/q/l/?s=%5Endq,%5Espx,xauusd,dx.f,%5Etnx,cl.f&f=sd2t2ohlcv&h&e=csv',{signal:ctrl2.signal});
+clearTimeout(to2);
+if(res2.ok){
+var txt=await res2.text();
+var lines=txt.trim().split('\n').slice(1);
+var names={'^ndq':'NASDAQ','^spx':'S&P 500','xauusd':'GOLD','dx.f':'DXY','^tnx':'US 10Y','cl.f':'WTI'};
+for(var i=0;i<lines.length;i++){
+var c=lines[i].split(',');
+if(c.length<7)continue;
+var sym=c[0].toLowerCase(),close=parseFloat(c[6]),open=parseFloat(c[3]);
+if(!isFinite(close)||!isFinite(open)||open===0)continue;
+var chg=((close-open)/open*100).toFixed(2);
+var label=names[sym]||sym.toUpperCase();
+rows+=tickHTML(label,close,chg);
+}
+}
+}catch(e2){}
 tickerInner.innerHTML=rows+rows;
 ticker.hidden=false;
 }catch(e){ticker.hidden=true;}
