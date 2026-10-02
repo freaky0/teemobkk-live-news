@@ -104,15 +104,14 @@ PAGE = r'''<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TeemoBKK | 경제 뉴스와 트레이더의 시장 관점</title>
-<meta name="description" content="주식·코인·금 등 여러 시장을 움직이는 경제 뉴스, 트레이더의 시장 관점, 무료 트레이딩뷰 지표를 공유합니다.">
-<meta name="theme-color" content="#fbfaf7">
-<meta name="color-scheme" content="light dark">
-<script>(function(){try{var t=localStorage.getItem('tbn-theme');document.documentElement.dataset.theme=t==='dark'?'dark':'light'}catch(e){document.documentElement.dataset.theme='light'}})();</script>
+<title>TeemoBKK | 차트보다 먼저 읽는 뉴스</title>
+<meta name="description" content="시장이 움직이는 이유를 전합니다. 금리와 정책, 지정학과 수급까지. 트레이더의 경제 뉴스와 시장 관점, 무료 트레이딩뷰 지표.">
+<meta name="theme-color" content="#0a0e14">
+<meta name="color-scheme" content="dark">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ko_KR">
-<meta property="og:title" content="TeemoBKK | 경제 뉴스와 시장 관점">
-<meta property="og:description" content="시장을 움직이는 뉴스부터 직접 기록한 관점과 무료 차트 도구까지.">
+<meta property="og:title" content="TeemoBKK | 차트보다 먼저 읽는 뉴스">
+<meta property="og:description" content="시장이 움직이는 이유를 전합니다. 금리와 정책, 지정학과 수급까지.">
 <meta property="og:url" content="https://teemobkk.io/">
 <meta property="og:image" content="https://s3.tradingview.com/e/e3AY6AxC_big.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -120,162 +119,160 @@ PAGE = r'''<!doctype html>
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <style>
-:root{color-scheme:light;--bg:#fbfaf7;--surface:#fff;--text:#17181a;--muted:#454a50;--line:#e3ded4;--accent:#a02c22;--radius:4px;--sans:system-ui,-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;--serif:"Noto Serif KR","Nanum Myeongjo","AppleMyungjo","Batang","바탕",Georgia,serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"D2Coding","Courier New",monospace}
-*{box-sizing:border-box}html{scroll-padding-top:92px}body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.65;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}button{font:inherit}a,button{-webkit-tap-highlight-color:transparent}a:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:5px}a:hover{color:var(--accent)}button{cursor:pointer}[hidden]{display:none!important}.wrap{max-width:1184px;margin:auto;padding-inline:32px}.skip{position:absolute;left:16px;top:-100px;background:var(--accent);color:var(--bg);padding:12px;z-index:50}.skip:focus{top:12px}.top{border-bottom:1px solid var(--line);background:var(--bg)}.nav{min-height:76px;display:flex;align-items:center;gap:38px}.brand{font-weight:800;font-size:23px;letter-spacing:-.8px;white-space:nowrap}.brand span{color:var(--accent)}nav{display:flex;gap:28px;align-items:center;flex:1}nav a{font-size:14px;font-weight:600;padding-block:14px}.secondary{margin-left:auto;color:var(--muted);font-size:13px}.hero{padding:66px 0 46px;max-width:960px}.eyebrow{font-size:13px;color:var(--accent);font-weight:600;margin:0 0 16px}h1{font-size:clamp(32px,4.5vw,56px);line-height:1.22;letter-spacing:-.045em;margin:0;word-break:keep-all}h1 span{display:block}.intro{max-width:700px;color:var(--muted);font-size:17px;line-height:1.8;margin:22px 0 26px;word-break:keep-all}.actions{display:flex;flex-wrap:wrap;gap:12px}.button{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:10px 20px;border-radius:8px;border:1px solid var(--line);font-size:14px;font-weight:700;white-space:nowrap;background:transparent;color:var(--text)}.button.primary{background:var(--accent);border-color:var(--accent);color:#0b2428}.button:hover{border-color:var(--accent)}.button:active{transform:translateY(1px)}section{scroll-margin-top:24px}.section{padding:38px 0 48px;border-top:1px solid var(--line)}h2{font-size:27px;line-height:1.3;letter-spacing:-.035em;margin:0 0 10px}.section-intro{margin:0;color:var(--muted);font-size:15px;max-width:740px;word-break:keep-all}.section-link{display:inline-block;margin-top:15px;color:var(--accent);font-size:14px;font-weight:600}.news-status{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:22px 0 6px;color:var(--muted);font-size:12px}.retry{background:transparent;color:var(--accent);border:1px solid var(--line);border-radius:6px;min-height:36px;padding:5px 12px}.news-list{display:grid;grid-template-columns:1fr 1fr;column-gap:44px}.news-item{min-width:0;padding:20px 0;border-bottom:1px solid var(--line)}.meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted)}.topic{color:var(--accent)}.news-item h3{font-size:18px;line-height:1.55;letter-spacing:-.02em;font-weight:600;margin:8px 0 0;overflow-wrap:anywhere}.news-item a{display:block}.empty{color:var(--muted);padding:25px 0;grid-column:1/-1}.loading-line{height:15px;background:var(--surface);margin:13px 0;border-radius:4px;max-width:90%}.loading-line.short{max-width:45%;height:11px}.posts{display:grid;grid-template-columns:1.15fr 1fr;gap:36px;margin-top:25px}.post{padding:26px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--line)}.post h3{font-size:23px;line-height:1.45;letter-spacing:-.025em;margin:12px 0}.post p{font-size:15px;color:var(--muted);margin:0}.post .read{display:inline-block;color:var(--accent);font-size:13px;margin-top:23px}.indicators{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:27px}.indicator{min-width:0}.chart-open{display:block;width:100%;padding:0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:#080c11;color:var(--text);text-align:left}.chart-open img{display:block;width:100%;height:auto;aspect-ratio:1404/1281;object-fit:contain}.chart-caption{display:block;padding:11px 15px;color:var(--muted);font-size:12px;border-top:1px solid var(--line)}.indicator h3{font-size:23px;margin:20px 0 8px;letter-spacing:-.025em}.indicator p{color:var(--muted);font-size:15px;margin:0 0 18px;word-break:keep-all}.free{font-size:12px;color:var(--accent);margin-top:18px;display:block}.note{font-size:12px;color:var(--muted);margin-top:23px;max-width:850px}.about{display:grid;grid-template-columns:1fr 1fr;gap:60px}.about p{color:var(--muted);font-size:15px;margin:10px 0}.about h3{font-size:17px;margin:0 0 10px}.about ul{list-style:none;padding:0;margin:0;color:var(--muted);font-size:14px}.about li{margin:10px 0}.footer{border-top:1px solid var(--line);padding:25px 0 36px;color:var(--muted);font-size:12px}.footer-row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:15px}.footer p{margin:16px 0 0;max-width:890px}dialog{max-width:min(1100px,96vw);max-height:95dvh;padding:16px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);color:var(--text)}dialog::backdrop{background:rgba(0,0,0,.85)}dialog img{display:block;max-width:100%;max-height:77dvh;object-fit:contain;margin:auto}.dialog-head{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:12px}.dialog-head p{margin:0;font-size:14px}.dialog-head button{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:8px 16px;min-height:44px}.mobile-thai{display:none}
-@media(max-width:767px){.wrap{padding-inline:20px}.nav{min-height:70px;gap:20px;flex-wrap:wrap;padding-block:14px}.brand{font-size:21px}nav{gap:20px;flex-basis:100%;order:2}nav a{font-size:13px;padding:5px 0;min-height:36px;display:flex;align-items:center}.secondary{display:none}.hero{padding:38px 0 34px}.intro{font-size:15px}.news-list,.posts,.indicators,.about{grid-template-columns:1fr;gap:0}.section{padding:30px 0 35px}h2{font-size:24px}.news-item h3{font-size:17px}.post{margin-bottom:16px;padding:22px}.post h3{font-size:21px}.indicator+.indicator{margin-top:34px}.about>div+div{margin-top:25px}.mobile-thai{display:inline}.news-status{font-size:11px}.footer-row{align-items:center}}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
-
-/* ── kinetic layer ───────────────────────────────────────────────────────────
-   The structure stays; the type carries the motion. Masked line reveals on load, an oversized
-   drifting word band, a light that follows the pointer, and hover sheen on the cards. Nothing
-   scroll-triggered: a full-page screenshot or a reader mid-scroll must never see a blank block. */
-.pointer-light{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0;transition:opacity .6s;
-  background:radial-gradient(340px circle at var(--px,50%) var(--py,20%),rgba(121,216,221,.10),transparent 68%)}
-body{position:relative}
-main,header,footer{position:relative;z-index:1}
-.hero .eyebrow,.hero .intro,.hero .actions{opacity:0;transform:translateY(14px);
-  animation:soft .9s cubic-bezier(.16,1,.3,1) forwards}
-.hero .eyebrow{animation-delay:.05s}.hero .intro{animation-delay:.34s}.hero .actions{animation-delay:.5s}
-@keyframes soft{to{opacity:1;transform:none}}
-h1 span.rise{display:block;overflow:hidden}
-h1 span.rise>i{display:block;font-style:normal;transform:translateY(112%);
-  animation:maska 1.05s cubic-bezier(.16,1,.3,1) forwards}
-h1 span.rise:nth-child(2)>i{animation-delay:.15s}
-@keyframes maska{to{transform:translateY(0)}}
-.hero-rule{height:1px;background:linear-gradient(90deg,var(--accent),transparent);margin:26px 0 0;
-  transform:scaleX(0);transform-origin:0 50%;animation:draw 1.2s .45s cubic-bezier(.16,1,.3,1) forwards}
-@keyframes draw{to{transform:scaleX(1)}}
-.stats{display:flex;flex-wrap:wrap;gap:22px 46px;margin-top:30px;padding-top:20px;border-top:1px solid var(--line)}
-.stat b{display:block;font-size:21px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-.stat span{display:block;margin-top:4px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
-.marq{position:relative;overflow:hidden;margin-top:44px;padding:14px 0;border-top:1px solid var(--line);
-  border-bottom:1px solid var(--line);
-  -webkit-mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent);
-  mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent)}
-.marq>div{display:flex;width:max-content;animation:drift 46s linear infinite}
-.marq span{font-size:clamp(26px,5.2vw,56px);font-weight:800;letter-spacing:-.045em;white-space:nowrap;
-  padding-right:.5em;color:transparent;-webkit-text-stroke:1px rgba(237,242,247,.22)}
-@keyframes drift{to{transform:translateX(-50%)}}
-.section>h2{position:relative}
-.section>h2::after{content:"";position:absolute;left:0;bottom:-7px;width:34px;height:2px;
-  background:var(--accent);opacity:.7}
-.news-item,.post,.chart-open{transition:border-color .35s,box-shadow .5s,background .35s,
-  transform .5s cubic-bezier(.16,1,.3,1)}
-.news-item:hover{transform:translateX(4px)}
-.post:hover,.chart-open:hover{border-color:rgba(121,216,221,.5);transform:translateY(-4px);
-  box-shadow:0 22px 50px -30px rgba(121,216,221,.65)}
-
+:root{color-scheme:dark;--bg:#0a0e14;--surface:#0e141d;--surface2:#111927;--text:#e8edf3;--muted:#8b94a3;--dim:#5c6675;--line:#1c2330;--accent:#00e5a0;--accent-dim:rgba(0,229,160,.12);--down:#ff5c5c;--radius:6px;--sans:system-ui,-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"D2Coding","JetBrains Mono","Courier New",monospace}
+*{box-sizing:border-box}html{scroll-padding-top:92px}body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.65;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}button{font:inherit}a,button{-webkit-tap-highlight-color:transparent}a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:4px}a:hover{color:var(--accent)}button{cursor:pointer}[hidden]{display:none!important}
+.wrap{max-width:1120px;margin:auto;padding-inline:28px}
+.skip{position:absolute;left:16px;top:-100px;background:var(--accent);color:#04120c;padding:12px;z-index:50;font-weight:700}.skip:focus{top:12px}
+.ticker{background:#060a10;border-bottom:1px solid var(--line);overflow:hidden;white-space:nowrap}
+.ticker-inner{display:inline-flex;padding:7px 0;animation:tick 28s linear infinite}
+.ticker:hover .ticker-inner{animation-play-state:paused}
+.tick{display:inline-flex;align-items:center;gap:8px;padding:0 22px;font:12px/1.6 var(--mono);color:var(--muted);border-right:1px solid var(--line)}
+.tick b{color:var(--text);font-weight:700}
+.tick .up{color:var(--accent)}.tick .dn{color:var(--down)}
+@keyframes tick{to{transform:translateX(-50%)}}
+.top{border-bottom:1px solid var(--line);background:rgba(10,14,20,.92);backdrop-filter:blur(8px);position:sticky;top:0;z-index:20}
+.nav{min-height:66px;display:flex;align-items:center;gap:34px}
+.brand{font-family:var(--mono);font-weight:700;font-size:18px;letter-spacing:-.02em;white-space:nowrap}
+.brand .prompt{color:var(--accent)}
+.brand .cursor{display:inline-block;width:9px;height:17px;background:var(--accent);vertical-align:-3px;margin-left:5px;animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+nav{display:flex;gap:26px;align-items:center;flex:1}
+nav a{font-size:13.5px;font-weight:600;padding-block:12px;color:var(--muted)}
+nav a:hover{color:var(--accent)}
+nav a.secondary{margin-left:auto;font-family:var(--mono);font-size:12.5px}
+.hero{position:relative;padding:72px 0 52px;max-width:900px;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(0,229,160,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,160,.045) 1px,transparent 1px);background-size:44px 44px;-webkit-mask-image:radial-gradient(ellipse 90% 90% at 30% 20%,#000 30%,transparent 75%);mask-image:radial-gradient(ellipse 90% 90% at 30% 20%,#000 30%,transparent 75%)}
+.hero>*{position:relative}
+.eyebrow{font-family:var(--mono);font-size:12.5px;color:var(--accent);margin:0 0 18px;letter-spacing:.02em}
+.eyebrow::before{content:"> "}
+h1{font-size:clamp(36px,5.2vw,64px);line-height:1.18;letter-spacing:-.04em;margin:0;font-weight:800;word-break:keep-all}
+h1 .hl{color:var(--accent)}
+.intro{max-width:640px;color:var(--muted);font-size:16.5px;line-height:1.75;margin:20px 0 28px;word-break:keep-all}
+.actions{display:flex;flex-wrap:wrap;gap:12px}
+.button{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:10px 22px;border-radius:var(--radius);border:1px solid var(--line);font-size:14px;font-weight:700;white-space:nowrap;background:var(--surface);color:var(--text);transition:border-color .25s,transform .25s}
+.button.primary{background:var(--accent);border-color:var(--accent);color:#04120c}
+.button:hover{border-color:var(--accent);color:var(--accent)}
+.button.primary:hover{color:#04120c;transform:translateY(-1px)}
+.button:active{transform:translateY(1px)}
+section{scroll-margin-top:24px}
+.section{padding:40px 0 48px;border-top:1px solid var(--line)}
+.sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:6px}
+.sec-tag{font-family:var(--mono);font-size:12px;color:var(--accent)}
+h2{font-size:24px;line-height:1.3;letter-spacing:-.02em;margin:0;font-weight:700}
+.section-intro{margin:8px 0 0;color:var(--muted);font-size:14.5px;max-width:720px;word-break:keep-all}
+.section-link{display:inline-block;margin-top:16px;color:var(--accent);font-family:var(--mono);font-size:13px;font-weight:600}
+.news-status{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:20px 0 4px;color:var(--dim);font-family:var(--mono);font-size:11.5px}
+.news-status .live{color:var(--accent)}
+.retry{background:transparent;color:var(--accent);border:1px solid var(--line);border-radius:4px;min-height:34px;padding:4px 12px;font-family:var(--mono);font-size:12px}
+.news-list{margin-top:8px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden}
+.news-row{display:flex;align-items:baseline;gap:14px;padding:13px 18px;border-bottom:1px solid var(--line);transition:background .2s}
+.news-row:last-child{border-bottom:0}
+.news-row:hover{background:var(--surface2)}
+.news-row a{display:flex;align-items:baseline;gap:14px;flex:1;min-width:0}
+.news-row a:hover{color:var(--text)}
+.ntime{font-family:var(--mono);font-size:11.5px;color:var(--dim);white-space:nowrap;flex-shrink:0}
+.ntopic{font-family:var(--mono);font-size:11px;color:var(--accent);white-space:nowrap;flex-shrink:0;border:1px solid rgba(0,229,160,.3);border-radius:3px;padding:1px 7px;background:var(--accent-dim)}
+.ntitle{font-size:15px;font-weight:500;line-height:1.55;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:keep-all}
+.ntitle .ext{color:var(--dim);font-size:12px}
+.empty{color:var(--muted);padding:26px 18px;font-size:14px}
+.loading-line{height:14px;background:var(--surface2);margin:14px 18px;border-radius:3px;max-width:88%}
+.loading-line.short{max-width:40%;height:11px}
+.posts{display:grid;gap:0;margin-top:18px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden}
+.post{padding:22px 24px;border-bottom:1px solid var(--line);transition:background .2s}
+.post:last-child{border-bottom:0}
+.post:hover{background:var(--surface2)}
+.post time{font:11.5px/1.5 var(--mono);color:var(--dim)}
+.post h3{font-size:19px;line-height:1.45;letter-spacing:-.015em;margin:8px 0;font-weight:700}
+.post h3 a:hover{color:var(--accent)}
+.post p{font-size:14.5px;color:var(--muted);margin:0;word-break:keep-all}
+.post .read{display:inline-block;color:var(--accent);font-family:var(--mono);font-size:12.5px;margin-top:14px}
+.note{font-size:12px;color:var(--dim);margin-top:20px;max-width:820px}
+.indicators{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px}
+.indicator{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:26px;transition:border-color .25s,transform .25s}
+.indicator:hover{border-color:rgba(0,229,160,.45);transform:translateY(-3px)}
+.indicator .icode{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.08em}
+.indicator h3{font-size:20px;margin:10px 0 8px;letter-spacing:-.015em;font-weight:700}
+.indicator p{color:var(--muted);font-size:14px;margin:0 0 20px;word-break:keep-all;line-height:1.7}
+.indicator .free{display:inline-block;font-family:var(--mono);font-size:11px;color:var(--accent);border:1px solid rgba(0,229,160,.3);background:var(--accent-dim);border-radius:3px;padding:3px 9px;margin-bottom:16px}
+.about{display:grid;grid-template-columns:1fr 1fr;gap:56px}
+.about p{color:var(--muted);font-size:14.5px;margin:10px 0;word-break:keep-all}
+.about h3{font-size:16px;margin:0 0 10px;font-family:var(--mono);color:var(--accent);font-weight:600}
+.about ul{list-style:none;padding:0;margin:0;color:var(--muted);font-size:13.5px}
+.about li{margin:10px 0;padding-left:18px;position:relative}
+.about li::before{content:"›";position:absolute;left:0;color:var(--accent)}
+.footer{border-top:1px solid var(--line);padding:26px 0 38px;color:var(--dim);font-size:12px;background:#060a10}
+.footer-row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px;align-items:center}
+.footer-row .fbrand{font-family:var(--mono);color:var(--muted)}
+.footer p{margin:16px 0 0;max-width:860px;line-height:1.7}
+.footer-links{display:flex;flex-wrap:wrap;gap:10px 20px;margin-top:16px;font-size:12.5px}
+.footer-links a{color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+.footer-links a:hover{color:var(--accent)}
 @media(max-width:767px){
-  .stats{gap:18px 26px}.stat b{font-size:19px}
-  .marq{margin-top:30px}
+.wrap{padding-inline:18px}
+.nav{min-height:60px;gap:16px;flex-wrap:wrap;padding-block:10px}
+.brand{font-size:16px}
+nav{gap:18px;flex-basis:100%;order:2}
+nav a{font-size:13px;padding:4px 0}
+nav a.secondary{margin-left:0}
+.hero{padding:44px 0 36px}
+.intro{font-size:14.5px}
+.intro br{display:none}
+.section{padding:30px 0 36px}
+h2{font-size:21px}
+.indicators{grid-template-columns:1fr}
+.about{grid-template-columns:1fr;gap:28px}
+.news-row{gap:10px;padding:12px 14px}
+.news-row a{flex-wrap:wrap;gap:6px 10px}
+.ntime{font-size:10.5px}
+.ntitle{font-size:14px;flex-basis:100%}
+.tick{font-size:11px;padding:0 14px}
 }
 @media(prefers-reduced-motion:reduce){
-  .pointer-light{display:none}
-  h1 span.rise>i,.hero .eyebrow,.hero .intro,.hero .actions{animation:none;opacity:1;transform:none}
-  .hero-rule{animation:none;transform:scaleX(1)}
-  .marq>div{animation:none}
-  .news-list{animation:none;width:auto;overflow-x:auto}
-}
-/* The front page is an editorial index. News comes first; decorative motion does not. */
-:root{color-scheme:light;--bg:#fbfaf7;--surface:#fff;--text:#17181a;--muted:#454a50;--line:#e3ded4;--accent:#a02c22;--radius:4px;--sans:system-ui,-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;--serif:"Noto Serif KR","Nanum Myeongjo","AppleMyungjo","Batang","바탕",Georgia,serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"D2Coding","Courier New",monospace}
-.wrap{max-width:1040px}
-.top{position:relative;z-index:2}
-.nav{min-height:70px}
-.brand{font-size:20px;letter-spacing:-.055em}
-.brand span{color:var(--text)}
-.hero{padding:48px 0 32px;max-width:820px}
-.hero .eyebrow,.hero .intro,.hero .actions{opacity:1;transform:none;animation:none}
-h1{font-size:clamp(33px,5vw,52px);line-height:1.26;letter-spacing:-.06em}
-h1 span.rise{overflow:visible}
-h1 span.rise>i{transform:none;animation:none}
-.intro{font-size:16px;line-height:1.7;margin:18px 0 24px}
-.eyebrow{color:var(--muted);font-size:13px}
-.button{border-radius:4px}
-.button.primary{color:#f8f9f8}
-.button.primary:hover{color:#f8f9f8;background:#064e48}
-.hero-rule,.marq,.stats,.pointer-light{display:none}
-.section{padding:32px 0 40px}
-h2{font-size:25px}
-.section>h2::after{display:none}
-.news-list{display:block;max-width:850px}
-.news-item{padding:16px 0}
-.news-item h3{font-size:19px;line-height:1.48;letter-spacing:-.03em}
-.news-item:hover{transform:none}
-.posts{display:block;max-width:850px}
-.post{padding:20px 0;background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;margin:0}
-.post:hover{transform:none;box-shadow:none;border-color:var(--line)}
-.post h3{font-size:20px;margin:6px 0}
-.post .read{margin-top:12px}
-.chart-open{background:#18201f;border-radius:4px}
-.chart-open:hover{transform:none;box-shadow:none}
-.indicator .button{margin-top:2px}
-dialog::backdrop{background:rgba(20,29,27,.78)}
-.footer-links{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:14px;font-size:13px;color:var(--muted)}
-.footer-links a{text-decoration:underline;text-underline-offset:3px}
-@media(max-width:767px){
-  .nav{gap:8px 20px}.brand{font-size:20px}
-  .hero{padding:34px 0 26px}
-  .intro br{display:none}
-  #news{overflow:visible}
-  .news-list{display:block;width:auto;animation:none;overflow:visible}
-  .news-item{display:block;background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:16px 0}
-  .news-item h3{font-size:18px}
-  .post{padding:18px 0;margin:0}
-}
-/* Shared with the reader dashboard: warm newsprint, editorial serif, one vermilion signal. */
-.brand{font-family:var(--serif);font-weight:700;letter-spacing:-.04em}
-.brand span{color:var(--accent)}
-.brand .brand-rest{color:var(--text)}
-h1,h2,.news-item h3,.post h3,.indicator h3,.about h3{font-family:var(--serif)}
-h1{font-weight:700;letter-spacing:-.035em}
-h2{font-weight:700;letter-spacing:-.02em}
-.eyebrow{color:var(--muted)}
-.meta,.post time{font:11.5px/1.5 var(--mono);color:var(--muted)}
-.button{border-radius:4px}
-.button.primary{color:#fff}
-.button.primary:hover{color:#fff;background:#84231c}
-.news-list{max-width:850px}
-.news-item h3{font-weight:600;letter-spacing:-.015em}
-.posts{display:block;max-width:850px}
-.post{padding:18px 0;background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;margin:0}
-.post h3{font-size:21px;font-weight:600;letter-spacing:-.015em;margin:8px 0}
-.post .read{margin-top:12px}
-.chart-open{border-radius:4px}
-.chart-open:hover{transform:none;box-shadow:none}
-.indicator h3{font-size:22px;font-weight:600;letter-spacing:-.015em}
-.indicator .button{margin-top:2px}
-.theme-toggle{min-height:36px;padding:6px 12px;border:1px solid var(--line);border-radius:4px;
-  background:transparent;color:var(--muted);font-size:12px;white-space:nowrap}
-.theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
-html[data-theme="dark"]{color-scheme:dark;--bg:#131417;--surface:#1b1d21;--text:#ececeb;
-  --muted:#b9bcc0;--line:#2c2f34;--accent:#e0776c}
-html[data-theme="dark"] .button.primary{color:#17181a}
-html[data-theme="dark"] .button.primary:hover{color:#17181a;background:#f09086}
-html[data-theme="dark"] .chart-open{background:#080c11}
-/* Small screens never auto-pan content or reveal text with motion. */
-@media(max-width:767px){
-  .hero .eyebrow,.hero .intro,.hero .actions,h1 span.rise>i{animation:none;opacity:1;transform:none}
-  .hero-rule{animation:none;transform:scaleX(1)}
-  .marq{display:none}
-  .pointer-light{display:none}
+.ticker-inner{animation:none}
+.brand .cursor{animation:none}
+*,*::before,*::after{transition:none!important}
 }
 </style>
 </head>
 <body>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
-<header class="top"><div class="wrap nav"><a class="brand" href="/" aria-label="TeemoBKK 홈"><span class="brand-accent">티모</span> <span class="brand-rest">라이브뉴스</span></a><nav aria-label="주요 메뉴"><a href="/news/ko/">경제 뉴스</a><a href="#perspectives">시장 관점</a><a href="#indicators">트레이딩뷰 지표</a><a class="secondary" href="/thai/">태국 소식 ↗</a><button id="theme-toggle" class="theme-toggle" type="button" aria-label="다크 모드 켜기" aria-pressed="false">다크 모드 켜기</button></nav></div></header>
+<div class="ticker" id="ticker" hidden aria-label="실시간 암호화폐 시세"><div class="ticker-inner" id="ticker-inner"></div></div>
+<header class="top"><div class="wrap nav"><a class="brand" href="/" aria-label="TeemoBKK 홈"><span class="prompt">teemo@bkk</span>:~$ ./live-news<span class="cursor" aria-hidden="true"></span></a><nav aria-label="주요 메뉴"><a href="/news/ko/">경제 뉴스</a><a href="#perspectives">시장 관점</a><a href="#indicators">트레이딩뷰 지표</a><a class="secondary" href="/thai/">/thai ↗</a></nav></div></header>
 <main id="main" class="wrap">
-<section class="hero" aria-labelledby="headline"><p class="eyebrow">뉴스를 읽고, 관점을 세우고, 차트로 살펴봅니다.</p><h1 id="headline"><span class="rise"><i>차트보다 먼저 읽는</i></span> <span class="rise"><i>뉴스</i></span></h1><p class="intro">시장이 움직이는 이유를 전합니다.<br>금리와 정책, 지정학과 수급까지.</p><div class="actions"><a class="button primary" href="/news/ko/">경제 뉴스 보기</a><a class="button" href="#perspectives">시장 관점 읽기</a></div></section>
-<section class="section" id="news" aria-labelledby="news-title"><h2 id="news-title">최근 경제 뉴스</h2><p class="section-intro">금리와 경기, 기업과 정책, 지정학까지. 시장에 연결되는 소식을 확인하세요.</p><div class="news-status"><span>자동 수집 · 한국어로 표시</span><span id="update-status" role="status">수집 상태 확인 중</span><button class="retry" id="retry" type="button" hidden>다시 불러오기</button></div><div class="news-list" id="news-list" aria-busy="true"><div class="news-item" aria-hidden="true"><div class="loading-line short"></div><div class="loading-line"></div><div class="loading-line"></div></div><div class="news-item" aria-hidden="true"><div class="loading-line short"></div><div class="loading-line"></div><div class="loading-line"></div></div></div><noscript><p>뉴스 목록을 불러오려면 자바스크립트가 필요합니다. <a href="/news/ko/">경제 뉴스 페이지에서 확인하세요.</a></p></noscript><a class="section-link" href="/news/ko/">경제 뉴스 전체 보기 →</a></section>
-<section class="section" id="perspectives" aria-labelledby="perspectives-title"><h2 id="perspectives-title">시장 관점</h2><p class="section-intro">뉴스와 차트를 어떻게 읽는지, 어떤 조건에서 생각을 바꾸는지. 트레이더로서의 판단을 기록합니다.</p><div class="posts">__POSTS__</div><p class="note">각 글은 작성 당시의 개인적인 관점입니다. 가격과 시나리오는 현재 시점과 다를 수 있습니다.</p></section>
-<section class="section" id="indicators" aria-labelledby="indicators-title"><h2 id="indicators-title">직접 만든 트레이딩뷰 지표</h2><p class="section-intro">차트의 구조와 추세를 살펴보는 도구입니다. 공식 트레이딩뷰 페이지에서 무료로 사용할 수 있습니다.</p><div class="indicators">
-<article class="indicator"><button class="chart-open" type="button" data-chart="https://s3.tradingview.com/e/e3AY6AxC_big.png" data-title="Teemo Elliott Wave" aria-label="Teemo Elliott Wave 차트 확대"><img src="https://s3.tradingview.com/e/e3AY6AxC_big.png" width="1404" height="1281" loading="lazy" decoding="async" alt="엔비디아 5분봉 위에 엘리어트 파동과 피보나치 구간을 표시한 실제 지표 화면"><span class="chart-caption">엔비디아 5분봉 적용 예시 · 눌러서 확대</span></button><span class="free">무료 공개 · 소스 코드는 비공개</span><h3>Teemo Elliott Wave</h3><p>엘리어트 파동 카운팅과 피보나치 구간을 차트에 표시합니다. 파동 구조를 살펴보는 보조 도구로 활용하세요.</p><a class="button" href="https://www.tradingview.com/script/e3AY6AxC/" target="_blank" rel="noopener noreferrer">트레이딩뷰에서 보기 ↗</a></article>
-<article class="indicator"><button class="chart-open" type="button" data-chart="https://s3.tradingview.com/g/Gg4UXPqH_big.png" data-title="Teemo Scout Suite" aria-label="Teemo Scout Suite 차트 확대"><img src="https://s3.tradingview.com/g/Gg4UXPqH_big.png" width="1404" height="1281" loading="lazy" decoding="async" alt="비트코인 5분봉 위에 이동평균선, 구름대와 이격도 표를 표시한 실제 지표 화면"><span class="chart-caption">비트코인 5분봉 적용 예시 · 눌러서 확대</span></button><span class="free">무료 공개 · 소스 코드는 비공개</span><h3>Teemo Scout Suite</h3><p>이동평균선, 볼린저 밴드, 일목구름과 세션 VWAP을 함께 봅니다. 추세와 기준선 대비 가격 이격을 살펴보세요.</p><a class="button" href="https://www.tradingview.com/script/Gg4UXPqH/" target="_blank" rel="noopener noreferrer">트레이딩뷰에서 보기 ↗</a></article>
-</div><a class="section-link" href="https://www.tradingview.com/u/TeemoBKK/" target="_blank" rel="noopener noreferrer me">공식 프로필에서 전체 지표 보기 ↗</a><p class="note">이미지는 각 지표의 공식 공개 페이지에 게시된 과거 적용 예시이며 실시간 차트나 수익률 증명이 아닙니다. 사용 조건과 설정은 해당 페이지에서 확인하세요. 파동 카운팅과 목표 구간은 진행 중인 가격에 따라 달라질 수 있습니다.</p></section>
-<section class="section about" aria-labelledby="about-title"><div><h2 id="about-title">TeemoBKK에 대하여</h2><p>경제 뉴스를 모으고, 시장을 바라보는 관점을 쓰며, 차트에서 사용하는 지표를 만듭니다.</p><p>뉴스는 시장의 맥락을 살피는 출발점입니다. 해석과 시나리오는 사실과 구분해 기록하겠습니다.</p></div><div><h3>읽기 전에</h3><ul><li>뉴스는 자동 수집한 원문 제목과 출처를 제공합니다.</li><li>시장 관점은 운영자의 개인적인 해석입니다.</li><li>지표는 분석 보조 도구이며 수익을 보장하지 않습니다.</li></ul></div></section>
+<section class="hero" aria-labelledby="headline"><p class="eyebrow">뉴스를 읽고, 관점을 세우고, 차트로 살펴봅니다.</p><h1 id="headline">차트보다 먼저 읽는 <span class="hl">뉴스</span></h1><p class="intro">시장이 움직이는 이유를 전합니다.<br>금리와 정책, 지정학과 수급까지.</p><div class="actions"><a class="button primary" href="/news/ko/">경제 뉴스 보기</a><a class="button" href="#perspectives">시장 관점 읽기</a></div></section>
+<section class="section" id="news" aria-labelledby="news-title"><div class="sec-head"><span class="sec-tag">01</span><h2 id="news-title">최근 경제 뉴스</h2></div><p class="section-intro">금리와 경기, 기업과 정책, 지정학까지. 시장에 연결되는 소식을 확인하세요.</p><div class="news-status"><span class="live">● 자동 수집 · 한국어로 표시</span><span id="update-status" role="status">수집 상태 확인 중</span><button class="retry" id="retry" type="button" hidden>다시 불러오기</button></div><div class="news-list" id="news-list" aria-busy="true"><div class="loading-line short"></div><div class="loading-line"></div><div class="loading-line"></div></div><noscript><p>뉴스 목록을 불러오려면 자바스크립트가 필요합니다. <a href="/news/ko/">경제 뉴스 페이지에서 확인하세요.</a></p></noscript><a class="section-link" href="/news/ko/">$ open /news/ko/ →</a></section>
+<section class="section" id="perspectives" aria-labelledby="perspectives-title"><div class="sec-head"><span class="sec-tag">02</span><h2 id="perspectives-title">시장 관점</h2></div><p class="section-intro">뉴스와 차트를 어떻게 읽는지, 어떤 조건에서 생각을 바꾸는지. 트레이더로서의 판단을 기록합니다.</p><div class="posts">__POSTS__</div><p class="note">각 글은 작성 당시의 개인적인 관점입니다. 가격과 시나리오는 현재 시점과 다를 수 있습니다.</p></section>
+<section class="section" id="indicators" aria-labelledby="indicators-title"><div class="sec-head"><span class="sec-tag">03</span><h2 id="indicators-title">직접 만든 트레이딩뷰 지표</h2></div><p class="section-intro">차트의 구조와 파동을 살펴보는 도구입니다. 공식 트레이딩뷰 페이지에서 무료로 사용할 수 있습니다.</p><div class="indicators">
+<article class="indicator"><span class="icode">SCRIPT · fpkVFwl2</span><h3>Teemo Supply and Demand Zone</h3><p>수요/공급 구간 자동 식별, S/D Flip 추적, 거래량(HVP) 검증. 핵심 가격대에서 반응을 살펴보는 도구입니다.</p><span class="free">무료 공개</span><br><a class="button" href="https://kr.tradingview.com/script/fpkVFwl2/" target="_blank" rel="noopener noreferrer">트레이딩뷰에서 보기 ↗</a></article>
+<article class="indicator"><span class="icode">SCRIPT · e3AY6AxC</span><h3>Teemo Elliott Wave</h3><p>엘리어트 파동 자동 카운팅, 실시간 추적. 파동 구조와 다음 시나리오를 살펴보는 보조 도구로 활용하세요.</p><span class="free">무료 공개</span><br><a class="button" href="https://kr.tradingview.com/script/e3AY6AxC/" target="_blank" rel="noopener noreferrer">트레이딩뷰에서 보기 ↗</a></article>
+</div><a class="section-link" href="https://kr.tradingview.com/u/TeemoBKK/#published-scripts" target="_blank" rel="noopener noreferrer me">$ open profile → 전체 지표 보기 ↗</a><p class="note">파동 카운팅과 목표 구간은 진행 중인 가격에 따라 달라질 수 있습니다. 사용 조건과 설정은 각 지표 페이지에서 확인하세요.</p></section>
+<section class="section about" aria-labelledby="about-title"><div><div class="sec-head"><span class="sec-tag">04</span><h2 id="about-title">TeemoBKK에 대하여</h2></div><p>경제 뉴스를 모으고, 시장을 바라보는 관점을 쓰며, 차트에서 사용하는 지표를 만듭니다.</p><p>뉴스는 시장의 맥락을 살피는 출발점입니다. 해석과 시나리오는 사실과 구분해 기록하겠습니다.</p></div><div><h3>읽기 전에</h3><ul><li>뉴스는 자동 수집한 원문 제목과 출처를 제공합니다.</li><li>시장 관점은 운영자의 개인적인 해석입니다.</li><li>지표는 분석 보조 도구이며 수익을 보장하지 않습니다.</li></ul></div></section>
 </main>
-<footer class="footer"><div class="wrap"><div class="footer-row"><span>TeemoBKK · 경제 뉴스와 트레이더의 기록</span><a href="/thai/">별도 소식 · 태국 교민 뉴스 ↗</a></div><p>뉴스는 자동 매매 신호가 아닙니다 · 중요한 사건은 원문과 공시로 확인하세요. 제공되는 글과 지표만으로 투자 결정을 내리지 마세요.</p><nav class="footer-links" aria-label="사이트 정보"><a href="/privacy/">개인정보 처리방침</a><a href="https://www.tradingview.com/u/TeemoBKK/" target="_blank" rel="noopener noreferrer me">트레이딩뷰 TeemoBKK 공식 프로필 ↗</a><a href="https://t.me/+OegpDrwxnaBiOGNl" target="_blank" rel="noopener noreferrer">트레이딩뷰 TeemoBKK 텔레그램 대화방 초대 링크 ↗</a></nav><p class="note">텔레그램 링크는 외부 대화방으로 이동합니다.</p></div></footer>
-<dialog id="chart-dialog" aria-labelledby="chart-title"><div class="dialog-head"><p id="chart-title"></p><button id="close-chart" type="button">닫기</button></div><img id="expanded-chart" alt=""></dialog>
+<footer class="footer"><div class="wrap"><div class="footer-row"><span class="fbrand">teemo@bkk:~$ ./live-news --v2026</span><a href="/thai/">별도 소식 · 태국 교민 뉴스 ↗</a></div><p>뉴스는 자동 매매 신호가 아닙니다 · 중요한 사건은 원문과 공시로 확인하세요. 제공되는 글과 지표만으로 투자 결정을 내리지 마세요.</p><nav class="footer-links" aria-label="사이트 정보"><a href="/privacy/">개인정보 처리방침</a><a href="https://kr.tradingview.com/u/TeemoBKK/" target="_blank" rel="noopener noreferrer me">트레이딩뷰 TeemoBKK 공식 프로필 ↗</a><a href="https://t.me/+OegpDrwxnaBiOGNl" target="_blank" rel="noopener noreferrer">트레이딩뷰 TeemoBKK 텔레그램 대화방 초대 링크 ↗</a></nav><p class="note">텔레그램 링크는 외부 대화방으로 이동합니다.</p></div></footer>
+<script>
+(function(){
+'use strict';
+var ticker=document.getElementById('ticker'),tickerInner=document.getElementById('ticker-inner');
+function kfmt(p){var n=parseFloat(p);if(!isFinite(n))return '—';if(n>=1000)return (n/1000).toFixed(1)+'K';if(n>=100)return n.toFixed(1);return n.toFixed(2);}
+function pctfmt(p){var n=parseFloat(p);if(!isFinite(n))return '';return (n>=0?'+':'')+n.toFixed(1)+'%';}
+function tickHTML(sym,price,chg){var n=parseFloat(chg);var cls=n>=0?'up':(n<0?'dn':'');
+return '<span class="tick"><b>'+sym+'</b> '+kfmt(price)+' <span class="'+cls+'">'+pctfmt(chg)+'</span></span>';}
+async function loadTicker(){
+try{
+var ctrl=new AbortController();var to=setTimeout(function(){ctrl.abort();},8000);
+var res=await fetch('https://api.binance.com/api/v3/ticker/24hr?symbols=%5B%22BTCUSDT%22,%22ETHUSDT%22%5D',{signal:ctrl.signal});
+clearTimeout(to);
+if(!res.ok)throw new Error('http');
+var data=await res.json();
+if(!Array.isArray(data)||!data.length)throw new Error('schema');
+var rows=data.map(function(d){var sym=String(d.symbol||'').replace('USDT','');return tickHTML(sym,d.lastPrice,d.priceChangePercent);}).join('');
+tickerInner.innerHTML=rows+rows;
+ticker.hidden=false;
+}catch(e){ticker.hidden=true;}
+}
+if(ticker&&tickerInner){loadTicker();setInterval(function(){if(!document.hidden)loadTicker();},30000);}
+})();
+</script>
 <script>
 (function(){
 'use strict';
@@ -283,34 +280,29 @@ const list=document.getElementById('news-list'), status=document.getElementById(
 let busy=false, hasNews=false;
 const fmt=new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Bangkok',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
 function displayStamp(value){const p=fmt.formatToParts(new Date(value)),get=k=>(p.find(x=>x.type===k)||{}).value||'';
-  return get('month')+'월 '+get('day')+'일 '+get('hour')+':'+get('minute')}
+return get('month')+'/'+get('day')+' '+get('hour')+':'+get('minute')}
 function cleanTitle(value){return String(value||'').replace(/(?:https?:\/\/|www\.)\S+|\b[a-z0-9.-]+\.(?:com|org|net|rs|co\.th|go\.th)\/\S+|\breut\.rs\S*/gi,'').replace(/\s+-\s+[^-]+$/,'').replace(/\s+/g,' ').trim();}
 function safeLink(value){try{const u=new URL(value);return ['http:','https:'].includes(u.protocol)?u.href:null;}catch(e){return null;}}
 function relevant(a){if(a.category&&a.category!=='일반')return true;return /금리|금값|금 가격|금 선물|은값|원유|유가|물가|고용|실업|관세|중앙은행|연준|증시|주식|채권|환율|달러|실적|비트코인|암호화폐|가상자산|이더리움|인플레|경기|\b(?:stocks?|equities|bonds?|yields?|gold|silver|oil|crude|inflation|payrolls|tariffs?|fed|fomc|gdp|cpi|pce|earnings|bitcoin|crypto|ethereum|etf|forex|rates?|central bank)\b/i.test(String(a.title||''));}
-function selectNews(articles){const seen=new Set();return articles.filter(a=>{if(a.region!=='글로벌'||!relevant(a))return false;const title=cleanTitle(a.title);const key=title.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]/gu,'');const date=Date.parse(a.published_at);if(key.length<8||!safeLink(a.link)||!Number.isFinite(date)||date>Date.now()+60000||Date.now()-date>86400000||seen.has(key))return false;seen.add(key);return true;}).sort((a,b)=>Date.parse(b.published_at)-Date.parse(a.published_at)).slice(0,6);}
+function selectNews(articles){const seen=new Set();return articles.filter(a=>{if(a.region!=='글로벌'||!relevant(a))return false;const title=cleanTitle(a.title);const key=title.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]/gu,'');const date=Date.parse(a.published_at);if(key.length<8||!safeLink(a.link)||!Number.isFinite(date)||date>Date.now()+60000||Date.now()-date>86400000||seen.has(key))return false;seen.add(key);return true;}).sort((a,b)=>Date.parse(b.published_at)-Date.parse(a.published_at)).slice(0,8);}
 function hostOf(u){try{const h=new URL(u).hostname.toLowerCase().replace(/^www[.]/,'');return h}catch(e){return ''}}
 function srcLabel(a){if(!a.original_link)return a.source||'';return String(a.original_source||'').trim()||hostOf(a.original_link)||a.source||''}
-function render(articles){list.replaceChildren();if(!articles.length){const p=document.createElement('p');p.className='empty';p.textContent='최근 24시간에 표시할 뉴스가 없습니다. 전체 뉴스에서 기간과 분류를 확인하세요.';list.append(p);return;}
-for(const a of articles){const item=document.createElement('article');item.className='news-item';const link=document.createElement('a');link.href=safeLink(a.original_link||a.link);link.target='_blank';link.rel='noopener noreferrer';const meta=document.createElement('div');meta.className='meta';const source=document.createElement('span');source.textContent=srcLabel(a)||'원문';const category=document.createElement('span');category.className='topic';category.textContent=a.category||'경제';const time=document.createElement('time');time.dateTime=a.published_at;time.textContent=displayStamp(a.published_at)+' ICT';meta.append(source,category,time);const title=document.createElement('h3');title.textContent=cleanTitle(a.title)+' ↗';link.append(meta,title);item.append(link);list.append(item);}hasNews=true;}
-async function refresh(){if(busy)return;busy=true;retry.disabled=true;list.setAttribute('aria-busy','true');const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),12000);try{const response=await fetch('/api/news?region='+encodeURIComponent('글로벌')+'&hours=24&limit=100&lang=ko',{cache:'no-cache',signal:controller.signal});if(!response.ok)throw new Error('http');const data=await response.json();if(!Array.isArray(data.articles))throw new Error('schema');render(selectNews(data.articles));const updated=Date.parse(data.updated_at);if(Number.isFinite(updated)&&updated<=Date.now()+60000){const age=Date.now()-updated;status.textContent=(age>35*60000?'갱신 지연 · 마지막 수집 ':'마지막 수집 ')+displayStamp(updated)+' ICT';retry.hidden=age<=35*60000;}else{status.textContent='수집 시각을 확인할 수 없습니다';retry.hidden=false;}}
-catch(error){status.textContent=hasNews?'갱신 실패 · 이전 목록 표시 중':'뉴스를 불러오지 못했습니다';retry.hidden=false;if(!hasNews){list.replaceChildren();const p=document.createElement('p');p.className='empty';p.textContent='잠시 후 다시 시도하거나 경제 뉴스 페이지에서 확인하세요.';list.append(p);}}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function render(articles){list.replaceChildren();if(!articles.length){const p=document.createElement('p');p.className='empty';p.textContent='$ no results — 최근 24시간 뉴스가 없습니다.';list.append(p);return;}
+for(const a of articles){const row=document.createElement('div');row.className='news-row';const link=document.createElement('a');link.href=safeLink(a.original_link||a.link);link.target='_blank';link.rel='noopener noreferrer';
+const time=document.createElement('span');time.className='ntime';time.textContent=displayStamp(a.published_at);
+const topic=document.createElement('span');topic.className='ntopic';topic.textContent=a.category||'경제';
+const title=document.createElement('span');title.className='ntitle';title.innerHTML=esc(cleanTitle(a.title))+' <span class="ext">↗</span>';
+const src=document.createElement('span');src.className='ntime';src.textContent=srcLabel(a)||'';
+link.append(time,topic,title);if(src.textContent)link.append(src);row.append(link);list.append(row);}hasNews=true;}
+async function refresh(){if(busy)return;busy=true;retry.disabled=true;list.setAttribute('aria-busy','true');const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),12000);try{const response=await fetch('/api/news?region='+encodeURIComponent('글로벌')+'&hours=24&limit=100&lang=ko',{cache:'no-cache',signal:controller.signal});if(!response.ok)throw new Error('http');const data=await response.json();if(!Array.isArray(data.articles))throw new Error('schema');render(selectNews(data.articles));const updated=Date.parse(data.updated_at);if(Number.isFinite(updated)&&updated<=Date.now()+60000){const age=Date.now()-updated;status.textContent=(age>35*60000?'! 갱신 지연 · ':'✓ ')+displayStamp(updated)+' ICT';retry.hidden=age<=35*60000;}else{status.textContent='? 수집 시각 확인 불가';retry.hidden=false;}}
+catch(error){status.textContent=hasNews?'! 갱신 실패 · 이전 목록 표시 중':'! 뉴스 로드 실패';retry.hidden=false;if(!hasNews){list.replaceChildren();const p=document.createElement('p');p.className='empty';p.textContent='$ retry — 잠시 후 다시 시도하세요.';list.append(p);}}
 finally{clearTimeout(timeout);busy=false;retry.disabled=false;list.setAttribute('aria-busy','false');}}
 retry.addEventListener('click',refresh);refresh();setInterval(()=>{if(!document.hidden)refresh();},120000);
-const dialog=document.getElementById('chart-dialog');document.querySelectorAll('[data-chart]').forEach(button=>button.addEventListener('click',()=>{document.getElementById('expanded-chart').src=button.dataset.chart;document.getElementById('expanded-chart').alt=button.dataset.title+' 실제 적용 화면';document.getElementById('chart-title').textContent=button.dataset.title;dialog.showModal();}));document.getElementById('close-chart').addEventListener('click',()=>dialog.close());
 })();
 </script>
-<script>
-(function(){
-  var root=document.documentElement,button=document.getElementById('theme-toggle');
-  if(!button)return;
-  function update(){var dark=root.dataset.theme==='dark';button.textContent=dark?'다크 모드 끄기':'다크 모드 켜기';
-    button.setAttribute('aria-label',button.textContent);button.setAttribute('aria-pressed',String(dark));}
-  button.addEventListener('click',function(){var dark=root.dataset.theme!=='dark';
-    root.dataset.theme=dark?'dark':'light';try{localStorage.setItem('tbn-theme',root.dataset.theme)}catch(e){}update();});
-  update();
-})();
-</script>
-</body></html>'''
+</body></html>
+'''
 
 
 def stylesheet() -> str:
