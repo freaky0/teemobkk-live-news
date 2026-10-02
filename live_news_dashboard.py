@@ -730,6 +730,11 @@ def init_db() -> None:
             connection.execute("ALTER TABLE articles ADD COLUMN title_ko TEXT")
         if "summary_ko" not in columns:
             connection.execute("ALTER TABLE articles ADD COLUMN summary_ko TEXT")
+        # The publisher's own representative image (og:image), fetched after insert. Rows
+        # collected before this column existed keep NULL: the page falls back to the
+        # per-category image, which needs no backfill.
+        if "image_url" not in columns:
+            connection.execute("ALTER TABLE articles ADD COLUMN image_url TEXT")
         # No index on `categories`: the filter is a contains-match, which no index can serve.
         for column in ("published_at", "region", "category", "source", "priority"):
             connection.execute(f"CREATE INDEX IF NOT EXISTS idx_articles_{column} ON articles({column})")
@@ -826,6 +831,94 @@ def insert_articles(articles: list[dict[str, Any]]) -> int:
         # story is registered and skipped in one transaction and cannot show up in between.
         _record_filter_hits(connection, rows)
         return inserted
+
+
+# Matches <meta property="og:image" content="..."> and the name= variant some
+# publishers emit. The first plausible absolute http(s) URL wins.
+_OG_IMAGE_RE = re.compile(
+    r'<meta\s[^>]*?(?:property|name)\s*=\s*["\']og:image["\'][^>]*?content\s*=\s*["\']([^"\']+)["\']',
+    re.IGNORECASE,
+)
+_OG_IMAGE_REV = re.compile(
+    r'<meta\s[^>]*?content\s*=\s*["\']([^"\']+)["\'][^>]*?(?:property|name)\s*=\s*["\']og:image["\']',
+    re.IGNORECASE,
+)
+
+
+def fetch_og_image(url: str, timeout: int = 5) -> str:
+    """The publisher's representative image for one article URL.
+
+    Best-effort by design: any failure (network, parse, no tag) returns "" and the
+    caller falls back to the per-category image. Only the document head is read -
+    the regexes run on the first 64 KB, so a huge page cannot stall the cycle.
+    """
+    try:
+        request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            head = response.read(65536).decode("utf-8", errors="ignore")
+    except Exception:
+        return ""
+    for pattern in (_OG_IMAGE_RE, _OG_IMAGE_REV):
+        match = pattern.search(head)
+        if match:
+            candidate = html.unescape(match.group(1)).strip()
+            if candidate.startswith(("http://", "https://")):
+                return candidate
+            if candidate.startswith("//"):
+                return "https:" + candidate
+    return ""
+
+
+def backfill_article_images(limit: int = 10) -> int:
+    """Fill image_url for the newest rows that lack one.
+
+    Runs after insert, like translation: the collection cycle never waits on it.
+    The resolved publisher URL is preferred (it is the page that carries og:image);
+    the stored link is the fallback. A small thread pool keeps the added latency
+    bounded, and every failure simply leaves the row imageless.
+    """
+    try:
+        cached = original_links()
+    except Exception:
+        cached = {}
+    with DB_LOCK, db_connect() as connection:
+        rows = connection.execute(
+            "SELECT link FROM articles WHERE image_url IS NULL "
+            "ORDER BY collected_at DESC, published_at DESC LIMIT ?",
+            (max(1, int(limit)),),
+        ).fetchall()
+    targets = []
+    for (link,) in rows:
+        link = str(link or "")
+        if not link:
+            continue
+        resolved = ""
+        try:
+            resolved = google_news.original_for(link, cached) or ""
+        except Exception:
+            resolved = ""
+        targets.append((link, resolved if resolved != link else link))
+    if not targets:
+        return 0
+
+    def fetch_one(item: tuple[str, str]) -> tuple[str, str]:
+        link, url = item
+        return link, fetch_og_image(url)
+
+    found: list[tuple[str, str]] = []
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        for link, image in pool.map(fetch_one, targets):
+            if image:
+                found.append((image, link))
+    if not found:
+        return 0
+    with DB_LOCK, db_connect() as connection:
+        before = connection.total_changes
+        connection.executemany(
+            "UPDATE articles SET image_url = ? WHERE link = ? AND image_url IS NULL",
+            found,
+        )
+        return connection.total_changes - before
 
 
 def prune_archive(days: int = ARCHIVE_DAYS) -> int:
@@ -1428,6 +1521,14 @@ def collect_news() -> dict[str, Any]:
                 logging.info("Korean translations saved: %d", translated)
         except Exception:
             logging.exception("Korean translation post-processing failed; collection continues")
+    # Article images are the same kind of best-effort: a missing og:image only means the
+    # page falls back to the per-category image, and the next cycle retries pending rows.
+    try:
+        imaged = backfill_article_images(limit=10)
+        if imaged:
+            logging.info("Article images saved: %d", imaged)
+    except Exception:
+        logging.exception("Article image backfill failed; collection continues")
     if inserted:
         prune_archive()
     _, window_total, region_counts = query_articles(hours=RETENTION_HOURS, limit=1)
