@@ -13,6 +13,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from datetime import datetime, timedelta, timezone
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -425,9 +426,13 @@ class Gate(unittest.TestCase):
         namespace = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
         urls = [node.text or "" for node in sitemap.findall("sm:url/sm:loc", namespace)]
         self.assertEqual(urls, ["https://teemobkk.io/", "https://teemobkk.io/thai/",
-                                "https://teemobkk.io/privacy/", "https://teemobkk.io/privacy/en/"])
-        self.assertFalse(any("/news/" in url for url in urls),
-                         "the news dashboards are noindex and don't belong in the sitemap")
+                                "https://teemobkk.io/privacy/", "https://teemobkk.io/privacy/en/",
+                                "https://teemobkk.io/news/", "https://teemobkk.io/news/ko/"])
+        lastmods = [node.text or "" for node in sitemap.findall("sm:url/sm:lastmod", namespace)]
+        ict = timezone(timedelta(hours=7))
+        today = datetime.now(ict).date()
+        self.assertEqual(len(lastmods), 6)
+        self.assertTrue(all(datetime.fromisoformat(value).date() == today for value in lastmods))
 
     def test_privacy_pages_are_public_translated_and_canonical(self):
         pages = (

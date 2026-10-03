@@ -616,7 +616,7 @@ function cleanTitle(value){return String(value||'').replace(/(?:https?:\\/\\/|ww
 const shown=(s,label)=>{const t=String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   return '실제 <b class="'+label+'">'+t+'</b>'};
 
-var V={tab:CFG.wantThai?'thai':'global',cats:[],hours:24,q:'',terms:[],limit:PAGE,tag:null,mode:'all',value:'',offset:0,pickOnly:false};
+var V={tab:CFG.wantThai?'thai':'global',cats:[],hours:24,q:'',terms:[],limit:PAGE,tag:null,mode:'all',value:'',offset:0,pickOnly:false,language:CFG.lang==='en'&&!CFG.wantThai?'en':'all'};
 var MEM={},LATEST={},PENDING={},INDEX={},SEEN={},FULL={},DATA={articles:[],sources:{},total:0,has_more:false};
 var BRIEF_CACHE={},BRIEF_PENDING={};
 var archiveTotal=0,refreshTimer=null,hidden=false,lastRegion={};
@@ -697,11 +697,10 @@ function loadBriefingRows(){
   }).catch(()=>articles()).then(rows=>{delete BRIEF_PENDING[key];return rows});
   return BRIEF_PENDING[key]}
 function briefingDate(value){const d=new Date(value);if(!Number.isFinite(d.getTime()))return CFG.briefing.timeUnknown;
-  const locale=CFG.lang==='en'?'en-GB':'ko-KR';
-  const fmt=new Intl.DateTimeFormat(locale,{timeZone:'Asia/Bangkok',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
-  if(CFG.lang==='en')return fmt.format(d)+' ICT';
-  const parts=fmt.formatToParts(d),get=k=>(parts.find(p=>p.type===k)||{}).value||'';
-  return get('month')+CFG.monthSuffix+' '+get('day')+'일 '+get('hour')+':'+get('minute')+' ICT'}
+  const locale=CFG.lang==='en'?'en-US':'ko-KR';
+  const parts=new Intl.DateTimeFormat(locale,{timeZone:'Asia/Bangkok',month:CFG.lang==='en'?'short':'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(d);
+  const get=k=>(parts.find(p=>p.type===k)||{}).value||'';
+  return CFG.lang==='en'?get('month')+' '+get('day')+', '+get('hour')+':'+get('minute')+' ICT':get('month')+CFG.monthSuffix+' '+get('day')+'일 '+get('hour')+':'+get('minute')+' ICT'}
 __EVENT_RULES__
 function briefingStatus(mode,count){const copy=CFG.briefing;
   return (mode==='picked'?copy.briefingPicked:copy.briefingAuto).replace('{n}',count)}
@@ -712,7 +711,8 @@ function briefingItems(){
   if(cached){
     const current=new Map(articles().map(a=>[String(a.link||''),a]));
     rows=rows.map(a=>current.get(String(a.link||''))||a)}
-  const pool=rows.filter(a=>{const t=Date.parse(a.published_at);return Number.isFinite(t)&&t<=Date.now()+60000&&t>=cutoff});
+  const pool=rows.filter(a=>(CFG.lang!=='en'||CFG.wantThai||V.language==='all'||articleLang(a)==='en')&&
+    (()=>{const t=Date.parse(a.published_at);return Number.isFinite(t)&&t<=Date.now()+60000&&t>=cutoff})());
   const distinct=pool.filter((a,i)=>!pool.slice(0,i).some(b=>sameBriefingEvent(a,b)));
   const picked=distinct.filter(a=>a.picked);
   if(picked.length===3)return {mode:'picked',items:picked};
@@ -741,10 +741,13 @@ function renderBriefing(){
   if(source)source.textContent=briefingStatus(result.mode,items.length)}
 function dayLabel(iso){
   const d=new Date(iso);if(!Number.isFinite(d.getTime()))return CFG.briefing.dayUnknown;
-  const locale=CFG.lang==='en'?'en-GB':'ko-KR';
+  const locale=CFG.lang==='en'?'en-US':'ko-KR';
   const parts=new Intl.DateTimeFormat(locale,{timeZone:'Asia/Bangkok',month:CFG.lang==='en'?'short':'numeric',day:'numeric',weekday:'short'}).formatToParts(d);
   const get=k=>(parts.find(p=>p.type===k)||{}).value||'';
-  return CFG.lang==='en'?get('day')+' '+get('month')+' ('+get('weekday')+')':get('month')+CFG.monthSuffix+' '+get('day')+'일 ('+get('weekday')+')'}
+  return CFG.lang==='en'?get('month')+' '+get('day')+' ('+get('weekday')+')':get('month')+CFG.monthSuffix+' '+get('day')+'일 ('+get('weekday')+')'}
+function articleLang(a){const code=String(a&&a.lang||'').toLowerCase();if(['en','ko','th'].includes(code))return code;
+  const text=String(a&&(a.original_title||a.title)||'');if(/[\u0E00-\u0E7F]/.test(text))return 'th';
+  if(/[\uAC00-\uD7AF]/.test(text))return 'ko';return 'en'}
 function keep(a){
   const hours=Number(V.hours)||24,t=new Date(a.published_at).getTime();
   if(!isFinite(t)||Date.now()-t>hours*3600000)return false;
@@ -761,7 +764,7 @@ function keep(a){
   const q=(V.q||'').trim();
   if(q&&!termMatch((a.title||'')+' '+(a.summary||'')+' '+(a.source||'')+' '+labels.join(' '),q))return false;
   return true}
-function visible(){return PUBLIC?articles().filter(keep):articles()}
+function visible(){return articles().filter(a=>(CFG.lang!=='en'||CFG.wantThai||V.language==='all'||articleLang(a)==='en')&&(!PUBLIC||keep(a)))}
 function summaryBlock(a){
   const s=a.summary||'';if(!s)return '';
   const long=s.length>220;
@@ -779,6 +782,9 @@ function langAttr(code){return code?' lang="'+code+'"':''}
 // nothing. A "[카더라]" style label is not derived here: that is an editor's
 // annotation on the other site, and this collector sees zero such markers in the
 // wire text it receives.
+function languageChip(a){const code=articleLang(a),label={en:'EN',ko:'KO',th:'TH'}[code]||'EN';
+  const name={en:'English',ko:'한국어',th:'ไทย'}[code]||'English';
+  return '<span class="chip lang lang-'+code+'" lang="'+code+'" aria-label="'+esc(name)+'">'+label+'</span>'}
 function verifChip(a){
   if(a.source_type==='official')return '<span class="chip verif off" title="'+esc(CFG.briefing.verifOfficialTitle||'')+'">'+esc(CFG.briefing.verifOfficial)+'</span>';
   if(a.source_type==='social')return '<span class="chip verif sns" title="'+esc(CFG.briefing.verifSnsTitle||'')+'">'+esc(CFG.briefing.verifSns)+'</span>';
@@ -808,7 +814,7 @@ function card(a,th,lead,first,last){
   const tag=V.tag||{};
   const srcOn=tag.k==='src'&&tag.v===a.source;
   const srcCls='chip src tap'+(a.source_type==='official'?' official':'')+(th?' th':'')+(srcOn?' on':'');
-  const meta=verifChip(a)+
+  const meta=languageChip(a)+verifChip(a)+
       '<button type="button" class="'+srcCls+'" data-k="src" data-v="'+esc(a.source)+'" aria-pressed="'+(srcOn?'true':'false')+'">'+esc(srcLabel(a))+'</button>'+
       catList(a).map(v=>{const on=tag.k==='cat'&&tag.v===v;
         return '<button type="button" class="chip tap'+(on?' on':'')+'" data-k="cat" data-v="'+esc(v)+'" aria-pressed="'+(on?'true':'false')+'">'+esc(catLabel(v))+'</button>'}).join('');
@@ -1019,7 +1025,7 @@ function renderFeed(){
       ?'<div class="empty"><b>선택한 조건을 모두 만족하는 뉴스가 없습니다</b>위 조건 줄에서 가장 좁은 조건을 풀거나 기간을 넓혀 보세요.</div>'
       :'<div class="empty"><b>조건에 맞는 뉴스가 없습니다</b>검색어를 지우거나 기간을 넓혀 보세요.</div>';
     document.querySelector('#counts').innerHTML=fmt('총 <b>{n}</b>건',all.length);
-    document.querySelector('#more').hidden=true;return}
+    document.querySelector('#more').hidden=PUBLIC?true:!DATA.has_more;return}
   const groups=[];
   view.forEach(a=>{
     const key=bangkokDay(a.published_at)||'unknown';
@@ -1033,11 +1039,11 @@ function renderFeed(){
   }).join('');
   document.querySelector('#counts').innerHTML=(PUBLIC
     ? fmt('총 <b>{n}</b>건, <b>{m}</b>건 표시',all.length,view.length)
-    : fmt('총 <b>{n}</b>건, <b>{m}</b>건 표시',DATA.total==null?all.length:DATA.total,view.length)
+    : fmt('총 <b>{n}</b>건, <b>{m}</b>건 표시',CFG.lang==='en'&&V.language==='en'?all.length:(DATA.total==null?all.length:DATA.total),view.length)
       +(CFG.admin?'<span class="admin">'+fmt(', 보관 <b>{n}</b>건',archiveTotal)+'</span>':''));
   document.querySelector('#more').hidden=!(PUBLIC
     ? all.length>view.length
-    : (DATA.has_more&&view.length>=V.limit));
+    : (DATA.has_more&&(CFG.lang==='en'&&V.language==='en'||view.length>=V.limit)));
   const pend=PENDING[region()]||0,np=document.querySelector('#newpill');
   if(pend>0){np.textContent=fmt('새 글 {n}건 보기',pend);np.dataset.show='1'}
   else{np.dataset.show='0';np.textContent=''}
@@ -1079,7 +1085,7 @@ async function loadFull(){
 async function loadPublic(force){
   INDEX=await getJSON(DATADIR+'index.json');
   const meta=regionMeta(),seen=SEEN[region()];
-  setStamp(INDEX.updated_at_ict+' ICT · '+(INDEX.window_hours||24)+CFG.units.hour,INDEX.regions);
+  setStamp(briefingDate(INDEX.updated_at||INDEX.updated_at_ict)+' · '+(INDEX.window_hours||24)+CFG.units.hour,INDEX.regions);
   flagStale(INDEX.updated_at);
   // Compare the content stamp, not the clock: index.json is rewritten every cycle but a
   // region file only changes when its rows do, so an untouched region is not re-read.
@@ -1430,7 +1436,7 @@ function applyLocal(fresh){
   DATA=fresh;
   archiveTotal=(fresh.archived_total!=null?fresh.archived_total:archiveTotal);
   try{localStorage.setItem(CACHE_KEY,JSON.stringify(DATA))}catch(e){}
-  setStamp((fresh.updated_at_ict||'')+' · '+hoursLabel()+' · '+(fresh.total||0)+'건',fresh.region_counts);
+  setStamp(briefingDate(fresh.updated_at||fresh.updated_at_ict)+' · '+hoursLabel()+' · '+(fresh.total||0)+CFG.units.count,fresh.region_counts);
   // The interval control shows what the collector is doing, restored value included, so the operator
   // never wonders whether the 5분 they chose is still in force after the next restart.
   const iv=document.querySelector('#interval');
@@ -1565,6 +1571,8 @@ document.querySelector('#qadd').onclick=()=>{
   V.limit=PAGE;V.offset=0;renderTrends();fetchFeed()};
 document.querySelector('#hours').onchange=()=>{V.hours=Number(document.querySelector('#hours').value)||24;
   V.limit=PAGE;V.offset=0;fetchFeed()};
+const languageFilter=document.querySelector('#language-filter');
+if(languageFilter)languageFilter.onchange=()=>{V.language=languageFilter.value==='all'?'all':'en';V.limit=PAGE;V.offset=0;renderBriefing();renderFeed();if(!PUBLIC)fetchFeed()};
 document.querySelector('#more').onclick=async()=>{
   if(PUBLIC){
     if(V.limit+PAGE>articles().length&&!FULL[region()])await loadFull();
@@ -1681,7 +1689,12 @@ def _ict_stamp(value, lang: str = "ko") -> str:
     shifted = moment.astimezone(datetime.timezone(datetime.timedelta(hours=7)))
     if lang == "ko":
         return f"{shifted.month}월 {shifted.day}일 {shifted:%H:%M}"
-    return shifted.strftime("%m-%d %H:%M")
+    return f"{shifted.strftime('%b')} {shifted.day}, {shifted:%H:%M}"
+
+
+def _article_language(item: dict) -> str:
+    code = str(item.get("lang") or "").lower()
+    return code if code in {"en", "ko", "th"} else (taxonomy.detect_lang(item.get("title") or "") or "en")
 
 
 def seed_feed(path: str, want_thai: bool, lang: str = "ko", limit: int = 25) -> str:
@@ -1895,7 +1908,8 @@ def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str
     labels = ui_text.cat_labels(lang)
     expand_label = "Show more" if lang == "en" else "요약 펼치기"
     original_label = ui_text.UI[lang]["openOriginal"]
-    for item in items[:limit]:
+    visible_items = items if lang != "en" else [item for item in items if _article_language(item) == "en"]
+    for item in visible_items[:limit]:
         original_title = _clean_title(item.get("title"))
         original_summary = str(item.get("summary") or "")
         title = _clean_title(item.get("title_ko") or item.get("title")) if lang == "ko" else original_title
@@ -1911,8 +1925,14 @@ def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str
             continue
         title_attr = _lang_attr(taxonomy.detect_lang(title))
         summary_attr = _lang_attr(taxonomy.detect_lang(summary))
-        chips = "".join('<span class="chip">' + html.escape(labels.get(name, name)) + '</span>'
-                        for name in _seed_labels(item))
+        language = _article_language(item)
+        language_name = {"en": "English", "ko": "한국어", "th": "ไทย"}.get(language, "English")
+        language_badge = ('<span class="chip lang lang-' + html.escape(language, quote=True) +
+                          '" lang="' + html.escape(language, quote=True) + '" aria-label="' +
+                          html.escape(language_name, quote=True) + '">' +
+                          {"en": "EN", "ko": "KO", "th": "TH"}.get(language, "EN") + '</span>')
+        chips = language_badge + "".join('<span class="chip">' + html.escape(labels.get(name, name)) + '</span>'
+                                          for name in _seed_labels(item))
         badge = _pick_badge(item)
         href = str(item.get("original_link") or item.get("link") or "")
         if not href.startswith(("https://", "http://")):
@@ -1978,7 +1998,8 @@ def _seed_time(value) -> float:
 def _seed_briefing(items: list[dict], lang: str = "ko") -> tuple[str, str]:
     labels = ui_text.cat_labels(lang)
     copy = ui_text.UI.get(lang, ui_text.UI["en"])
-    mode, selected = _briefing_items(items)
+    visible_items = items if lang != "en" else [item for item in items if _article_language(item) == "en"]
+    mode, selected = _briefing_items(visible_items)
     if not selected:
         return copy["briefingNoEligible"], '<li class="brief"><span class="bnum">00</span><div><p class="btitle">%s</p></div></li>' % copy["briefingEmpty"]
     rows = []
@@ -2077,8 +2098,9 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
         "trendAliases": taxonomy.TREND_ALIASES,
         "trendThaiSource": "태국어: " if lang == "ko" else "Thai: ",
         "clearTerms": ui_text.UI[lang]["clearTerms"],
-        "units": ({"count": " stories", "hour": "h", "day": "d"} if lang == "en" else
+        "units": ({"count": " items", "hour": "h", "day": "d"} if lang == "en" else
                   {"count": "건", "hour": "시간", "day": "일"}),
+        "languageLabels": {"en": "EN", "ko": "KO", "th": "TH"},
         "calendarLabels": {"window": ui_text.UI[lang]["calWindowCount"],
                            "major": ui_text.UI[lang]["calTopCount"],
                            "windowOne": ui_text.UI[lang]["calWindowCountOne"],
@@ -2153,6 +2175,11 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
                      'target="_blank" rel="noopener noreferrer">%s</a> · %s</p>'
                      % (telegram_label, telegram_note))
     langbar = _langbar(lang, alt)
+    language_filter = ('<select id="language-filter" aria-label="%s">'
+                       '<option value="en" selected>%s</option><option value="all">%s</option></select>' %
+                       (html.escape(ui_text.UI[lang]["languageFilterAria"], quote=True),
+                        html.escape(ui_text.UI[lang]["languageEnglish"]),
+                        html.escape(ui_text.UI[lang]["languageAll"]))) if lang == "en" and not want_thai else ""
     script = SCRIPT.replace("__CONFIG__", json.dumps(config, ensure_ascii=False, separators=(",", ":")))
     script = script.replace("__EVENT_RULES__", semantic_event.browser_source())
     script = script.replace("__CATS_GLOBAL__", json.dumps(
@@ -2231,6 +2258,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
       <option value="168">최근 7일</option>
       <option value="2160">전체 기간</option>
     </select>
+    {language_filter}
     {admin_toolbar}
     <button id="newpill" class="newpill" type="button"></button>
     <span class="count" id="counts"></span>
@@ -2363,6 +2391,22 @@ def build_public() -> dict[str, int]:
     return sizes
 
 
+def sitemap_xml(now: datetime.datetime | None = None) -> str:
+    """Render indexable URLs with the actual ICT build timestamp as lastmod."""
+    ict = datetime.timezone(datetime.timedelta(hours=7))
+    moment = now or datetime.datetime.now(ict)
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=ict)
+    lastmod = moment.astimezone(ict).isoformat(timespec="seconds")
+    locations = ("/", "/thai/", "/privacy/", "/privacy/en/", "/news/", "/news/ko/")
+    rows = "\n".join(
+        "  <url><loc>https://teemobkk.io%s</loc><lastmod>%s</lastmod></url>" % (path, lastmod)
+        for path in locations)
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+            + rows + '\n</urlset>\n')
+
+
 def _prune_sections(keep) -> list:
     """Delete generated section directories that are not part of the current layout.
 
@@ -2398,7 +2442,7 @@ def build_server(db_path: str = "news.db") -> dict[str, int]:
     indicator pages later. Each has an English default and a Korean copy one directory down,
     which keeps the language switcher a plain relative link.
     """
-    sizes = {}
+    sizes = {"sitemap.xml": write(ROOT / "sitemap.xml", sitemap_xml())}
     global_seed = seed_from_db(db_path, "\uae00\ub85c\ubc8c", False, "en")
     thai_seed = seed_from_db(db_path, "\ud0dc\uad6d", True, "en")
     # The section roots are in the keep set: build_server writes them (the section front pages and
