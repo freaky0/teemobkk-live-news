@@ -460,6 +460,18 @@ class Gate(unittest.TestCase):
             self.assertIn("TCF v2.3", page)
             self.assertIn(inactive_note, page)
 
+    def test_new_standalone_pages_are_served_at_both_route_forms(self):
+        pages = (
+            ("/about", "TeemoBKK에 대하여"), ("/about/", "TeemoBKK에 대하여"),
+            ("/tradingtalk", "Trading Talk"), ("/tradingtalk/", "Trading Talk"),
+            ("/lab", "지표 연구 노트"), ("/lab/", "지표 연구 노트"),
+        )
+        for path, heading in pages:
+            with self.subTest(path=path), urllib.request.urlopen(self.base + path, timeout=10) as response:
+                self.assertEqual(response.status, 200)
+                self.assertIn("text/html", response.headers.get("Content-Type", ""))
+                self.assertIn(heading, response.read().decode("utf-8"))
+
     def test_the_page_tells_the_script_it_is_public(self):
         # The page is not JSON, so it is fetched directly rather than through the JSON helper.
         with urllib.request.urlopen(self.base + "/", timeout=10) as response:

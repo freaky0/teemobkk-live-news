@@ -8,7 +8,7 @@ import page_build
 
 
 class Task003Contract(unittest.TestCase):
-    def test_sitemap_lists_six_pages_with_build_day_lastmod(self):
+    def test_sitemap_lists_nine_pages_with_build_day_lastmod(self):
         fixed = datetime.datetime(2026, 10, 3, 6, 11, 0,
                                   tzinfo=datetime.timezone(datetime.timedelta(hours=7)))
         xml_text = page_build.sitemap_xml(fixed)
@@ -18,6 +18,9 @@ class Task003Contract(unittest.TestCase):
         locations = {entry.findtext("sm:loc", namespaces=namespace) for entry in entries}
         expected = {
             "https://teemobkk.io/",
+            "https://teemobkk.io/about/",
+            "https://teemobkk.io/tradingtalk/",
+            "https://teemobkk.io/lab/",
             "https://teemobkk.io/thai/",
             "https://teemobkk.io/privacy/",
             "https://teemobkk.io/privacy/en/",

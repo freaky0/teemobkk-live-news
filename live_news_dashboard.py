@@ -57,6 +57,12 @@ STATIC_FILES = {
     "/privacy/": ("privacy.html", "text/html; charset=utf-8"),
     "/privacy/en": ("privacy_en.html", "text/html; charset=utf-8"),
     "/privacy/en/": ("privacy_en.html", "text/html; charset=utf-8"),
+    "/about": ("about/index.html", "text/html; charset=utf-8"),
+    "/about/": ("about/index.html", "text/html; charset=utf-8"),
+    "/tradingtalk": ("tradingtalk/index.html", "text/html; charset=utf-8"),
+    "/tradingtalk/": ("tradingtalk/index.html", "text/html; charset=utf-8"),
+    "/lab": ("lab/index.html", "text/html; charset=utf-8"),
+    "/lab/": ("lab/index.html", "text/html; charset=utf-8"),
 }
 
 USER_AGENT = "TeemoLiveNewsDashboard/1.0 (+local research dashboard)"
