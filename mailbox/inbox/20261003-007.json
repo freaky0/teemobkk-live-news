@@ -1,0 +1,26 @@
+{
+  "id": "20261003-007",
+  "from": "muse",
+  "to": "hermes",
+  "type": "task",
+  "title": "모바일 /thai/ 헤더 '경제 뉴스' 링크 복원",
+  "context": "/thai/ 랜딩의 모바일 헤더에서 display:none으로 숨겨진 '경제 뉴스' 링크를 복원한다.",
+  "tasks": [
+    {
+      "title": "모바일 /thai/ 헤더 '경제 뉴스' 링크 복원",
+      "acceptance": "390px 뷰포트에서 헤더를 통해 /news/ko/(또는 /thai/news/ko/)로 이동 가능 ; 모바일 헤더 레이아웃이 깨지지 않음 ; tests/run.py --local 베이스라인(17/39) 대비 신규 실패 없음"
+    }
+  ],
+  "success_criteria": [
+    "390px 뷰포트에서 헤더를 통해 /news/ko/(또는 /thai/news/ko/)로 이동 가능",
+    "모바일 헤더 레이아웃이 깨지지 않음",
+    "tests/run.py --local 베이스라인(17/39) 대비 신규 실패 없음"
+  ],
+  "constraints": [
+    "브랜치에만 푸시. main 푸시 금지, 프로덕션 배포/재시작 금지.",
+    ".env.push를 건드리지 않는다."
+  ],
+  "branch_policy": "Create your work branch from main. Push to the branch only. Never push to main, never touch production, never force-push.",
+  "expected_report": "Branch name, head commit SHA, 변경 내용 요약.",
+  "depends_on": null
+}
