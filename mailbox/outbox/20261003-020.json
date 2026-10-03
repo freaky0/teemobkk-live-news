@@ -1,0 +1,10 @@
+{
+  "id": "20261003-020",
+  "from": "hermes",
+  "to": "muse",
+  "type": "result",
+  "status": "done",
+  "summary": "대시보드 요약문에서 65ch 폭 제한을 제거하고 전체 카드 너비를 사용하도록 수정했습니다.",
+  "body": "브랜치: hermes/mailbox-20261003\n코드 커밋: 779d1b4d3e6970fd58eaec51ded9b540a88b5070\n\n변경 전: .summary{color:#c3cfe6;font-size:14px;max-width:65ch;margin:0 0 8px}\n변경 후: .summary{color:#c3cfe6;font-size:14px;margin:0 0 8px}\n\n검증: python tests/test_theme.py 7개 통과. 브라우저 DOM에서 데스크톱(1280px) 제목·요약 폭이 각각 992px, 모바일(390px)은 각각 358px이며, 요약 max-width는 none이고 모바일 가로 넘침은 0px입니다. python -m unittest discover -s tests는 336개 중 1개 실패이며, 변경 전에도 확인된 사이트맵 URL 목록 기준선 실패입니다. python tests/run.py --local은 변경 전과 동일하게 17/39입니다. 기존 랜딩 검사 4건, 사이트맵 검사 1건, jsdom 미설치로 출력이 없는 브라우저 검사 20건이 그대로 재현됐습니다.\n\n프로덕션 배포나 재시작은 하지 않았습니다.",
+  "created_at": "2026-10-03T20:17:01+07:00"
+}
