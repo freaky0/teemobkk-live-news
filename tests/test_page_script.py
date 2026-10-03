@@ -119,6 +119,35 @@ class PageScript(unittest.TestCase):
             "Original CPI",
         ])
 
+    def test_counts_match_rendered_feed_and_calendar_rows(self):
+        script = page_build.SCRIPT
+        self.assertIn("fmt('<b>{n}</b>건 표시 중',view.length)", script)
+        self.assertNotIn("fmt('<b>{n}</b>건 표시 중',all.length)", script)
+        self.assertIn("const renderedRows=document.querySelectorAll('#cal-body .cal-row')", script)
+        self.assertIn("const total=renderedRows.length", script)
+
+    def test_original_fallback_is_labeled_only_on_korean_pages(self):
+        script = page_build.SCRIPT
+        start = script.index("function hasOriginalFallback(")
+        end = script.index("function card(", start)
+        helper = script[start:end].strip()
+        cases = [
+            {"title": "US rates hold", "title_ko": "", "summary": "Rates are unchanged.", "summary_ko": ""},
+            {"title": "Fed update", "title_ko": "연준 소식", "summary": "A vote is expected.", "summary_ko": ""},
+            {"title": "Fed update", "title_ko": "연준 소식", "summary": "A vote is expected.", "summary_ko": "금리 결정이 예상된다."},
+        ]
+        node_script = "\n".join([
+            "const CFG={lang:'ko'};",
+            helper,
+            "const cases=" + json.dumps(cases, ensure_ascii=False) + ";",
+            "const korean=cases.map(hasOriginalFallback);",
+            "CFG.lang='en';",
+            "const english=hasOriginalFallback(cases[0]);",
+            "process.stdout.write(JSON.stringify([korean,english]));",
+        ])
+        result = subprocess.run(["node", "-e", node_script], check=True, capture_output=True, text=True)
+        self.assertEqual(json.loads(result.stdout), [[True, True, False], False])
+
     def test_the_script_is_not_truncated_by_its_own_string(self):
         """The script closing tag must not appear inside the Python string it lives in.
 

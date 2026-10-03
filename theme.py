@@ -275,6 +275,8 @@ select{cursor:pointer}
 .card.th{border-left-color:var(--thai)}
 .card.new{border-left-color:var(--hot);box-shadow:0 0 0 1px rgba(255,184,107,.22)}
 .meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:12px;margin-bottom:9px}
+.original-badge{display:inline-flex;align-items:center;min-height:18px;padding:1px 5px;border:1px solid var(--warn);
+  border-radius:3px;color:var(--warn);font:700 10px/1.2 var(--sans);white-space:nowrap}
 .chip{border:1px solid var(--line);border-radius:var(--r-pill);padding:5px 11px;white-space:nowrap;
   background:none;font-size:12px;font-family:inherit}
 .chip.src{background:var(--panel);color:var(--text)}
@@ -628,6 +630,37 @@ body.public .timeline-row:hover,body.local .timeline-row:hover{background:transp
   body.public .timeline-row .meta,body.local .timeline-row .meta{font-size:10.5px;gap:4px 7px}
   body.public .timeline-row .title,body.local .timeline-row .title{font-size:18px;line-height:1.48}
   body.public .timeline-row .summary,body.local .timeline-row .summary{font-size:13px;line-height:1.65}
+  body.public .tab,body.local .tab,
+  body.public .toolbar button,body.local .toolbar button,
+  body.public .toolbar input,body.local .toolbar input,
+  body.public .toolbar select,body.local .toolbar select,
+  body.public .pill,body.local .pill,
+  body.public .trend .tbtn,body.local .trend .tbtn,
+  body.public .chip.tap,body.local .chip.tap,
+  body.public .conds .cbtn,body.local .conds .cbtn,
+  body.public .conds button.wide,body.local .conds button.wide,
+  body.public .langbar a,body.public .langbar b,body.local .langbar a,body.local .langbar b,
+  body.public #more,body.public #totop,body.local #more,body.local #totop,
+  body.public #cal-retry,body.local #cal-retry,
+  body.public .expand,body.local .expand,
+  body.public .theme-toggle,body.local .theme-toggle,
+  body.local #logout,body.local .acts button{min-height:44px}
+  body.public .pill,body.local .pill,body.public .trend .tbtn,body.local .trend .tbtn,
+  body.public .conds .cbtn,body.local .conds .cbtn,body.public .conds button.wide,body.local .conds button.wide{
+    padding-block:9px}
+  body.public .expand,body.local .expand,body.public .chip.tap,body.local .chip.tap{
+    display:inline-flex;align-items:center}
+  body.public .bar-in{flex-wrap:nowrap;min-height:52px;gap:4px;padding:4px 8px}
+  body.public .bar-in>div:first-child{display:flex;align-items:center;gap:5px;flex:1 1 auto;min-width:0;width:auto}
+  body.public .brand{font-size:12px;line-height:1.2;letter-spacing:-.01em;white-space:nowrap}
+  body.public .bar-in h1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    font-size:14px;line-height:1.2;letter-spacing:-.02em}
+  body.public .spacer,body.public .stamp{display:none}
+  body.public .langbar{gap:2px;flex:0 0 auto;white-space:nowrap}
+  body.public .langbar a,body.public .langbar b{padding:3px 4px;min-height:44px;font-size:10px;white-space:nowrap}
+  body.public .theme-toggle{min-height:44px;padding:3px 5px;font-size:10px;white-space:nowrap}
+  body.public .pills{-webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 30px),transparent 100%);
+    mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 30px),transparent 100%)}
 }
 .foot .legal-links{margin:14px 0 0;font-size:12px}
 .foot .legal-links a{color:var(--muted);text-decoration:underline;text-underline-offset:3px}
@@ -664,3 +697,12 @@ NEWS_THEME_SCRIPT = """\
 })();
 """
 DASHBOARD_THEME_BOOTSTRAP = "<script>(function(){try{var t=localStorage.getItem('tbn-theme');document.documentElement.dataset.theme=t==='dark'?'dark':'light'}catch(e){document.documentElement.dataset.theme='light'}})();</script>"
+
+THAI_CSS += """
+@media(max-width:767px){
+  .nav nav a,.filters .chip,.retry{min-height:44px}
+  .nav nav a,.filters .chip,.retry{padding-block:8px}
+  .nav nav a{display:inline-flex;align-items:center}
+  .nav nav a.secondary{display:inline-flex}
+}
+"""

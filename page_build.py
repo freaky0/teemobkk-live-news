@@ -258,6 +258,10 @@ function hostOf(u){try{const h=new URL(u).hostname.toLowerCase().replace(/^www[.
 function srcLabel(a){
   if(!a.original_link)return a.source||'';
   return String(a.original_source||'').trim()||hostOf(a.original_link)||a.source||''}
+function hasOriginalFallback(a){
+  return CFG.lang==='ko'&&!!(
+    (String(a.title||'').trim()&&!String(a.title_ko||'').trim())||
+    (String(a.summary||'').trim()&&!String(a.summary_ko||'').trim()))}
 function card(a,th,lead,first,last){
   const view=Object.assign({},a);
   const originalTitle=a.original_title||a.title||'';
@@ -274,7 +278,7 @@ function card(a,th,lead,first,last){
   const tag=V.tag||{};
   const srcOn=tag.k==='src'&&tag.v===a.source;
   const srcCls='chip src tap'+(a.source_type==='official'?' official':'')+(th?' th':'')+(srcOn?' on':'');
-  const meta=languageChip(a)+verifChip(a)+
+  const meta=languageChip(a)+(hasOriginalFallback(a)?'<span class="original-badge">'+esc(CFG.originalBadge)+'</span>':'')+verifChip(a)+
       '<button type="button" class="'+srcCls+'" data-k="src" data-v="'+esc(a.source)+'" aria-pressed="'+(srcOn?'true':'false')+'">'+esc(srcLabel(a))+'</button>'+
       catList(a).map(v=>{const on=tag.k==='cat'&&tag.v===v;
         return '<button type="button" class="chip tap'+(on?' on':'')+'" data-k="cat" data-v="'+esc(v)+'" aria-pressed="'+(on?'true':'false')+'">'+esc(catLabel(v))+'</button>'}).join('');
@@ -480,6 +484,8 @@ function renderFeed(){
   renderBriefing();loadTrends();renderTrends();loadCondCounts();renderConditions();
   const all=visible(),view=all.slice(0,V.limit),th=V.tab==='thai';
   const feed=document.querySelector('#feed');
+  const live=document.querySelector('#live');
+  if(live)live.textContent=fmt('<b>{n}</b>건 표시 중',view.length);
   if(!view.length){
     feed.innerHTML=condList().length
       ?'<div class="empty"><b>선택한 조건을 모두 만족하는 뉴스가 없습니다</b>위 조건 줄에서 가장 좁은 조건을 풀거나 기간을 넓혀 보세요.</div>'
@@ -507,8 +513,7 @@ function renderFeed(){
   const pend=PENDING[region()]||0,np=document.querySelector('#newpill');
   if(pend>0){np.textContent=fmt('새 글 {n}건 보기',pend);np.dataset.show='1'}
   else{np.dataset.show='0';np.textContent=''}
-  const live=document.querySelector('#live');
-  if(live)live.textContent=fmt('<b>{n}</b>건 표시 중',all.length)}
+}
 function skeleton(){
   const feed=document.querySelector('#feed');
   // The page ships the latest headlines in its own HTML (see seed_feed) so a language
@@ -977,15 +982,9 @@ function calTone(e){const a=calNum(e.actual),c=calNum(e.consensus);if(a===null||
 function paintCalendar(data){
   const days=(data&&data.days)||[];
   if(!days.length){document.querySelector('#cal-stamp').textContent='';
-    document.querySelector('#cal-body').innerHTML='<div class="note">표시할 일정이 없습니다.</div>';return}
-  let total=0,top=0;
-  days.forEach(d=>{total+=d.events.length;d.events.forEach(e=>{if(e.importance>=4)top++})});
+    document.querySelector('#cal-body').innerHTML='<div class="note">표시할 일정이 없습니다.</div>';
+    document.querySelector('#cal-sum').textContent=fmt(CFG.calendarLabels.window,0)+' · '+fmt(CFG.calendarLabels.major,0);return}
   document.querySelector('#cal-stamp').textContent=(data.updated_at_kst||'')+' KST';
-  document.querySelector('#cal-sum').textContent=fmt(total===1?CFG.calendarLabels.windowOne:CFG.calendarLabels.window,total)
-    +' · '+fmt(top===1?CFG.calendarLabels.majorOne:CFG.calendarLabels.major,top)
-    +' · '+'출처 나스닥 캘린더 · 연준 · 백악관 · Factba.se'
-    +' · '+'시각 기준 KST(UTC+9) · 방콕은 여기서 2시간 뒤'
-    +' · '+fmt('연준 인사 기준일 {n}',data.fed_roster_as_of||'?');
   document.querySelector('#cal-body').innerHTML=days.map(d=>{
     const rows=d.events.length?d.events.map(e=>{
       const parts=[];
@@ -1008,7 +1007,15 @@ function paintCalendar(data){
         '<span class="cal-t">'+at+'</span>'+
         '<span class="cal-n">'+name+'</span><span class="cal-v">'+val+'</span></div>'}).join('')
       :'<div class="note">주요 지표 없음</div>';
-    return '<div class="cal-day"><h3>'+calEsc(d.label)+' <span>'+calEsc(String(d.date).slice(5))+' ('+calEsc(d.weekday)+')</span></h3>'+rows+'</div>'}).join('')}
+    return '<div class="cal-day"><h3>'+calEsc(d.label)+' <span>'+calEsc(String(d.date).slice(5))+' ('+calEsc(d.weekday)+')</span></h3>'+rows+'</div>'}).join('');
+  const renderedRows=document.querySelectorAll('#cal-body .cal-row');
+  const total=renderedRows.length,top=Array.from(renderedRows).filter(row=>
+    Array.from(row.classList).some(name=>name.length>1&&name[0]==='i'&&Number(name.slice(1))>=4)).length;
+  document.querySelector('#cal-sum').textContent=fmt(total===1?CFG.calendarLabels.windowOne:CFG.calendarLabels.window,total)
+    +' · '+fmt(top===1?CFG.calendarLabels.majorOne:CFG.calendarLabels.major,top)
+    +' · '+'출처 나스닥 캘린더 · 연준 · 백악관 · Factba.se'
+    +' · '+'시각 기준 KST(UTC+9) · 방콕은 여기서 2시간 뒤'
+    +' · '+fmt('연준 인사 기준일 {n}',data.fed_roster_as_of||'?')}
 function loadCalendar(){
   fetch(CAL_URL,{cache:'no-cache'}).then(r=>{
     if(!r.ok)throw Error(r.status);return r.json()
@@ -1372,11 +1379,17 @@ def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str
     original_label = ui_text.UI[lang]["openOriginal"]
     visible_items = items if lang != "en" else [item for item in items if _article_language(item) == "en"]
     for item in visible_items[:limit]:
-        original_title = _clean_title(item.get("title"))
+        original_title = _clean_title(item.get("title")) or ""
         original_summary = str(item.get("summary") or "")
-        title = _clean_title(item.get("title_ko") or item.get("title")) if lang == "ko" else original_title
-        summary = str((item.get("summary_ko") or item.get("summary")) if lang == "ko" else item.get("summary") or "")
+        title_translation = str(item.get("title_ko") or "").strip()
+        summary_translation = str(item.get("summary_ko") or "").strip()
+        title = _clean_title(title_translation or item.get("title")) if lang == "ko" else original_title
+        summary = str((summary_translation or item.get("summary")) if lang == "ko" else item.get("summary") or "")
         translated = lang == "ko" and (title != original_title or summary != original_summary)
+        original_fallback = lang == "ko" and (
+            (bool(original_title) and not title_translation) or
+            (bool(original_summary.strip()) and not summary_translation))
+        original_badge = '<span class="original-badge">원문</span>' if original_fallback else ""
         original_html = ('<details class="original-toggle"><summary>' +
                         html.escape(ui_text.UI[lang]["originalToggle"]) + '</summary><h3 lang="en">'
                          + html.escape(original_title) + '</h3>'
@@ -1393,8 +1406,9 @@ def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str
                           '" lang="' + html.escape(language, quote=True) + '" aria-label="' +
                           html.escape(language_name, quote=True) + '">' +
                           {"en": "EN", "ko": "KO", "th": "TH"}.get(language, "EN") + '</span>')
-        chips = language_badge + "".join('<span class="chip">' + html.escape(labels.get(name, name)) + '</span>'
-                                          for name in _seed_labels(item))
+        chips = language_badge + original_badge + "".join(
+            '<span class="chip">' + html.escape(labels.get(name, name)) + '</span>'
+            for name in _seed_labels(item))
         badge = _pick_badge(item)
         href = str(item.get("original_link") or item.get("link") or "")
         if not href.startswith(("https://", "http://")):
@@ -1549,6 +1563,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
         "api": "",
         "calendar": "/api/calendar",
         "lang": lang,
+        "originalBadge": "원문" if lang == "ko" else "",
         "monthSuffix": "월" if lang == "ko" else "",
         "catLabels": ui_text.cat_labels(lang),
         "briefing": {key: ui_text.UI[lang][key] for key in (
