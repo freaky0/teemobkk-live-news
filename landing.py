@@ -138,6 +138,7 @@ PAGE = r'''<!doctype html>
 @keyframes blink{50%{opacity:0}}
 nav{display:flex;gap:26px;align-items:center;flex:1}
 nav a{font-size:13.5px;font-weight:600;padding-block:12px;color:var(--muted)}
+nav a{min-height:44px;display:inline-flex;align-items:center}
 nav a:hover{color:var(--accent)}
 nav a.secondary{margin-left:auto;font-family:var(--mono);font-size:12.5px}
 .hero{position:relative;padding:72px 0 52px;max-width:900px;overflow:hidden}
@@ -217,8 +218,8 @@ h2{font-size:24px;line-height:1.3;letter-spacing:-.02em;margin:0;font-weight:700
 .wrap{padding-inline:18px}
 .nav{min-height:60px;gap:16px;flex-wrap:wrap;padding-block:10px}
 .brand{font-size:16px}
-nav{gap:18px;flex-basis:100%;order:2}
-nav a{font-size:13px;padding:4px 0}
+nav{gap:4px 12px;flex-basis:100%;order:2;flex-wrap:wrap}
+nav a{font-size:12px;padding:4px 2px;min-height:44px}
 nav a.secondary{margin-left:0}
 .hero{padding:44px 0 36px}
 .intro{font-size:14.5px}
@@ -243,7 +244,7 @@ h2{font-size:21px}
 <body>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
 <div class="ticker" id="ticker" hidden aria-label="실시간 암호화폐 시세"><div class="ticker-inner" id="ticker-inner"></div></div>
-<header class="top"><div class="wrap nav"><a class="brand" href="/" aria-label="TeemoBKK 홈"><span class="prompt">teemo@bkk</span>:~$ ./live-news<span class="cursor" aria-hidden="true"></span></a><nav aria-label="주요 메뉴"><a href="/news/ko/">경제 뉴스</a><a href="#perspectives">시장 관점</a><a href="#indicators">트레이딩뷰 지표</a><a class="secondary" href="/thai/">/thai ↗</a></nav></div></header>
+<header class="top"><div class="wrap nav"><a class="brand" href="/" aria-label="TeemoBKK 홈"><span class="prompt">teemo@bkk</span>:~$ ./live-news<span class="cursor" aria-hidden="true"></span></a><nav aria-label="주요 메뉴"><a href="/news/ko/">경제 뉴스</a><a href="#perspectives">시장 관점</a><a href="#indicators">트레이딩뷰 지표</a><a href="/tradingtalk/">트레이딩 톡</a><a href="/lab/">지표 연구</a><a class="secondary" href="/thai/">/thai ↗</a></nav></div></header>
 <main id="main" class="wrap">
 <section class="hero" aria-labelledby="headline"><p class="eyebrow">뉴스를 읽고, 관점을 세우고, 차트로 살펴봅니다.</p><h1 id="headline">차트보다 먼저 읽는 뉴스</h1><p class="intro">시장이 움직이는 이유를 전합니다.<br>금리와 정책, 지정학과 수급까지.</p><p class="hero-tags"><span>• MACRO</span><span>• CRYPTO</span><span>• MARKET STRUCTURE</span></p></section>
 <section class="section" id="news" aria-labelledby="news-title"><div class="sec-head"><span class="sec-tag">01</span><h2 id="news-title">최근 경제 뉴스</h2></div><p class="section-intro">금리와 경기, 기업과 정책, 지정학까지. 시장에 연결되는 소식을 확인하세요.</p><div class="news-status"><span class="live">● 자동 수집 · 한국어로 표시</span><span id="update-status" role="status">수집 상태 확인 중</span><button class="retry" id="retry" type="button" hidden>다시 불러오기</button></div><div class="news-list" id="news-list" aria-busy="true"><div class="loading-line short"></div><div class="loading-line"></div><div class="loading-line"></div></div><noscript><p>뉴스 목록을 불러오려면 자바스크립트가 필요합니다. <a href="/news/ko/">경제 뉴스 페이지에서 확인하세요.</a></p></noscript><a class="section-link" href="/news/ko/">$ open /news/ko/ →</a></section>

@@ -426,13 +426,14 @@ class Gate(unittest.TestCase):
         namespace = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
         urls = [node.text or "" for node in sitemap.findall("sm:url/sm:loc", namespace)]
         self.assertEqual(urls, ["https://teemobkk.io/", "https://teemobkk.io/about/",
+                                "https://teemobkk.io/tradingtalk/", "https://teemobkk.io/lab/",
                                 "https://teemobkk.io/thai/",
                                 "https://teemobkk.io/privacy/", "https://teemobkk.io/privacy/en/",
                                 "https://teemobkk.io/news/", "https://teemobkk.io/news/ko/"])
         lastmods = [node.text or "" for node in sitemap.findall("sm:url/sm:lastmod", namespace)]
         ict = timezone(timedelta(hours=7))
         today = datetime.now(ict).date()
-        self.assertEqual(len(lastmods), 7)
+        self.assertEqual(len(lastmods), 9)
         self.assertTrue(all(datetime.fromisoformat(value).date() == today for value in lastmods))
 
     def test_privacy_pages_are_public_translated_and_canonical(self):
