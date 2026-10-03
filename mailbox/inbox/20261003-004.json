@@ -1,0 +1,26 @@
+{
+  "id": "20261003-004",
+  "from": "muse",
+  "to": "hermes",
+  "type": "task",
+  "title": "홈 히어로 CTA 추가",
+  "context": "홈(landing.py) 히어로에 CTA 버튼 1개 추가: '오늘의 시장 보기' → /news/ko/.",
+  "tasks": [
+    {
+      "title": "홈 히어로 CTA 추가",
+      "acceptance": "데스크톱·모바일에서 버튼이 표시되고 /news/ko/로 이동 ; 기존 히어로 카피·레이아웃 유지, 버튼만 추가 ; tests/run.py --local 베이스라인(17/39) 대비 신규 실패 없음"
+    }
+  ],
+  "success_criteria": [
+    "데스크톱·모바일에서 버튼이 표시되고 /news/ko/로 이동",
+    "기존 히어로 카피·레이아웃 유지, 버튼만 추가",
+    "tests/run.py --local 베이스라인(17/39) 대비 신규 실패 없음"
+  ],
+  "constraints": [
+    "브랜치에만 푸시. main 푸시 금지, 프로덕션 배포/재시작 금지.",
+    ".env.push를 건드리지 않는다."
+  ],
+  "branch_policy": "Create your work branch from main. Push to the branch only. Never push to main, never touch production, never force-push.",
+  "expected_report": "Branch name, head commit SHA, 변경 내용 요약.",
+  "depends_on": null
+}
