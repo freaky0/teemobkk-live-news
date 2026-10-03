@@ -59,6 +59,21 @@ class TranslateOne(unittest.TestCase):
         self.assertIn("원문 보기", html)
         self.assertIn("Market rises 2%", html)
         self.assertIn("Funds bought BTC.", html)
+        self.assertNotIn('<span class="original-badge">원문</span>', html)
+
+    def test_korean_untranslated_card_shows_original_badge_and_fallback_text(self):
+        html = page_build._seed_cards([{
+            "title": "US Treasury weighs new sanctions",
+            "title_ko": "",
+            "summary": "Officials are reviewing the proposal.",
+            "summary_ko": "",
+            "link": "https://example.test/story",
+            "published_at": "2026-10-02T01:00:00Z",
+            "source": "Example",
+        }], False, "ko")
+        self.assertIn('<span class="original-badge">원문</span>', html)
+        self.assertIn(">US Treasury weighs new sanctions</a>", html)
+        self.assertIn("Officials are reviewing the proposal.", html)
 
     def test_korean_publisher_stamp_changes_when_translations_are_backfilled(self):
         original = [{"link": "https://example.test/story", "title_ko": None, "summary_ko": None}]

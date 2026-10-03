@@ -258,6 +258,10 @@ function hostOf(u){try{const h=new URL(u).hostname.toLowerCase().replace(/^www[.
 function srcLabel(a){
   if(!a.original_link)return a.source||'';
   return String(a.original_source||'').trim()||hostOf(a.original_link)||a.source||''}
+function hasOriginalFallback(a){
+  return CFG.lang==='ko'&&!!(
+    (String(a.title||'').trim()&&!String(a.title_ko||'').trim())||
+    (String(a.summary||'').trim()&&!String(a.summary_ko||'').trim()))}
 function card(a,th,lead,first,last){
   const view=Object.assign({},a);
   const originalTitle=a.original_title||a.title||'';
@@ -274,7 +278,7 @@ function card(a,th,lead,first,last){
   const tag=V.tag||{};
   const srcOn=tag.k==='src'&&tag.v===a.source;
   const srcCls='chip src tap'+(a.source_type==='official'?' official':'')+(th?' th':'')+(srcOn?' on':'');
-  const meta=languageChip(a)+verifChip(a)+
+  const meta=languageChip(a)+(hasOriginalFallback(a)?'<span class="original-badge">'+esc(CFG.originalBadge)+'</span>':'')+verifChip(a)+
       '<button type="button" class="'+srcCls+'" data-k="src" data-v="'+esc(a.source)+'" aria-pressed="'+(srcOn?'true':'false')+'">'+esc(srcLabel(a))+'</button>'+
       catList(a).map(v=>{const on=tag.k==='cat'&&tag.v===v;
         return '<button type="button" class="chip tap'+(on?' on':'')+'" data-k="cat" data-v="'+esc(v)+'" aria-pressed="'+(on?'true':'false')+'">'+esc(catLabel(v))+'</button>'}).join('');
@@ -1375,11 +1379,17 @@ def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str
     original_label = ui_text.UI[lang]["openOriginal"]
     visible_items = items if lang != "en" else [item for item in items if _article_language(item) == "en"]
     for item in visible_items[:limit]:
-        original_title = _clean_title(item.get("title"))
+        original_title = _clean_title(item.get("title")) or ""
         original_summary = str(item.get("summary") or "")
-        title = _clean_title(item.get("title_ko") or item.get("title")) if lang == "ko" else original_title
-        summary = str((item.get("summary_ko") or item.get("summary")) if lang == "ko" else item.get("summary") or "")
+        title_translation = str(item.get("title_ko") or "").strip()
+        summary_translation = str(item.get("summary_ko") or "").strip()
+        title = _clean_title(title_translation or item.get("title")) if lang == "ko" else original_title
+        summary = str((summary_translation or item.get("summary")) if lang == "ko" else item.get("summary") or "")
         translated = lang == "ko" and (title != original_title or summary != original_summary)
+        original_fallback = lang == "ko" and (
+            (bool(original_title) and not title_translation) or
+            (bool(original_summary.strip()) and not summary_translation))
+        original_badge = '<span class="original-badge">원문</span>' if original_fallback else ""
         original_html = ('<details class="original-toggle"><summary>' +
                         html.escape(ui_text.UI[lang]["originalToggle"]) + '</summary><h3 lang="en">'
                          + html.escape(original_title) + '</h3>'
@@ -1396,8 +1406,9 @@ def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str
                           '" lang="' + html.escape(language, quote=True) + '" aria-label="' +
                           html.escape(language_name, quote=True) + '">' +
                           {"en": "EN", "ko": "KO", "th": "TH"}.get(language, "EN") + '</span>')
-        chips = language_badge + "".join('<span class="chip">' + html.escape(labels.get(name, name)) + '</span>'
-                                          for name in _seed_labels(item))
+        chips = language_badge + original_badge + "".join(
+            '<span class="chip">' + html.escape(labels.get(name, name)) + '</span>'
+            for name in _seed_labels(item))
         badge = _pick_badge(item)
         href = str(item.get("original_link") or item.get("link") or "")
         if not href.startswith(("https://", "http://")):
@@ -1552,6 +1563,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
         "api": "",
         "calendar": "/api/calendar",
         "lang": lang,
+        "originalBadge": "원문" if lang == "ko" else "",
         "monthSuffix": "월" if lang == "ko" else "",
         "catLabels": ui_text.cat_labels(lang),
         "briefing": {key: ui_text.UI[lang][key] for key in (

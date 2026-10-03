@@ -55,7 +55,7 @@ __THEME_BOOTSTRAP__
 <a href="/thai/news/ko/">태국 뉴스</a>
 <a href="#topics">분류</a>
 <a href="#living">생활 정보</a>
-<a class="secondary" href="/">경제 뉴스 ↗</a>
+<a class="secondary" href="/news/ko/">경제 뉴스 ↗</a>
 </nav></div></header>
 
 <main id="main">

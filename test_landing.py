@@ -24,6 +24,11 @@ class LandingContract(unittest.TestCase):
         self.assertIn('id="headline">차트보다 먼저 읽는 뉴스</h1>', page)
         self.assertIn('시장이 움직이는 이유를 전합니다.', page)
 
+    def test_thai_mobile_economy_link_targets_korean_market_news(self):
+        page = landing_thai.render_thai_landing()
+        self.assertIn('<a class="secondary" href="/news/ko/">경제 뉴스 ↗</a>', page)
+        self.assertIn('.nav nav a.secondary{display:inline-flex}', page)
+
     def test_market_first_and_platform_neutral(self):
         parser=Text(); parser.feed(landing.render_landing()); text=' '.join(parser.parts)
         self.assertIn('트레이딩을 위한', text)

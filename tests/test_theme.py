@@ -173,6 +173,13 @@ class SharedThemeContract(unittest.TestCase):
         homepage = landing.render_landing()
         self.assertIn(".retry{min-height:44px", homepage)
 
+    def test_public_mobile_header_is_single_row_and_filter_hint_fades(self):
+        mobile_rules = theme.DASHBOARD_CSS.rsplit("@media(max-width:767px){", 1)[1]
+        self.assertIn("body.public .bar-in{flex-wrap:nowrap", mobile_rules)
+        self.assertIn("body.public .bar-in>div:first-child{display:flex", mobile_rules)
+        self.assertIn("body.public .pills{-webkit-mask-image:linear-gradient", mobile_rules)
+        self.assertIn("mask-image:linear-gradient", mobile_rules)
+
 
 if __name__ == "__main__":
     unittest.main()
