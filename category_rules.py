@@ -84,6 +84,16 @@ THAI_RULES: list[tuple[str, list[str]]] = [
     ("태국 보건", ["hospital", "health", "dengue", "influenza", "vaccine", "disease", "clinic", "insurance", "medical", "보건", "병원", "의료", "질병", "독감", "백신", "보험", "โรงพยาบาล", "สุขภาพ", "ไข้เลือดออก", "วัคซีน", "ประกัน"]),
 ]
 
+# A generic visa or immigration story belongs in the Thai section only when the text also names
+# Thailand or a Thai place. Latin terms use the shared whole-word rule; Korean and Thai stay substrings.
+THAI_CONTEXT_REQUIRED: dict[str, tuple[str, ...]] = {
+    "비자·이민": (
+        "thailand", "thai", "bangkok", "phuket", "chiang mai", "pattaya", "samui",
+        "태국", "방콕", "푸껫", "푸켓", "치앙마이", "파타야", "사무이", "코사무이",
+        "ประเทศไทย", "ไทย", "กรุงเทพ", "ภูเก็ต", "เชียงใหม่", "พัทยา", "สมุย",
+    ),
+}
+
 GENERIC_CATEGORY = "일반"
 
 
@@ -143,7 +153,15 @@ def text_matches(text: str, needle: str) -> bool:
 
 def match_all(text: str, rules: list[tuple[str, list[str]]]) -> list[str]:
     """Every matching category, in the table's priority order. Empty when nothing matches."""
-    return [name for name, terms in rules if any(term_hits(text, term) for term in terms)]
+    matched = []
+    for name, terms in rules:
+        if not any(term_hits(text, term) for term in terms):
+            continue
+        context_terms = THAI_CONTEXT_REQUIRED.get(name, ())
+        if context_terms and not any(text_matches(text, term) for term in context_terms):
+            continue
+        matched.append(name)
+    return matched
 
 
 def rules_for(region: str, thai_region: str) -> list[tuple[str, list[str]]]:

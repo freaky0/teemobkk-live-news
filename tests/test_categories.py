@@ -284,6 +284,23 @@ class MultiLabel(unittest.TestCase):
         self.assertEqual(article["categories"], [taxonomy.GENERIC_CATEGORY])
         self.assertEqual(article["category"], taxonomy.GENERIC_CATEGORY)
 
+    def test_visa_category_requires_thai_context(self):
+        visa_category = next(name for name, terms in taxonomy.THAI_RULES if "visa" in terms)
+        unrelated = core.make_article(
+            "US immigration bill expands visa screening", "https://e.test/us-visa",
+            "Federal officials announced new rules.", self.fresh(), "Src", "media",
+            region=core.THAI_REGION)
+        thailand = core.make_article(
+            "Thailand adds visa options for long-stay visitors", "https://e.test/thai-visa",
+            "", self.fresh(), "Src", "media", region=core.THAI_REGION)
+        thai_language = core.make_article(
+            "ประเทศไทยออกมาตรการวีซ่าใหม่", "https://e.test/thai-language-visa",
+            "", self.fresh(), "Src", "media", region=core.THAI_REGION)
+
+        self.assertNotIn(visa_category, unrelated["categories"])
+        self.assertIn(visa_category, thailand["categories"])
+        self.assertIn(visa_category, thai_language["categories"])
+
     def test_thai_rows_keep_their_own_table(self):
         article = core.make_article("pm2.5 dust warning in Bangkok", "https://e.test/6", "",
                                     self.fresh(), "Src", "media", region=core.THAI_REGION)
