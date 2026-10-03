@@ -242,7 +242,7 @@ class Rendering(unittest.TestCase):
 
     def test_the_landing_strip_names_the_publisher(self):
         self.assertIn("function srcLabel(a)", landing.PAGE)
-        self.assertIn("source.textContent=srcLabel(a)||'원문'", landing.PAGE)
+        self.assertIn("src.textContent=srcLabel(a)||''", landing.PAGE)
 
     def test_the_landing_strip_links_to_the_publisher(self):
         self.assertIn("safeLink(a.original_link||a.link)", landing.PAGE)

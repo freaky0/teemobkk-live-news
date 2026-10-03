@@ -138,6 +138,7 @@ PAGE = r'''<!doctype html>
 @keyframes blink{50%{opacity:0}}
 nav{display:flex;gap:26px;align-items:center;flex:1}
 nav a{font-size:13.5px;font-weight:600;padding-block:12px;color:var(--muted)}
+nav a{min-height:44px;display:inline-flex;align-items:center}
 nav a:hover{color:var(--accent)}
 nav a.secondary{margin-left:auto;font-family:var(--mono);font-size:12.5px}
 .hero{position:relative;padding:72px 0 52px;max-width:900px;overflow:hidden}
@@ -217,8 +218,8 @@ h2{font-size:24px;line-height:1.3;letter-spacing:-.02em;margin:0;font-weight:700
 .wrap{padding-inline:18px}
 .nav{min-height:60px;gap:16px;flex-wrap:wrap;padding-block:10px}
 .brand{font-size:16px}
-nav{gap:18px;flex-basis:100%;order:2}
-nav a{font-size:13px;padding:4px 0}
+nav{gap:4px 12px;flex-basis:100%;order:2;flex-wrap:wrap}
+nav a{font-size:12px;padding:4px 2px;min-height:44px}
 nav a.secondary{margin-left:0}
 .hero{padding:44px 0 36px}
 .intro{font-size:14.5px}
@@ -243,7 +244,7 @@ h2{font-size:21px}
 <body>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
 <div class="ticker" id="ticker" hidden aria-label="실시간 암호화폐 시세"><div class="ticker-inner" id="ticker-inner"></div></div>
-<header class="top"><div class="wrap nav"><a class="brand" href="/" aria-label="TeemoBKK 홈"><span class="prompt">teemo@bkk</span>:~$ ./live-news<span class="cursor" aria-hidden="true"></span></a><nav aria-label="주요 메뉴"><a href="/news/ko/">경제 뉴스</a><a href="#perspectives">시장 관점</a><a href="#indicators">트레이딩뷰 지표</a><a class="secondary" href="/thai/">/thai ↗</a></nav></div></header>
+<header class="top"><div class="wrap nav"><a class="brand" href="/" aria-label="TeemoBKK 홈"><span class="prompt">teemo@bkk</span>:~$ ./live-news<span class="cursor" aria-hidden="true"></span></a><nav aria-label="주요 메뉴"><a href="/news/ko/">경제 뉴스</a><a href="#perspectives">시장 관점</a><a href="#indicators">트레이딩뷰 지표</a><a href="/tradingtalk/">트레이딩 톡</a><a href="/lab/">지표 연구</a><a class="secondary" href="/thai/">/thai ↗</a></nav></div></header>
 <main id="main" class="wrap">
 <section class="hero" aria-labelledby="headline"><p class="eyebrow">뉴스를 읽고, 관점을 세우고, 차트로 살펴봅니다.</p><h1 id="headline">차트보다 먼저 읽는 뉴스</h1><p class="intro">시장이 움직이는 이유를 전합니다.<br>금리와 정책, 지정학과 수급까지.</p><p class="hero-tags"><span>• MACRO</span><span>• CRYPTO</span><span>• MARKET STRUCTURE</span></p></section>
 <section class="section" id="news" aria-labelledby="news-title"><div class="sec-head"><span class="sec-tag">01</span><h2 id="news-title">최근 경제 뉴스</h2></div><p class="section-intro">금리와 경기, 기업과 정책, 지정학까지. 시장에 연결되는 소식을 확인하세요.</p><div class="news-status"><span class="live">● 자동 수집 · 한국어로 표시</span><span id="update-status" role="status">수집 상태 확인 중</span><button class="retry" id="retry" type="button" hidden>다시 불러오기</button></div><div class="news-list" id="news-list" aria-busy="true"><div class="loading-line short"></div><div class="loading-line"></div><div class="loading-line"></div></div><noscript><p>뉴스 목록을 불러오려면 자바스크립트가 필요합니다. <a href="/news/ko/">경제 뉴스 페이지에서 확인하세요.</a></p></noscript><a class="section-link" href="/news/ko/">$ open /news/ko/ →</a></section>
@@ -252,7 +253,7 @@ h2{font-size:21px}
 <article class="indicator"><a class="chart-open" href="https://kr.tradingview.com/script/fpkVFwl2/" target="_blank" rel="noopener noreferrer"><img src="https://s3.tradingview.com/f/fpkVFwl2_big.png" width="1404" height="1281" loading="lazy" decoding="async" alt="Teemo Supply and Demand Zone 지표 적용 예시"><span class="chart-caption">적용 예시 · 눌러서 지표 페이지로</span></a><span class="icode">SCRIPT · fpkVFwl2</span><h3>Teemo Supply and Demand Zone</h3><p>수요/공급 구간 자동 식별, S/D Flip 추적, 거래량(HVP) 검증. 핵심 가격대에서 반응을 살펴보는 도구입니다.</p><span class="free">무료 공개</span><br><a class="button" href="https://kr.tradingview.com/script/fpkVFwl2/" target="_blank" rel="noopener noreferrer">트레이딩뷰에서 보기 ↗</a></article>
 <article class="indicator"><a class="chart-open" href="https://kr.tradingview.com/script/e3AY6AxC/" target="_blank" rel="noopener noreferrer"><img src="https://s3.tradingview.com/e/e3AY6AxC_big.png" width="1404" height="1281" loading="lazy" decoding="async" alt="Teemo Elliott Wave 지표 적용 예시"><span class="chart-caption">적용 예시 · 눌러서 지표 페이지로</span></a><span class="icode">SCRIPT · e3AY6AxC</span><h3>Teemo Elliott Wave</h3><p>엘리어트 파동 자동 카운팅, 실시간 추적. 파동 구조와 다음 시나리오를 살펴보는 보조 도구로 활용하세요.</p><span class="free">무료 공개</span><br><a class="button" href="https://kr.tradingview.com/script/e3AY6AxC/" target="_blank" rel="noopener noreferrer">트레이딩뷰에서 보기 ↗</a></article>
 </div><a class="section-link" href="https://kr.tradingview.com/u/TeemoBKK/#published-scripts" target="_blank" rel="noopener noreferrer me">$ open profile → 전체 지표 보기 ↗</a><p class="note">파동 카운팅과 목표 구간은 진행 중인 가격에 따라 달라질 수 있습니다. 사용 조건과 설정은 각 지표 페이지에서 확인하세요.</p></section>
-<section class="section about" aria-labelledby="about-title"><div><div class="sec-head"><span class="sec-tag">04</span><h2 id="about-title">TeemoBKK에 대하여</h2></div><p>경제 뉴스를 모으고, 시장을 바라보는 관점을 쓰며, 차트에서 사용하는 지표를 만듭니다.</p><p>뉴스는 시장의 맥락을 살피는 출발점입니다. 해석과 시나리오는 사실과 구분해 기록하겠습니다.</p></div><div><h3>읽기 전에</h3><ul><li>뉴스는 자동 수집한 원문 제목과 출처를 제공합니다.</li><li>시장 관점은 운영자의 개인적인 해석입니다.</li><li>지표는 분석 보조 도구이며 수익을 보장하지 않습니다.</li></ul></div></section>
+<section class="section about" aria-labelledby="about-title"><div><div class="sec-head"><span class="sec-tag">04</span><h2 id="about-title">TeemoBKK에 대하여</h2></div><p>경제 뉴스를 모으고, 시장을 바라보는 관점을 쓰며, 차트에서 사용하는 지표를 만듭니다.</p><p>뉴스는 시장의 맥락을 살피는 출발점입니다. 해석과 시나리오는 사실과 구분해 기록하겠습니다.</p><a class="section-link" href="/about/">$ open /about/ → 자세히 보기</a></div><div><h3>읽기 전에</h3><ul><li>뉴스는 자동 수집한 원문 제목과 출처를 제공합니다.</li><li>시장 관점은 운영자의 개인적인 해석입니다.</li><li>지표는 분석 보조 도구이며 수익을 보장하지 않습니다.</li></ul></div></section>
 </main>
 <footer class="footer"><div class="wrap"><div class="footer-row"><span class="fbrand">teemo@bkk:~$ ./live-news --v2026</span><a href="/thai/">별도 소식 · 태국 교민 뉴스 ↗</a></div><p>뉴스는 자동 매매 신호가 아닙니다 · 중요한 사건은 원문과 공시로 확인하세요. 제공되는 글과 지표만으로 투자 결정을 내리지 마세요.</p><nav class="footer-links" aria-label="사이트 정보"><a href="/privacy/">개인정보 처리방침</a><a href="https://kr.tradingview.com/u/TeemoBKK/" target="_blank" rel="noopener noreferrer me">트레이딩뷰 TeemoBKK 공식 프로필 ↗</a><a href="https://t.me/+OegpDrwxnaBiOGNl" target="_blank" rel="noopener noreferrer">트레이딩뷰 TeemoBKK 텔레그램 대화방 초대 링크 ↗</a></nav><p class="note">텔레그램 링크는 외부 대화방으로 이동합니다.</p></div></footer>
 <script>
@@ -305,7 +306,7 @@ const list=document.getElementById('news-list'), status=document.getElementById(
 let busy=false, hasNews=false;
 const fmt=new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Bangkok',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
 function displayStamp(value){const p=fmt.formatToParts(new Date(value)),get=k=>(p.find(x=>x.type===k)||{}).value||'';
-return get('month')+'/'+get('day')+' '+get('hour')+':'+get('minute')}
+return get('month')+'월 '+get('day')+'일 '+get('hour')+':'+get('minute')+' ICT'}
 function cleanTitle(value){return String(value||'').replace(/(?:https?:\/\/|www\.)\S+|\b[a-z0-9.-]+\.(?:com|org|net|rs|co\.th|go\.th)\/\S+|\breut\.rs\S*/gi,'').replace(/\s+-\s+[^-]+$/,'').replace(/\s+/g,' ').trim();}
 function safeLink(value){try{const u=new URL(value);return ['http:','https:'].includes(u.protocol)?u.href:null;}catch(e){return null;}}
 function relevant(a){if(a.category&&a.category!=='일반')return true;return /금리|금값|금 가격|금 선물|은값|원유|유가|물가|고용|실업|관세|중앙은행|연준|증시|주식|채권|환율|달러|실적|비트코인|암호화폐|가상자산|이더리움|인플레|경기|\b(?:stocks?|equities|bonds?|yields?|gold|silver|oil|crude|inflation|payrolls|tariffs?|fed|fomc|gdp|cpi|pce|earnings|bitcoin|crypto|ethereum|etf|forex|rates?|central bank)\b/i.test(String(a.title||''));}
@@ -320,7 +321,7 @@ const topic=document.createElement('span');topic.className='ntopic';topic.textCo
 const title=document.createElement('span');title.className='ntitle';title.innerHTML=esc(cleanTitle(a.title))+' <span class="ext">↗</span>';
 const src=document.createElement('span');src.className='ntime';src.textContent=srcLabel(a)||'';
 link.append(time,topic,title);if(src.textContent)link.append(src);row.append(link);list.append(row);}hasNews=true;}
-async function refresh(){if(busy)return;busy=true;retry.disabled=true;list.setAttribute('aria-busy','true');const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),12000);try{const response=await fetch('/api/news?region='+encodeURIComponent('글로벌')+'&hours=24&limit=100&lang=ko',{cache:'no-cache',signal:controller.signal});if(!response.ok)throw new Error('http');const data=await response.json();if(!Array.isArray(data.articles))throw new Error('schema');render(selectNews(data.articles));const updated=Date.parse(data.updated_at);if(Number.isFinite(updated)&&updated<=Date.now()+60000){const age=Date.now()-updated;status.textContent=(age>35*60000?'! 갱신 지연 · ':'✓ ')+displayStamp(updated)+' ICT';retry.hidden=age<=35*60000;}else{status.textContent='? 수집 시각 확인 불가';retry.hidden=false;}}
+async function refresh(){if(busy)return;busy=true;retry.disabled=true;list.setAttribute('aria-busy','true');const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),12000);try{const response=await fetch('/api/news?region='+encodeURIComponent('글로벌')+'&hours=24&limit=100&lang=ko',{cache:'no-cache',signal:controller.signal});if(!response.ok)throw new Error('http');const data=await response.json();if(!Array.isArray(data.articles))throw new Error('schema');render(selectNews(data.articles));const updated=Date.parse(data.updated_at);if(Number.isFinite(updated)&&updated<=Date.now()+60000){const age=Date.now()-updated;status.textContent=(age>35*60000?'! 갱신 지연 · ':'✓ ')+displayStamp(updated);retry.hidden=age<=35*60000;}else{status.textContent='? 수집 시각 확인 불가';retry.hidden=false;}}
 catch(error){status.textContent=hasNews?'! 갱신 실패 · 이전 목록 표시 중':'! 뉴스 로드 실패';retry.hidden=false;if(!hasNews){list.replaceChildren();const p=document.createElement('p');p.className='empty';p.textContent='$ retry — 잠시 후 다시 시도하세요.';list.append(p);}}
 finally{clearTimeout(timeout);busy=false;retry.disabled=false;list.setAttribute('aria-busy','false');}}
 retry.addEventListener('click',refresh);refresh();setInterval(()=>{if(!document.hidden)refresh();},120000);
