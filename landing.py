@@ -4,11 +4,12 @@ Keep external publishing links in EDITORIAL_POSTS, not in navigation labels.
 Script previews are actual publication images, never reconstructed charts.
 """
 from html import escape
-from datetime import date
+
 import json
 import time
 from pathlib import Path
 from urllib.request import Request, urlopen
+import theme
 
 EDITORIAL_POSTS = [
     {"title": "9월 18일 비트코인 주말 관점", "date": "2026-09-18", "url": "https://teemobkk.substack.com/p/9-18", "summary": "78K는 되찾았습니다. 다만 주말에는 77K대 지지와 현물 수요를 먼저 확인합니다."},
@@ -103,6 +104,7 @@ PAGE = r'''<!doctype html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
+__THEME_HEAD__
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TeemoBKK | 차트보다 먼저 읽는 뉴스</title>
 <meta name="description" content="시장이 움직이는 이유를 전합니다. 금리와 정책, 지정학과 수급까지. 트레이더의 경제 뉴스와 시장 관점, 무료 트레이딩뷰 지표.">
@@ -119,7 +121,7 @@ PAGE = r'''<!doctype html>
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <style>
-:root{color-scheme:light;--bg:#faf8f3;--surface:#ffffff;--surface2:#f3f0e8;--text:#1a1c1a;--muted:#5f665f;--dim:#9aa099;--line:#e5e0d3;--accent:#0a7a4a;--accent-dim:rgba(10,122,74,.10);--down:#d33f3f;--radius:6px;--sans:system-ui,-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"D2Coding","JetBrains Mono","Courier New",monospace}
+__SHARED_THEME_CSS__
 *{box-sizing:border-box}html{scroll-padding-top:92px}body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.65;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}button{font:inherit}a,button{-webkit-tap-highlight-color:transparent}a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:4px}a:hover{color:var(--accent)}button{cursor:pointer}[hidden]{display:none!important}
 .wrap{max-width:1120px;margin:auto;padding-inline:28px}
 .skip{position:absolute;left:16px;top:-100px;background:var(--accent);color:#ffffff;padding:12px;z-index:50;font-weight:700}.skip:focus{top:12px}
@@ -130,17 +132,7 @@ PAGE = r'''<!doctype html>
 .tick b{color:var(--text);font-weight:700}
 .tick .up{color:var(--accent)}.tick .dn{color:var(--down)}
 @keyframes tick{to{transform:translateX(-50%)}}
-.top{border-bottom:1px solid var(--line);background:rgba(250,248,243,.94);backdrop-filter:blur(8px);position:sticky;top:0;z-index:20}
-.nav{min-height:66px;display:flex;align-items:center;gap:34px}
-.brand{font-family:var(--mono);font-weight:700;font-size:18px;letter-spacing:-.02em;white-space:nowrap}
-.brand .prompt{color:var(--accent)}
-.brand .cursor{display:inline-block;width:9px;height:17px;background:var(--accent);vertical-align:-3px;margin-left:5px;animation:blink 1.1s steps(1) infinite}
-@keyframes blink{50%{opacity:0}}
-nav{display:flex;gap:26px;align-items:center;flex:1}
-nav a{font-size:13.5px;font-weight:600;padding-block:12px;color:var(--muted)}
-nav a{min-height:44px;display:inline-flex;align-items:center}
-nav a:hover{color:var(--accent)}
-nav a.secondary{margin-left:auto;font-family:var(--mono);font-size:12.5px}
+
 .hero{position:relative;padding:72px 0 52px;max-width:900px;overflow:hidden}
 .hero::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(10,122,74,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(10,122,74,.06) 1px,transparent 1px);background-size:44px 44px;-webkit-mask-image:radial-gradient(ellipse 90% 90% at 30% 20%,#000 30%,transparent 75%);mask-image:radial-gradient(ellipse 90% 90% at 30% 20%,#000 30%,transparent 75%)}
 .hero::after{content:"";position:absolute;top:0;right:0;width:420px;height:340px;pointer-events:none;opacity:.35;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 340'%3E%3Cg%3E%3Crect x='40' y='180' width='26' height='90' fill='%230a7a4a' opacity='.45'/%3E%3Cline x1='53' y1='150' x2='53' y2='290' stroke='%230a7a4a' stroke-width='3' opacity='.45'/%3E%3Crect x='90' y='120' width='26' height='110' fill='%230a7a4a' opacity='.5'/%3E%3Cline x1='103' y1='90' x2='103' y2='250' stroke='%230a7a4a' stroke-width='3' opacity='.5'/%3E%3Crect x='140' y='80' width='26' height='130' fill='%230a7a4a' opacity='.55'/%3E%3Cline x1='153' y1='50' x2='153' y2='230' stroke='%230a7a4a' stroke-width='3' opacity='.55'/%3E%3Crect x='190' y='40' width='26' height='100' fill='%23d33f3f' opacity='.45'/%3E%3Cline x1='203' y1='15' x2='203' y2='160' stroke='%23d33f3f' stroke-width='3' opacity='.45'/%3E%3Crect x='240' y='60' width='26' height='120' fill='%230a7a4a' opacity='.5'/%3E%3Cline x1='253' y1='30' x2='253' y2='200' stroke='%230a7a4a' stroke-width='3' opacity='.5'/%3E%3Crect x='290' y='30' width='26' height='60' fill='%23d33f3f' opacity='.4'/%3E%3Cline x1='303' y1='10' x2='303' y2='110' stroke='%23d33f3f' stroke-width='3' opacity='.4'/%3E%3C/g%3E%3C/svg%3E") no-repeat top right;background-size:contain;-webkit-mask-image:linear-gradient(to left,#000 40%,transparent 95%);mask-image:linear-gradient(to left,#000 40%,transparent 95%)}
@@ -153,11 +145,7 @@ h1 .hl{color:var(--accent)}
 .hero-tags{display:flex;gap:18px;flex-wrap:wrap;margin:0;font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--muted)}
 .hero-tags span{white-space:nowrap}
 .actions{display:flex;flex-wrap:wrap;gap:12px}
-.button{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:10px 22px;border-radius:var(--radius);border:1px solid var(--line);font-size:14px;font-weight:700;white-space:nowrap;background:var(--surface);color:var(--text);transition:border-color .25s,transform .25s}
-.button.primary{background:var(--accent);border-color:var(--accent);color:#ffffff}
-.button:hover{border-color:var(--accent);color:var(--accent)}
-.button.primary:hover{color:#ffffff;transform:translateY(-1px)}
-.button:active{transform:translateY(1px)}
+
 section{scroll-margin-top:24px}
 .section{padding:40px 0 48px;border-top:1px solid var(--line)}
 .sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:6px}
@@ -207,13 +195,7 @@ h2{font-size:24px;line-height:1.3;letter-spacing:-.02em;margin:0;font-weight:700
 .about ul{list-style:none;padding:0;margin:0;color:var(--muted);font-size:13.5px}
 .about li{margin:10px 0;padding-left:18px;position:relative}
 .about li::before{content:"›";position:absolute;left:0;color:var(--accent)}
-.footer{border-top:1px solid var(--line);padding:26px 0 38px;color:var(--dim);font-size:12px;background:var(--surface2)}
-.footer-row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px;align-items:center}
-.footer-row .fbrand{font-family:var(--mono);color:var(--muted)}
-.footer p{margin:16px 0 0;max-width:860px;line-height:1.7}
-.footer-links{display:flex;flex-wrap:wrap;gap:10px 20px;margin-top:16px;font-size:12.5px}
-.footer-links a{color:var(--muted);text-decoration:underline;text-underline-offset:3px}
-.footer-links a:hover{color:var(--accent)}
+
 @media(max-width:767px){
 .wrap{padding-inline:18px}
 .nav{min-height:60px;gap:16px;flex-wrap:wrap;padding-block:10px}
@@ -244,7 +226,7 @@ h2{font-size:21px}
 <body>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
 <div class="ticker" id="ticker" hidden aria-label="실시간 암호화폐 시세"><div class="ticker-inner" id="ticker-inner"></div></div>
-<header class="top"><div class="wrap nav"><a class="brand" href="/" aria-label="TeemoBKK 홈"><span class="prompt">teemo@bkk</span>:~$ ./live-news<span class="cursor" aria-hidden="true"></span></a><nav aria-label="주요 메뉴"><a href="/news/ko/">경제 뉴스</a><a href="#perspectives">시장 관점</a><a href="#indicators">트레이딩뷰 지표</a><a href="/tradingtalk/">트레이딩 톡</a><a href="/lab/">지표 연구</a><a class="secondary" href="/thai/">/thai ↗</a></nav></div></header>
+__HEADER__
 <main id="main" class="wrap">
 <section class="hero" aria-labelledby="headline"><p class="eyebrow">뉴스를 읽고, 관점을 세우고, 차트로 살펴봅니다.</p><h1 id="headline">차트보다 먼저 읽는 뉴스</h1><p class="intro">시장이 움직이는 이유를 전합니다.<br>금리와 정책, 지정학과 수급까지.</p><p class="hero-tags"><span>• MACRO</span><span>• CRYPTO</span><span>• MARKET STRUCTURE</span></p></section>
 <section class="section" id="news" aria-labelledby="news-title"><div class="sec-head"><span class="sec-tag">01</span><h2 id="news-title">최근 경제 뉴스</h2></div><p class="section-intro">금리와 경기, 기업과 정책, 지정학까지. 시장에 연결되는 소식을 확인하세요.</p><div class="news-status"><span class="live">● 자동 수집 · 한국어로 표시</span><span id="update-status" role="status">수집 상태 확인 중</span><button class="retry" id="retry" type="button" hidden>다시 불러오기</button></div><div class="news-list" id="news-list" aria-busy="true"><div class="loading-line short"></div><div class="loading-line"></div><div class="loading-line"></div></div><noscript><p>뉴스 목록을 불러오려면 자바스크립트가 필요합니다. <a href="/news/ko/">경제 뉴스 페이지에서 확인하세요.</a></p></noscript><a class="section-link" href="/news/ko/">$ open /news/ko/ →</a></section>
@@ -255,7 +237,7 @@ h2{font-size:21px}
 </div><a class="section-link" href="https://kr.tradingview.com/u/TeemoBKK/#published-scripts" target="_blank" rel="noopener noreferrer me">$ open profile → 전체 지표 보기 ↗</a><p class="note">파동 카운팅과 목표 구간은 진행 중인 가격에 따라 달라질 수 있습니다. 사용 조건과 설정은 각 지표 페이지에서 확인하세요.</p></section>
 <section class="section about" aria-labelledby="about-title"><div><div class="sec-head"><span class="sec-tag">04</span><h2 id="about-title">TeemoBKK에 대하여</h2></div><p>경제 뉴스를 모으고, 시장을 바라보는 관점을 쓰며, 차트에서 사용하는 지표를 만듭니다.</p><p>뉴스는 시장의 맥락을 살피는 출발점입니다. 해석과 시나리오는 사실과 구분해 기록하겠습니다.</p><a class="section-link" href="/about/">$ open /about/ → 자세히 보기</a></div><div><h3>읽기 전에</h3><ul><li>뉴스는 자동 수집한 원문 제목과 출처를 제공합니다.</li><li>시장 관점은 운영자의 개인적인 해석입니다.</li><li>지표는 분석 보조 도구이며 수익을 보장하지 않습니다.</li></ul></div></section>
 </main>
-<footer class="footer"><div class="wrap"><div class="footer-row"><span class="fbrand">teemo@bkk:~$ ./live-news --v2026</span><a href="/thai/">별도 소식 · 태국 교민 뉴스 ↗</a></div><p>뉴스는 자동 매매 신호가 아닙니다 · 중요한 사건은 원문과 공시로 확인하세요. 제공되는 글과 지표만으로 투자 결정을 내리지 마세요.</p><nav class="footer-links" aria-label="사이트 정보"><a href="/privacy/">개인정보 처리방침</a><a href="https://kr.tradingview.com/u/TeemoBKK/" target="_blank" rel="noopener noreferrer me">트레이딩뷰 TeemoBKK 공식 프로필 ↗</a><a href="https://t.me/+OegpDrwxnaBiOGNl" target="_blank" rel="noopener noreferrer">트레이딩뷰 TeemoBKK 텔레그램 대화방 초대 링크 ↗</a></nav><p class="note">텔레그램 링크는 외부 대화방으로 이동합니다.</p></div></footer>
+__FOOTER__
 <script>
 (function(){
 'use strict';
@@ -339,22 +321,20 @@ def stylesheet() -> str:
     """
     start = PAGE.index("<style>")
     end = PAGE.index("</style>") + len("</style>")
-    return PAGE[start:end]
+    return PAGE[start:end].replace("__SHARED_THEME_CSS__", theme.shared_css())
 
 
-def display_date(value: str) -> str:
-    """Use Korean date words for visible copy, keeping ISO 8601 in datetime."""
-    try:
-        day = date.fromisoformat(value)
-        return f"{day.year}년 {day.month}월 {day.day}일"
-    except (TypeError, ValueError):
-        return value
+display_date = theme.display_date
 
 
 def render_landing() -> str:
     posts = []
     for post in editorial_posts():
         fields = {k: escape(v, quote=True) for k, v in post.items()}
-        fields['visible_date'] = escape(display_date(post['date']))
+        fields['visible_date'] = escape(theme.display_date(post['date']))
         posts.append('<article class="post"><time datetime="{date}">{visible_date}</time><h3><a href="{url}" target="_blank" rel="noopener noreferrer">{title}</a></h3><p>{summary}</p><a class="read" href="{url}" target="_blank" rel="noopener noreferrer">관점 읽기 · 외부 글 ↗</a></article>'.format(**fields))
-    return PAGE.replace('__POSTS__', ''.join(posts))
+    return (PAGE.replace('__POSTS__', ''.join(posts))
+            .replace('__SHARED_THEME_CSS__', theme.shared_css())
+            .replace('__THEME_HEAD__', theme.theme_head_script())
+            .replace('__HEADER__', theme.render_header())
+            .replace('__FOOTER__', theme.render_footer()))

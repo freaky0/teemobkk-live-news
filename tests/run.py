@@ -60,6 +60,7 @@ SUITE = [
 
 PYTHON_CHECKS = [
     ("test_landing.py", ["-m", "unittest", "test_landing"], "랜딩 단위 계약", "local"),
+    ("test_theme.py", ["tests/test_theme.py"], "공유 테마 계약", "local"),
     ("test_audit_ui.py", ["tests/test_audit_ui.py"], "404·날짜·제목 표시 계약", "local"),
     ("test_categories.py", ["tests/test_categories.py"], "분류 다중 라벨 계약", "local"),
     ("test_admin_auth.py", ["tests/test_admin_auth.py"], "관리자 세션 규칙", "local"),
