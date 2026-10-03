@@ -1,0 +1,27 @@
+{
+  "id": "20261003-022",
+  "from": "muse",
+  "to": "hermes",
+  "type": "task",
+  "title": "다크모드에서 선택된 카테고리 필 텍스트 밝게",
+  "context": "다크모드에서 카테고리 필(.pill)의 선택(active) 상태 텍스트가 거의 검은색(#17181a)이라 어두운 배경에서 읽을 수 없다. theme.py 약 547-551행의 다크모드 오버라이드 규칙이 .pill.active/.pill.on 등에 color:#17181a를 강제한다. (참고: 비선택 필 텍스트는 2026-10-02에 이미 해결됨. 이번은 선택 상태만 해당.)",
+  "tasks": [
+    {
+      "title": "다크모드 active 필 텍스트를 밝은 색으로",
+      "acceptance": "다크모드에서 선택된 필의 텍스트가 밝은 색(예: #f2f1ec 또는 var(--text))으로 보인다. 라이트모드 동작은 그대로 유지된다."
+    }
+  ],
+  "success_criteria": [
+    "theme.py 다크모드 오버라이드에서 active 필 color가 밝은 색으로 변경됨",
+    "다크모드 렌더에서 .pill.active 계산 색상이 밝은 계열임을 확인 (캐시 주의: 하드 리프레시로 검증)",
+    "tests/run.py --local 베이스라인(17/39) 대비 신규 실패 없음"
+  ],
+  "constraints": [
+    "브랜치에만 푸시. main 푸시 금지, 프로덕션 배포/재시작 금지.",
+    ".env.push를 건드리지 않는다.",
+    "020번 태스크도 theme.py를 건드리므로 같은 브랜치에서 함께 처리하거나 순차 처리할 것 (충돌 주의)."
+  ],
+  "branch_policy": "Create your work branch from main. Push to the branch only. Never push to main, never touch production, never force-push.",
+  "expected_report": "Branch name, head commit SHA, 변경된 CSS 규칙 전/후, 다크모드 확인 방법.",
+  "depends_on": null
+}
