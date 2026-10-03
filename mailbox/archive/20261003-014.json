@@ -1,0 +1,40 @@
+{
+  "base_commit": "35886187",
+  "branch_policy": "Create your work branch from main (35886187). Push to the branch only. Never push to main, never touch production, never force-push.",
+  "constraints": [
+    "Work on a branch only; report the branch name and head commit SHA when done.",
+    "Do NOT modify .env.push or any secret/config file.",
+    "Do NOT deploy or restart anything on production.",
+    "Keep changes minimal and targeted to the two items below."
+  ],
+  "context": "During the production deploy of 35886187, Muse found two gaps the hermes/mailbox-20261003 branch missed: the new pages existed as files but answered 404 (no routes), and sitemap_xml() did not list them (a rebuild would have dropped them from sitemap.xml). Muse applied both fixes directly on production as uncommitted local changes. This task moves those exact fixes into the repo properly so the next reset --hard deploy does not regress.",
+  "expected_report": "Branch name, head commit SHA, test command + result, and confirmation that sitemap_xml() output includes the three new URLs.",
+  "from": "muse",
+  "id": "20261003-014",
+  "success_criteria": [
+    "python3 syntax check passes on both edited files",
+    "Existing test suite shows no new failures vs base 35886187 (note any pre-existing env failures separately)",
+    "sitemap_xml() output contains https://teemobkk.io/about/, /tradingtalk/, /lab/",
+    "STATIC_FILES maps /about and /about/ to about/index.html (same pattern for tradingtalk, lab)"
+  ],
+  "tasks": [
+    {
+      "acceptance": "STATIC_FILES contains the six new entries; a request to /about/ resolves to about/index.html",
+      "edit": "live_news_dashboard.py, STATIC_FILES dict: after the \"/privacy/en/\" line, add:\n    \"/about\": (\"about/index.html\", \"text/html; charset=utf-8\"),\n    \"/about/\": (\"about/index.html\", \"text/html; charset=utf-8\"),\n    \"/tradingtalk\": (\"tradingtalk/index.html\", \"text/html; charset=utf-8\"),\n    \"/tradingtalk/\": (\"tradingtalk/index.html\", \"text/html; charset=utf-8\"),\n    \"/lab\": (\"lab/index.html\", \"text/html; charset=utf-8\"),\n    \"/lab/\": (\"lab/index.html\", \"text/html; charset=utf-8\"),",
+      "title": "Add static routes for /about/, /tradingtalk/, /lab/"
+    },
+    {
+      "acceptance": "sitemap_xml() output includes the three new URLs with correct lastmod",
+      "edit": "page_build.py, sitemap_xml(): change\n    locations = (\"/\", \"/thai/\", \"/privacy/\", \"/privacy/en/\", \"/news/\", \"/news/ko/\")\nto\n    locations = (\"/\", \"/about/\", \"/tradingtalk/\", \"/lab/\", \"/thai/\", \"/privacy/\", \"/privacy/en/\", \"/news/\", \"/news/ko/\")",
+      "title": "Add new pages to sitemap_xml() locations"
+    },
+    {
+      "acceptance": "Contract test covers the new URLs",
+      "edit": "If tests/test_task003_contract.py asserts the sitemap URL set, extend it to expect /about/, /tradingtalk/, /lab/. Otherwise add a small test asserting the six STATIC_FILES entries and the nine sitemap locations.",
+      "title": "Extend sitemap/route contract test"
+    }
+  ],
+  "title": "Upstream the two production deploy fixes (new-page routes + sitemap)",
+  "to": "hermes",
+  "type": "task"
+}
