@@ -38,6 +38,43 @@ FOOTER_CSS = ('.footer{border-top:1px solid var(--line);padding:26px 0 38px;colo
               '.footer-links a{color:var(--muted);text-decoration:underline;text-underline-offset:3px}\n'
               '.footer-links a:hover{color:var(--accent)}')
 
+SUBPAGE_CSS = """\
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.75 var(--sans)}
+.wrap{max-width:1120px;margin:auto;padding-inline:28px}
+.page-main{max-width:900px;margin:auto;padding:52px 28px 72px}
+.page-head{padding-bottom:30px;border-bottom:1px solid var(--line)}
+.page-eyebrow{margin:0 0 12px;color:var(--accent);font:12px/1.5 var(--mono);letter-spacing:.1em}
+.page-title{margin:0;font-size:clamp(32px,6vw,52px);line-height:1.2;letter-spacing:-.04em}
+.page-intro{max-width:720px;margin:14px 0 0;color:var(--muted);font-size:16px;word-break:keep-all}
+.page-posts{margin-top:24px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden}
+.page-post{padding:22px 24px;border-bottom:1px solid var(--line)}
+.page-post:last-child{border-bottom:0}
+.page-post time{color:var(--dim);font:12px/1.5 var(--mono)}
+.page-post h2{margin:8px 0;font-size:20px;line-height:1.45}
+.page-post p{margin:0;color:var(--muted);font-size:14px;word-break:keep-all}
+.page-post .read{display:inline-block;margin-top:12px;color:var(--accent);font:12px/1.5 var(--mono)}
+.page-indicators{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:24px}
+.page-back{display:inline-block;margin-top:24px;color:var(--accent);font:13px/1.5 var(--mono)}
+@media(max-width:767px){
+  .wrap{padding-inline:18px}.page-main{padding:36px 18px 52px}
+  .page-indicators{grid-template-columns:1fr}.page-post{padding:18px}
+}
+"""
+
+INDICATOR_CSS = """\
+.indicators{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px}
+.indicator{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:26px;transition:border-color .25s,transform .25s}
+.indicator:hover{border-color:rgba(10,122,74,.45);transform:translateY(-3px)}
+.chart-open{display:block;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-bottom:18px;background:#0d1117}
+.chart-open img{display:block;width:100%;height:auto;aspect-ratio:1404/1281;object-fit:cover}
+.chart-caption{display:block;padding:9px 13px;color:var(--muted);font-size:11.5px;border-top:1px solid var(--line);background:var(--surface)}
+.indicator .icode{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.08em}
+.indicator h3{font-size:20px;margin:10px 0 8px;letter-spacing:-.015em;font-weight:700}
+.indicator p{color:var(--muted);font-size:14px;margin:0 0 20px;word-break:keep-all;line-height:1.7}
+.indicator .free{display:inline-block;font-family:var(--mono);font-size:11px;color:var(--accent);border:1px solid rgba(0,229,160,.3);background:var(--accent-dim);border-radius:3px;padding:3px 9px;margin-bottom:16px}
+@media(max-width:767px){.indicators{grid-template-columns:1fr}}
+"""
+
 
 def shared_css() -> str:
     """Return the common tokens and components included in page stylesheets."""
@@ -55,8 +92,8 @@ def theme_head_script() -> str:
 def render_header() -> str:
     return ('<header class="top"><div class="wrap nav"><a class="brand" href="/" aria-label="TeemoBKK 홈">'
             '<span class="prompt">teemo@bkk</span>:~$ ./live-news<span class="cursor" aria-hidden="true"></span>'
-            '</a><nav aria-label="주요 메뉴"><a href="/news/ko/">경제 뉴스</a><a href="#perspectives">시장 관점</a>'
-            '<a href="#indicators">트레이딩뷰 지표</a><a href="/tradingtalk/">트레이딩 톡</a>'
+            '</a><nav aria-label="주요 메뉴"><a href="/news/ko/">경제 뉴스</a><a href="/perspectives/">시장 관점</a>'
+            '<a href="/indicators/">트레이딩뷰 지표</a><a href="/tradingtalk/">트레이딩 톡</a>'
             '<a href="/lab/">지표 연구</a><a class="secondary" href="/thai/">/thai ↗</a></nav></div></header>')
 
 
