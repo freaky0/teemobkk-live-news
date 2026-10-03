@@ -1,0 +1,26 @@
+{
+  "id": "20261003-005",
+  "from": "muse",
+  "to": "hermes",
+  "type": "task",
+  "title": "경제 지표 탭 카운트 단일화 + 도쿄 CPI 라벨 정규화",
+  "context": "경제 지표(캘린더) 탭의 건수 표기('29건·10건' vs '25건 표시 중' 불일치)를 실제 렌더링 건수와 일치시키고, 'CPI Tokyo Ex Food and Energy'/'CPI Tokyo Ex Food & Energy' 같은 중복 라벨을 정규화한다.",
+  "tasks": [
+    {
+      "title": "경제 지표 탭 카운트 단일화 + 도쿄 CPI 라벨 정규화",
+      "acceptance": "'N건 표시 중' = 실제 렌더링된 이벤트 건수 ; 중복 라벨 0건 (대소문자·&/and 변형 정규화) ; tests/run.py --local 베이스라인(17/39) 대비 신규 실패 없음"
+    }
+  ],
+  "success_criteria": [
+    "'N건 표시 중' = 실제 렌더링된 이벤트 건수",
+    "중복 라벨 0건 (대소문자·&/and 변형 정규화)",
+    "tests/run.py --local 베이스라인(17/39) 대비 신규 실패 없음"
+  ],
+  "constraints": [
+    "브랜치에만 푸시. main 푸시 금지, 프로덕션 배포/재시작 금지.",
+    ".env.push를 건드리지 않는다."
+  ],
+  "branch_policy": "Create your work branch from main. Push to the branch only. Never push to main, never touch production, never force-push.",
+  "expected_report": "Branch name, head commit SHA, 변경 내용 요약.",
+  "depends_on": null
+}
