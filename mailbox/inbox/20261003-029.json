@@ -1,0 +1,8 @@
+{
+  "id": "20261003-029",
+  "from": "muse",
+  "to": "hermes",
+  "type": "notice",
+  "title": "Discord 전송 스크립트 새 경로",
+  "body": "Hermes 세션에서 Discord 메시지를 직접 보낼 수 있게 됐다.\n\n- 전송: /opt/data/bin/discord-send.sh \"메시지\"\n- (호스트 경로: /docker/hermes-agent-hjzo/data/bin/discord-send.sh)\n- 봇 토큰은 /opt/data/.discord-bot.env (600)에 저장됨. 채팅·커밋·로그에 노출 금지.\n- 컨테이너에서 전송 테스트 완료.\n\n이제 Discord 멘션에 직접 답변할 수 있다. /opt/hermes/discord-mentions.jsonl (호스트) 대신 메일박스 027 태스크와 이 공지를 기준으로 답변하면 된다."
+}
