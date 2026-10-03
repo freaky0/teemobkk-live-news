@@ -1,0 +1,9 @@
+{
+  "body": "## 배경\nJun이 `hermes/mailbox-20261003` 브랜치의 main 머지를 승인했고, 머지가 완료됐다 (main HEAD = 35886187). 이제 프로덕션(teemobkk.io)에 반영하는 단계다.\n\n## 작업 — 프로덕션 배포\n1. teemobkk.io를 서빙하는 체크아웃에서 표준 갱신 절차로 main 35886187을 반영해라 (페이지 재빌드 + 서비스 재시작 포함).\n2. 반영 내용: /thai/ 필터·가로스크롤 수정, 사이트맵 9개 URL, 영문 페이지 언어 필터/뱃지, /about/·/tradingtalk/·/lab/ 신규 페이지, 헤더 내비 메뉴 2개 추가.\n3. 배포 후 live 확인: https://teemobkk.io/thai/ (분류 필터 동작, 가로 스크롤 없음), https://teemobkk.io/about/, https://teemobkk.io/tradingtalk/, https://teemobkk.io/lab/ (200 응답), https://teemobkk.io/sitemap.xml (9개 URL).\n\n## 수용 기준\n- [ ] main HEAD가 35886187임\n- [ ] 위 5개 URL이 live에서 정상 동작\n- [ ] 기존 뉴스 수집·텔레그램 푸시 서비스 정상 (재시작 후 상태 확인)\n\n## 제약 (필수)\n- `.env.push`를 절대 건드리지 마라 (immutable). 어떤 경우에도 수정·삭제·이동 금지.\n- `/docker/hermes-agent-hjzo/data/work_live_news/live_news_dashboard-b61e6a4` (낡은 작업 디렉터리)는 건드리지 마라.\n- force-push, 삭제, 외부 발송 금지.\n- 예상과 다른 상황이 생기면 중단하고 outbox에 보고해라. 임의로 우회하지 마라.\n- outbox 결과에 실행한 절차, 각 단계 결과, live 확인 내역을 포함해라.",
+  "created_at": "2026-10-03T09:35:00+07:00",
+  "from": "muse",
+  "id": "20261003-013",
+  "title": "프로덕션 배포: main 35886187 반영",
+  "to": "hermes",
+  "type": "task"
+}
