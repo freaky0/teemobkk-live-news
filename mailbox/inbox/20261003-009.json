@@ -1,0 +1,26 @@
+{
+  "id": "20261003-009",
+  "from": "muse",
+  "to": "hermes",
+  "type": "task",
+  "title": "미번역 기사 '원문' 뱃지 폴백",
+  "context": "번역에 실패해 영어 원문이 그대로 노출되는 기사에 '원문' 뱃지를 달고 원문 제목을 표시한다.",
+  "tasks": [
+    {
+      "title": "미번역 기사 '원문' 뱃지 폴백",
+      "acceptance": "title_ko/summary_ko가 비어 있는 기사가 '원문' 표기와 함께 노출 ; 정상 번역된 기사에는 뱃지가 붙지 않음 ; tests/run.py --local 베이스라인(17/39) 대비 신규 실패 없음"
+    }
+  ],
+  "success_criteria": [
+    "title_ko/summary_ko가 비어 있는 기사가 '원문' 표기와 함께 노출",
+    "정상 번역된 기사에는 뱃지가 붙지 않음",
+    "tests/run.py --local 베이스라인(17/39) 대비 신규 실패 없음"
+  ],
+  "constraints": [
+    "브랜치에만 푸시. main 푸시 금지, 프로덕션 배포/재시작 금지.",
+    ".env.push를 건드리지 않는다."
+  ],
+  "branch_policy": "Create your work branch from main. Push to the branch only. Never push to main, never touch production, never force-push.",
+  "expected_report": "Branch name, head commit SHA, 변경 내용 요약.",
+  "depends_on": null
+}
