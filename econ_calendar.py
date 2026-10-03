@@ -145,6 +145,11 @@ def clean(value: Any) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def _normalized_release_name(value: str) -> str:
+    """Normalize cosmetic case and ampersand differences for release deduplication."""
+    return re.sub(r"\s+", " ", value.casefold().replace("&", " and ")).strip()
+
+
 def _codex_name_prompt(names: list[str]) -> str:
     events = [{"id": "event-%d" % index, "name": name}
               for index, name in enumerate(names)]
@@ -497,7 +502,8 @@ def collect(now: datetime | None = None) -> dict[str, Any]:
         chosen: list[dict[str, Any]] = []
         for event in sorted([e for e in release_rows if (e["date"], e["kst"], e["country"]) == group],
                             key=lambda item: len(item["name"])):
-            if any(event["name"].lower().startswith(other["name"].lower()) for other in chosen):
+            normalized = _normalized_release_name(event["name"])
+            if any(normalized.startswith(_normalized_release_name(other["name"])) for other in chosen):
                 continue
             chosen.append(event)
         kept.extend(chosen)

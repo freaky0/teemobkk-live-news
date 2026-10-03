@@ -119,6 +119,13 @@ class PageScript(unittest.TestCase):
             "Original CPI",
         ])
 
+    def test_counts_match_rendered_feed_and_calendar_rows(self):
+        script = page_build.SCRIPT
+        self.assertIn("fmt('<b>{n}</b>건 표시 중',view.length)", script)
+        self.assertNotIn("fmt('<b>{n}</b>건 표시 중',all.length)", script)
+        self.assertIn("const renderedRows=document.querySelectorAll('#cal-body .cal-row')", script)
+        self.assertIn("const total=renderedRows.length", script)
+
     def test_the_script_is_not_truncated_by_its_own_string(self):
         """The script closing tag must not appear inside the Python string it lives in.
 

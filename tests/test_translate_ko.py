@@ -146,13 +146,14 @@ class CalendarNameTranslation(unittest.TestCase):
         with patch.object(econ_calendar.subprocess, "run", return_value=self._completed(output)):
             self.assertEqual(econ_calendar.translate_event_names(names), {name: "" for name in names})
 
-    def _source_patches(self):
-        row = {
-            "gmt": "08:30", "eventName": "Nonfarm Payrolls", "country": "United States",
-            "actual": "", "consensus": "", "previous": "",
-        }
+    def _source_patches(self, rows=None):
+        if rows is None:
+            rows = [{
+                "gmt": "08:30", "eventName": "Nonfarm Payrolls", "country": "United States",
+                "actual": "", "consensus": "", "previous": "",
+            }]
         return (
-            patch.object(econ_calendar, "fetch_day", return_value=[row]),
+            patch.object(econ_calendar, "fetch_day", return_value=rows),
             patch.object(econ_calendar, "fetch_earnings", return_value=[]),
             patch.object(econ_calendar.potus_schedule, "fetch", return_value=[]),
             patch.object(econ_calendar, "fed_funds_range", return_value=""),
@@ -180,6 +181,24 @@ class CalendarNameTranslation(unittest.TestCase):
         events = [event for day in payload["days"] for event in day["events"]]
         self.assertTrue(events)
         self.assertTrue(all(event["name_ko"] == "" for event in events))
+
+    def test_collect_collapses_case_and_ampersand_release_label_variants(self):
+        rows = [
+            {"gmt": "08:30", "eventName": "CPI Tokyo Ex Food & Energy", "country": "Japan",
+             "actual": "", "consensus": "", "previous": ""},
+            {"gmt": "08:30", "eventName": "cpi tokyo ex food and energy", "country": "Japan",
+             "actual": "", "consensus": "", "previous": ""},
+        ]
+        patches = self._source_patches(rows)
+        with patches[0], patches[1], patches[2], patches[3], \
+             patch.object(econ_calendar, "translate_event_names", return_value={}):
+            payload = econ_calendar.collect(
+                econ_calendar.datetime(2026, 10, 3, 12, tzinfo=econ_calendar.timezone.utc))
+        events = [event for day in payload["days"] for event in day["events"]
+                  if event["country"] == "Japan" and "tokyo" in event["name"].casefold()]
+        keys = [(event["date"], event["kst"], event["country"]) for event in events]
+        self.assertEqual(len(events), 3)
+        self.assertEqual(len(keys), len(set(keys)))
 
 
 class PendingTranslations(unittest.TestCase):

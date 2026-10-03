@@ -480,6 +480,8 @@ function renderFeed(){
   renderBriefing();loadTrends();renderTrends();loadCondCounts();renderConditions();
   const all=visible(),view=all.slice(0,V.limit),th=V.tab==='thai';
   const feed=document.querySelector('#feed');
+  const live=document.querySelector('#live');
+  if(live)live.textContent=fmt('<b>{n}</b>건 표시 중',view.length);
   if(!view.length){
     feed.innerHTML=condList().length
       ?'<div class="empty"><b>선택한 조건을 모두 만족하는 뉴스가 없습니다</b>위 조건 줄에서 가장 좁은 조건을 풀거나 기간을 넓혀 보세요.</div>'
@@ -507,8 +509,7 @@ function renderFeed(){
   const pend=PENDING[region()]||0,np=document.querySelector('#newpill');
   if(pend>0){np.textContent=fmt('새 글 {n}건 보기',pend);np.dataset.show='1'}
   else{np.dataset.show='0';np.textContent=''}
-  const live=document.querySelector('#live');
-  if(live)live.textContent=fmt('<b>{n}</b>건 표시 중',all.length)}
+}
 function skeleton(){
   const feed=document.querySelector('#feed');
   // The page ships the latest headlines in its own HTML (see seed_feed) so a language
@@ -977,15 +978,9 @@ function calTone(e){const a=calNum(e.actual),c=calNum(e.consensus);if(a===null||
 function paintCalendar(data){
   const days=(data&&data.days)||[];
   if(!days.length){document.querySelector('#cal-stamp').textContent='';
-    document.querySelector('#cal-body').innerHTML='<div class="note">표시할 일정이 없습니다.</div>';return}
-  let total=0,top=0;
-  days.forEach(d=>{total+=d.events.length;d.events.forEach(e=>{if(e.importance>=4)top++})});
+    document.querySelector('#cal-body').innerHTML='<div class="note">표시할 일정이 없습니다.</div>';
+    document.querySelector('#cal-sum').textContent=fmt(CFG.calendarLabels.window,0)+' · '+fmt(CFG.calendarLabels.major,0);return}
   document.querySelector('#cal-stamp').textContent=(data.updated_at_kst||'')+' KST';
-  document.querySelector('#cal-sum').textContent=fmt(total===1?CFG.calendarLabels.windowOne:CFG.calendarLabels.window,total)
-    +' · '+fmt(top===1?CFG.calendarLabels.majorOne:CFG.calendarLabels.major,top)
-    +' · '+'출처 나스닥 캘린더 · 연준 · 백악관 · Factba.se'
-    +' · '+'시각 기준 KST(UTC+9) · 방콕은 여기서 2시간 뒤'
-    +' · '+fmt('연준 인사 기준일 {n}',data.fed_roster_as_of||'?');
   document.querySelector('#cal-body').innerHTML=days.map(d=>{
     const rows=d.events.length?d.events.map(e=>{
       const parts=[];
@@ -1008,7 +1003,15 @@ function paintCalendar(data){
         '<span class="cal-t">'+at+'</span>'+
         '<span class="cal-n">'+name+'</span><span class="cal-v">'+val+'</span></div>'}).join('')
       :'<div class="note">주요 지표 없음</div>';
-    return '<div class="cal-day"><h3>'+calEsc(d.label)+' <span>'+calEsc(String(d.date).slice(5))+' ('+calEsc(d.weekday)+')</span></h3>'+rows+'</div>'}).join('')}
+    return '<div class="cal-day"><h3>'+calEsc(d.label)+' <span>'+calEsc(String(d.date).slice(5))+' ('+calEsc(d.weekday)+')</span></h3>'+rows+'</div>'}).join('');
+  const renderedRows=document.querySelectorAll('#cal-body .cal-row');
+  const total=renderedRows.length,top=Array.from(renderedRows).filter(row=>
+    Array.from(row.classList).some(name=>name.length>1&&name[0]==='i'&&Number(name.slice(1))>=4)).length;
+  document.querySelector('#cal-sum').textContent=fmt(total===1?CFG.calendarLabels.windowOne:CFG.calendarLabels.window,total)
+    +' · '+fmt(top===1?CFG.calendarLabels.majorOne:CFG.calendarLabels.major,top)
+    +' · '+'출처 나스닥 캘린더 · 연준 · 백악관 · Factba.se'
+    +' · '+'시각 기준 KST(UTC+9) · 방콕은 여기서 2시간 뒤'
+    +' · '+fmt('연준 인사 기준일 {n}',data.fed_roster_as_of||'?')}
 function loadCalendar(){
   fetch(CAL_URL,{cache:'no-cache'}).then(r=>{
     if(!r.ok)throw Error(r.status);return r.json()

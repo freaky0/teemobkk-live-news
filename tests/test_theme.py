@@ -157,6 +157,22 @@ class SharedThemeContract(unittest.TestCase):
         )
         self.assertIn('html[data-theme="light"] body.public,html[data-theme="light"] body.local{', dark)
 
+    def test_mobile_primary_touch_targets_have_44px_minimum(self):
+        dashboard = theme.DASHBOARD_CSS
+        for selector in ("body.public .tab", "body.public .pill", "body.public .trend .tbtn",
+                         "body.public .expand", "body.public #more", "body.public #cal-retry"):
+            self.assertIn(selector, dashboard)
+        mobile_rules = dashboard.rsplit("@media(max-width:767px){", 1)[1]
+        self.assertIn("min-height:44px", mobile_rules)
+
+        thai = theme.THAI_CSS
+        for selector in (".nav nav a", ".filters .chip", ".retry"):
+            self.assertIn(selector, thai)
+        self.assertIn("min-height:44px", thai)
+
+        homepage = landing.render_landing()
+        self.assertIn(".retry{min-height:44px", homepage)
+
 
 if __name__ == "__main__":
     unittest.main()

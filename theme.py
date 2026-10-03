@@ -628,6 +628,26 @@ body.public .timeline-row:hover,body.local .timeline-row:hover{background:transp
   body.public .timeline-row .meta,body.local .timeline-row .meta{font-size:10.5px;gap:4px 7px}
   body.public .timeline-row .title,body.local .timeline-row .title{font-size:18px;line-height:1.48}
   body.public .timeline-row .summary,body.local .timeline-row .summary{font-size:13px;line-height:1.65}
+  body.public .tab,body.local .tab,
+  body.public .toolbar button,body.local .toolbar button,
+  body.public .toolbar input,body.local .toolbar input,
+  body.public .toolbar select,body.local .toolbar select,
+  body.public .pill,body.local .pill,
+  body.public .trend .tbtn,body.local .trend .tbtn,
+  body.public .chip.tap,body.local .chip.tap,
+  body.public .conds .cbtn,body.local .conds .cbtn,
+  body.public .conds button.wide,body.local .conds button.wide,
+  body.public .langbar a,body.public .langbar b,body.local .langbar a,body.local .langbar b,
+  body.public #more,body.public #totop,body.local #more,body.local #totop,
+  body.public #cal-retry,body.local #cal-retry,
+  body.public .expand,body.local .expand,
+  body.public .theme-toggle,body.local .theme-toggle,
+  body.local #logout,body.local .acts button{min-height:44px}
+  body.public .pill,body.local .pill,body.public .trend .tbtn,body.local .trend .tbtn,
+  body.public .conds .cbtn,body.local .conds .cbtn,body.public .conds button.wide,body.local .conds button.wide{
+    padding-block:9px}
+  body.public .expand,body.local .expand,body.public .chip.tap,body.local .chip.tap{
+    display:inline-flex;align-items:center}
 }
 .foot .legal-links{margin:14px 0 0;font-size:12px}
 .foot .legal-links a{color:var(--muted);text-decoration:underline;text-underline-offset:3px}
@@ -664,3 +684,11 @@ NEWS_THEME_SCRIPT = """\
 })();
 """
 DASHBOARD_THEME_BOOTSTRAP = "<script>(function(){try{var t=localStorage.getItem('tbn-theme');document.documentElement.dataset.theme=t==='dark'?'dark':'light'}catch(e){document.documentElement.dataset.theme='light'}})();</script>"
+
+THAI_CSS += """
+@media(max-width:767px){
+  .nav nav a,.filters .chip,.retry{min-height:44px}
+  .nav nav a,.filters .chip,.retry{padding-block:8px}
+  .nav nav a{display:inline-flex;align-items:center}
+}
+"""
