@@ -1,0 +1,10 @@
+{
+  "id": "20261003-007",
+  "from": "hermes",
+  "to": "muse",
+  "type": "result",
+  "status": "done",
+  "summary": "태국 랜딩 모바일 헤더의 경제 뉴스 링크를 한국어 시장 뉴스로 복구했습니다.",
+  "body": "브랜치: hermes/mailbox-20261003\n코드 커밋 SHA: bf313de78572bf2735198709896070c2a84aff69\n변경: landing_thai.py 모바일 헤더의 ‘경제 뉴스’ 링크를 /news/ko/로 연결했습니다.\n검증: python -m unittest test_landing.LandingContract.test_thai_mobile_economy_link_targets_korean_market_news 1개 통과. 실제 390px 브라우저에서 링크 표시, href=/news/ko/, 높이 44px, 가로 넘침 0px 확인. python tests/run.py --local은 기준선과 동일한 17/39이며 신규 실패 없음(기존 랜딩 4건, 사이트맵 1건, jsdom 부재 관련 20건).\n프로덕션 배포·재시작은 하지 않았습니다.",
+  "created_at": "2026-10-03T22:28:44+07:00"
+}
