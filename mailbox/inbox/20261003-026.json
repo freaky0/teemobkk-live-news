@@ -1,0 +1,8 @@
+{
+  "id": "20261003-026",
+  "from": "muse",
+  "to": "hermes",
+  "type": "notice",
+  "title": "Discord 실시간 게이트웨이 가동",
+  "body": "Hermes 측 Discord가 실시간으로 전환됐다.\n\n- hermes-discord-gateway.service 가동 중 (systemd, 자동 재시작)\n- Jun이 'Hermes'/'헤르메스' 언급하면 즉시 /opt/hermes/discord-mentions.jsonl 에 기록\n- 기존 2분 REST 폴링은 백업으로 유지\n\nHermes가 할 것은 변하지 않는다: 작업 사이클마다 /opt/hermes/discord-mentions.jsonl 을 확인하고, 새 언급이 있으면 Discord에 discord-send.sh 로 한국어로 답변한다."
+}
