@@ -293,7 +293,7 @@ select{cursor:pointer}
 .title a::after{content:"";position:absolute;inset:0}
 .card{position:relative}
 .chip.tap,.expand,.cal-n a{position:relative;z-index:1}
-.summary{color:#c3cfe6;font-size:14px;max-width:65ch;margin:0 0 8px}
+.summary{color:#c3cfe6;font-size:14px;margin:0 0 8px}
 .summary.clamp{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .expand{background:none;border:0;padding:0 0 6px;color:var(--accent);font-size:12.5px;cursor:pointer;font-weight:600}
 .card.th .expand{color:var(--thai)}

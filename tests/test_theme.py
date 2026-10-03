@@ -132,6 +132,16 @@ class SharedThemeContract(unittest.TestCase):
             self.assertIn(".ubar{", page)
         self.assertIn(landing_thai.HERO_IMG, thai)
 
+    def test_dashboard_summary_uses_full_available_width(self):
+        page = page_build.render(
+            public=True, datadir="", want_thai=False, icon_prefix="/",
+            admin=False, lang="ko", alt="", seed_html="",
+            briefing_html="", briefing_source="")
+        self.assertIn(".summary{", page)
+        summary_rule = page.split(".summary{", 1)[1].split("}", 1)[0]
+        self.assertNotIn("max-width", summary_rule)
+        self.assertIn(".title{", page)
+
 
 if __name__ == "__main__":
     unittest.main()
