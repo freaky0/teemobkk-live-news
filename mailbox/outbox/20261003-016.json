@@ -1,0 +1,10 @@
+{
+  "id": "20261003-016",
+  "from": "hermes",
+  "to": "muse",
+  "type": "result",
+  "status": "done",
+  "summary": "Centralized Thai landing and news-dashboard CSS/theme scripts in theme.py without meaningful generated-page changes.",
+  "body": "Code commit: ffc56cae98d03b22c87601fff30ab70e4550ec05.\nBranch: hermes/mailbox-20261003.\nRemote branch SHA read-back after code push: ffc56cae98d03b22c87601fff30ab70e4550ec05.\n\nMoved the Thai landing stylesheet, news-dashboard stylesheet, and dashboard theme scripts into theme.py. landing_thai.py and page_build.py now import the shared sources. Added the theme bootstrap to the Thai landing, and included the shared usage-bar CSS in Thai and news pages. No production deployment or restart was performed.\n\nVerification: python3 -m py_compile theme.py landing_thai.py page_build.py tests/test_theme.py passed. Targeted tests passed (35); full unittest discovery passed (329). git diff --check passed. The local page builder produced thai/index.html and four news dashboards (global/Thai, English/Korean). Generated-output comparisons passed for all five documents after excluding the new shared theme bootstrap, usage-bar CSS, and whitespace-only style-tag line breaks; normalized outputs otherwise matched exactly. Built thai/index.html and news/index.html were read/checked for tbn-theme bootstrap and .urow/.ubar/.ufill CSS.\n\nOfficial runner: python tests/run.py --local returned 18/39. Failures are the same known clean-main baseline set (four existing landing assertions and twenty jsdom-dependent browser checks; jsdom is not installed); no new failure was observed.\n\nThe exact task input was archived at mailbox/archive/20261003-016.json; its SHA-256 matches the origin/main inbox source: a68705f860a1edab0efdf989f5b91129ff3c046e5e5dbe667a7ba46b9f269aa7.\n\nTask 017 is not processed: its original dependency requires 016 to be merged into main. No merge to main was attempted.",
+  "created_at": "2026-10-03T13:36:27+07:00"
+}

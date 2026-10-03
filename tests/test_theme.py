@@ -6,6 +6,8 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import landing
+import landing_thai
+import page_build
 import theme
 
 
@@ -36,6 +38,20 @@ class SharedThemeContract(unittest.TestCase):
         self.assertNotIn("__SHARED_THEME_CSS__", html)
         self.assertNotIn("__HEADER__", html)
         self.assertNotIn("__FOOTER__", html)
+
+    def test_thai_landing_and_dashboards_use_shared_theme(self):
+        thai = landing_thai.render_thai_landing()
+        news = page_build.render(
+            public=True, datadir="", want_thai=True, icon_prefix="/",
+            admin=False, lang="ko", alt="", seed_html="",
+            briefing_html="", briefing_source="")
+        self.assertEqual(page_build.CSS, theme.DASHBOARD_CSS + "\n" + theme.USAGE_BAR_CSS)
+        self.assertEqual(page_build.THEME_SCRIPT, theme.NEWS_THEME_SCRIPT)
+        self.assertIn("localStorage.getItem(\"tbn-theme\")", thai)
+        for page in (thai, news):
+            self.assertIn(".urow{", page)
+            self.assertIn(".ubar{", page)
+        self.assertIn(landing_thai.HERO_IMG, thai)
 
 
 if __name__ == "__main__":
