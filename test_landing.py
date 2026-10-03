@@ -25,6 +25,19 @@ class LandingContract(unittest.TestCase):
         self.assertIn('무료 공개', text)
         self.assertIn('태국 소식', text)
 
+    def test_thai_category_filters_render_cached_results_immediately(self):
+        page = landing_thai.render_thai_landing()
+        self.assertIn('let busy = false, hasNews = false, activeCat = "", latestArticles = [];', page)
+        self.assertIn('latestArticles = data.articles;', page)
+        self.assertIn('activeCat = btn.dataset.cat || "";\n    render(selectNews(latestArticles));', page)
+        self.assertNotIn('activeCat = btn.dataset.cat || "";\n    refresh();', page)
+
+    def test_thai_hero_does_not_expand_the_document_width(self):
+        page = landing_thai.render_thai_landing()
+        self.assertIn('.hero{position:relative;margin:0;padding:0;', page)
+        self.assertIn('.wrap{padding-inline:28px}.hero{margin:0}', page)
+        self.assertNotIn('margin:0 -28px', page)
+
     def test_privacy_policy_is_linked_from_both_landing_pages(self):
         homepage = landing.render_landing()
         thai = landing_thai.render_thai_landing()

@@ -68,7 +68,7 @@ nav a{font-size:14px;font-weight:600;padding-block:12px}
 nav a:hover{color:var(--purple)}
 .secondary{margin-left:auto;color:var(--muted);font-size:13px}
 /* Hero */
-.hero{position:relative;margin:0 -28px;padding:0;overflow:hidden;border-radius:0 0 18px 18px}
+.hero{position:relative;margin:0;padding:0;overflow:hidden;border-radius:0 0 18px 18px}
 .hero-bg{position:absolute;inset:0;background:url("__HERO_IMG__") center 38%/cover no-repeat}
 .hero-veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(52,19,71,.62) 0%,rgba(52,19,71,.42) 45%,rgba(52,19,71,.78) 100%)}
 .hero-inner{position:relative;max-width:1080px;margin:auto;padding:96px 28px 72px;color:#fff}
@@ -164,7 +164,7 @@ h2 .n{font-family:var(--mono);font-size:13px;color:var(--gold);letter-spacing:.1
 .note{font-size:12px;color:var(--muted);margin-top:20px;max-width:860px}
 @media(max-width:900px){.news-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:767px){
-.wrap{padding-inline:28px}.hero{margin:0 -28px}
+.wrap{padding-inline:28px}.hero{margin:0}
 .hero-inner{padding:88px 28px 72px}
 .nav{min-height:62px;gap:16px;flex-wrap:wrap;padding-block:14px}
 nav{gap:18px;flex-basis:100%;order:2}
@@ -295,7 +295,7 @@ __FILTERS__
         status = document.getElementById("update-status"),
         retry = document.getElementById("retry"),
         filters = document.getElementById("filters");
-  let busy = false, hasNews = false, activeCat = "";
+  let busy = false, hasNews = false, activeCat = "", latestArticles = [];
   const fmt = new Intl.DateTimeFormat("ko-KR", {timeZone:"Asia/Bangkok", month:"numeric", day:"numeric",
     hour:"2-digit", minute:"2-digit", hour12:false});
   function displayStamp(value){const p=fmt.formatToParts(new Date(value)),get=k=>(p.find(x=>x.type===k)||{}).value||"";
@@ -441,7 +441,8 @@ __FILTERS__
       if (!response.ok) throw new Error("http");
       const data = await response.json();
       if (!Array.isArray(data.articles)) throw new Error("schema");
-      render(selectNews(data.articles));
+      latestArticles = data.articles;
+      render(selectNews(latestArticles));
       if (typeof data.total === "number"){
         document.getElementById("stat-total").textContent = data.total.toLocaleString("en-US") + "건";
       }
@@ -476,7 +477,7 @@ __FILTERS__
     filters.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
     btn.classList.add("active");
     activeCat = btn.dataset.cat || "";
-    refresh();
+    render(selectNews(latestArticles));
   });
   retry.addEventListener("click", refresh);
   refresh();
