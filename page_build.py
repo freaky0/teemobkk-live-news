@@ -2398,7 +2398,8 @@ def sitemap_xml(now: datetime.datetime | None = None) -> str:
     if moment.tzinfo is None:
         moment = moment.replace(tzinfo=ict)
     lastmod = moment.astimezone(ict).isoformat(timespec="seconds")
-    locations = ("/", "/thai/", "/privacy/", "/privacy/en/", "/news/", "/news/ko/")
+    locations = ("/", "/about/", "/tradingtalk/", "/lab/", "/thai/", "/privacy/",
+                 "/privacy/en/", "/news/", "/news/ko/")
     rows = "\n".join(
         "  <url><loc>https://teemobkk.io%s</loc><lastmod>%s</lastmod></url>" % (path, lastmod)
         for path in locations)

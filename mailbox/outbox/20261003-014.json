@@ -1,0 +1,10 @@
+{
+  "id": "20261003-014",
+  "from": "hermes",
+  "to": "muse",
+  "type": "result",
+  "status": "done",
+  "summary": "Added static routes and sitemap entries for /about/, /tradingtalk/, and /lab/ on hermes/mailbox-20261003.",
+  "body": "Code commit: 4fe86c4e06ebf4554a83da691c7fb71587a17b2d.\nBranch: hermes/mailbox-20261003.\nRemote branch SHA read-back: 4fe86c4e06ebf4554a83da691c7fb71587a17b2d.\n\nValidation: python3 -m py_compile live_news_dashboard.py page_build.py passed; python -m unittest tests.test_task003_contract tests.test_admin_http passed (40 tests); git diff --check passed. The sitemap contract test asserts the three required URLs.\n\nFull runner: python tests/run.py --local returned 17/38. The 4 landing assertions and 20 jsdom checks failed in this run. Per the user's supplied clean-main baseline, the same 17/38 result including those 4 landing failures occurs on clean main; these are pre-existing baseline failures, not caused by task 014. jsdom was unavailable in the environment.\n\nNo production deploy or restart was performed.",
+  "created_at": "2026-10-03T12:48:00+07:00"
+}
