@@ -467,7 +467,7 @@ body.public .foot{max-width:none}
   --text:#ececeb;--muted:#b9bcc0;--line:#2c2f34;--line2:#3b3f46;
   --accent:#e0776c;--thai:#d8ab5c;--hot:#d8ab5c;--official:#6fbf95;--warn:#d8ab5c}
   body.public .pill.active,body.public .pill.on,body.public .pill.pick.active,
-  body.public .trend .tbtn.on,body.public .pill.th.active,body.public .pill.src.th.active{color:#17181a}
+  body.public .trend .tbtn.on,body.public .pill.th.active,body.public .pill.src.th.active{color:var(--text)}
 }}
 /* The signed-in workspace uses the same reading language without hiding operator actions. */
 body.local .bar{background:var(--bg);backdrop-filter:none}
@@ -549,7 +549,7 @@ html[data-theme="dark"] body.public .pill.pick.active,html[data-theme="dark"] bo
 html[data-theme="dark"] body.public .pill.th.active,html[data-theme="dark"] body.public .pill.src.th.active,
 html[data-theme="dark"] body.local .pill.active,html[data-theme="dark"] body.local .pill.on,
 html[data-theme="dark"] body.local .pill.pick.active,html[data-theme="dark"] body.local .trend .tbtn.on,
-html[data-theme="dark"] body.local .pill.th.active,html[data-theme="dark"] body.local .pill.src.th.active{color:#17181a}
+html[data-theme="dark"] body.local .pill.th.active,html[data-theme="dark"] body.local .pill.src.th.active{color:var(--text)}
 html[data-theme="light"] body.public,html[data-theme="light"] body.local{
   color-scheme:light;--bg:#fbfaf7;--panel:#fff;--panel2:#f4f0e9;
   --text:#17181a;--muted:#454a50;--line:#e3ded4;--line2:#cec7b9;

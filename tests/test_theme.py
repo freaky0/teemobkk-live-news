@@ -142,6 +142,21 @@ class SharedThemeContract(unittest.TestCase):
         self.assertNotIn("max-width", summary_rule)
         self.assertIn(".title{", page)
 
+    def test_dark_active_pills_use_light_theme_text(self):
+        dark = theme.DASHBOARD_CSS
+        self.assertIn(
+            "body.public .pill.active,body.public .pill.on,body.public .pill.pick.active,\n"
+            "  body.public .trend .tbtn.on,body.public .pill.th.active,body.public .pill.src.th.active{color:var(--text)}",
+            dark,
+        )
+        self.assertIn(
+            'html[data-theme="dark"] body.local .pill.active,html[data-theme="dark"] body.local .pill.on,\n'
+            'html[data-theme="dark"] body.local .pill.pick.active,html[data-theme="dark"] body.local .trend .tbtn.on,\n'
+            'html[data-theme="dark"] body.local .pill.th.active,html[data-theme="dark"] body.local .pill.src.th.active{color:var(--text)}',
+            dark,
+        )
+        self.assertIn('html[data-theme="light"] body.public,html[data-theme="light"] body.local{', dark)
+
 
 if __name__ == "__main__":
     unittest.main()
