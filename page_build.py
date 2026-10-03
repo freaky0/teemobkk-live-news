@@ -342,7 +342,7 @@ function renderPills(){
   // Releases this value only: the other conditions stay, because each one now has its own place in
   // the condition row above the feed.
   if(clr)clr.onclick=()=>{V.tag=null;V.limit=PAGE;V.offset=0;renderPills();fetchFeed()};
-  document.querySelectorAll('.tab').forEach(b=>{
+  document.querySelectorAll('.tab[data-tab]').forEach(b=>{
     const on=b.dataset.tab===V.tab;
     b.classList.toggle('active',on);
     b.setAttribute('aria-selected',on?'true':'false')});
@@ -947,7 +947,7 @@ function setTab(next,silent){
   if(next!=='cal')V.lastNews=next;
   V.tab=next;V.cats=[];V.tag=null;V.limit=PAGE;V.offset=0;V.mode='all';V.value='';V.pickOnly=false;clearText();
   document.body.classList.toggle('tab-cal',next==='cal');
-  document.querySelectorAll('.tab').forEach(b=>{
+  document.querySelectorAll('.tab[data-tab]').forEach(b=>{
     const on=b.dataset.tab===next;b.classList.toggle('active',on);b.setAttribute('aria-selected',on?'true':'false')});
   const gRow=document.querySelector('#filters-global'),tRow=document.querySelector('#filters-thai');
   const gHide=next!=='global',tHide=next!=='thai';
@@ -1012,7 +1012,7 @@ function loadCalendar(){
     if(!r.ok)throw Error(r.status);return r.json()
   }).then(paintCalendar).catch(()=>calendarFailure('경제지표 데이터를 불러오지 못했습니다.'))}
 
-document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+document.querySelectorAll('.tab[data-tab]').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 // The category and source rows are built by renderPills(), which binds each button as it
 // writes them. An earlier build also had a static `.pill[data-filter]` row here; nothing in
 // the template carries that attribute any more, so the handler was removed rather than left
@@ -1690,9 +1690,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
 
 <main class="wrap">
   <div class="tabs" role="tablist">
-    <button id="tab-global" class="tab active" data-tab="global" role="tab" aria-selected="true">경제 소식</button>
-    <button id="tab-cal" class="tab" data-tab="cal" role="tab" aria-selected="false">경제 지표</button>
-    <button id="tab-thai" class="tab th" data-tab="thai" role="tab" aria-selected="false">태국 소식</button>
+__TABS__
   </div>
 
   <section class="briefing" id="briefing-section" aria-labelledby="briefing-title">
@@ -1756,6 +1754,25 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
 <script>{THEME_SCRIPT}</script>
 </body></html>
 """
+    # Canonical entry rule (018): Thai news lives under /thai/. On the global
+    # dashboards the "Thailand" tab is a plain link to the canonical Thai
+    # dashboard instead of an in-place region switch; on the Thai dashboards
+    # the "global" tab links back the same way.
+    thai_href = "/thai/news/ko/" if lang == "ko" else "/thai/news/"
+    global_href = "/news/ko/" if lang == "ko" else "/news/"
+    if want_thai:
+        tabs_html = (
+            '    <a id="tab-global" class="tab" href="%s">경제 소식</a>\n'
+            '    <button id="tab-cal" class="tab" data-tab="cal" role="tab" aria-selected="false">경제 지표</button>\n'
+            '    <button id="tab-thai" class="tab th active" data-tab="thai" role="tab" aria-selected="true">태국 소식</button>'
+        ) % global_href
+    else:
+        tabs_html = (
+            '    <button id="tab-global" class="tab active" data-tab="global" role="tab" aria-selected="true">경제 소식</button>\n'
+            '    <button id="tab-cal" class="tab" data-tab="cal" role="tab" aria-selected="false">경제 지표</button>\n'
+            '    <a id="tab-thai" class="tab th" href="%s">태국 소식</a>'
+        ) % thai_href
+    page = page.replace("__TABS__", tabs_html)
     page = (localize(page, lang)
             .replace("__TREND_STOP__", json.dumps(sorted(set((
                 "그리고 그러나 또한 이번 지난 오늘 어제 내일 관련 발표 예정 가능 필요 대해 통해 위해 때문 이라 라고 이라고 있다 없다 했다 한다 된다 등등 경우 상황 내용 사실 우리 전체 주요 최근 현재 기록 "
@@ -1860,6 +1877,7 @@ def sitemap_xml(now: datetime.datetime | None = None) -> str:
     lastmod = moment.astimezone(ict).isoformat(timespec="seconds")
     locations = ("/", "/about/", "/tradingtalk/", "/lab/", "/thai/", "/privacy/",
                  "/perspectives/", "/indicators/",
+                 "/thai/news/", "/thai/news/ko/",
                  "/privacy/en/", "/news/", "/news/ko/")
     rows = "\n".join(
         "  <url><loc>https://teemobkk.io%s</loc><lastmod>%s</lastmod></url>" % (path, lastmod)

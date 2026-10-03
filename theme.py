@@ -151,7 +151,7 @@ h1{font-size:19px;margin:0;letter-spacing:-.01em}
 .stale[data-show="1"]{display:inline-block}
 .tabs{display:flex;gap:6px;margin:22px 0 12px;border-bottom:1px solid var(--line)}
 .tab{background:none;border:0;border-bottom:2px solid transparent;padding:11px 16px;cursor:pointer;
-  color:var(--muted);font-weight:600;font-size:17px;letter-spacing:-.01em;margin-bottom:-1px}
+  color:var(--muted);font-weight:600;font-size:17px;letter-spacing:-.01em;margin-bottom:-1px;text-decoration:none}
 .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 .tab.th.active{color:var(--thai);border-bottom-color:var(--thai)}
 .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}

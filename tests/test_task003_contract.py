@@ -8,7 +8,7 @@ import page_build
 
 
 class Task003Contract(unittest.TestCase):
-    def test_sitemap_lists_eleven_pages_with_build_day_lastmod(self):
+    def test_sitemap_lists_thirteen_pages_with_build_day_lastmod(self):
         fixed = datetime.datetime(2026, 10, 3, 6, 11, 0,
                                   tzinfo=datetime.timezone(datetime.timedelta(hours=7)))
         xml_text = page_build.sitemap_xml(fixed)
@@ -22,6 +22,8 @@ class Task003Contract(unittest.TestCase):
             "https://teemobkk.io/tradingtalk/",
             "https://teemobkk.io/lab/",
             "https://teemobkk.io/thai/",
+            "https://teemobkk.io/thai/news/",
+            "https://teemobkk.io/thai/news/ko/",
             "https://teemobkk.io/privacy/",
             "https://teemobkk.io/privacy/en/",
             "https://teemobkk.io/news/",
@@ -83,6 +85,40 @@ setTimeout(()=>{
                                  icon_prefix="/", admin=False, lang="ko")
         self.assertIn('get(\'month\')+CFG.monthSuffix+\' \'+get(\'day\')+\'일 \'+get(\'hour\')', page)
         self.assertNotIn('id="language-filter"', page)
+
+
+class Task018CanonicalThaiEntry(unittest.TestCase):
+    """018: /thai/ is the single canonical entry point for Thai news.
+
+    The cross-region tab on each dashboard is a plain link to the canonical
+    dashboard instead of an in-place region switch.
+    """
+
+    def _render(self, want_thai, lang):
+        return page_build.render(public=True, datadir="", want_thai=want_thai,
+                                 icon_prefix="/", admin=False, lang=lang,
+                                 seed_html="", briefing_html="", briefing_source="")
+
+    def test_global_dashboard_thai_tab_links_to_canonical_thai_dashboard(self):
+        ko = self._render(False, "ko")
+        self.assertIn('<a id="tab-thai" class="tab th" href="/thai/news/ko/">태국 소식</a>', ko)
+        en = self._render(False, "en")
+        self.assertIn('<a id="tab-thai" class="tab th" href="/thai/news/">Thailand</a>', en)
+
+    def test_thai_dashboard_global_tab_links_back_to_global_dashboard(self):
+        ko = self._render(True, "ko")
+        self.assertIn('<a id="tab-global" class="tab" href="/news/ko/">경제 소식</a>', ko)
+        en = self._render(True, "en")
+        self.assertIn('<a id="tab-global" class="tab" href="/news/">Markets</a>', en)
+
+    def test_canonical_tab_links_carry_no_data_tab(self):
+        # the canonical links carry no data-tab, so the tab click wiring skips them
+        for want_thai, lang in ((False, "ko"), (False, "en"), (True, "ko"), (True, "en")):
+            page = self._render(want_thai, lang)
+            link_id = "tab-thai" if not want_thai else "tab-global"
+            before, _, after = page.partition('id="%s"' % link_id)
+            self.assertTrue(before.rstrip().endswith("<a"), link_id)
+            self.assertNotIn("data-tab", after.split(">", 1)[0])
 
 
 if __name__ == "__main__":
