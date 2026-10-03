@@ -1,6 +1,8 @@
+import json
 import os
 import sqlite3
 import sys
+import subprocess
 import tempfile
 import unittest
 from contextlib import closing
@@ -10,6 +12,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import live_news_dashboard as core
 import page_build
+import econ_calendar
 from deploy import collect_public
 from tools import backfill_translations
 import translate_ko
@@ -76,6 +79,107 @@ class TranslateOne(unittest.TestCase):
         with patch.object(translate_ko, "_complete_with_codex", return_value='not json'), \
              patch.object(translate_ko, "_complete_with_api", return_value='not json'):
             self.assertIsNone(translate_ko.translate_one("Original", "Summary"))
+
+
+class CalendarNameTranslation(unittest.TestCase):
+    def setUp(self):
+        self.old_cache = econ_calendar._NAME_TRANSLATION_CACHE.copy()
+        econ_calendar._NAME_TRANSLATION_CACHE.clear()
+
+    def tearDown(self):
+        econ_calendar._NAME_TRANSLATION_CACHE.clear()
+        econ_calendar._NAME_TRANSLATION_CACHE.update(self.old_cache)
+
+    def _completed(self, output, returncode=0):
+        return subprocess.CompletedProcess([], returncode, stdout=output, stderr="")
+
+    def test_codex_runs_in_isolated_read_only_subscription_subprocess(self):
+        name = "Federal Reserve Interest Rate Decision"
+        output = json.dumps({"translations": [{"id": "event-0", "name_ko": "연준 금리 결정"}]}, ensure_ascii=False)
+        with patch.object(econ_calendar.subprocess, "run", return_value=self._completed(output)) as run:
+            self.assertEqual(econ_calendar.translate_event_names([name]), {name: "연준 금리 결정"})
+
+        command = run.call_args.args[0]
+        options = run.call_args.kwargs
+        self.assertEqual(command[0], "/usr/local/bin/codex")
+        self.assertEqual(command[1], "exec")
+        self.assertIn("gpt-6-luna", command)
+        self.assertIn("--ephemeral", command)
+        self.assertIn("--sandbox", command)
+        self.assertIn("read-only", command)
+        self.assertIn("--ask-for-approval", command)
+        self.assertIn("never", command)
+        self.assertIn("--skip-git-repo-check", command)
+        self.assertEqual(command[-1], "-")
+        self.assertFalse(options["shell"])
+        self.assertTrue(options["capture_output"])
+        self.assertEqual(options["timeout"], econ_calendar.CODEX_TIMEOUT_SECONDS)
+        self.assertTrue(os.path.basename(options["cwd"]).startswith("teemo-econ-calendar-codex-"))
+        self.assertNotEqual(os.path.realpath(options["cwd"]), os.path.realpath(Path(__file__).resolve().parents[1]))
+        self.assertIn('"name": "Federal Reserve Interest Rate Decision"', options["input"])
+
+    def test_timeout_leaves_translation_empty(self):
+        name = "Consumer Price Index"
+        with patch.object(econ_calendar.subprocess, "run", side_effect=subprocess.TimeoutExpired("codex", 45)):
+            self.assertEqual(econ_calendar.translate_event_names([name]), {name: ""})
+
+    def test_unavailable_codex_executable_leaves_translation_empty(self):
+        name = "Consumer Price Index"
+        with patch.object(econ_calendar.subprocess, "run", side_effect=FileNotFoundError("codex")):
+            self.assertEqual(econ_calendar.translate_event_names([name]), {name: ""})
+
+    def test_nonzero_exit_and_malformed_json_leave_translation_empty(self):
+        name = "Consumer Price Index"
+        valid = json.dumps({"translations": [{"id": "event-0", "name_ko": "소비자물가지수"}]}, ensure_ascii=False)
+        with patch.object(econ_calendar.subprocess, "run", return_value=self._completed(valid, returncode=1)):
+            self.assertEqual(econ_calendar.translate_event_names([name]), {name: ""})
+        econ_calendar._NAME_TRANSLATION_CACHE.clear()
+        with patch.object(econ_calendar.subprocess, "run", return_value=self._completed("not JSON")):
+            self.assertEqual(econ_calendar.translate_event_names([name]), {name: ""})
+
+    def test_missing_or_empty_translated_title_stays_blank(self):
+        names = ["Consumer Price Index", "Federal Reserve Decision"]
+        output = json.dumps({"translations": [
+            {"id": "event-0", "name_ko": "  "},
+            {"id": "event-99", "name_ko": "무시할 번역"},
+        ]}, ensure_ascii=False)
+        with patch.object(econ_calendar.subprocess, "run", return_value=self._completed(output)):
+            self.assertEqual(econ_calendar.translate_event_names(names), {name: "" for name in names})
+
+    def _source_patches(self):
+        row = {
+            "gmt": "08:30", "eventName": "Nonfarm Payrolls", "country": "United States",
+            "actual": "", "consensus": "", "previous": "",
+        }
+        return (
+            patch.object(econ_calendar, "fetch_day", return_value=[row]),
+            patch.object(econ_calendar, "fetch_earnings", return_value=[]),
+            patch.object(econ_calendar.potus_schedule, "fetch", return_value=[]),
+            patch.object(econ_calendar, "fed_funds_range", return_value=""),
+        )
+
+    def test_scheduled_write_persists_name_ko(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output_path = os.path.join(directory, "calendar.json")
+            patches = self._source_patches()
+            with patches[0], patches[1], patches[2], patches[3], \
+                 patch.object(econ_calendar, "translate_event_names", return_value={"Nonfarm Payrolls": "고용 보고서"}):
+                self.assertGreater(econ_calendar.write(output_path), 0)
+            with open(output_path, encoding="utf-8") as handle:
+                payload = json.load(handle)
+        events = [event for day in payload["days"] for event in day["events"]]
+        self.assertTrue(events)
+        self.assertTrue(all(event["name_ko"] == "고용 보고서" for event in events))
+
+    def test_translation_exception_does_not_break_collect_and_saves_empty_names(self):
+        patches = self._source_patches()
+        with patches[0], patches[1], patches[2], patches[3], \
+             patch.object(econ_calendar, "translate_event_names", side_effect=RuntimeError("offline")):
+            payload = econ_calendar.collect(
+                econ_calendar.datetime(2026, 10, 3, 12, tzinfo=econ_calendar.timezone.utc))
+        events = [event for day in payload["days"] for event in day["events"]]
+        self.assertTrue(events)
+        self.assertTrue(all(event["name_ko"] == "" for event in events))
 
 
 class PendingTranslations(unittest.TestCase):

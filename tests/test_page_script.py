@@ -13,6 +13,7 @@ So every document the builder can produce is rendered here and every script it c
 
     python tests/test_page_script.py
 """
+import json
 import os
 import re
 import shutil
@@ -83,6 +84,40 @@ class PageScript(unittest.TestCase):
                 complaint = check(script, name)
                 self.assertIsNone(complaint, "%s script %d does not parse:\n%s"
                                   % (name, index, complaint))
+
+    def test_calendar_name_locale_fallback_and_escaping(self):
+        script = page_build.SCRIPT
+        esc = next(line for line in script.splitlines() if line.startswith("const esc="))
+        calendar_escape = next(line for line in script.splitlines() if line.startswith("function calEsc("))
+        display_name = next(line for line in script.splitlines() if line.startswith("function calendarDisplayName("))
+        self.assertIn("const displayName=calendarDisplayName(e)", script)
+        self.assertIn("safeName=calEsc(displayName)", script)
+
+        events = [
+            {"name": "Original <CPI> &", "name_ko": "물가 <script>& 'quote'"},
+            {"name": "  Original <CPI> &  ", "name_ko": "  "},
+            {"name": "Original CPI", "name_ko": "번역 제목"},
+        ]
+        node_script = "\n".join([
+            esc,
+            "let CFG={lang:'ko'};",
+            calendar_escape,
+            display_name,
+            "const events=" + json.dumps(events, ensure_ascii=False) + ";",
+            "const translated=calendarDisplayName(events[0]);",
+            "const escaped=calEsc(translated);",
+            "const fallback=calendarDisplayName(events[1]);",
+            "CFG.lang='en';",
+            "const english=calendarDisplayName(events[2]);",
+            "process.stdout.write(JSON.stringify([translated,escaped,fallback,english]));",
+        ])
+        result = subprocess.run(["node", "-e", node_script], check=True, capture_output=True, text=True)
+        self.assertEqual(json.loads(result.stdout), [
+            "물가 <script>& 'quote'",
+            "물가 &lt;script&gt;&amp; &#39;quote&#39;",
+            "  Original <CPI> &  ",
+            "Original CPI",
+        ])
 
     def test_the_script_is_not_truncated_by_its_own_string(self):
         """The script closing tag must not appear inside the Python string it lives in.

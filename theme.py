@@ -293,7 +293,7 @@ select{cursor:pointer}
 .title a::after{content:"";position:absolute;inset:0}
 .card{position:relative}
 .chip.tap,.expand,.cal-n a{position:relative;z-index:1}
-.summary{color:#c3cfe6;font-size:14px;max-width:65ch;margin:0 0 8px}
+.summary{color:#c3cfe6;font-size:14px;margin:0 0 8px}
 .summary.clamp{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .expand{background:none;border:0;padding:0 0 6px;color:var(--accent);font-size:12.5px;cursor:pointer;font-weight:600}
 .card.th .expand{color:var(--thai)}
@@ -467,7 +467,7 @@ body.public .foot{max-width:none}
   --text:#ececeb;--muted:#b9bcc0;--line:#2c2f34;--line2:#3b3f46;
   --accent:#e0776c;--thai:#d8ab5c;--hot:#d8ab5c;--official:#6fbf95;--warn:#d8ab5c}
   body.public .pill.active,body.public .pill.on,body.public .pill.pick.active,
-  body.public .trend .tbtn.on,body.public .pill.th.active,body.public .pill.src.th.active{color:#17181a}
+  body.public .trend .tbtn.on,body.public .pill.th.active,body.public .pill.src.th.active{color:var(--text)}
 }}
 /* The signed-in workspace uses the same reading language without hiding operator actions. */
 body.local .bar{background:var(--bg);backdrop-filter:none}
@@ -549,7 +549,7 @@ html[data-theme="dark"] body.public .pill.pick.active,html[data-theme="dark"] bo
 html[data-theme="dark"] body.public .pill.th.active,html[data-theme="dark"] body.public .pill.src.th.active,
 html[data-theme="dark"] body.local .pill.active,html[data-theme="dark"] body.local .pill.on,
 html[data-theme="dark"] body.local .pill.pick.active,html[data-theme="dark"] body.local .trend .tbtn.on,
-html[data-theme="dark"] body.local .pill.th.active,html[data-theme="dark"] body.local .pill.src.th.active{color:#17181a}
+html[data-theme="dark"] body.local .pill.th.active,html[data-theme="dark"] body.local .pill.src.th.active{color:var(--text)}
 html[data-theme="light"] body.public,html[data-theme="light"] body.local{
   color-scheme:light;--bg:#fbfaf7;--panel:#fff;--panel2:#f4f0e9;
   --text:#17181a;--muted:#454a50;--line:#e3ded4;--line2:#cec7b9;

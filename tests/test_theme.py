@@ -132,6 +132,31 @@ class SharedThemeContract(unittest.TestCase):
             self.assertIn(".ubar{", page)
         self.assertIn(landing_thai.HERO_IMG, thai)
 
+    def test_dashboard_summary_uses_full_available_width(self):
+        page = page_build.render(
+            public=True, datadir="", want_thai=False, icon_prefix="/",
+            admin=False, lang="ko", alt="", seed_html="",
+            briefing_html="", briefing_source="")
+        self.assertIn(".summary{", page)
+        summary_rule = page.split(".summary{", 1)[1].split("}", 1)[0]
+        self.assertNotIn("max-width", summary_rule)
+        self.assertIn(".title{", page)
+
+    def test_dark_active_pills_use_light_theme_text(self):
+        dark = theme.DASHBOARD_CSS
+        self.assertIn(
+            "body.public .pill.active,body.public .pill.on,body.public .pill.pick.active,\n"
+            "  body.public .trend .tbtn.on,body.public .pill.th.active,body.public .pill.src.th.active{color:var(--text)}",
+            dark,
+        )
+        self.assertIn(
+            'html[data-theme="dark"] body.local .pill.active,html[data-theme="dark"] body.local .pill.on,\n'
+            'html[data-theme="dark"] body.local .pill.pick.active,html[data-theme="dark"] body.local .trend .tbtn.on,\n'
+            'html[data-theme="dark"] body.local .pill.th.active,html[data-theme="dark"] body.local .pill.src.th.active{color:var(--text)}',
+            dark,
+        )
+        self.assertIn('html[data-theme="light"] body.public,html[data-theme="light"] body.local{', dark)
+
 
 if __name__ == "__main__":
     unittest.main()
