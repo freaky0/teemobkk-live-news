@@ -970,6 +970,7 @@ function calendarFailure(message){
   const b=document.querySelector('#cal-retry');
   if(b)b.onclick=()=>{document.querySelector('#cal-body').innerHTML='<div class="note">불러오는 중…</div>';loadCalendar()}}
 function calEsc(s){return esc(s)}
+function calendarDisplayName(e){return CFG.lang==='ko'&&typeof e.name_ko==='string'&&e.name_ko.trim()?e.name_ko:e.name}
 function calNum(t){const m=String(t==null?'':t).replace(/,/g,'').match(/-?\\d+(\\.\\d+)?/);return m?parseFloat(m[0]):null}
 function calTone(e){const a=calNum(e.actual),c=calNum(e.consensus);if(a===null||c===null)return 'flat';
   const tol=Math.abs(c)*0.02;return Math.abs(a-c)<=tol?'flat':(a>c?'up':'down')}
@@ -999,7 +1000,8 @@ function paintCalendar(data){
       }
       const val=parts.join(' · ');
       const label=calEsc(e.country_code||e.country)+' · ';
-      const name=e.source_url?label+'<a href="'+calEsc(e.source_url)+'" target="_blank" rel="noopener">'+calEsc(e.name)+'</a>':label+calEsc(e.name);
+      const displayName=calendarDisplayName(e),safeName=calEsc(displayName);
+      const name=e.source_url?label+'<a href="'+calEsc(e.source_url)+'" target="_blank" rel="noopener">'+safeName+'</a>':label+safeName;
       let at=calEsc(e.kst||'');
       if(e.approx&&at)at='~'+at;
       return '<div class="cal-row '+(e.kind||'econ')+' i'+e.importance+'">'+
