@@ -1859,6 +1859,7 @@ def sitemap_xml(now: datetime.datetime | None = None) -> str:
         moment = moment.replace(tzinfo=ict)
     lastmod = moment.astimezone(ict).isoformat(timespec="seconds")
     locations = ("/", "/about/", "/tradingtalk/", "/lab/", "/thai/", "/privacy/",
+                 "/perspectives/", "/indicators/",
                  "/privacy/en/", "/news/", "/news/ko/")
     rows = "\n".join(
         "  <url><loc>https://teemobkk.io%s</loc><lastmod>%s</lastmod></url>" % (path, lastmod)
@@ -1913,6 +1914,10 @@ def build_server(db_path: str = "news.db") -> dict[str, int]:
     for gone in pruned:
         print("removed stale section %s (its address now redirects)" % gone)
     sizes["index.html"] = write(ROOT / "index.html", landing.render_landing())
+    sizes["perspectives/index.html"] = write(
+        ROOT / "perspectives" / "index.html", landing.render_perspectives_page())
+    sizes["indicators/index.html"] = write(
+        ROOT / "indicators" / "index.html", landing.render_indicators_page())
     sizes["thai/index.html"] = write(ROOT / "thai" / "index.html",
                                      landing_thai.render_thai_landing())
     # Sections: /news is the market dashboard, /thai introduces the Thailand material and

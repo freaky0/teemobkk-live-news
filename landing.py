@@ -16,9 +16,27 @@ EDITORIAL_POSTS = [
     {"title": "9월 17일 비트코인 TeemoBKK 관점", "date": "2026-09-17", "url": "https://teemobkk.substack.com/p/9-17-teemobkk", "summary": "ETF 유출과 매파적 FOMC 뒤, 76.6K 회복 전까지는 WAIT입니다."},
 ]
 
-_SUBSTACK_POSTS_URL = "https://teemobkk.substack.com/api/v1/posts?limit=10"
+_SUBSTACK_POSTS_URL = "https://teemobkk.substack.com/api/v1/posts?limit=50"
 _CACHE_FILE = Path(__file__).with_name("perspectives_cache.json")
 _CACHE_TTL_SECONDS = 3600
+
+INDICATORS = (
+    {
+        "code": "fpkVFwl2",
+        "title": "Teemo Supply and Demand Zone",
+        "image": "https://s3.tradingview.com/f/fpkVFwl2_big.png",
+        "alt": "Teemo Supply and Demand Zone 지표 적용 예시",
+        "description": "수요/공급 구간 자동 식별, S/D Flip 추적, 거래량(HVP) 검증. 핵심 가격대에서 반응을 살펴보는 도구입니다.",
+    },
+    {
+        "code": "e3AY6AxC",
+        "title": "Teemo Elliott Wave",
+        "image": "https://s3.tradingview.com/e/e3AY6AxC_big.png",
+        "alt": "Teemo Elliott Wave 지표 적용 예시",
+        "description": "엘리어트 파동 자동 카운팅, 실시간 추적. 파동 구조와 다음 시나리오를 살펴보는 보조 도구로 활용하세요.",
+    },
+)
+INDICATOR_PROFILE_URL = "https://kr.tradingview.com/u/TeemoBKK/#published-scripts"
 
 
 def _valid_posts(posts):
@@ -69,7 +87,7 @@ def _fetch_posts():
             "summary": str(item.get("subtitle") or item.get("description") or "").strip(),
         })
     posts.sort(key=lambda post: post["date"], reverse=True)
-    return posts[:3]
+    return posts[:10]
 
 
 def _write_cache(posts):
@@ -86,19 +104,20 @@ def _write_cache(posts):
             pass
 
 
-def editorial_posts():
-    """Use a one-hour file cache, then stale cache, then the built-in fallback."""
+def editorial_posts(limit=3):
+    """Use a one-hour cache, refreshing it when the caller needs more posts."""
+    limit = max(1, min(10, int(limit)))
     fresh = _fresh_cache()
-    if fresh:
-        return fresh
+    if fresh and len(fresh) >= limit:
+        return fresh[:limit]
     try:
         posts = _fetch_posts()
         if posts:
             _write_cache(posts)
-            return posts
+            return posts[:limit]
     except (OSError, ValueError, TypeError, json.JSONDecodeError):
         pass
-    return _read_cache() or EDITORIAL_POSTS
+    return (_read_cache() or EDITORIAL_POSTS)[:limit]
 
 PAGE = r'''<!doctype html>
 <html lang="ko">
@@ -179,16 +198,7 @@ h2{font-size:24px;line-height:1.3;letter-spacing:-.02em;margin:0;font-weight:700
 .post p{font-size:14.5px;color:var(--muted);margin:0;word-break:keep-all}
 .post .read{display:inline-block;color:var(--accent);font-family:var(--mono);font-size:12.5px;margin-top:14px}
 .note{font-size:12px;color:var(--dim);margin-top:20px;max-width:820px}
-.indicators{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px}
-.indicator{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:26px;transition:border-color .25s,transform .25s}
-.indicator:hover{border-color:rgba(10,122,74,.45);transform:translateY(-3px)}
-.chart-open{display:block;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-bottom:18px;background:#0d1117}
-.chart-open img{display:block;width:100%;height:auto;aspect-ratio:1404/1281;object-fit:cover}
-.chart-caption{display:block;padding:9px 13px;color:var(--muted);font-size:11.5px;border-top:1px solid var(--line);background:var(--surface)}
-.indicator .icode{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.08em}
-.indicator h3{font-size:20px;margin:10px 0 8px;letter-spacing:-.015em;font-weight:700}
-.indicator p{color:var(--muted);font-size:14px;margin:0 0 20px;word-break:keep-all;line-height:1.7}
-.indicator .free{display:inline-block;font-family:var(--mono);font-size:11px;color:var(--accent);border:1px solid rgba(0,229,160,.3);background:var(--accent-dim);border-radius:3px;padding:3px 9px;margin-bottom:16px}
+__INDICATOR_CSS__
 .about{display:grid;grid-template-columns:1fr 1fr;gap:56px}
 .about p{color:var(--muted);font-size:14.5px;margin:10px 0;word-break:keep-all}
 .about h3{font-size:16px;margin:0 0 10px;font-family:var(--mono);color:var(--accent);font-weight:600}
@@ -208,7 +218,6 @@ nav a.secondary{margin-left:0}
 .intro br{display:none}
 .section{padding:30px 0 36px}
 h2{font-size:21px}
-.indicators{grid-template-columns:1fr}
 .about{grid-template-columns:1fr;gap:28px}
 .news-row{gap:10px;padding:12px 14px}
 .news-row a{flex-wrap:wrap;gap:6px 10px}
@@ -230,11 +239,8 @@ __HEADER__
 <main id="main" class="wrap">
 <section class="hero" aria-labelledby="headline"><p class="eyebrow">뉴스를 읽고, 관점을 세우고, 차트로 살펴봅니다.</p><h1 id="headline">차트보다 먼저 읽는 뉴스</h1><p class="intro">시장이 움직이는 이유를 전합니다.<br>금리와 정책, 지정학과 수급까지.</p><p class="hero-tags"><span>• MACRO</span><span>• CRYPTO</span><span>• MARKET STRUCTURE</span></p></section>
 <section class="section" id="news" aria-labelledby="news-title"><div class="sec-head"><span class="sec-tag">01</span><h2 id="news-title">최근 경제 뉴스</h2></div><p class="section-intro">금리와 경기, 기업과 정책, 지정학까지. 시장에 연결되는 소식을 확인하세요.</p><div class="news-status"><span class="live">● 자동 수집 · 한국어로 표시</span><span id="update-status" role="status">수집 상태 확인 중</span><button class="retry" id="retry" type="button" hidden>다시 불러오기</button></div><div class="news-list" id="news-list" aria-busy="true"><div class="loading-line short"></div><div class="loading-line"></div><div class="loading-line"></div></div><noscript><p>뉴스 목록을 불러오려면 자바스크립트가 필요합니다. <a href="/news/ko/">경제 뉴스 페이지에서 확인하세요.</a></p></noscript><a class="section-link" href="/news/ko/">$ open /news/ko/ →</a></section>
-<section class="section" id="perspectives" aria-labelledby="perspectives-title"><div class="sec-head"><span class="sec-tag">02</span><h2 id="perspectives-title">시장 관점</h2></div><p class="section-intro">뉴스와 차트를 어떻게 읽는지, 어떤 조건에서 생각을 바꾸는지. 트레이더로서의 판단을 기록합니다.</p><div class="posts">__POSTS__</div><p class="note">각 글은 작성 당시의 개인적인 관점입니다. 가격과 시나리오는 현재 시점과 다를 수 있습니다.</p></section>
-<section class="section" id="indicators" aria-labelledby="indicators-title"><div class="sec-head"><span class="sec-tag">03</span><h2 id="indicators-title">직접 만든 트레이딩뷰 지표</h2></div><p class="section-intro">차트의 구조와 파동을 살펴보는 도구입니다. 공식 트레이딩뷰 페이지에서 무료로 사용할 수 있습니다.</p><div class="indicators">
-<article class="indicator"><a class="chart-open" href="https://kr.tradingview.com/script/fpkVFwl2/" target="_blank" rel="noopener noreferrer"><img src="https://s3.tradingview.com/f/fpkVFwl2_big.png" width="1404" height="1281" loading="lazy" decoding="async" alt="Teemo Supply and Demand Zone 지표 적용 예시"><span class="chart-caption">적용 예시 · 눌러서 지표 페이지로</span></a><span class="icode">SCRIPT · fpkVFwl2</span><h3>Teemo Supply and Demand Zone</h3><p>수요/공급 구간 자동 식별, S/D Flip 추적, 거래량(HVP) 검증. 핵심 가격대에서 반응을 살펴보는 도구입니다.</p><span class="free">무료 공개</span><br><a class="button" href="https://kr.tradingview.com/script/fpkVFwl2/" target="_blank" rel="noopener noreferrer">트레이딩뷰에서 보기 ↗</a></article>
-<article class="indicator"><a class="chart-open" href="https://kr.tradingview.com/script/e3AY6AxC/" target="_blank" rel="noopener noreferrer"><img src="https://s3.tradingview.com/e/e3AY6AxC_big.png" width="1404" height="1281" loading="lazy" decoding="async" alt="Teemo Elliott Wave 지표 적용 예시"><span class="chart-caption">적용 예시 · 눌러서 지표 페이지로</span></a><span class="icode">SCRIPT · e3AY6AxC</span><h3>Teemo Elliott Wave</h3><p>엘리어트 파동 자동 카운팅, 실시간 추적. 파동 구조와 다음 시나리오를 살펴보는 보조 도구로 활용하세요.</p><span class="free">무료 공개</span><br><a class="button" href="https://kr.tradingview.com/script/e3AY6AxC/" target="_blank" rel="noopener noreferrer">트레이딩뷰에서 보기 ↗</a></article>
-</div><a class="section-link" href="https://kr.tradingview.com/u/TeemoBKK/#published-scripts" target="_blank" rel="noopener noreferrer me">$ open profile → 전체 지표 보기 ↗</a><p class="note">파동 카운팅과 목표 구간은 진행 중인 가격에 따라 달라질 수 있습니다. 사용 조건과 설정은 각 지표 페이지에서 확인하세요.</p></section>
+<section class="section" id="perspectives" aria-labelledby="perspectives-title"><div class="sec-head"><span class="sec-tag">02</span><h2 id="perspectives-title">시장 관점</h2></div><p class="section-intro">뉴스와 차트를 어떻게 읽는지, 어떤 조건에서 생각을 바꾸는지. 트레이더로서의 판단을 기록합니다.</p><div class="posts">__POSTS__</div><a class="section-link" href="/perspectives/">$ open /perspectives/ →</a><p class="note">각 글은 작성 당시의 개인적인 관점입니다. 가격과 시나리오는 현재 시점과 다를 수 있습니다.</p></section>
+<section class="section" id="indicators" aria-labelledby="indicators-title"><div class="sec-head"><span class="sec-tag">03</span><h2 id="indicators-title">직접 만든 트레이딩뷰 지표</h2></div><p class="section-intro">차트의 구조와 파동을 살펴보는 도구입니다. 공식 트레이딩뷰 페이지에서 무료로 사용할 수 있습니다.</p><div class="indicators">__INDICATORS__</div><a class="section-link" href="/indicators/">$ open /indicators/ →</a><a class="section-link" href="https://kr.tradingview.com/u/TeemoBKK/#published-scripts" target="_blank" rel="noopener noreferrer me">$ open profile → 전체 지표 보기 ↗</a><p class="note">파동 카운팅과 목표 구간은 진행 중인 가격에 따라 달라질 수 있습니다. 사용 조건과 설정은 각 지표 페이지에서 확인하세요.</p></section>
 <section class="section about" aria-labelledby="about-title"><div><div class="sec-head"><span class="sec-tag">04</span><h2 id="about-title">TeemoBKK에 대하여</h2></div><p>경제 뉴스를 모으고, 시장을 바라보는 관점을 쓰며, 차트에서 사용하는 지표를 만듭니다.</p><p>뉴스는 시장의 맥락을 살피는 출발점입니다. 해석과 시나리오는 사실과 구분해 기록하겠습니다.</p><a class="section-link" href="/about/">$ open /about/ → 자세히 보기</a></div><div><h3>읽기 전에</h3><ul><li>뉴스는 자동 수집한 원문 제목과 출처를 제공합니다.</li><li>시장 관점은 운영자의 개인적인 해석입니다.</li><li>지표는 분석 보조 도구이며 수익을 보장하지 않습니다.</li></ul></div></section>
 </main>
 __FOOTER__
@@ -321,20 +327,115 @@ def stylesheet() -> str:
     """
     start = PAGE.index("<style>")
     end = PAGE.index("</style>") + len("</style>")
-    return PAGE[start:end].replace("__SHARED_THEME_CSS__", theme.shared_css())
+    return (PAGE[start:end]
+            .replace("__SHARED_THEME_CSS__", theme.shared_css())
+            .replace("__INDICATOR_CSS__", theme.INDICATOR_CSS))
 
 
 display_date = theme.display_date
 
 
+def render_indicator_cards() -> str:
+    cards = []
+    for indicator in INDICATORS:
+        fields = {key: escape(str(value), quote=True) for key, value in indicator.items()}
+        fields["url"] = "https://kr.tradingview.com/script/{}/".format(fields["code"])
+        cards.append(
+            '<article class="indicator"><a class="chart-open" href="{url}" target="_blank" rel="noopener noreferrer">'
+            '<img src="{image}" width="1404" height="1281" loading="lazy" decoding="async" alt="{alt}">'
+            '<span class="chart-caption">적용 예시 · 눌러서 지표 페이지로</span></a>'
+            '<span class="icode">SCRIPT · {code}</span><h3>{title}</h3><p>{description}</p>'
+            '<span class="free">무료 공개</span><br><a class="button" href="{url}" target="_blank" rel="noopener noreferrer">'
+            '트레이딩뷰에서 보기 ↗</a></article>'.format(**fields)
+        )
+    return "".join(cards)
+
+
+def _render_post_cards(posts) -> str:
+    cards = []
+    for post in posts:
+        fields = {key: escape(str(value or ""), quote=True) for key, value in post.items()}
+        fields["visible_date"] = escape(theme.display_date(str(post.get("date", ""))))
+        cards.append(
+            '<article class="post"><time datetime="{date}">{visible_date}</time>'
+            '<h3><a href="{url}" target="_blank" rel="noopener noreferrer">{title}</a></h3>'
+            '<p>{summary}</p><a class="read" href="{url}" target="_blank" rel="noopener noreferrer">'
+            '관점 읽기 · 외부 글 ↗</a></article>'.format(**fields)
+        )
+    return "".join(cards)
+
+
+def _standalone_page(title: str, eyebrow: str, description: str, content: str, extra_css: str = "") -> str:
+    safe_title = escape(title)
+    safe_eyebrow = escape(eyebrow)
+    safe_description = escape(description)
+    return (
+        '<!doctype html><html lang="ko"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        '<meta name="description" content="{description}"><title>{title} | TeemoBKK</title>'
+        '<style>{shared_css}{extra_css}{page_css}</style>{head_script}</head><body>'
+        '<a class="skip" href="#main">본문으로 건너뛰기</a>{header}'
+        '<main class="page-main" id="main"><header class="page-head">'
+        '<p class="page-eyebrow">{eyebrow}</p><h1 class="page-title">{title}</h1>'
+        '<p class="page-intro">{description}</p></header>{content}'
+        '<a class="page-back" href="/">$ cd / → 홈으로</a></main>{footer}</body></html>'
+    ).format(
+        description=safe_description,
+        title=safe_title,
+        shared_css=theme.shared_css(),
+        extra_css=extra_css,
+        page_css=theme.SUBPAGE_CSS,
+        head_script=theme.theme_head_script(),
+        header=theme.render_header(),
+        eyebrow=safe_eyebrow,
+        content=content,
+        footer=theme.render_footer(),
+    )
+
+
+def render_perspectives_page(posts=None) -> str:
+    """Render a standalone page with the ten latest available Substack posts."""
+    selected = editorial_posts(limit=10) if posts is None else list(posts)[:10]
+    entries = []
+    for post in selected:
+        fields = {key: escape(str(value or ""), quote=True) for key, value in post.items()}
+        date = str(post.get("date", ""))
+        fields["visible_date"] = escape(theme.display_date(date))
+        fields["date"] = escape(date, quote=True)
+        entries.append(
+            '<article class="page-post"><time datetime="{date}">{visible_date}</time>'
+            '<h2><a href="{url}" target="_blank" rel="noopener noreferrer">{title}</a></h2>'
+            '<p>{summary}</p><a class="read" href="{url}" target="_blank" rel="noopener noreferrer">'
+            '원문 읽기 ↗</a></article>'.format(**fields)
+        )
+    if not entries:
+        entries.append('<p class="empty">현재 표시할 관점 글이 없습니다.</p>')
+    content = '<div class="page-posts">{}</div>'.format("".join(entries))
+    return _standalone_page(
+        "시장 관점", "PERSPECTIVES · SUBSTACK", "뉴스와 차트를 읽는 관점과 판단 기록입니다.", content
+    )
+
+
+def render_indicators_page() -> str:
+    """Render the complete public TradingView indicator catalogue."""
+    content = (
+        '<div class="indicators">{}</div>'
+        '<a class="page-back" href="{}" target="_blank" rel="noopener noreferrer me">'
+        '$ open profile → 전체 지표 보기 ↗</a>'
+    ).format(render_indicator_cards(), escape(INDICATOR_PROFILE_URL, quote=True))
+    return _standalone_page(
+        "트레이딩뷰 지표", "INDICATORS · TRADINGVIEW",
+        "차트 구조와 파동을 살펴보는 공개 지표입니다. 분석 보조 도구로 활용하세요.",
+        content, extra_css=theme.INDICATOR_CSS,
+    )
+
+
 def render_landing() -> str:
-    posts = []
-    for post in editorial_posts():
-        fields = {k: escape(v, quote=True) for k, v in post.items()}
-        fields['visible_date'] = escape(theme.display_date(post['date']))
-        posts.append('<article class="post"><time datetime="{date}">{visible_date}</time><h3><a href="{url}" target="_blank" rel="noopener noreferrer">{title}</a></h3><p>{summary}</p><a class="read" href="{url}" target="_blank" rel="noopener noreferrer">관점 읽기 · 외부 글 ↗</a></article>'.format(**fields))
-    return (PAGE.replace('__POSTS__', ''.join(posts))
+    posts = _render_post_cards(editorial_posts(limit=3))
+    return (PAGE.replace('__POSTS__', posts)
             .replace('__SHARED_THEME_CSS__', theme.shared_css())
+            .replace('__INDICATOR_CSS__', theme.INDICATOR_CSS)
+            .replace('__INDICATORS__', render_indicator_cards())
             .replace('__THEME_HEAD__', theme.theme_head_script())
             .replace('__HEADER__', theme.render_header())
             .replace('__FOOTER__', theme.render_footer()))
