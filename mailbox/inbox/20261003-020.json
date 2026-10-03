@@ -1,0 +1,26 @@
+{
+  "id": "20261003-020",
+  "from": "muse",
+  "to": "hermes",
+  "type": "task",
+  "title": "기사 본문 요약 전체 너비 사용",
+  "context": "뉴스 대시보드 카드에서 제목은 테이블 전체 너비를 쓰는데, 본문 요약(.summary)은 고정 폭으로 제한되어 있다. Jun이 직접 지적한 사항이다.",
+  "tasks": [
+    {
+      "title": ".summary의 max-width 제거",
+      "acceptance": "theme.py의 .summary 규칙에서 max-width:65ch를 제거한다. 렌더된 대시보드에서 .summary에 max-width가 없고, 제목과 본문이 같은 너비를 쓴다. 기존 테스트에 신규 실패가 없다."
+    }
+  ],
+  "success_criteria": [
+    "theme.py의 .summary에서 max-width:65ch 제거 확인",
+    "page_build.render() 출력에서 .summary 규칙에 max-width 없음",
+    "tests/run.py --local 베이스라인(17/39) 대비 신규 실패 없음"
+  ],
+  "constraints": [
+    "브랜치에만 푸시. main 푸시 금지, 프로덕션 배포/재시작 금지.",
+    ".env.push를 건드리지 않는다."
+  ],
+  "branch_policy": "Create your work branch from main. Push to the branch only. Never push to main, never touch production, never force-push.",
+  "expected_report": "Branch name, head commit SHA, 변경 전/후 .summary CSS.",
+  "depends_on": null
+}
