@@ -1,0 +1,41 @@
+{
+  "base_commit": "main (process after 20261003-016 is merged; rebase onto main)",
+  "branch_policy": "Create your work branch from main. Push to the branch only. Never push to main, never touch production, never force-push.",
+  "constraints": [
+    "Work on a branch only; report branch name and head commit SHA.",
+    "Do NOT modify .env.push or any secret/config file.",
+    "Do NOT deploy or restart anything on production.",
+    "Follow the about/ tradingtalk/ lab/ page pattern already in the repo (static index.html under a directory, same header/footer)."
+  ],
+  "context": "Jun approved promoting both sections to standalone pages. Home #perspectives is fed at build time from the Substack API (landing.py: _SUBSTACK_POSTS_URL, filter title/tags containing '관점', latest 3, cached in perspectives_cache.json). Home #indicators is a hardcoded list of TradingView indicator articles. Today both are anchor scrolls with no shareable URL.",
+  "depends_on": "20261003-016 (theme.py should be the styling source for the new pages)",
+  "expected_report": "Branch name, head commit SHA, test/verify commands + results.",
+  "from": "muse",
+  "id": "20261003-017",
+  "success_criteria": [
+    "/perspectives/ renders the latest 관점 posts (title, date, summary, link to Substack), at least the 10 most recent; updates without manual edits (build-time generation reusing the existing fetch logic, or equivalent)",
+    "/indicators/ renders the full indicator list (same articles as home section, full detail)",
+    "Home keeps both sections as teasers: perspectives shows top 3 + link '$ open /perspectives/ →', indicators keeps list + link to /indicators/",
+    "Home header nav points to /perspectives/ and /indicators/ (no longer #anchors)",
+    "STATIC_FILES gains /perspectives, /perspectives/, /indicators, /indicators/ routes (same pattern as 20261003-014)",
+    "sitemap_xml() locations gain /perspectives/ and /indicators/",
+    "Contract tests extended for the new routes and sitemap URLs; no new test failures vs base"
+  ],
+  "tasks": [
+    {
+      "acceptance": "perspectives/index.html lists latest 10 관점 posts with working Substack links; regenerates from the feed",
+      "title": "Create /perspectives/ standalone page"
+    },
+    {
+      "acceptance": "indicators/index.html shows the full indicator catalogue",
+      "title": "Create /indicators/ standalone page"
+    },
+    {
+      "acceptance": "Nav uses page URLs; home sections are teasers; routes + sitemap + tests cover the new pages",
+      "title": "Rewire home nav/teasers, routes, sitemap, tests"
+    }
+  ],
+  "title": "Phase3-2: promote 시장 관점 and 트레이딩뷰 지표 to standalone pages",
+  "to": "hermes",
+  "type": "task"
+}
