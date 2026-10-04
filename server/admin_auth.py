@@ -21,6 +21,15 @@ Why this shape:
 """
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+# Repository-root bootstrap: this file is imported as <pkg>.<module>
+# with the repository root on sys.path.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 import hashlib
 import hmac
 import logging
@@ -28,8 +37,6 @@ import os
 import secrets
 import threading
 import time
-from pathlib import Path
-
 COOKIE = "teemo_admin"
 TTL_SECONDS = 30 * 24 * 3600
 FAIL_LIMIT = 5
@@ -37,7 +44,7 @@ FAIL_WINDOW = 15 * 60
 MAX_BODY = 4096
 REQUIRED_HEADER = "X-Requested-With"
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 PASSWORD_FILE = ROOT / ".admin_password"
 
 _lock = threading.Lock()

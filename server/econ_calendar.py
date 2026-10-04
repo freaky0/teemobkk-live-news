@@ -28,6 +28,15 @@ Times are KST only, and the list is deliberately short: a glance list.
 """
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+# Repository-root bootstrap: this file is imported as <pkg>.<module>
+# with the repository root on sys.path.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 import json
 import logging
 import re
@@ -37,8 +46,7 @@ import time
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
-import potus_schedule
-
+from collectors import potus_schedule
 SOURCE_URL = "https://api.nasdaq.com/api/calendar/economicevents?date=%s"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 KST = timezone(timedelta(hours=9))

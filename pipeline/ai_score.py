@@ -39,7 +39,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
+HERE = Path(__file__).resolve().parent.parent  # repo root: news.db lives there
 DB = HERE / "news.db"
 BATCH = 100
 WINDOW_HOURS = 24

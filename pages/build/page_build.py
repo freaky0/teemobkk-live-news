@@ -22,12 +22,14 @@ Two data paths are supported and selected by `public`:
 """
 from __future__ import annotations
 import sys
+from pathlib import Path
 
-# Repository-root bootstrap: this file lives under pages/build/, but the code is
-# imported as pages.build.<module> with the repository root on sys.path.
+# Repository-root bootstrap: this file is imported as <pkg>.<module>
+# with the repository root on sys.path.
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
+
 
 import datetime
 import html
@@ -36,7 +38,6 @@ import json
 import os
 import re
 import shutil
-from pathlib import Path
 
 from pages.build import landing
 from pages.build import landing_thai

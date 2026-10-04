@@ -1,17 +1,26 @@
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+# Repository-root bootstrap: this file is imported as <pkg>.<module>
+# with the repository root on sys.path.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 import argparse
-import admin_auth
-import admin_page
-import category_rules as taxonomy
-import econ_calendar
-import filter_learn
-import google_news
-import bluesky_source
-import sbh_open_news
-import sbh_source
-import telegram_source
-import whitehouse_source
+from server import admin_auth
+from server import admin_page
+from pipeline import category_rules as taxonomy
+from server import econ_calendar
+from pipeline import filter_learn
+from collectors import google_news
+from collectors import bluesky_source
+from collectors import sbh_open_news
+from collectors import sbh_source
+from collectors import telegram_source
+from collectors import whitehouse_source
 import difflib
 import email.utils
 import html
@@ -28,10 +37,8 @@ import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
 from typing import Any
-
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 DB_FILE = ROOT / "news.db"
 PUBLIC_MODE = False
 DEFAULT_INTERVAL = 30
@@ -47,26 +54,26 @@ THAI_REGION = "태국"
 GLOBAL_REGION = "글로벌"
 GENERIC_CATEGORY = "일반"
 STATIC_FILES = {
-    "/favicon.ico": ("favicon.ico", "image/x-icon"),
-    "/favicon-32.png": ("favicon-32.png", "image/png"),
-    "/favicon-16.png": ("favicon-16.png", "image/png"),
-    "/apple-touch-icon.png": ("apple-touch-icon.png", "image/png"),
-    "/robots.txt": ("robots.txt", "text/plain; charset=utf-8"),
+    "/favicon.ico": ("pages/assets/favicon.ico", "image/x-icon"),
+    "/favicon-32.png": ("pages/assets/favicon-32.png", "image/png"),
+    "/favicon-16.png": ("pages/assets/favicon-16.png", "image/png"),
+    "/apple-touch-icon.png": ("pages/assets/apple-touch-icon.png", "image/png"),
+    "/robots.txt": ("pages/assets/robots.txt", "text/plain; charset=utf-8"),
     "/sitemap.xml": ("sitemap.xml", "application/xml; charset=utf-8"),
-    "/privacy": ("privacy.html", "text/html; charset=utf-8"),
-    "/privacy/": ("privacy.html", "text/html; charset=utf-8"),
-    "/privacy/en": ("privacy_en.html", "text/html; charset=utf-8"),
-    "/privacy/en/": ("privacy_en.html", "text/html; charset=utf-8"),
-    "/about": ("about/index.html", "text/html; charset=utf-8"),
-    "/about/": ("about/index.html", "text/html; charset=utf-8"),
+    "/privacy": ("pages/static/privacy.html", "text/html; charset=utf-8"),
+    "/privacy/": ("pages/static/privacy.html", "text/html; charset=utf-8"),
+    "/privacy/en": ("pages/static/privacy_en.html", "text/html; charset=utf-8"),
+    "/privacy/en/": ("pages/static/privacy_en.html", "text/html; charset=utf-8"),
+    "/about": ("pages/static/about/index.html", "text/html; charset=utf-8"),
+    "/about/": ("pages/static/about/index.html", "text/html; charset=utf-8"),
     "/perspectives": ("perspectives/index.html", "text/html; charset=utf-8"),
     "/perspectives/": ("perspectives/index.html", "text/html; charset=utf-8"),
     "/indicators": ("indicators/index.html", "text/html; charset=utf-8"),
     "/indicators/": ("indicators/index.html", "text/html; charset=utf-8"),
-    "/tradingtalk": ("tradingtalk/index.html", "text/html; charset=utf-8"),
-    "/tradingtalk/": ("tradingtalk/index.html", "text/html; charset=utf-8"),
-    "/lab": ("lab/index.html", "text/html; charset=utf-8"),
-    "/lab/": ("lab/index.html", "text/html; charset=utf-8"),
+    "/tradingtalk": ("pages/static/tradingtalk/index.html", "text/html; charset=utf-8"),
+    "/tradingtalk/": ("pages/static/tradingtalk/index.html", "text/html; charset=utf-8"),
+    "/lab": ("pages/static/lab/index.html", "text/html; charset=utf-8"),
+    "/lab/": ("pages/static/lab/index.html", "text/html; charset=utf-8"),
 }
 
 USER_AGENT = "TeemoLiveNewsDashboard/1.0 (+local research dashboard)"
@@ -508,7 +515,7 @@ def _story_identity(article: dict[str, Any], resolved: str = "") -> tuple[str, s
 
 
 def dedupe(articles: list[dict[str, Any]], limit: int | None = None) -> list[dict[str, Any]]:
-    import semantic_event
+    from pipeline import semantic_event
     articles = sorted(articles, key=lambda item: (item.get("published_at", ""), item["priority"]), reverse=True)
     kept: list[dict[str, Any]] = []
     seen_links: set[str] = set()
@@ -619,7 +626,7 @@ def dedupe_rows(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     feed a screen - the API the pages read and the published JSON - so the duplicates already in the
     database stop being shown, while nothing is deleted and the push path keeps its own selection.
     """
-    import semantic_event
+    from pipeline import semantic_event
     seen: dict[str, tuple[set[str], set[str]]] = {}
     seen_links: dict[str, set[str]] = {}
     seen_events: dict[str, list[dict[str, Any]]] = {}
@@ -1900,7 +1907,7 @@ class Handler(BaseHTTPRequestHandler):
         if request_path.startswith('/api/'):
             self.send_error(404)
             return
-        body = (ROOT / '404.html').read_bytes()
+        body = (ROOT / 'pages' / 'static' / '404.html').read_bytes()
         self.send_response(404)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.send_header('Cache-Control', 'no-store')
