@@ -8,5 +8,5 @@ User=teemo
 Group=teemo
 Type=oneshot
 WorkingDirectory=/opt/teemo-live-news
-ExecStart=/usr/bin/python3 /opt/teemo-live-news/server/econ_calendar.py /opt/teemo-live-news/pages-redirect/calendar.json
+ExecStart=/usr/bin/python3 /opt/teemo-live-news/server/econ_calendar.py /opt/teemo-live-news/docs/calendar.json
 TimeoutStartSec=600

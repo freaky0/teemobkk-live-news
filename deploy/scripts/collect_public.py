@@ -26,7 +26,7 @@ from collectors import google_news  # noqa: E402
 from server import live_news_dashboard as core  # noqa: E402  (path is set just above)
 from pages.build import page_build  # noqa: E402
 
-DOCS = ROOT / "pages-redirect"
+DOCS = ROOT / "docs"
 INDEX_FILE = DOCS / "index.json"
 REGION_FILES = {core.GLOBAL_REGION: DOCS / "global.json", core.THAI_REGION: DOCS / "thai.json"}
 KEEP_HOURS = 24
@@ -194,7 +194,7 @@ def write_thai_page() -> int:
     docs/index.html, and a CSS class rename once reached only one of the two.)
     """
     sizes = page_build.build_public()
-    return sizes["pages-redirect/thai/index.html"]
+    return sizes["docs/thai/index.html"]
 
 def resolve_pending(rows: list[dict[str, Any]], connection, cache: dict[str, str]) -> dict[str, str]:
     """Resolve a bounded number of aggregator links per run and remember them.
