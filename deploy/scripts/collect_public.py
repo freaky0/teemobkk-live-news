@@ -18,13 +18,13 @@ from pathlib import Path
 from typing import Any
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parent
+ROOT = HERE.parent.parent
 sys.path.insert(0, str(ROOT))
 
-import category_rules  # noqa: E402
-import google_news  # noqa: E402
-import live_news_dashboard as core  # noqa: E402  (path is set just above)
-import page_build  # noqa: E402
+from pipeline import category_rules  # noqa: E402
+from collectors import google_news  # noqa: E402
+from server import live_news_dashboard as core  # noqa: E402  (path is set just above)
+from pages.build import page_build  # noqa: E402
 
 DOCS = ROOT / "pages-redirect"
 INDEX_FILE = DOCS / "index.json"

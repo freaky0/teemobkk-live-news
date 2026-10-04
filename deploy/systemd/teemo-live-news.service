@@ -1,0 +1,25 @@
+[Unit]
+Description=TeemoBKK Live News collector and dashboard
+Documentation=https://github.com/freaky0/teemobkk-live-news
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=teemo
+Group=teemo
+WorkingDirectory=/opt/teemo-live-news
+EnvironmentFile=/opt/teemo-live-news/.env.push
+ExecStartPre=/usr/bin/python3 -c "from pages.build import page_build; page_build.build_server()"
+ExecStart=/usr/bin/python3 server/live_news_dashboard.py --public --host 127.0.0.1 --port 8765 --interval 60
+Restart=always
+RestartSec=15
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/teemo-live-news
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

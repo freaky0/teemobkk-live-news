@@ -34,7 +34,7 @@ jobs:
           python-version: "3.12"
 
       - name: Collect the public news JSON and the calendar
-        run: python deploy/collect_public.py && python econ_calendar.py pages-redirect/calendar.json
+        run: python deploy/scripts/collect_public.py && python econ_calendar.py pages-redirect/calendar.json
 
       - name: Commit the refreshed data
         run: |
