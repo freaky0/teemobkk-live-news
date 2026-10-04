@@ -65,3 +65,7 @@ tests/node_modules/
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
+
+# generated at runtime, differs per host — never commit
+/sitemap.xml
+/.thai-today.json
