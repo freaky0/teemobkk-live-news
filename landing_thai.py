@@ -144,7 +144,7 @@ __FILTERS__
 <footer class="footer"><div class="wrap">
 <div class="footer-row"><span class="flogo">Teemo<span class="g">BKK</span> · 태국 소식</span><a href="/">경제 뉴스와 지표 보기 ↗</a></div>
 <p>자동 수집한 목록이며 자동 매매 신호가 아닙니다 · 중요한 사건은 원문과 공식 발표로 확인하세요.</p>
-<nav class="footer-links" aria-label="사이트 정보"><a href="/privacy/">개인정보 처리방침</a><a href="https://t.me/+OegpDrwxnaBiOGNl" target="_blank" rel="noopener noreferrer">TeemoBKK 텔레그램 대화방 ↗</a></nav>
+<nav class="footer-links" aria-label="사이트 정보"><a href="/privacy/">개인정보 처리방침</a></nav>
 </div></footer>
 
 <script>

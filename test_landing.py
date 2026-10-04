@@ -72,17 +72,15 @@ class LandingContract(unittest.TestCase):
         self.assertIn("root.dataset.theme=dark?'dark':'light'", page)
         self.assertIn('color-scheme:dark', page)
 
-    def test_tradingview_invite_is_explicit_and_external(self):
+    def test_tradingview_invite_is_removed_but_official_profile_remains(self):
         page = landing.render_landing()
         footer = page.split('<footer class="footer">', 1)[1].split('</footer>', 1)[0]
-        self.assertIn('https://t.me/+OegpDrwxnaBiOGNl', footer)
-        self.assertIn('트레이딩뷰 TeemoBKK 텔레그램 대화방 초대 링크', page)
-        self.assertIn('href="https://t.me/+OegpDrwxnaBiOGNl" target="_blank" rel="noopener noreferrer"', page)
-        self.assertIn('외부 대화방으로 이동합니다', page)
+        self.assertNotIn('https://t.me/', footer)
+        self.assertNotIn('텔레그램 대화방 초대 링크', page)
+        self.assertNotIn('외부 대화방으로 이동합니다', page)
         self.assertIn('트레이딩뷰 TeemoBKK 공식 프로필', page)
-        self.assertEqual(page.count('https://t.me/+OegpDrwxnaBiOGNl'), 1)
 
-    def test_telegram_chat_is_in_each_rendered_footer_once(self):
+    def test_telegram_chat_links_are_absent_from_each_rendered_footer(self):
         invite = 'https://t.me/+OegpDrwxnaBiOGNl'
         pages = {'/': landing.render_landing(), '/thai/': landing_thai.render_thai_landing()}
         for region in ('/news/', '/thai/news/'):
@@ -97,16 +95,10 @@ class LandingContract(unittest.TestCase):
             pages[route] = (Path(__file__).resolve().parent / name).read_text(encoding='utf-8')
         for route, page in pages.items():
             with self.subTest(route=route):
-                self.assertEqual(page.count(invite), 1)
                 footer = page.split('<footer ', 1)[1].split('</footer>', 1)[0]
-                self.assertIn('href="%s" target="_blank" rel="noopener noreferrer"' % invite, footer)
-                self.assertIn('TeemoBKK', footer)
-                if route not in ('/',):
-                    if route in ('/news/', '/thai/news/', '/privacy/en/'):
-                        self.assertIn('external Telegram chat', footer)
-                    else:
-                        self.assertIn('외부 텔레그램 대화방', footer)
-                    self.assertNotIn('뉴스 전용', footer)
+                self.assertNotIn(invite, footer)
+                self.assertNotIn('t.me/', footer)
+                self.assertNotRegex(footer, r'(?i)telegram|텔레그램')
 
     def test_mobile_motion_and_thai_identity(self):
         home = landing.render_landing()
