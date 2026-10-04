@@ -13,7 +13,7 @@ import os
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CORE = os.path.join(ROOT, "live_news_dashboard.py")
+CORE = os.path.join(ROOT, "server", "live_news_dashboard.py")
 TABLE = os.path.join(ROOT, "category_rules.py")
 
 BOUNDARY_MARK = "# Terms that must match a whole word, chosen from measurement rather than taste."

@@ -11,7 +11,7 @@ import os
 from collections import Counter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CORE = os.path.join(ROOT, "live_news_dashboard.py")
+CORE = os.path.join(ROOT, "server", "live_news_dashboard.py")
 
 spec = importlib.util.spec_from_file_location("core", CORE)
 sys.path.insert(0, ROOT)
