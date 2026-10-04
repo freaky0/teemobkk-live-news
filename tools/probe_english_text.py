@@ -23,8 +23,8 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-import page_build  # noqa: E402
-import ui_text  # noqa: E402
+from pages.build import page_build  # noqa: E402
+from pages.build import ui_text  # noqa: E402
 
 HANGUL = re.compile(r"[\uac00-\ud7a3]+")
 # Element text, and quoted literals up to a line: the script writes its strings in quotes.

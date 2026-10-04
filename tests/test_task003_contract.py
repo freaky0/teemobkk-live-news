@@ -4,7 +4,7 @@ import subprocess
 import unittest
 import xml.etree.ElementTree as ET
 
-import page_build
+from pages.build import page_build
 
 
 class Task003Contract(unittest.TestCase):

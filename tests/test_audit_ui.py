@@ -7,10 +7,10 @@ from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import landing
-import landing_thai
-import page_build
-import category_rules
+from pages.build import landing
+from pages.build import landing_thai
+from pages.build import page_build
+from pipeline import category_rules
 
 
 class AuditUI(unittest.TestCase):

@@ -3,11 +3,12 @@ Usage: python test_landing_browser.py [--live]
 Requires Playwright; optional HERMES_BROWSER_TOOLS path for isolated install.
 """
 import os,sys,json,datetime
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from pathlib import Path
 if os.environ.get('HERMES_BROWSER_TOOLS'): sys.path.insert(0,os.environ['HERMES_BROWSER_TOOLS'])
 from playwright.sync_api import sync_playwright
 import requests
-import landing
+from pages.build import landing
 
 OUT=Path('C:/Users/freak/AppData/Local/hermes/cache/scratch/teemo-redesign')
 OUT.mkdir(parents=True,exist_ok=True)

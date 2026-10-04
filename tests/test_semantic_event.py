@@ -9,9 +9,9 @@ from datetime import datetime, timedelta, timezone
 ROOT = os.path.dirname(os.path.dirname(__file__))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "deploy"))
-import live_news_dashboard as core
-import semantic_event
-import page_build
+from server import live_news_dashboard as core
+from pipeline import semantic_event
+from pages.build import page_build
 from collect_public import merge
 
 NOW = datetime(2026, 9, 30, 12, tzinfo=timezone.utc)

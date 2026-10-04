@@ -20,9 +20,9 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-import admin_page  # noqa: E402
-import page_build  # noqa: E402
-import ui_text  # noqa: E402
+from server import admin_page  # noqa: E402
+from pages.build import page_build  # noqa: E402
+from pages.build import ui_text  # noqa: E402
 
 OPERATOR_MARKERS = ('id="interval"', 'id="logout"', 'id="sources"', 'id="hidden"', 'id="undobar"',
                     'data-hide=')

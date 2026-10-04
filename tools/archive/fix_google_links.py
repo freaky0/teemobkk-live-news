@@ -28,7 +28,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT))
 
-import google_news  # noqa: E402
+from collectors import google_news  # noqa: E402
 
 
 def aggregator_links(connection: sqlite3.Connection, limit: int | None = None) -> list[str]:

@@ -28,8 +28,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "deploy"))
 
-import google_news  # noqa: E402
-import live_news_dashboard as core  # noqa: E402
+from collectors import google_news  # noqa: E402
+from server import live_news_dashboard as core  # noqa: E402
 
 # Measured on the live Thailand window: the same wire story, from four outlets, under four links.
 # The two english.news.cn rows are two different Google links for the same article.

@@ -23,7 +23,7 @@ from collections import Counter
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-import category_rules as taxonomy  # noqa: E402
+from pipeline import category_rules as taxonomy  # noqa: E402
 
 UA = {"User-Agent": "Mozilla/5.0 (teemo-measure)"}
 

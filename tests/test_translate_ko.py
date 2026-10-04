@@ -10,12 +10,12 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import live_news_dashboard as core
-import page_build
-import econ_calendar
+from server import live_news_dashboard as core
+from pages.build import page_build
+from server import econ_calendar
 from deploy import collect_public
 from tools import backfill_translations
-import translate_ko
+from pipeline import translate_ko
 
 
 class TranslateOne(unittest.TestCase):

@@ -24,8 +24,8 @@ from datetime import datetime, timezone
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-import category_rules as taxonomy  # noqa: E402
-import live_news_dashboard as core  # noqa: E402
+from pipeline import category_rules as taxonomy  # noqa: E402
+from server import live_news_dashboard as core  # noqa: E402
 
 
 def recategorize(title, summary, region, source, source_type, published_at):

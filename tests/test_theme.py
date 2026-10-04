@@ -9,10 +9,10 @@ from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import landing
-import landing_thai
-import page_build
-import theme
+from pages.build import landing
+from pages.build import landing_thai
+from pages.build import page_build
+from pages.build import theme
 
 
 class SharedThemeContract(unittest.TestCase):

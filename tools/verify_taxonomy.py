@@ -30,7 +30,7 @@ core = importlib.util.module_from_spec(spec)
 sys.modules["core"] = core
 spec.loader.exec_module(core)
 
-import category_rules  # noqa: E402
+from pipeline import category_rules  # noqa: E402
 
 old_global = core.CATEGORY_RULES
 new_global = dict(category_rules.GLOBAL_RULES)

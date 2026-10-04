@@ -2,9 +2,9 @@
 import unittest
 from html.parser import HTMLParser
 from pathlib import Path
-import landing
-import landing_thai
-import page_build
+from pages.build import landing
+from pages.build import landing_thai
+from pages.build import page_build
 
 class Text(HTMLParser):
     def __init__(self):

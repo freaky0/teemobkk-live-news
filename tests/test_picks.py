@@ -17,8 +17,8 @@ from pathlib import Path
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-import live_news_dashboard as core  # noqa: E402
-import page_build  # noqa: E402
+from server import live_news_dashboard as core  # noqa: E402
+from pages.build import page_build  # noqa: E402
 
 OLD = "https://example.com/older-picked"
 NEW = "https://example.com/newer-plain"

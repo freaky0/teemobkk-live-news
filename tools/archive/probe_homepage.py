@@ -16,7 +16,7 @@ if os.environ.get("HERMES_BROWSER_TOOLS"):
 from playwright.sync_api import sync_playwright
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import landing
+from pages.build import landing
 
 BASE = "https://teemobkk.io/"
 LIVE = "--live" in sys.argv

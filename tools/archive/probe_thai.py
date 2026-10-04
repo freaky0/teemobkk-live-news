@@ -13,7 +13,7 @@ if os.environ.get("HERMES_BROWSER_TOOLS"):
 from playwright.sync_api import sync_playwright
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import landing_thai
+from pages.build import landing_thai
 
 BASE = "https://teemobkk.io/thai/"
 LIVE = "--live" in sys.argv
@@ -119,7 +119,7 @@ with sync_playwright() as p:
     page.screenshot(path=str(OUT / ("thai-landing-mobile.png" if not LIVE else "thai-live-mobile.png")), full_page=True)
 
     # the deep link: the dashboard must arrive with the category already applied
-    import page_build
+    from pages.build import page_build
     dash = page_build.render(public=False, datadir="", want_thai=True, icon_prefix="/",
                              admin=False, lang="ko", alt="../index.html", seed_html="")
     dash_url = "https://teemobkk.io/thai/news/ko/"
