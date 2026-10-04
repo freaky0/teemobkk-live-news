@@ -1768,7 +1768,6 @@ __TABS__
     # dashboards the "Thailand" tab is a plain link to the canonical Thai
     # dashboard instead of an in-place region switch; on the Thai dashboards
     # the "global" tab links back the same way.
-    thai_href = "/thai/news/ko/" if lang == "ko" else "/thai/news/"
     global_href = "/news/ko/" if lang == "ko" else "/news/"
     if want_thai:
         tabs_html = (
@@ -1780,8 +1779,7 @@ __TABS__
         tabs_html = (
             '    <button id="tab-global" class="tab active" data-tab="global" role="tab" aria-selected="true">경제 소식</button>\n'
             '    <button id="tab-cal" class="tab" data-tab="cal" role="tab" aria-selected="false">경제 지표</button>\n'
-            '    <a id="tab-thai" class="tab th" href="%s">태국 소식</a>'
-        ) % thai_href
+        )
     page = page.replace("__TABS__", tabs_html)
     page = (localize(page, lang)
             .replace("__TREND_STOP__", json.dumps(sorted(set((
