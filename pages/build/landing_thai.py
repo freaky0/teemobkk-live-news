@@ -5,11 +5,21 @@ targets Korean expats in Thailand and carries its own visual identity —
 royal gold, deep purple, warm cream, Wat Arun hero.
 """
 
+import sys
+from pathlib import Path
+
+# Repository-root bootstrap: this file lives under pages/build/, but the code is
+# imported as pages.build.<module> with the repository root on sys.path.
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 import html
 import json
 
-import ui_text
-import theme
+
+from pages.build import ui_text
+from pages.build import theme
 
 HERO_IMG = "https://images.pexels.com/photos/11104872/pexels-photo-11104872.jpeg?auto=compress&cs=tinysrgb&w=1600"
 

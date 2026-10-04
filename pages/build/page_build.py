@@ -21,6 +21,13 @@ Two data paths are supported and selected by `public`:
             server, plus the admin panel (source health, poll interval, archive size).
 """
 from __future__ import annotations
+import sys
+
+# Repository-root bootstrap: this file lives under pages/build/, but the code is
+# imported as pages.build.<module> with the repository root on sys.path.
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 import datetime
 import html
@@ -31,16 +38,16 @@ import re
 import shutil
 from pathlib import Path
 
-import landing
-import landing_thai
-import theme
-import category_rules as taxonomy
-import google_news
-import semantic_event
-import ui_text
+from pages.build import landing
+from pages.build import landing_thai
+from pages.build import theme
+from pipeline import category_rules as taxonomy
+from collectors import google_news
+from pipeline import semantic_event
+from pages.build import ui_text
 
-ROOT = Path(__file__).resolve().parent
-DOCS = ROOT / "docs"
+ROOT = Path(__file__).resolve().parent.parent.parent
+DOCS = ROOT / "pages-redirect"
 
 CSS = theme.DASHBOARD_CSS + "\n" + theme.USAGE_BAR_CSS
 
@@ -1808,10 +1815,10 @@ def write(path: Path, text: str) -> int:
 # Where each published address should send its reader. The domain was split into sections
 # (/news, /thai) and the collector runs on its own host, so these addresses are old links.
 MOVED = {
-    "docs/index.html": "https://teemobkk.io/",
-    "docs/ko/index.html": "https://teemobkk.io/news/ko/",
-    "docs/thai/index.html": "https://teemobkk.io/thai/",
-    "docs/ko/thai/index.html": "https://teemobkk.io/thai/news/ko/",
+    "pages-redirect/index.html": "https://teemobkk.io/",
+    "pages-redirect/ko/index.html": "https://teemobkk.io/news/ko/",
+    "pages-redirect/thai/index.html": "https://teemobkk.io/thai/",
+    "pages-redirect/ko/thai/index.html": "https://teemobkk.io/thai/news/ko/",
 }
 
 REDIRECT = """<!doctype html>
@@ -1855,13 +1862,13 @@ def redirect_page(to: str) -> str:
 
 def not_found_page() -> str:
     """One standalone document for both the proxy and GitHub Pages."""
-    return (ROOT / "404.html").read_text(encoding="utf-8")
+    return (ROOT / "pages" / "static" / "404.html").read_text(encoding="utf-8")
 
 
 def build_public() -> dict[str, int]:
     """Write the published pages as redirects to the live site.
 
-    Only docs/ is touched. An earlier version also rewrote the local page at the repository
+    Only pages-redirect/ is touched. An earlier version also rewrote the local page at the repository
     root, which left an unstaged modification in the CI working tree on every run, so
     `git pull --rebase` refused to start ("cannot pull with rebase: You have unstaged changes")
     and the published site silently stopped updating while the workflow still reported a run
@@ -1870,7 +1877,7 @@ def build_public() -> dict[str, int]:
     The redirects are rewritten every cycle on purpose: whatever the publish step does, the old
     address must not come back as a copy of the dashboard.
     """
-    sizes = {"docs/404.html": write(DOCS / "404.html", not_found_page())}
+    sizes = {"pages-redirect/404.html": write(DOCS / "404.html", not_found_page())}
     for name, to in MOVED.items():
         sizes[name] = write(ROOT / name, redirect_page(to))
     return sizes

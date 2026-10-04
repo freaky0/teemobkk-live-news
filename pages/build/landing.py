@@ -3,13 +3,22 @@
 Keep external publishing links in EDITORIAL_POSTS, not in navigation labels.
 Script previews are actual publication images, never reconstructed charts.
 """
+import sys
+from pathlib import Path
+
+# Repository-root bootstrap: this file lives under pages/build/, but the code is
+# imported as pages.build.<module> with the repository root on sys.path.
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 from html import escape
+
 
 import json
 import time
-from pathlib import Path
 from urllib.request import Request, urlopen
-import theme
+from pages.build import theme
 
 EDITORIAL_POSTS = [
     {"title": "9월 18일 비트코인 주말 관점", "date": "2026-09-18", "url": "https://teemobkk.substack.com/p/9-18", "summary": "78K는 되찾았습니다. 다만 주말에는 77K대 지지와 현물 수요를 먼저 확인합니다."},
@@ -17,7 +26,7 @@ EDITORIAL_POSTS = [
 ]
 
 _SUBSTACK_POSTS_URL = "https://teemobkk.substack.com/api/v1/posts?limit=50"
-_CACHE_FILE = Path(__file__).with_name("perspectives_cache.json")
+_CACHE_FILE = _REPO_ROOT / "perspectives_cache.json"
 _CACHE_TTL_SECONDS = 3600
 
 INDICATORS = (
