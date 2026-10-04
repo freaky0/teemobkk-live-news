@@ -175,6 +175,7 @@ STAMP_ZONE = ICT
 SYSTEM_PROMPT = (
     "너는 한국어 텔레그램 속보 채널의 편집자다. 주어진 제목과 요약만 근거로 게시물을 쓴다. 규칙: "
     "① 사실과 숫자는 원문에 있는 것만 쓴다. 없는 수치·기관·인과를 만들지 않는다. "
+    "통화 단위와 금액 표기는 원문 그대로 보존하고, 환산하거나 다른 단위로 재표기하지 않는다. "
     "② title: 40자 이내, 사실만. 과장·낚시·이모지 금지. 원문이 한국어면 표현을 살린다. "
     "③ body: community-tone-editor 기사 본문처럼 2~4개의 짧은 문단, 총 3~5문장으로 쓴다. "
     "첫 문단에 핵심 사건·주체·수치·출처 귀속을 담는다. 원문에 없는 해석·전망은 넣지 않는다. "
@@ -531,7 +532,46 @@ def brief(item: dict[str, Any], title: str, summary: str) -> dict[str, Any] | No
     }
     if not out["title"]:
         return None
+    if REWRITE_MODE == "always" and not rewrite_is_publishable(title, summary, out):
+        return None
     return out
+
+
+_CURRENCY_AMOUNT = re.compile(
+    r"(?<![\w])(?:US\$|USD|EUR|GBP|JPY|KRW|[$€£¥₩])\s*"
+    r"\d[\d,]*(?:\.\d+)?\s*(?:[KMBT]|thousand|million|billion|trillion)?(?!\w)"
+    r"|(?<!\d)\d[\d,]*(?:\.\d+)?\s*"
+    r"(?:(?:억|조|만|천|thousand|million|billion|trillion)\s*)?"
+    r"(?:달러|유로|파운드|엔|원|dollars?|euros?|pounds?|yen|won)(?!\w)",
+    re.IGNORECASE,
+)
+
+
+def _currency_amounts(text: str) -> set[str]:
+    return {
+        re.sub(r"\s+", "", match).replace(",", "").casefold()
+        for match in _CURRENCY_AMOUNT.findall(text or "")
+    }
+
+
+def _is_korean_dominant(text: str) -> bool:
+    korean_letters = len(re.findall(r"[가-힣]", text or ""))
+    latin_letters = len(re.findall(r"[A-Za-z]", text or ""))
+    total_letters = korean_letters + latin_letters
+    return korean_letters >= 2 and korean_letters / total_letters >= 0.4
+
+
+def rewrite_is_publishable(title: str, summary: str,
+                           written: dict[str, Any] | None) -> bool:
+    """Always-mode posts must be complete Korean rewrites with source amounts preserved."""
+    if not isinstance(written, dict):
+        return False
+    fields = [str(written.get(key) or "").strip() for key in ("title", "body", "note")]
+    if any(not _is_korean_dominant(field) for field in fields):
+        return False
+    source_amounts = _currency_amounts("\n".join((title or "", summary or "")))
+    rewritten_amounts = _currency_amounts("\n".join(fields))
+    return source_amounts == rewritten_amounts
 
 
 def aggregator(link: str) -> bool:
@@ -962,6 +1002,10 @@ def tick(connection: sqlite3.Connection, now: datetime | None = None, limit: int
         raw_title = str(item.get("title") or "")
         raw_summary = clean_body(item.get("summary"), SUMMARY_CHARS)
         written = brief(item, raw_title, raw_summary)
+        if REWRITE_MODE == "always" and not rewrite_is_publishable(
+                raw_title, raw_summary, written):
+            logging.warning("skip (rewrite unavailable or invalid): %s", raw_title[:70])
+            continue
         if written:
             title = written["title"]
             body = written["body"] or raw_summary[:BODY_CHARS]

@@ -296,7 +296,14 @@ class SameTickEvent(unittest.TestCase):
         core.DB_FILE = self._original_db
 
     def test_only_one_rewrite_of_the_event_is_selected(self):
-        rows = tg_push.tick(self.connection, now=datetime.now(timezone.utc), limit=10, quiet=True)
+        written = {
+            "title": "미국 법무부, 바이낸스 이란 제재 위반 조사",
+            "body": "미국 법무부가 바이낸스의 제재 위반 가능성을 조사하고 있다.",
+            "note": "조사 결과에 따라 규제 부담이 달라질 수 있다.",
+            "tags": ["미국", "바이낸스", "제재"],
+        }
+        with patch.object(tg_push, "brief", return_value=written):
+            rows = tg_push.tick(self.connection, now=datetime.now(timezone.utc), limit=10, quiet=True)
         self.assertEqual(1, len(rows))
         self.assertIn("바이낸스", rows[0]["title"])
 
@@ -415,6 +422,86 @@ class OutputLength(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(len(result["body"]), tg_push.BODY_CHARS)
         self.assertEqual(len(result["note"]), tg_push.NOTE_CHARS)
+
+
+    def test_rewrite_prompt_requires_original_currency_notation(self):
+        self.assertIn("통화 단위와 금액 표기는 원문 그대로 보존", tg_push.SYSTEM_PROMPT)
+
+    def test_rewrite_rejects_changed_currency_magnitude(self):
+        response_data = {
+            "choices": [{"message": {"content": json.dumps({
+                "title": "기업, 196억 달러 조달 추진",
+                "body": "기업이 196억 달러 조달을 추진하고 있다.",
+                "note": "조달 규모는 투자 계획을 볼 때 중요한 변수다.",
+                "tags": ["기업", "조달", "시장"],
+            }, ensure_ascii=False)}}]
+        }
+
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self):
+                return json.dumps(response_data, ensure_ascii=False).encode("utf-8")
+
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}), \
+                patch.object(tg_push, "TRANSLATE", True), \
+                patch.object(tg_push, "TRANSLATE_PROVIDER", "openai"), \
+                patch.object(tg_push.urllib.request, "urlopen", return_value=Response()):
+            result = tg_push.brief({}, "Firm seeks $196M", "Firm plans to raise $196M.")
+        self.assertIsNone(result, "a changed currency magnitude must reject the rewrite")
+
+
+class RewriteAlwaysFailClosed(AgentFixture):
+    def setUp(self):
+        super().setUp()
+        self._original_mode = tg_push.REWRITE_MODE
+        tg_push.REWRITE_MODE = "always"
+        stamp = datetime.now(timezone.utc).isoformat()
+        self.connection.execute(
+            "UPDATE articles SET published_at = ?, collected_at = ? WHERE link = ?",
+            (stamp, stamp, LINK),
+        )
+        self.connection.commit()
+
+    def tearDown(self):
+        tg_push.REWRITE_MODE = self._original_mode
+        super().tearDown()
+
+    def _tick(self):
+        return tg_push.tick(self.connection, now=datetime.now(timezone.utc), limit=1, quiet=True)
+
+    def test_failed_rewrite_does_not_post_original_text(self):
+        with patch.object(tg_push, "brief", return_value=None):
+            rows = self._tick()
+        self.assertFalse(rows, "failed rewrite must skip the candidate")
+
+    def test_incomplete_rewrite_is_not_publishable(self):
+        incomplete = {"title": TITLE, "body": "", "note": "", "tags": TAGS}
+        self.assertFalse(tg_push.rewrite_is_publishable(TITLE, BODY, incomplete))
+
+    def test_non_korean_rewrite_is_not_publishable(self):
+        english = {
+            "title": "Markets move higher",
+            "body": "Investors bought bitcoin after the announcement.",
+            "note": "The move could affect sentiment.",
+            "tags": TAGS,
+        }
+        self.assertFalse(tg_push.rewrite_is_publishable(TITLE, BODY, english))
+
+    def test_mostly_english_rewrite_with_one_korean_word_is_rejected(self):
+        mixed = {
+            "title": "Markets move higher 시장",
+            "body": "Investors bought bitcoin after 발표.",
+            "note": "The move could affect sentiment 영향.",
+            "tags": ["시장", "비트코인", "가격"],
+        }
+        self.assertFalse(tg_push.rewrite_is_publishable(
+            "Bitcoin market rally", "Investors bought bitcoin after the announcement.", mixed
+        ))
 
 
 if __name__ == "__main__":
