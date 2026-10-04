@@ -21,6 +21,7 @@ from collectors import sbh_open_news
 from collectors import sbh_source
 from collectors import telegram_source
 from collectors import whitehouse_source
+from collectors import mideast_rss
 import difflib
 import email.utils
 import html
@@ -1523,6 +1524,7 @@ def collect_news() -> dict[str, Any]:
     articles.extend(bluesky_source.fetch_into(status))
     articles.extend(whitehouse_source.fetch_into(status))
     articles.extend(telegram_source.fetch_into(status))
+    articles.extend(mideast_rss.fetch_into(status))
     fresh_articles = keep_recent(articles)
     # Twice: inside the cycle, and against what the window already holds - the same wire story
     # arriving in a later cycle under another outlet's link is the repetition a reader notices.
