@@ -55,6 +55,15 @@ BROAD_NOTICE_RE = re.compile(
     re.I,
 )
 
+# Armed conflict and regional escalation are channel-wide geopolitical events, not routine
+# single-altcoin notices. Match explicit Iran/Middle East conflict actors and locations.
+MIDEAST_CONFLICT_RE = re.compile(
+    r"\b(iran|iranian|tehran|israel|israeli|middle\s+east|persian\s+gulf|strait\s+of\s+hormuz|"
+    r"hezbollah|houthi|hamas|idf|irgc|centcom)\b|"
+    r"이란|테헤란|이스라엘|중동|페르시아만|호르무즈|헤즈볼라|후티|하마스|이란혁명수비대",
+    re.I,
+)
+
 
 class JEVError(RuntimeError):
     """The batch could not produce a complete, trusted decision set."""
@@ -89,6 +98,8 @@ def is_single_alt_notice(item: dict[str, Any]) -> bool:
     if bool(item.get("channel_pick")) or int(item.get("priority") or 0) >= 5:
         return False
     text = " ".join(str(item.get(key) or "") for key in ("title", "summary", "asset"))
+    if MIDEAST_CONFLICT_RE.search(text):
+        return False
     if BROAD_NOTICE_RE.search(text):
         return False
     asset = str(item.get("asset") or "").strip()

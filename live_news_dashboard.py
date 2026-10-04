@@ -93,7 +93,21 @@ RSS_SOURCES = [
     ("Investing.com", "news", "https://www.investing.com/rss/news.rss"),
     ("Seeking Alpha", "news", "https://seekingalpha.com/market_currents.xml"),
     ("FinancialJuice", "breaking", "https://www.financialjuice.com/feed.ashx?xy=rss"),
+    # Broad international feed, restricted below to Iran/Middle East conflict coverage.
+    ("Al Jazeera · Middle East", "news", "https://www.aljazeera.com/xml/rss/all.xml"),
 ]
+
+MIDDLE_EAST_TERMS = (
+    "iran", "iranian", "tehran", "israel", "israeli", "middle east", "gulf", "hormuz",
+    "hezbollah", "houthi", "hamas", "irgc", "centcom", "이란", "테헤란", "이스라엘",
+    "중동", "페르시아만", "호르무즈", "헤즈볼라", "후티", "하마스", "إيران", "الإيرانية",
+    "طهران", "إسرائيل", "الشرق الأوسط", "الخليج", "هرمز", "حزب الله", "الحوثيين",
+)
+
+
+def matches_middle_east_topic(title: str, summary: str) -> bool:
+    text = (title + " " + summary).casefold()
+    return any(term.casefold() in text for term in MIDDLE_EAST_TERMS)
 
 # The last real answer per source, so a source that is skipped this cycle keeps showing what it
 # actually said the last time it was asked.
@@ -1478,6 +1492,12 @@ def collect_news() -> dict[str, Any]:
         source, source_type, url, region = job
         try:
             fetched = parse_rss(fetch_bytes(url), source, source_type, region)
+            if source == "Al Jazeera · Middle East":
+                scanned = len(fetched)
+                fetched = [article for article in fetched
+                           if matches_middle_east_topic(article["title"], article["summary"])]
+                return source, {"ok": True, "count": len(fetched), "scanned": scanned,
+                                "topic_filter": "Iran/Middle East", "url": url}, fetched
             return source, {"ok": True, "count": len(fetched), "url": url}, fetched
         except Exception as exc:
             logging.warning("RSS failed (%s): %s", source, exc)
