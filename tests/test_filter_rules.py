@@ -18,7 +18,7 @@ from pathlib import Path
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-import live_news_dashboard as core  # noqa: E402
+from server import live_news_dashboard as core  # noqa: E402
 
 # The read paths this file checks are windowed (hours=24), so the fixture has to be recent: a pinned
 # date ages out of the window and every rule looks like it caught nothing while the code is unchanged.

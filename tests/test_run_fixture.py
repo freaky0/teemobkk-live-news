@@ -5,6 +5,8 @@ import unittest
 from pathlib import Path
 
 
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 SPEC = importlib.util.spec_from_file_location("dashboard_test_runner", Path(__file__).with_name("run.py"))
 assert SPEC is not None and SPEC.loader is not None
 runner = importlib.util.module_from_spec(SPEC)

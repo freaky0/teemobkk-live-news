@@ -12,7 +12,7 @@ unrelated server listening on the default port is never reused.
     python tests/run.py --live     # only what teemobkk.io serves
 
 jsdom is resolved from tests/node_modules if it is there, otherwise from the scratch harness, so
-`npm i jsdom` inside tests/ makes this folder self-contained.
+`npm i jsdom` inside tests/browser/ makes this folder self-contained.
 """
 import argparse
 import os
@@ -59,7 +59,7 @@ SUITE = [
 ]
 
 PYTHON_CHECKS = [
-    ("test_landing.py", ["-m", "unittest", "test_landing"], "랜딩 단위 계약", "local"),
+    ("test_landing.py", ["tests/test_landing.py"], "랜딩 단위 계약", "local"),
     ("test_theme.py", ["tests/test_theme.py"], "공유 테마 계약", "local"),
     ("test_audit_ui.py", ["tests/test_audit_ui.py"], "404·날짜·제목 표시 계약", "local"),
     ("test_categories.py", ["tests/test_categories.py"], "분류 다중 라벨 계약", "local"),
@@ -82,7 +82,7 @@ PYTHON_CHECKS = [
 
 
 def jsdom_path():
-    for cand in (os.path.join(HERE, "node_modules"),
+    for cand in (os.path.join(HERE, "browser", "node_modules"),
                  os.path.join(os.environ.get("LOCALAPPDATA", ""), "Temp", "pagetest", "node_modules")):
         if os.path.isdir(os.path.join(cand, "jsdom")):
             return cand
@@ -125,7 +125,7 @@ def build_local_page():
     deployment, and a test run must not touch them.
     """
     sys.path.insert(0, ROOT)
-    import page_build
+    from pages.build import page_build
     size = page_build.write(page_build.ROOT / "index.html", page_build.admin_page())
     return size
 
@@ -137,7 +137,7 @@ def start_local_server(log_path, port):
     # Browser/API fixtures must never make a paid translation request.
     env["TEEMO_TRANSLATE_KO_ENABLED"] = "0"
     process = subprocess.Popen(
-        [sys.executable, "live_news_dashboard.py", "--port", str(port), "--interval", "3600"],
+        [sys.executable, "server/live_news_dashboard.py", "--port", str(port), "--interval", "3600"],
         cwd=ROOT, env=env, stdout=handle, stderr=subprocess.STDOUT)
     handle.close()
     for _ in range(60):
@@ -227,7 +227,7 @@ def main():
         for name, args, what, kind in SUITE:
             if kind not in want:
                 continue
-            p = subprocess.run(["node", os.path.join(HERE, name)] + suite_args(args, kind, local_url),
+            p = subprocess.run(["node", os.path.join(HERE, "browser", name)] + suite_args(args, kind, local_url),
                                capture_output=True, text=True, env=env, cwd=HERE, timeout=600)
             ok = p.returncode == 0
             results.append((name + " " + what, ok, "OK" if ok else tail(p.stdout)))

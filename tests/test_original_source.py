@@ -21,11 +21,11 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "deploy"))
 
-import collect_public  # noqa: E402
-import google_news  # noqa: E402
-import landing  # noqa: E402
-import live_news_dashboard as core  # noqa: E402
-import page_build  # noqa: E402
+from deploy.scripts import collect_public  # noqa: E402
+from collectors import google_news  # noqa: E402
+from pages.build import landing  # noqa: E402
+from server import live_news_dashboard as core  # noqa: E402
+from pages.build import page_build  # noqa: E402
 
 AGG = ("https://news.google.com/rss/articles/CBMiWEFVX3lxTE93OFlPeFdrWVBvS1FQOGJlTnladzUw"
        "NERweEpUdGZEUUsy?oc=5")
@@ -250,11 +250,11 @@ class Rendering(unittest.TestCase):
 
 class OperatorFilter(unittest.TestCase):
     def test_switching_a_source_off_still_addresses_the_query(self):
-        with open(os.path.join(ROOT, "deploy", "collect_public.py"), encoding="utf-8") as handle:
+        with open(os.path.join(ROOT, "deploy", "scripts", "collect_public.py"), encoding="utf-8") as handle:
             published = handle.read()
         self.assertIn('"original_source"', published)
         # The push/selection path keeps reading the stored source for its own identity checks.
-        with open(os.path.join(ROOT, "live_news_dashboard.py"), encoding="utf-8") as handle:
+        with open(os.path.join(ROOT, "server", "live_news_dashboard.py"), encoding="utf-8") as handle:
             collector = handle.read()
         self.assertIn('"original_source": clean_text(original_source)', collector)
         self.assertIn('"source": source,', collector)

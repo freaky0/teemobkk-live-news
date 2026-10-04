@@ -46,12 +46,12 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT))
 
-import live_news_dashboard as core  # noqa: E402  (path is set just above)
+from server import live_news_dashboard as core  # noqa: E402  (path is set just above)
 try:
     import jev_gate  # noqa: E402  (script mode: deploy/ is sys.path[0])
 except ImportError:  # package mode: from deploy import tg_push
     from deploy import jev_gate  # noqa: E402
-import google_news  # noqa: E402
+from collectors import google_news  # noqa: E402
 
 ICT = timezone(timedelta(hours=7), name="ICT")
 BOT_API = "https://api.telegram.org/bot%s/%s"

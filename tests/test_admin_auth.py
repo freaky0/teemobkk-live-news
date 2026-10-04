@@ -15,7 +15,7 @@ from pathlib import Path
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-import admin_auth  # noqa: E402
+from server import admin_auth  # noqa: E402
 
 SECRET = "correct horse battery staple"
 

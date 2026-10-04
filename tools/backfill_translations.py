@@ -18,8 +18,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-import live_news_dashboard as core  # noqa: E402
-import translate_ko  # noqa: E402
+from server import live_news_dashboard as core  # noqa: E402
+from pipeline import translate_ko  # noqa: E402
 
 
 PENDING_SQL = (

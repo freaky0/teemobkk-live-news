@@ -34,20 +34,20 @@ jobs:
           python-version: "3.12"
 
       - name: Collect the public news JSON and the calendar
-        run: python deploy/collect_public.py && python econ_calendar.py docs/calendar.json
+        run: python deploy/scripts/collect_public.py && python econ_calendar.py pages-redirect/calendar.json
 
       - name: Commit the refreshed data
         run: |
           git config user.name "teemo-live-news-bot"
           git config user.email "teemo-live-news-bot@users.noreply.github.com"
-          git add docs
+          git add pages-redirect
           if git diff --quiet --cached; then
             echo "no change this run"
             exit 0
           fi
           git commit -m "data: refresh $(date -u +%Y-%m-%dT%H:%MZ)"
 
-          # Everything this job generates lives in docs/. Anything else modified here is a
+          # Everything this job generates lives in pages-redirect/. Anything else modified here is a
           # bug, and a dirty tree makes `git pull --rebase` refuse to run, which stops the
           # site updating while the schedule keeps firing. Say so, then discard it so the
           # push still lands.
@@ -56,7 +56,7 @@ jobs:
             git status --short
             git checkout -- .
           fi
-          # docs/*.json is regenerated every run, so on a race with a hand push the
+          # pages-redirect/*.json is regenerated every run, so on a race with a hand push the
           # just-generated file must win: -X theirs keeps this run's data. A second
           # attempt covers the case where another run pushed between pull and push.
           for attempt in 1 2 3; do
