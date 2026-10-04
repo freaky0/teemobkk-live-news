@@ -26,7 +26,7 @@ import google_news  # noqa: E402
 import live_news_dashboard as core  # noqa: E402  (path is set just above)
 import page_build  # noqa: E402
 
-DOCS = ROOT / "docs"
+DOCS = ROOT / "pages-redirect"
 INDEX_FILE = DOCS / "index.json"
 REGION_FILES = {core.GLOBAL_REGION: DOCS / "global.json", core.THAI_REGION: DOCS / "thai.json"}
 KEEP_HOURS = 24
