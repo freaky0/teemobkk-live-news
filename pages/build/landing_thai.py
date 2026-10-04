@@ -40,6 +40,7 @@ PAGE = r'''<!doctype html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
+<script>(function(){try{var t=localStorage.getItem("tbn-theme");if(t)document.documentElement.dataset.theme=t;}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TeemoBKK | 태국 소식을 한국어로</title>
 <meta name="description" content="태국에 사는 당신을 위한 뉴스. 비자부터 사고까지, 현지 소식을 가장 먼저 한국어로 전합니다.">

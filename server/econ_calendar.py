@@ -53,7 +53,7 @@ KST = timezone(timedelta(hours=9))
 ET = timezone(timedelta(hours=-4))  # the source's time column is Eastern, not GMT
 CODEX_CLI = "/usr/local/bin/codex"
 CODEX_MODEL = "gpt-6-luna"
-CODEX_TIMEOUT_SECONDS = 45
+CODEX_TIMEOUT_SECONDS = 180
 NAME_TRANSLATION_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60
 NAME_TRANSLATION_RETRY_TTL_SECONDS = 60 * 60
 _NAME_TRANSLATION_CACHE: dict[str, tuple[str, float]] = {}
@@ -212,7 +212,7 @@ def _request_codex_name_translations(names: list[str]) -> dict[str, str]:
         return empty
     command = [
         CODEX_CLI, "exec", "--ephemeral", "--model", CODEX_MODEL,
-        "--sandbox", "read-only", "--ask-for-approval", "never",
+        "--sandbox", "read-only",
         "--skip-git-repo-check", "-",
     ]
     try:

@@ -16,7 +16,10 @@ DARK_THEME_CSS = ('[data-theme=dark]{color-scheme:dark;--bg:#101412;--surface:#1
 
 USAGE_BAR_CSS = ('.urow{display:flex;align-items:center;gap:8px}\n'
                  '.ubar{height:6px;flex:1;overflow:hidden;border-radius:99px;background:var(--surface2)}\n'
-                 '.ufill{height:100%;background:var(--accent);border-radius:inherit}')
+                 '.ufill{height:100%;background:var(--accent);border-radius:inherit}\n'
+                 '.urow{border-bottom:1px solid var(--line);padding:1px 0}\n'
+                 '.urow:last-child{border-bottom:0}\n'
+                 '.urow .source{border-bottom:0;padding:4px 0 1px}')
 
 HEADER_CSS = ('.top{border-bottom:1px solid var(--line);background:rgba(250,248,243,.94);backdrop-filter:blur(8px);position:sticky;top:0;z-index:20}\n'
               '.nav{min-height:66px;display:flex;align-items:center;gap:34px}\n'
