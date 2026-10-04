@@ -1532,7 +1532,7 @@ def collect_news() -> dict[str, Any]:
     # and the next collection cycle can retry the pending rows.
     if os.environ.get("TEEMO_TRANSLATE_KO_ENABLED", "1").strip().lower() not in {"0", "false", "no"}:
         try:
-            import translate_ko
+            from pipeline import translate_ko
             translated = translate_ko.translate_pending(limit=translate_ko.COLLECT_BATCH)
             if translated:
                 logging.info("Korean translations saved: %d", translated)

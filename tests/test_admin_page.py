@@ -273,7 +273,7 @@ class OperatorDocument(unittest.TestCase):
         page. Changing the Thailand guide's source list in `ui_text` alone did exactly that, and the
         gate's `probe_english_text.py` reported it. This check fails on the cause, not the symptom.
         """
-        source = (page_build.ROOT / "page_build.py").read_text(encoding="utf-8")
+        source = (page_build.ROOT / "pages" / "build" / "page_build.py").read_text(encoding="utf-8")
         for key in ("guideGlobalP1", "guideGlobalP2", "guideThaiP1", "guideThaiP2"):
             korean = ui_text.UI["ko"][key]
             self.assertIn(korean, source, "%s 의 한국어 문구가 페이지 소스에 없다" % key)

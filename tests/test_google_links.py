@@ -19,7 +19,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "deploy"))
 
-import collect_public  # noqa: E402
+from deploy.scripts import collect_public  # noqa: E402
 from collectors import google_news  # noqa: E402
 from pages.build import landing  # noqa: E402
 from server import live_news_dashboard as core  # noqa: E402

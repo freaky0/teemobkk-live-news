@@ -82,7 +82,7 @@ def to_article(core: Any, row: dict[str, Any]) -> dict[str, Any] | None:
 
 def fetch_into(status: dict[str, Any], core: Any = None) -> list[dict[str, Any]]:
     if core is None:  # imported late so the collector can call us during its own import
-        import live_news_dashboard as core
+        from server import live_news_dashboard as core
     hours = int(getattr(core, "RETENTION_HOURS", 24))
     cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
     try:

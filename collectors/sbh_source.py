@@ -74,7 +74,7 @@ def recent(payload: str, hours: int) -> list[tuple[str, str, str]]:
 def fetch_into(status: dict[str, Any], core: Any = None) -> list[dict[str, Any]]:
     """Return fresh articles and record this source's status."""
     if core is None:  # imported late so the collector can call us during its own import
-        import live_news_dashboard as core
+        from server import live_news_dashboard as core
     hours = int(getattr(core, "RETENTION_HOURS", 24))
     try:
         payload = core.fetch_bytes(NEWS_SITEMAP, timeout=30).decode("utf-8", errors="replace")

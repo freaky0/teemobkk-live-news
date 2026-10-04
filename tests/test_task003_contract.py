@@ -4,8 +4,10 @@ import subprocess
 import unittest
 import xml.etree.ElementTree as ET
 
-from pages.build import page_build
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 
+from pages.build import page_build
 
 class Task003Contract(unittest.TestCase):
     def test_sitemap_lists_thirteen_pages_with_build_day_lastmod(self):
@@ -75,7 +77,12 @@ setTimeout(()=>{
  },0);
 },25);'''
         env = os.environ.copy()
-        env["NODE_PATH"] = "/opt/data/cache/scratch/jsdom-mailbox/node_modules"
+        # resolve jsdom like tests/run.py does: tests/browser/node_modules first,
+        # then the legacy scratch location
+        here = os.path.dirname(os.path.abspath(__file__))
+        cands = [os.path.join(here, "browser", "node_modules"),
+                 "/opt/data/cache/scratch/jsdom-mailbox/node_modules"]
+        env["NODE_PATH"] = os.pathsep.join(c for c in cands if os.path.isdir(c))
         result = subprocess.run(["node", "-e", node_script], input=page, text=True,
                                 capture_output=True, env=env, timeout=15)
         self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
@@ -86,12 +93,11 @@ setTimeout(()=>{
         self.assertIn('get(\'month\')+CFG.monthSuffix+\' \'+get(\'day\')+\'일 \'+get(\'hour\')', page)
         self.assertNotIn('id="language-filter"', page)
 
-
 class Task018CanonicalThaiEntry(unittest.TestCase):
-    """018: /thai/ is the single canonical entry point for Thai news.
+    """018: Thai news and economic news are fully separated.
 
-    The cross-region tab on each dashboard is a plain link to the canonical
-    dashboard instead of an in-place region switch.
+    The economic dashboard carries no Thai tab at all; the Thai dashboard
+    links back to the global dashboard with a plain canonical link.
     """
 
     def _render(self, want_thai, lang):
@@ -99,11 +105,10 @@ class Task018CanonicalThaiEntry(unittest.TestCase):
                                  icon_prefix="/", admin=False, lang=lang,
                                  seed_html="", briefing_html="", briefing_source="")
 
-    def test_global_dashboard_thai_tab_links_to_canonical_thai_dashboard(self):
-        ko = self._render(False, "ko")
-        self.assertIn('<a id="tab-thai" class="tab th" href="/thai/news/ko/">태국 소식</a>', ko)
-        en = self._render(False, "en")
-        self.assertIn('<a id="tab-thai" class="tab th" href="/thai/news/">Thailand</a>', en)
+    def test_global_dashboard_has_no_thai_tab(self):
+        for lang in ("ko", "en"):
+            page = self._render(False, lang)
+            self.assertNotIn('id="tab-thai"', page)
 
     def test_thai_dashboard_global_tab_links_back_to_global_dashboard(self):
         ko = self._render(True, "ko")
@@ -113,13 +118,11 @@ class Task018CanonicalThaiEntry(unittest.TestCase):
 
     def test_canonical_tab_links_carry_no_data_tab(self):
         # the canonical links carry no data-tab, so the tab click wiring skips them
-        for want_thai, lang in ((False, "ko"), (False, "en"), (True, "ko"), (True, "en")):
+        for want_thai, lang in ((True, "ko"), (True, "en")):
             page = self._render(want_thai, lang)
-            link_id = "tab-thai" if not want_thai else "tab-global"
-            before, _, after = page.partition('id="%s"' % link_id)
-            self.assertTrue(before.rstrip().endswith("<a"), link_id)
+            before, _, after = page.partition('id="tab-global"')
+            self.assertTrue(before.rstrip().endswith("<a"), "tab-global")
             self.assertNotIn("data-tab", after.split(">", 1)[0])
-
 
 if __name__ == "__main__":
     unittest.main()

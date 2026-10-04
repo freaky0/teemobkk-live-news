@@ -106,7 +106,7 @@ def operator_page() -> str:
     The flag is what the script checks before it sends a write and before it offers the logout
     control; the session itself is the cookie, which this document never sees.
     """
-    import page_build
+    from pages.build import page_build
 
     html = page_build.admin_page(icon_prefix="/")
     if "<script>" in html:

@@ -38,7 +38,7 @@ worker/node_modules/
 worker/.wrangler/
 
 # page-check harness: jsdom is installed per machine, not committed
-tests/node_modules/
+tests/browser/node_modules/
 
 # the admin password lives on the host that serves the site, never in the repository
 .admin_password
@@ -53,6 +53,8 @@ tests/node_modules/
 /ko/
 /news/
 /thai/
+/perspectives/
+/indicators/
 
 # The page the collector answers "/" with is generated per machine and is not a file to commit:
 # locally it is the operator page built from this database's rows, on the host it is landing.py plus

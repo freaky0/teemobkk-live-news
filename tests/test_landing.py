@@ -2,6 +2,9 @@
 import unittest
 from html.parser import HTMLParser
 from pathlib import Path
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+
 from pages.build import landing
 from pages.build import landing_thai
 from pages.build import page_build
@@ -92,7 +95,7 @@ class LandingContract(unittest.TestCase):
             want_thai=False, icon_prefix='/', admin=True, lang='ko')
         for route, name in (('/privacy/', 'privacy.html'),
                             ('/privacy/en/', 'privacy_en.html')):
-            pages[route] = (Path(__file__).resolve().parent / name).read_text(encoding='utf-8')
+            pages[route] = (Path(__file__).resolve().parent.parent / 'pages' / 'static' / name).read_text(encoding='utf-8')
         for route, page in pages.items():
             with self.subTest(route=route):
                 footer = page.split('<footer ', 1)[1].split('</footer>', 1)[0]

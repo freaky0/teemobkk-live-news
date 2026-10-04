@@ -52,7 +52,7 @@ def title_of(text: str) -> str:
 def fetch_into(status: dict[str, Any], core: Any = None, region: str | None = None) -> list[dict[str, Any]]:
     """Return articles for every handle and record per-account status."""
     if core is None:  # imported late so the collector can call us during its own import
-        import live_news_dashboard as core
+        from server import live_news_dashboard as core
     region = region or core.GLOBAL_REGION
     articles: list[dict[str, Any]] = []
     for handle in HANDLES:

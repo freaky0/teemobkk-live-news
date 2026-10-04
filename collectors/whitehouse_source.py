@@ -27,7 +27,7 @@ SOURCE_TYPE = "official"
 def fetch_into(status: dict[str, Any], core: Any = None) -> list[dict[str, Any]]:
     """Return articles for every feed and record per-feed status."""
     if core is None:  # imported late so the collector can call us during its own import
-        import live_news_dashboard as core
+        from server import live_news_dashboard as core
     articles: list[dict[str, Any]] = []
     for name, url in FEEDS:
         try:

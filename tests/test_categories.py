@@ -194,7 +194,7 @@ class MultiLabel(unittest.TestCase):
         valid = taxonomy.valid_names()
         checked = 0
         for name in ("global.json", "thai.json", "global-recent.json", "thai-recent.json"):
-            path = os.path.join(ROOT, "docs", name)
+            path = os.path.join(ROOT, "pages-redirect", name)
             if not os.path.exists(path):
                 continue
             with open(path, encoding="utf-8") as handle:

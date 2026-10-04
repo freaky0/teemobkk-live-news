@@ -220,13 +220,13 @@ class Wiring(unittest.TestCase):
 
     def test_the_collector_dedupes_against_the_window_before_inserting(self):
         self.assertIn("deduped = drop_already_stored(dedupe_by_region(fresh_articles))",
-                      self.source("live_news_dashboard.py"))
+                      self.source("server/live_news_dashboard.py"))
 
     def test_the_api_dedupes_the_rows_it_hands_a_page(self):
-        self.assertIn("articles = dedupe_rows(articles)", self.source("live_news_dashboard.py"))
+        self.assertIn("articles = dedupe_rows(articles)", self.source("server/live_news_dashboard.py"))
 
     def test_the_published_json_gets_the_same_treatment(self):
-        self.assertIn("core.dedupe_rows(fetch_window())", self.source("deploy/collect_public.py"))
+        self.assertIn("core.dedupe_rows(fetch_window())", self.source("deploy/scripts/collect_public.py"))
 
     def test_the_push_selection_keeps_its_own_gate(self):
         """deploy/tg_push.py selects its own candidates and has its own duplicate gate: untouched."""

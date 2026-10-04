@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.join(ROOT, "deploy"))
 from server import live_news_dashboard as core
 from pipeline import semantic_event
 from pages.build import page_build
-from collect_public import merge
+from deploy.scripts.collect_public import merge
 
 NOW = datetime(2026, 9, 30, 12, tzinfo=timezone.utc)
 
@@ -87,7 +87,7 @@ class SemanticEvent(unittest.TestCase):
     def test_published_merge_removes_previous_duplicates(self):
         # The merged JSON is the input for static page news feed and briefing.
         from unittest.mock import patch
-        with patch("collect_public.datetime") as clock:
+        with patch("deploy.scripts.collect_public.datetime") as clock:
             clock.now.return_value = NOW
             clock.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
             rows = merge([row("트럼프 중국 관세 부과", 2)], [row("Trump imposes tariffs on China")])
