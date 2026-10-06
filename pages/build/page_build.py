@@ -1784,9 +1784,10 @@ __TABS__
             '    <button id="tab-thai" class="tab th active" data-tab="thai" role="tab" aria-selected="true">태국 소식</button>'
         ) % global_href
     else:
-        # 018: public dashboards hide the Thai tab; admin keeps it
-        _thai_href = "/thai/news/ko/" if lang == "ko" else "/thai/news/"
-        _thai_tab = ('    <a id="tab-thai" class="tab th" href="%s">태국 소식</a>' % _thai_href) if admin else ""
+        # 018: public dashboards hide the Thai tab; admin keeps it as an
+        # in-place tab (same as the other tabs) so the operator stays on
+        # /admin/ instead of navigating away to /thai/news/ko/.
+        _thai_tab = ('    <button id="tab-thai" class="tab th" data-tab="thai" role="tab" aria-selected="false">태국 소식</button>') if admin else ""
         tabs_html = (
             '    <button id="tab-global" class="tab active" data-tab="global" role="tab" aria-selected="true">경제 소식</button>\n'
             '    <button id="tab-cal" class="tab" data-tab="cal" role="tab" aria-selected="false">경제 지표</button>\n'
