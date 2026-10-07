@@ -1771,12 +1771,13 @@ __TABS__
 .donate-link{{color:var(--accent);text-decoration:underline;text-underline-offset:3px}}
 .donate-dialog{{width:min(460px,calc(100% - 24px));max-height:90dvh;overflow:auto}}
 .donate-dialog .donate-body{{display:grid;gap:16px}}
-.donate-dialog .donate-qr{{width:min(100%,320px);max-height:none;aspect-ratio:1;object-fit:contain;background:#fff;border-radius:8px}}
+.donate-dialog .donate-qr{{width:min(100%,320px);max-height:none;aspect-ratio:1;object-fit:contain;background:#fff;border-radius:8px;display:block;margin:0 auto}}
+.donate-bank-name{{font-size:13px;font-weight:600;letter-spacing:.02em;color:var(--muted,#666);margin:0 0 4px}}
 .donate-bank{{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:8px}}
 .donate-bank p{{margin:0}}
 .donate-copy{{min-height:44px;padding:8px 14px;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--text);font-weight:700;white-space:nowrap}}
 </style>
-<dialog class="donate-dialog" id="donate-dialog" aria-labelledby="donate-title"><div class="dialog-head"><p id="donate-title">TeemoBKK 후원</p><button id="close-donate" type="button" aria-label="후원 창 닫기">닫기</button></div><div class="donate-body"><img class="donate-qr" src="/assets/donate-qr.jpg" alt="PromptPay 후원 QR 코드"><div><p>Bangkok Bank</p><div class="donate-bank"><p><strong id="donate-account">926-0-280236</strong></p><button class="donate-copy" id="copy-donate-account" type="button">계좌번호 복사</button></div><p class="note" id="donate-copy-status" aria-live="polite"></p></div></div></dialog>
+<dialog class="donate-dialog" id="donate-dialog" aria-labelledby="donate-title"><div class="dialog-head"><p id="donate-title">TeemoBKK 후원</p><button id="close-donate" type="button" aria-label="후원 창 닫기">닫기</button></div><div class="donate-body"><img class="donate-qr" src="/assets/donate-qr.jpg" alt="PromptPay 후원 QR 코드"><div><div class="donate-bank"><div><p class="donate-bank-name">Bangkok Bank</p><p><strong id="donate-account">926-0-280236</strong></p></div><button class="donate-copy" id="copy-donate-account" type="button">계좌번호 복사</button></div><p class="note" id="donate-copy-status" aria-live="polite"></p></div></div></dialog>
 <script>
 {script}</script>
 <script>
