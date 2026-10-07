@@ -309,6 +309,43 @@ class OutboxDrain(AgentFixture):
         directory.mkdir(exist_ok=True)
         return directory
 
+    def test_a_queued_high_priority_duplicate_is_blocked_by_jev(self):
+        parts = self.parts(priority=5)
+        (self.outbox() / "duplicate.json").write_text(
+            json.dumps(parts, ensure_ascii=False), encoding="utf-8")
+        row = {"title": "Earlier ETF headline"}
+        batch = tg_push.jev_gate.Batch(
+            run_id="run", decisions={LINK: tg_push.jev_gate.Decision(
+                LINK, "high", 0.95, "fresh", {})}, raw={})
+        with patch.object(tg_push.jev_gate, "MODE", "live"), \
+                patch.object(tg_push, "posted", return_value=[row]) as recent, \
+                patch.object(tg_push.jev_gate, "evaluate", return_value=batch) as evaluate:
+            ok, detail = tg_push.post_parts(self.connection, parts, now=datetime.now(timezone.utc))
+        self.assertFalse(ok)
+        self.assertIn("jev-same-event", detail)
+        recent.assert_called_once_with(self.connection, 24)
+        self.assertEqual(["Earlier ETF headline"], evaluate.call_args.args[1])
+
+    def test_queued_post_fails_closed_if_live_jev_is_unavailable(self):
+        parts = self.parts()
+        with patch.object(tg_push.jev_gate, "MODE", "live"), \
+                patch.object(tg_push, "posted", return_value=[]), \
+                patch.object(tg_push.jev_gate, "evaluate", return_value=tg_push.jev_gate.Batch(
+                    run_id="run", decisions={}, raw={}, fallback=True, error="timeout")):
+            ok, detail = tg_push.post_parts(self.connection, parts)
+        self.assertFalse(ok)
+        self.assertEqual("jev-unavailable", detail)
+
+    def test_queued_post_does_not_check_articles_outside_last_24_hours(self):
+        parts = self.parts()
+        with patch.object(tg_push.jev_gate, "MODE", "live"), \
+                patch.object(tg_push, "posted", return_value=[]), \
+                patch.object(tg_push.jev_gate, "evaluate", return_value=tg_push.jev_gate.Batch(
+                    run_id="run", decisions={}, raw={})) as evaluate:
+            ok, detail = tg_push.post_parts(self.connection, parts)
+        self.assertTrue(ok, detail)
+        self.assertEqual([], evaluate.call_args.args[1])
+
     def test_a_queued_file_is_rendered_and_reported(self):
         outbox = self.outbox()
         (outbox / "one.json").write_text(json.dumps(self.parts(), ensure_ascii=False),

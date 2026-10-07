@@ -251,7 +251,7 @@ def evaluate(items: list[dict[str, Any]], recent_titles: list[str], now: datetim
 
 
 def should_block_duplicate(decision: Decision, priority: int, picked: bool) -> bool:
-    """Only high-confidence JEV duplicate results can block ordinary priority-4 posts."""
-    if picked or priority >= 5:
+    """High-confidence same-event matches block every priority, except explicit operator picks."""
+    if picked:
         return False
     return decision.duplicate_confidence >= DUPLICATE_THRESHOLD

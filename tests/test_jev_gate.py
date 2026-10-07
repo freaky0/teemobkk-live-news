@@ -88,7 +88,7 @@ class JEVGate(unittest.TestCase):
     def test_only_high_confidence_duplicate_blocks_priority4(self):
         decision = jev_gate.Decision("x", "medium", 0.85, "aging", {})
         self.assertTrue(jev_gate.should_block_duplicate(decision, 4, False))
-        self.assertFalse(jev_gate.should_block_duplicate(decision, 5, False))
+        self.assertTrue(jev_gate.should_block_duplicate(decision, 5, False))
         self.assertFalse(jev_gate.should_block_duplicate(decision, 4, True))
 
 
