@@ -1652,7 +1652,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
                     % (html.escape(theme_label, quote=True), html.escape(theme_label)))
     privacy_url = "/privacy/en/" if lang == "en" else "/privacy/"
     privacy_label = "Privacy policy" if lang == "en" else "개인정보 처리방침"
-    privacy_link = '<p class="legal-links"><a href="%s">%s</a></p>' % (privacy_url, privacy_label)
+    privacy_link = '<p class="legal-links"><a href="%s">%s</a> | <a class="donate-link" href="#donate">후원하기</a></p>' % (privacy_url, privacy_label)
     langbar = _langbar(lang, alt)
     language_filter = ('<select id="language-filter" aria-label="%s">'
                        '<option value="en" selected>%s</option><option value="all">%s</option></select>' %
@@ -1767,8 +1767,21 @@ __TABS__
   </footer>
 </main>
 
+<style>
+.donate-link{{color:var(--accent);text-decoration:underline;text-underline-offset:3px}}
+.donate-dialog{{width:min(460px,calc(100% - 24px));max-height:90dvh;overflow:auto}}
+.donate-dialog .donate-body{{display:grid;gap:16px}}
+.donate-dialog .donate-qr{{width:min(100%,320px);max-height:none;aspect-ratio:1;object-fit:contain;background:#fff;border-radius:8px}}
+.donate-bank{{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:8px}}
+.donate-bank p{{margin:0}}
+.donate-copy{{min-height:44px;padding:8px 14px;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--text);font-weight:700;white-space:nowrap}}
+</style>
+<dialog class="donate-dialog" id="donate-dialog" aria-labelledby="donate-title"><div class="dialog-head"><p id="donate-title">TeemoBKK 후원</p><button id="close-donate" type="button" aria-label="후원 창 닫기">닫기</button></div><div class="donate-body"><img class="donate-qr" src="/assets/donate-qr.jpg" alt="PromptPay 후원 QR 코드"><div><p>Bangkok Bank</p><div class="donate-bank"><p><strong id="donate-account">926-0-280236</strong></p><button class="donate-copy" id="copy-donate-account" type="button">계좌번호 복사</button></div><p class="note" id="donate-copy-status" aria-live="polite"></p></div></div></dialog>
 <script>
 {script}</script>
+<script>
+(()=>{{const d=document.getElementById('donate-dialog');if(d){{const open=()=>{{if(!d.open)d.showModal()}};document.querySelectorAll('a[href="#donate"]').forEach(a=>a.addEventListener('click',e=>{{e.preventDefault();open()}}));document.getElementById('close-donate').addEventListener('click',()=>d.close());d.addEventListener('click',e=>{{if(e.target===d)d.close()}});document.getElementById('copy-donate-account').addEventListener('click',async()=>{{const s=document.getElementById('donate-copy-status');try{{await navigator.clipboard.writeText(document.getElementById('donate-account').textContent.trim());s.textContent='계좌번호를 복사했어요.'}}catch(e){{s.textContent='복사하지 못했어요. 계좌번호를 직접 선택해 주세요.'}}}})}}}})();
+</script>
 <script>{THEME_SCRIPT}</script>
 </body></html>
 """
