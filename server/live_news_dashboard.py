@@ -77,6 +77,24 @@ STATIC_FILES = {
     "/lab/": ("pages/static/lab/index.html", "text/html; charset=utf-8"),
 }
 
+
+def blog_page_path(request_path: str) -> str | None:
+    """Map a blog URL to a generated file without accepting paths or file extensions."""
+    if request_path in ("/blog", "/blog/"):
+        return "blog/index.html"
+    if not request_path.startswith("/blog/"):
+        return None
+    slug = request_path[len("/blog/"):].rstrip("/")
+    if not slug or "/" in slug:
+        return None
+    if any(not (char.isascii() and (char.islower() or char.isdigit() or char == "-"))
+           for char in slug):
+        return None
+    if slug.startswith("-") or slug.endswith("-") or "--" in slug:
+        return None
+    return f"blog/{slug}/index.html"
+
+
 USER_AGENT = "TeemoLiveNewsDashboard/1.0 (+local research dashboard)"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -1880,6 +1898,10 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(payload)
             return
         static = STATIC_FILES.get(request_path)
+        if static is None:
+            blog_path = blog_page_path(request_path)
+            if blog_path is not None:
+                static = (blog_path, "text/html; charset=utf-8")
         if static:
             filename, content_type = static
             target = ROOT / filename
