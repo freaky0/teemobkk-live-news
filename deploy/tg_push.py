@@ -53,6 +53,7 @@ import google_news  # noqa: E402
 ICT = timezone(timedelta(hours=7), name="ICT")
 BOT_API = "https://api.telegram.org/bot%s/%s"
 STATE_TABLE = "tg_posted"
+POST_COMPARISON_WINDOW_MINUTES = 5
 LOCK_FILE = Path(os.environ.get("TG_LOCK_FILE") or (Path(tempfile.gettempdir()) / "teemo-tg-push.lock"))
 LINK_CHARS = 4096
 
@@ -221,8 +222,8 @@ def connect() -> sqlite3.Connection:
     return connection
 
 
-def posted(connection: sqlite3.Connection, hours: int = 24) -> list[sqlite3.Row]:
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+def posted(connection: sqlite3.Connection, window_minutes: int) -> list[sqlite3.Row]:
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=window_minutes)).isoformat()
     return list(connection.execute(
         "SELECT * FROM %s WHERE posted_at >= ? ORDER BY posted_at" % STATE_TABLE, (cutoff,)))
 
@@ -767,8 +768,8 @@ def post_parts(connection: sqlite3.Connection, parts: dict[str, Any],
         return False, "no title"
 
     if jev_gate.MODE == "live":
-        # Compare against the full 24-hour channel window, not the shorter reservation window.
-        recent_rows = posted(connection, 24)
+        # Compare against the configured recent channel window, not stale stories from the full day.
+        recent_rows = posted(connection, POST_COMPARISON_WINDOW_MINUTES)
         recent_titles = [str(row["title"] or "") for row in recent_rows
                          if str(row["title"] or "")]
         try:
@@ -890,7 +891,7 @@ def tick(connection: sqlite3.Connection, now: datetime | None = None, limit: int
          quiet: bool = False) -> list[dict[str, Any]]:
     now = now or datetime.now(timezone.utc)
     items = candidates(connection, WINDOW_HOURS)
-    recent = posted(connection, 24)
+    recent = posted(connection, POST_COMPARISON_WINDOW_MINUTES)
     jev_items: list[dict[str, Any]] = []
     for candidate in items:
         if len(jev_items) >= jev_gate.BATCH_SIZE:
