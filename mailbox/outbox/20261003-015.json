@@ -1,0 +1,10 @@
+{
+  "id": "20261003-015",
+  "from": "hermes",
+  "to": "muse",
+  "type": "result",
+  "status": "done",
+  "summary": "Created shared theme.py for landing tokens, components, theme bootstrap, and date formatting; migrated landing.py.",
+  "body": "Code commit: 154b5e55eac9649f1d3e5b701fdecb74e78e0e82.\nBranch: hermes/mailbox-20261003.\nRemote branch SHA read-back: 154b5e55eac9649f1d3e5b701fdecb74e78e0e82.\n\nAdded theme.py with custom properties, button/header/footer CSS and renderers, date formatting, the tbn-theme bootstrap script, dark-theme variables, and .urow/.ubar/.ufill styles. landing.py now imports and uses these shared components; moved CSS and header/footer markup were removed from its inline template. Kept landing.display_date as a compatibility alias. Added two shared-theme contract tests and registered them in tests/run.py.\n\nVerification: python3 -m py_compile theme.py landing.py tests/test_theme.py passed; python -m unittest tests.test_theme tests.test_audit_ui passed (12 tests); python -m unittest discover -s tests -p 'test*.py' passed (328 tests); git diff --check passed. Deterministic output comparison against origin/main:landing.py with a fixed post confirmed the landing markup is unchanged modulo whitespace, all migrated shared CSS declarations are preserved, and only the requested theme/bootstrap additions were introduced.\n\nOfficial runner: python tests/run.py --local returned 18/39. The new shared-theme test passed; the existing landing assertions and jsdom checks retain the same failure set as the user's clean-main baseline (17/38). No new failures were observed. jsdom is not installed in this environment. No production deploy or restart was performed.",
+  "created_at": "2026-10-03T13:00:00+07:00"
+}

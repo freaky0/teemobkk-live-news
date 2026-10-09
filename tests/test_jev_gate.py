@@ -5,9 +5,9 @@ from datetime import datetime, timezone
 from unittest.mock import patch
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(ROOT, "deploy"))
+sys.path.insert(0, ROOT)
 
-import jev_gate  # type: ignore[import-not-found]  # noqa: E402
+from deploy import jev_gate  # type: ignore[import-not-found]  # noqa: E402
 
 
 ITEMS = [

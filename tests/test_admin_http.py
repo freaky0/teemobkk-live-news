@@ -13,6 +13,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from datetime import datetime, timedelta, timezone
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -22,8 +23,10 @@ from xml.etree import ElementTree as ET
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-import admin_auth  # noqa: E402
-import live_news_dashboard as core  # noqa: E402
+from server import admin_auth  # noqa: E402
+from server import live_news_dashboard as core  # noqa: E402
+from pages.build import landing  # noqa: E402
+from pages.build import page_build  # noqa: E402
 
 SECRET = "correct horse battery staple"
 LINK = "https://example.com/http-test-story"
@@ -39,6 +42,25 @@ class Gate(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.dir = tempfile.mkdtemp()
+        cls._static_snapshots = {}
+        cls._created_static_dirs = []
+        posts = [{
+            "title": "관점 테스트 {}".format(index),
+            "date": "2026-10-{:02d}".format(index),
+            "url": "https://teemobkk.substack.com/p/test-{}".format(index),
+            "summary": "테스트 요약",
+        } for index in range(1, 11)]
+        for relative, content in (
+                ("perspectives/index.html", landing.render_perspectives_page(posts)),
+                ("indicators/index.html", landing.render_indicators_page()),
+                ("sitemap.xml", page_build.sitemap_xml())):
+            path = Path(ROOT) / relative
+            cls._static_snapshots[path] = path.read_bytes() if path.exists() else None
+            if not path.parent.exists():
+                cls._created_static_dirs.append(path.parent)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8")
+
         cls.password = Path(cls.dir) / ".admin_password"
         cls.password.write_bytes(SECRET.encode("utf-8"))
         cls._password_file = admin_auth.PASSWORD_FILE
@@ -62,6 +84,16 @@ class Gate(unittest.TestCase):
     def tearDownClass(cls):
         cls.server.shutdown()
         cls.server.server_close()
+        for path, previous in cls._static_snapshots.items():
+            if previous is None:
+                path.unlink(missing_ok=True)
+            else:
+                path.write_bytes(previous)
+        for directory in reversed(cls._created_static_dirs):
+            try:
+                directory.rmdir()
+            except OSError:
+                pass
         admin_auth.PASSWORD_FILE = cls._password_file
         core.DB_FILE = cls._db
         core.PUBLIC_MODE = cls._public
@@ -424,10 +456,17 @@ class Gate(unittest.TestCase):
             sitemap = ET.fromstring(response.read())
         namespace = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
         urls = [node.text or "" for node in sitemap.findall("sm:url/sm:loc", namespace)]
-        self.assertEqual(urls, ["https://teemobkk.io/", "https://teemobkk.io/thai/",
-                                "https://teemobkk.io/privacy/", "https://teemobkk.io/privacy/en/"])
-        self.assertFalse(any("/news/" in url for url in urls),
-                         "the news dashboards are noindex and don't belong in the sitemap")
+        self.assertEqual(urls, ["https://teemobkk.io/", "https://teemobkk.io/about/",
+                                "https://teemobkk.io/tradingtalk/", "https://teemobkk.io/lab/",
+                                "https://teemobkk.io/thai/",
+                                "https://teemobkk.io/privacy/", "https://teemobkk.io/perspectives/",
+                                "https://teemobkk.io/indicators/", "https://teemobkk.io/privacy/en/",
+                                "https://teemobkk.io/news/", "https://teemobkk.io/news/ko/"])
+        lastmods = [node.text or "" for node in sitemap.findall("sm:url/sm:lastmod", namespace)]
+        ict = timezone(timedelta(hours=7))
+        today = datetime.now(ict).date()
+        self.assertEqual(len(lastmods), 11)
+        self.assertTrue(all(datetime.fromisoformat(value).date() == today for value in lastmods))
 
     def test_privacy_pages_are_public_translated_and_canonical(self):
         pages = (
@@ -452,6 +491,20 @@ class Gate(unittest.TestCase):
             self.assertIn("AdSense", page)
             self.assertIn("TCF v2.3", page)
             self.assertIn(inactive_note, page)
+
+    def test_new_standalone_pages_are_served_at_both_route_forms(self):
+        pages = (
+            ("/about", "TeemoBKK에 대하여"), ("/about/", "TeemoBKK에 대하여"),
+            ("/tradingtalk", "Trading Talk"), ("/tradingtalk/", "Trading Talk"),
+            ("/lab", "지표 연구 노트"), ("/lab/", "지표 연구 노트"),
+            ("/perspectives", "시장 관점"), ("/perspectives/", "시장 관점"),
+            ("/indicators", "트레이딩뷰 지표"), ("/indicators/", "트레이딩뷰 지표"),
+        )
+        for path, heading in pages:
+            with self.subTest(path=path), urllib.request.urlopen(self.base + path, timeout=10) as response:
+                self.assertEqual(response.status, 200)
+                self.assertIn("text/html", response.headers.get("Content-Type", ""))
+                self.assertIn(heading, response.read().decode("utf-8"))
 
     def test_the_page_tells_the_script_it_is_public(self):
         # The page is not JSON, so it is fetched directly rather than through the JSON helper.

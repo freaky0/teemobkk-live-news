@@ -21,7 +21,7 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-import live_news_dashboard as core  # noqa: E402
+from server import live_news_dashboard as core  # noqa: E402
 
 
 def asked_names(turn):

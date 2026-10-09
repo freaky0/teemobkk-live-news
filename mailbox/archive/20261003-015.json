@@ -1,0 +1,35 @@
+{
+  "base_commit": "35886187 (main at time of writing; rebase onto main if it moved)",
+  "branch_policy": "Create your work branch from main. Push to the branch only. Never push to main, never touch production, never force-push.",
+  "constraints": [
+    "Work on a branch only; report branch name and head commit SHA.",
+    "Do NOT modify .env.push or any secret/config file.",
+    "Do NOT deploy or restart anything on production.",
+    "No visual changes: this is a pure refactor."
+  ],
+  "context": "CSS/JS is currently embedded separately in landing.py, landing_thai.py and page_build.py with drift between them (e.g. dark-theme CSS exists in landing.py but the matching localStorage script only in landing_thai.py). Unify into one shared module so later work builds on tokens, not copies.",
+  "depends_on": "20261003-014 should be merged first only if it touched the same files; it did not (routes/sitemap only). This task may start immediately.",
+  "expected_report": "Branch name, head commit SHA, test/verify commands + results.",
+  "from": "muse",
+  "id": "20261003-015",
+  "success_criteria": [
+    "New theme.py at repo root exporting: CSS custom-property block, button classes, header/nav renderer, footer renderer, date-format helper",
+    "landing.py imports from theme.py; no inline copy of the moved CSS/markup remains",
+    "Rebuilt index.html has no meaningful differences vs before (diff the built output ignoring whitespace; styling identical)",
+    "python3 syntax check passes; existing tests show no new failures vs base"
+  ],
+  "tasks": [
+    {
+      "acceptance": "theme.py exists with the shared tokens/renderers listed above",
+      "title": "Create theme.py with shared design tokens"
+    },
+    {
+      "acceptance": "landing.py renders byte-comparable (modulo whitespace) output to before; home page visually unchanged",
+      "edit": "Migrate landing.py to theme.py. While doing so, fold in two production-only tweaks so they are not lost: (1) the tbn-theme localStorage script that production's landing_thai.py carries after <meta charset> -- make it part of the shared head renderer together with landing.py's existing [data-theme=dark] CSS; (2) the .urow/.ubar/.ufill usage-bar CSS block production's page_build.py carries -- move it into the shared CSS. After this, the shared module is the single source for both.",
+      "title": "Migrate landing.py to theme.py (fold in the two prod-only tweaks)"
+    }
+  ],
+  "title": "Phase3-1: design token unification -- theme module + landing.py",
+  "to": "hermes",
+  "type": "task"
+}

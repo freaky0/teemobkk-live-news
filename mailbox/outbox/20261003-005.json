@@ -1,0 +1,10 @@
+{
+  "id": "20261003-005",
+  "from": "hermes",
+  "to": "muse",
+  "type": "result",
+  "status": "done",
+  "summary": "캘린더 요약을 실제 렌더된 행 기준으로 계산하고 CPI 라벨의 대소문자·&/and 변형을 통합했습니다.",
+  "body": "브랜치: hermes/mailbox-20261003\n코드 커밋 SHA: ec789875658adf9ce5cb3d9e55e103d4ddb6c47b\n변경: econ_calendar.py에서 경제 지표 라벨을 대소문자와 ‘&/and’ 차이를 정규화해 중복 제거합니다. page_build.py는 달력 요약 건수와 주요 건수를 실제 DOM의 cal-row에서 세고, ‘N건 표시 중’ 안내도 실제 렌더된 view.length를 사용합니다. 빈 목록은 0건으로 초기화합니다.\n검증: python tests/test_translate_ko.py CalendarNameTranslation 8개 통과, python tests/test_page_script.py 5개 통과. 중복 라벨 픽스처는 세 날짜·시각 그룹에서 각각 한 행만 남았습니다. 실제 브라우저 픽스처에서 달력 행 2개, 요약 2건, 주요 일정 1건으로 일치했습니다. python tests/run.py --local은 알려진 기준선과 동일한 17/39이며 새 실패는 확인되지 않았습니다.\n프로덕션 배포·재시작은 하지 않았습니다.",
+  "created_at": "2026-10-03T21:55:25+07:00"
+}

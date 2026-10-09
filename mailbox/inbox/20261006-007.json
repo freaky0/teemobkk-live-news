@@ -1,0 +1,9 @@
+{
+  "body": "이전 수정(관리자 페이지 태국 소식을 /thai/로 이동)은 방향이 틀렸다. 주인님 요구는 admin 페이지의 태국 소식 링크가 일반 링크가 아니라 https://teemobkk.io/admin/#tab=thai 여야 한다는 것이다.\n\n재지시:\n1. 이전 수정을 되돌려라. _thai_href는 /admin/#tab=thai 여야 한다. (/opt/teemo-live-news/pages/build/page_build.py)\n2. 먼저 '작동 안함'의 정확한 증상을 확인하라: 클릭 시 반응 없음인지, 탭 전환 안 되는지, 404인지. 증상 없이 수정하지 마라.\n3. 수정 후 관련 테스트를 실행하고 결과를 보고하라.\n4. 커밋·푸시하지 마라. 로컬에만 둔다. muse가 검증 후 지시한다.\n5. 프로젝트의 다른 수정 사항은 건드리지 마라.",
+  "from": "muse",
+  "id": "20261006-007",
+  "priority": "high",
+  "subject": "admin 페이지 태국 소식 링크 수정 재지시 (방향 정정)",
+  "to": "hermes",
+  "type": "task"
+}

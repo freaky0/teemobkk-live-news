@@ -1,0 +1,284 @@
+#!/usr/bin/env python3
+"""Write the public JSON files that the hosted page reads.
+
+Runs once (no server, no long-lived database) so a scheduler can call it.
+Data is split by region so a visitor only downloads the tab they open.
+The window is merged with the files already committed in the repo, so one
+missed run does not leave a hole in the published list.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import logging
+import os
+import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent.parent
+sys.path.insert(0, str(ROOT))
+
+from pipeline import category_rules  # noqa: E402
+from collectors import google_news  # noqa: E402
+from server import live_news_dashboard as core  # noqa: E402  (path is set just above)
+from pages.build import page_build  # noqa: E402
+
+DOCS = ROOT / "docs"
+INDEX_FILE = DOCS / "index.json"
+REGION_FILES = {core.GLOBAL_REGION: DOCS / "global.json", core.THAI_REGION: DOCS / "thai.json"}
+KEEP_HOURS = 24
+MAX_PER_REGION = 1500
+# The page opens on 25 rows but "더 보기" can walk the whole window, so each region is
+# published twice: a small recent file the page loads first, and the full file it only
+# fetches once the reader actually pages past the recent set.
+RECENT_PER_REGION = 300
+PAGE_SIZE = 1000
+FIELDS = (
+    "title", "title_ko", "link", "summary", "summary_ko", "published_at",
+    "source", "source_type", "category", "categories", "priority",
+    # Filled from the resolution cache, never from the database row: the stored link is the
+    # row's identity and stays what the operator's actions address.
+    "original_link",
+    # The publisher's own name from the feed, so a reader sees who wrote the story rather than the
+    # collecting query. NULL for rows collected before the column existed; the page falls back to
+    # the hostname of the resolved link.
+    "original_source",
+)
+
+
+SUMMARY_CHARS = 240
+
+
+def public_row(row: dict[str, Any], cache: dict[str, str] | None = None) -> dict[str, Any]:
+    out: dict[str, Any] = {key: row.get(key) for key in FIELDS}
+    out["priority"] = int(out.get("priority") or 3)
+    # Every published row leaves here with a list, so the page never has to fall back to a single
+    # value - and with names passed through the retirer, so a row merged forward from a file written
+    # before a rename cannot put a name on screen that no pill offers any more.
+    labels = category_rules.split_categories(out.get("categories"), out.get("category"))
+    out["category"] = labels[0]
+    out["categories"] = labels
+    # The page clamps a summary to three lines (~220 chars) and trims it only when it
+    # is longer than that, so shipping the full 800-char text wasted most of the file.
+    # Trimming here cut global.json from 936KB to about half, with nothing lost on screen.
+    summary = str(out.get("summary") or "")
+    if len(summary) > SUMMARY_CHARS:
+        out["summary"] = summary[:SUMMARY_CHARS].rstrip() + "…"
+    summary_ko = str(out.get("summary_ko") or "")
+    if len(summary_ko) > SUMMARY_CHARS:
+        out["summary_ko"] = summary_ko[:SUMMARY_CHARS].rstrip() + "…"
+    # What the reader clicks. A Google News row is published with the publisher's own URL beside the
+    # aggregator one, so the page can send a reader to the article instead of to the redirect - and a
+    # reader who lands on a story still sees the link the row is filed under.
+    #
+    # Three cases, in this order:
+    #   * the current cache has a mapping - it wins, because it comes from Google's own answer;
+    #   * the cache is empty for this link but the row already carries a publisher URL - it is kept,
+    #     and only when `valid_original` verifies it. The publishing job runs against a fresh database
+    #     in CI, so without this a row published as an original on one run would lose its publisher
+    #     URL on the next one and flip back to the redirect;
+    #   * neither holds - the field is dropped, so an unverifiable or Google-pointing value can never
+    #     be republished just because some earlier run wrote it.
+    link = str(out.get("link") or "")
+    published_before = str(out.get("original_link") or "")
+    from_cache = str((cache or {}).get(link) or "")
+    if google_news.valid_original(from_cache):
+        out["original_link"] = from_cache
+    elif (google_news.is_aggregator(link) and published_before != link
+          and google_news.valid_original(published_before)):
+        out["original_link"] = published_before
+    else:
+        out.pop("original_link", None)
+    return out
+
+
+def read_articles(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    items = payload.get("articles")
+    return items if isinstance(items, list) else []
+
+
+def fetch_window() -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    offset = 0
+    while len(rows) < MAX_PER_REGION * 2:
+        batch, _total, _regions = core.query_articles(hours=core.RETENTION_HOURS, limit=PAGE_SIZE, offset=offset)
+        rows.extend(batch)
+        if len(batch) < PAGE_SIZE:
+            break
+        offset += PAGE_SIZE
+    return rows
+
+
+
+def normalize_link(article: dict[str, Any]) -> dict[str, Any]:
+    """Fix stock items stored before the feed-specific path existed.
+
+    CoinNess sends no link for either feed, so older stock rows were written with
+    the breaking-news path. Keep this guard so the committed history stays clean.
+    """
+    if article.get("source") == "CoinNess Stock":
+        prefix = "https://coinness.com/news/"
+        link = str(article.get("link") or "")
+        if link.startswith(prefix):
+            ident = link[len(prefix):].split("/")[0].split("?")[0]
+            if ident.isdigit():
+                article["link"] = "https://coinness.com/stock-news/" + ident + "/quote"
+    # FinancialJuice variants are collapsed here too so the committed history stays clean.
+    article["link"] = core.canonical_link(str(article.get("link") or ""))
+    return article
+
+
+def merge(previous: list[dict[str, Any]], fresh: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=KEEP_HOURS)).isoformat()
+    by_link: dict[str, dict[str, Any]] = {}
+    for article in [normalize_link(a) for a in list(previous)] + list(fresh):
+        link = str(article.get("link") or "")
+        published = str(article.get("published_at") or "")
+        if not link or published < cutoff:
+            continue
+        by_link[link] = article
+    ordered = sorted(
+        by_link.values(),
+        key=lambda item: (str(item.get("published_at") or ""), int(item.get("priority") or 0)),
+        reverse=True,
+    )
+    # Older published JSON can contain pre-dedupe copies. The briefing and feed
+    # seeded from this file should receive the same filtered rows.
+    return core.dedupe_rows(ordered)[:MAX_PER_REGION]
+
+
+def digest_of(articles: list[dict[str, Any]]) -> str:
+    """A stamp that changes only when the published rows change.
+
+    The page polls index.json with this value in hand and skips the regional download
+    when it matches, so an idle poll costs about 200 bytes instead of the whole file.
+    """
+    hasher = hashlib.sha1()
+    for article in articles:
+        hasher.update(str(article.get("link") or "").encode("utf-8"))
+        hasher.update(b"\n")
+        # Translation backfills change the published card without adding a new link; include both
+        # translated fields so the browser invalidates its cached regional JSON immediately.
+        hasher.update(str(article.get("title_ko") or "").encode("utf-8"))
+        hasher.update(b"\n")
+        hasher.update(str(article.get("summary_ko") or "").encode("utf-8"))
+        hasher.update(b"\n")
+    return hasher.hexdigest()[:16]
+
+
+def recent_path(path: Path) -> Path:
+    return path.with_name(path.stem + "-recent.json")
+
+
+def write_json(path: Path, payload: dict[str, Any]) -> int:
+    text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    path.write_text(text, encoding="utf-8")
+    return len(text.encode("utf-8"))
+
+
+
+def write_thai_page() -> int:
+    """Regenerate the published pages and report the Thailand copy's size.
+
+    Both public pages now come from page_build, so a markup or style change can never
+    land on only one of them. (The old /thai/ copy was a find-and-replace of
+    docs/index.html, and a CSS class rename once reached only one of the two.)
+    """
+    sizes = page_build.build_public()
+    return sizes["docs/thai/index.html"]
+
+def resolve_pending(rows: list[dict[str, Any]], connection, cache: dict[str, str]) -> dict[str, str]:
+    """Resolve a bounded number of aggregator links per run and remember them.
+
+    Bounded on purpose: the publishing job runs on a timer, and the cache fills a little on
+    every run, so a first pass does not sit on thousands of two-request resolutions. A link
+    that cannot be resolved is simply not cached and is tried again on the next run.
+    """
+    budget = max(0, int(os.environ.get("LINK_RESOLVE_PER_RUN", "60")))
+    if not budget:
+        return cache
+    pending = [str(row.get("link") or "") for row in rows
+               if google_news.is_aggregator(str(row.get("link") or ""))
+               and str(row.get("link") or "") not in cache]
+    if not pending:
+        return cache
+    found = google_news.resolve_many(pending, limit=budget)
+    google_news.remember(connection, found)
+    cache.update(found)
+    logging.info("google news links: %d of %d pending resolved, %d cached",
+                 len(found), len(pending), len(cache))
+    return cache
+
+
+def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    core.init_db()
+    core.collect_news()
+    # The published JSON is what the section pages read before their script runs, so it carries the
+    # same dedupe the API does: a reader of the file and a reader of the API see one copy per story.
+    rows = core.dedupe_rows(fetch_window())
+    DOCS.mkdir(parents=True, exist_ok=True)
+
+    conn = core.db_connect()
+    try:
+        cache = resolve_pending(rows, conn, google_news.load(conn))
+    finally:
+        conn.close()
+
+    now = datetime.now(timezone.utc)
+    region_counts: dict[str, int] = {}
+    regions: dict[str, dict[str, Any]] = {}
+    total = 0
+    for region, path in REGION_FILES.items():
+        mine = [public_row(row, cache) for row in rows
+                if str(row.get("region") or core.GLOBAL_REGION) == region]
+        # Trim again after the merge: rows kept from the previous file were written
+        # before the cap existed and would otherwise keep their full-length summaries.
+        articles = [public_row(row, cache) for row in merge(read_articles(path), mine)]
+        recent = articles[:RECENT_PER_REGION]
+        write_json(path, {
+            "region": region,
+            "stamp": digest_of(articles),
+            "count": len(articles),
+            "articles": articles,
+        })
+        size = write_json(recent_path(path), {
+            "region": region,
+            "stamp": digest_of(recent),
+            "count": len(recent),
+            "articles": recent,
+        })
+        region_counts[region] = len(articles)
+        regions[region] = {
+            "count": len(articles),
+            "stamp": digest_of(articles),
+            "recent_count": len(recent),
+            "recent_stamp": digest_of(recent),
+        }
+        total += len(articles)
+        logging.info("%s: %d articles, recent %d (%d bytes)", path.name, len(articles), len(recent), size)
+
+    write_json(INDEX_FILE, {
+        "updated_at": now.isoformat(),
+        "updated_at_ict": now.astimezone(core.ICT).strftime("%Y-%m-%d %H:%M"),
+        "window_hours": KEEP_HOURS,
+        "article_count": total,
+        "region_counts": region_counts,
+        "regions": regions,
+    })
+    logging.info("thai page: %d bytes", write_thai_page())
+    logging.info("wrote %s: %d articles total", INDEX_FILE.name, total)
+    print("total=%d %s" % (total, region_counts))
+
+
+if __name__ == "__main__":
+    main()

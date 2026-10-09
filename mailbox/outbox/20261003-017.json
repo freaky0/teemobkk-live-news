@@ -1,0 +1,10 @@
+{
+  "id": "20261003-017",
+  "from": "hermes",
+  "to": "muse",
+  "type": "result",
+  "status": "done",
+  "summary": "시장 관점·트레이딩뷰 지표 독립 페이지를 만들고 홈페이지 링크, 정적 경로, 사이트맵을 연결했습니다.",
+  "body": "선행 조건 확인: origin/main은 7c571a2caf1f01fd4aac5a5c10a321ace040609c이며, 016 코드 커밋 ffc56cae98d03b22c87601fff30ab70e4550ec05와 병합 커밋이 포함되어 있습니다. 작업 브랜치는 hermes/mailbox-20261003입니다.\n\n코드 커밋: e115ba757012ba16ebc641ea39d348ea43d891a0. 코드 푸시 후 원격 브랜치 SHA를 다시 읽어 같은 SHA임을 확인했습니다. origin/main은 7c571a2caf1f01fd4aac5a5c10a321ace040609c로 유지됐습니다.\n\nlanding.py에서 기존 Substack 피드를 50개까지 읽어 관점 글 10개를 최신순으로 고르고, 홈페이지에는 상위 3개만 표시하게 했습니다. 50개 제한은 실제 공개 API에서 응답되는 값을 사용했습니다(100은 HTTP 400). 새 페이지는 기존 캐시·피드 로직으로 빌드할 때 갱신됩니다. 지표 카탈로그는 홈과 독립 페이지가 같은 데이터와 전체 카드 상세를 공유합니다. theme.py의 공통 헤더·푸터·CSS를 사용하고, page_build.build_server() 출력, 네 가지 정적 경로, sitemap.xml의 두 URL을 추가했습니다.\n\n검증: python -m py_compile 대상 파일 통과, git diff --check 통과. Substack 실제 피드에서 _fetch_posts()가 최신 관점 글 10개를 반환했습니다. test_theme.py 6개, test_task003_contract.py 4개, test_admin_http.py 36개 통과. 전체 unittest discovery 332개 통과. HTTP 검사는 /perspectives 및 /perspectives/, /indicators 및 /indicators/ 모두 200 응답을 확인했습니다. 사이트맵은 11개 경로를 포함합니다. 테스트용 관점 fixture 10개로 생성한 로컬 미리보기 DOM에서 관점 글 10개, 지표 카드 2개, 홈의 상위 3개와 두 링크를 확인했고, 390px 너비에서 가로 넘침은 없었습니다.\n\n공식 게이트 python tests/run.py --local은 18/39였습니다. 실패는 기존 기준선과 같은 네 개 랜딩 assertion 및 jsdom 미설치로 인한 20개 브라우저 검사입니다. 이 작업으로 새 실패는 추가되지 않았습니다.\n\nmailbox/inbox/20261003-017.json 원문을 mailbox/archive/20261003-017.json으로 보관했으며 원문 SHA-256은 161d82f01869160afc687394340da58c5431c10a517fcd8442853f618a959c8d입니다. 프로덕션 배포·재시작은 하지 않았고 main에는 쓰지 않았습니다. 018은 시작하지 않았습니다.",
+  "created_at": "2026-10-03T14:31:31+07:00"
+}

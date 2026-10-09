@@ -20,8 +20,8 @@ from datetime import datetime, timedelta, timezone
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-import category_rules as taxonomy  # noqa: E402
-import live_news_dashboard as core  # noqa: E402
+from pipeline import category_rules as taxonomy  # noqa: E402
+from server import live_news_dashboard as core  # noqa: E402
 
 
 def axis(*terms):
@@ -106,14 +106,14 @@ class MultiLabel(unittest.TestCase):
         A mismatch is a pill that filters nothing, and this is also where a non-ASCII name that
         lost characters on write would show up: the pill table and the rules are separate files.
         """
-        import ui_text
+        from pages.build import ui_text
         self.assertEqual({value for value, _ in ui_text.CATS["global"]},
                          {taxonomy.GENERIC_CATEGORY} | {name for name, _ in taxonomy.GLOBAL_RULES})
         self.assertEqual({value for value, _ in ui_text.CATS["thai"]},
                          {taxonomy.GENERIC_CATEGORY} | {name for name, _ in taxonomy.THAI_RULES})
 
     def test_every_pill_has_a_label_in_both_languages(self):
-        import ui_text
+        from pages.build import ui_text
         for lang in ("ko", "en"):
             labels = ui_text.cat_labels(lang)
             for value, name in ui_text.CATS["global"] + ui_text.CATS["thai"]:
@@ -235,7 +235,7 @@ class MultiLabel(unittest.TestCase):
         a browser sees (and the one a translation offer is decided on) is empty. Measured once on
         the deployed site: 0 seeded cards because the rebuild happened before the migration.
         """
-        import page_build
+        from pages.build import page_build
         old_db = os.path.join(self.dir, "old.db")
         connection = sqlite3.connect(old_db)
         connection.execute(
@@ -283,6 +283,23 @@ class MultiLabel(unittest.TestCase):
                                     self.fresh(), "Src", "media")
         self.assertEqual(article["categories"], [taxonomy.GENERIC_CATEGORY])
         self.assertEqual(article["category"], taxonomy.GENERIC_CATEGORY)
+
+    def test_visa_category_requires_thai_context(self):
+        visa_category = next(name for name, terms in taxonomy.THAI_RULES if "visa" in terms)
+        unrelated = core.make_article(
+            "US immigration bill expands visa screening", "https://e.test/us-visa",
+            "Federal officials announced new rules.", self.fresh(), "Src", "media",
+            region=core.THAI_REGION)
+        thailand = core.make_article(
+            "Thailand adds visa options for long-stay visitors", "https://e.test/thai-visa",
+            "", self.fresh(), "Src", "media", region=core.THAI_REGION)
+        thai_language = core.make_article(
+            "ประเทศไทยออกมาตรการวีซ่าใหม่", "https://e.test/thai-language-visa",
+            "", self.fresh(), "Src", "media", region=core.THAI_REGION)
+
+        self.assertNotIn(visa_category, unrelated["categories"])
+        self.assertIn(visa_category, thailand["categories"])
+        self.assertIn(visa_category, thai_language["categories"])
 
     def test_thai_rows_keep_their_own_table(self):
         article = core.make_article("pm2.5 dust warning in Bangkok", "https://e.test/6", "",

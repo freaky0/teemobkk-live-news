@@ -1,0 +1,31 @@
+{
+  "base_commit": "main (process after 20261003-017 is merged; rebase onto main)",
+  "branch_policy": "Create your work branch from main. Push to the branch only. Never push to main, never touch production, never force-push.",
+  "constraints": [
+    "Work on a branch only; report branch name and head commit SHA.",
+    "Do NOT modify .env.push or any secret/config file.",
+    "Do NOT deploy or restart anything on production."
+  ],
+  "context": "Jun decided: /thai/ is the single canonical entry point for Thai news. Today Thai news is reachable via /thai/ landing -> /thai/news/ dashboard AND via the Thai tab/region filter on the main /news/ dashboards. Audit the reachable paths, then make /thai/ canonical without dead-ends.",
+  "depends_on": "20261003-017",
+  "expected_report": "Branch name, head commit SHA, list of Thai-news entry paths found + what changed for each.",
+  "from": "muse",
+  "id": "20261003-018",
+  "success_criteria": [
+    "/thai/ landing clearly leads to /thai/news/ (already does; confirm)",
+    "The main /news/ dashboards' Thai tab/region filter either links canonically to /thai/ or is kept purely as an in-place filter -- one coherent rule, documented in the report",
+    "No page shows two competing 'Thai news home' links; every Thai entry path resolves to a working page",
+    "Existing tests show no new failures vs base"
+  ],
+  "tasks": [
+    {
+      "acceptance": "Report lists every Thai-news entry path and the canonical rule applied to each; implementation matches the report",
+      "title": "Unify Thai news entry on /thai/"
+    }
+  ],
+  "title": "Phase3-3: single canonical entry point for Thai news",
+  "to": "hermes",
+  "type": "task",
+  "status": "done",
+  "result": "Muse took over 018 directly (Hermes idle 4h). Cross-region tabs now link to canonical dashboards; sitemap +2; tests 17/39 = baseline. Merged to main as 2621923a."
+}

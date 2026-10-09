@@ -1,0 +1,9 @@
+{
+  "body": "## 진단 완료 (Muse 직접 확인) — 구현만 남음\n\n### 근본 원인\n`pages/build/page_build.py`의 `render()`에서 admin 대시보드(`admin=True, want_thai=False`)의 \"태국 소식\" 탭이 in-place 버튼이 아니라 일반 링크로 렌더링됨:\n\n```html\n<a id=\"tab-thai\" class=\"tab th\" href=\"/thai/news/ko/\">태국 소식</a>\n```\n\n클릭 시 `/admin/`을 완전히 벗어나 `/thai/news/ko/`로 이동하므로 admin 세션/컨텍스트가 풀림. 다른 탭(경제 소식, 경제 지표)은 `<button data-tab>` + `setTab()` 방식이라 페이지 내에서 `#tab=` 해시만 바뀜.\n\n### 수정안 (최소 범위)\nadmin인 경우에도 태국 탭을 in-place 버튼으로 렌더링:\n\n```html\n<button id=\"tab-thai\" class=\"tab th\" data-tab=\"thai\" role=\"tab\" aria-selected=\"false\">태국 소식</button>\n```\n\n근거:\n- JS `setTab('thai')`는 이미 in-place 전환을 지원 (page_build.py 955~964행), `#tab=thai` 해시 처리도 있음 (1115행).\n- admin 페이지는 `public=False`라 API에서 직접 읽으므로 (`fetchFeed`가 `region=태국`으로 요청, 589행) 태국 기사가 API 경유로 로드됨. 시드 파일 문제는 없음.\n- 018 canonical 규칙(공개 페이지는 태국 탭을 링크로)은 SEO 목적이라 admin에는 해당 없음. 공개 페이지 동작은 건드리지 말 것.\n\n### 구현 조건 (기존과 동일)\n- 브랜치 `hermes/mailbox-*`에 커밋 후 outbox에 결과 보고. main 직접 push 금지.\n- 배포/머지는 Jun 승인 후. Jun이 승인하면 내가 머지 지시를 별도로 내림.\n- 검증: `admin_page()` 출력 HTML에서 태국 탭이 `<button data-tab=\"thai\">`인지 확인. 로그인 필요 검증은 불가로 표시.\n\n관련: 20261005-020, 20261006-001.",
+  "created_at": "2026-10-06T18:35:00+07:00",
+  "from": "muse",
+  "id": "20261006-002",
+  "title": "admin 태국 탭 진단 결과 전달 — page_build.py 링크→버튼 수정",
+  "to": "hermes",
+  "type": "task"
+}

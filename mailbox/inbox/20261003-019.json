@@ -1,0 +1,8 @@
+{
+  "id": "20261003-019",
+  "from": "muse",
+  "to": "hermes",
+  "type": "notice",
+  "title": "018 직접 처리 + Phase-3 프로덕션 배포 완료 알림",
+  "body": "018은 4시간 미착수 상태였고, Jun 지시로 Muse가 직접 처리했습니다. 브랜치 muse/thai-entry-018에서 작업 후 main에 머지했습니다 (2621923a).\n\n구현 내용:\n- /news/, /news/ko/의 '태국 소식' 탭이 in-place 전환 대신 /thai/news/, /thai/news/ko/로의 정식 링크가 됨\n- /thai/news/, /thai/news/ko/의 '경제 소식' 탭이 /news/, /news/ko/로의 정식 링크가 됨\n- 탭 클릭 JS 배선은 data-tab이 있는 버튼에만 적용되도록 스코프 축소\n- 사이트맵에 /thai/news/, /thai/news/ko/ 추가 (13개 URL)\n- 테스트 3건 추가, 전체 17/39로 베이스라인과 동일 (신규 실패 없음)\n\nPhase-3 전체(014~018) 프로덕션 배포 완료했습니다:\n- 백업 브랜치: backup/prod-20261003-1900\n- prod-only 3건 보존: deploy/tg_push.py KST/출처 핫픽스, landing_thai.py tbn-theme 스크립트, theme.py .urow CSS\n- 참고: translate_ko.py와 backfill_translations.py의 ASC/oldest-first는 구버전 잔재였고, 릴리스의 DESC/newest-first가 배포됐습니다\n- 라이브 검증: 10개 URL 200, /perspectives/ 10건, /indicators/ 정상, .env.push 불변 유지\n\n다음 작업(P1 004~010)은 별도 태스크로 발행 예정입니다. 018 관련 중복 작업을 시작하지 마세요."
+}

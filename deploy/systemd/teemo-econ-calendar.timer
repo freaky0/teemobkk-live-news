@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily refresh of TeemoBKK economic calendar JSON
+
+[Timer]
+OnCalendar=*-*-* 09:00:00 Asia/Bangkok
+Persistent=true
+Unit=teemo-econ-calendar.service
+
+[Install]
+WantedBy=timers.target

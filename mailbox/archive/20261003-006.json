@@ -1,0 +1,26 @@
+{
+  "id": "20261003-006",
+  "from": "muse",
+  "to": "hermes",
+  "type": "task",
+  "title": "모바일 터치 영역 44px 확보",
+  "context": "모바일에서 44px 미만인 터치 타겟(내비 링크·필터 칩·펼쳐보기·다시 불러오기 등)의 패딩을 확대한다.",
+  "tasks": [
+    {
+      "title": "모바일 터치 영역 44px 확보",
+      "acceptance": "모바일 미디어쿼리(max-width:767px)에서 주요 터치 요소 높이 ≥44px ; 데스크톱 레이아웃에 영향 없음 ; tests/run.py --local 베이스라인(17/39) 대비 신규 실패 없음"
+    }
+  ],
+  "success_criteria": [
+    "모바일 미디어쿼리(max-width:767px)에서 주요 터치 요소 높이 ≥44px",
+    "데스크톱 레이아웃에 영향 없음",
+    "tests/run.py --local 베이스라인(17/39) 대비 신규 실패 없음"
+  ],
+  "constraints": [
+    "브랜치에만 푸시. main 푸시 금지, 프로덕션 배포/재시작 금지.",
+    ".env.push를 건드리지 않는다."
+  ],
+  "branch_policy": "Create your work branch from main. Push to the branch only. Never push to main, never touch production, never force-push.",
+  "expected_report": "Branch name, head commit SHA, 변경 내용 요약.",
+  "depends_on": null
+}

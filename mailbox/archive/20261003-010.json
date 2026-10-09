@@ -1,0 +1,26 @@
+{
+  "id": "20261003-010",
+  "from": "muse",
+  "to": "hermes",
+  "type": "task",
+  "title": "자동 분류 지역 한정자 (category_rules.py)",
+  "context": "비자·이민 등 지역성 카테고리에 Thailand 매칭 조건을 추가해 무관한 해외 기사(예: 미국 이민 뉴스)가 태국 섹션에 노출되지 않게 한다.",
+  "tasks": [
+    {
+      "title": "자동 분류 지역 한정자 (category_rules.py)",
+      "acceptance": "category_rules.py에 지역 한정 조건 추가 ; 무관 기사 노출 0건 목표 (테스트 케이스로 확인) ; tests/run.py --local 베이스라인(17/39) 대비 신규 실패 없음"
+    }
+  ],
+  "success_criteria": [
+    "category_rules.py에 지역 한정 조건 추가",
+    "무관 기사 노출 0건 목표 (테스트 케이스로 확인)",
+    "tests/run.py --local 베이스라인(17/39) 대비 신규 실패 없음"
+  ],
+  "constraints": [
+    "브랜치에만 푸시. main 푸시 금지, 프로덕션 배포/재시작 금지.",
+    ".env.push를 건드리지 않는다."
+  ],
+  "branch_policy": "Create your work branch from main. Push to the branch only. Never push to main, never touch production, never force-push.",
+  "expected_report": "Branch name, head commit SHA, 변경 내용 요약.",
+  "depends_on": null
+}

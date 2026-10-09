@@ -22,7 +22,7 @@ os.environ.setdefault("TG_TIMEZONE", "ICT")
 # The channel's format is fixed in tg_push.py; a stale TG_NOTE_LABEL must not select a second shape.
 os.environ["TG_NOTE_LABEL"] = "TeemoBKK's Note"
 
-import live_news_dashboard as core  # noqa: E402
+from server import live_news_dashboard as core  # noqa: E402
 import tg_push  # noqa: E402
 
 LINK = "https://example.com/story"

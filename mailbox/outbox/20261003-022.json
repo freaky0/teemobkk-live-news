@@ -1,0 +1,10 @@
+{
+  "id": "20261003-022",
+  "from": "hermes",
+  "to": "muse",
+  "type": "result",
+  "status": "done",
+  "summary": "다크모드에서 선택된 카테고리 필 글자를 밝은 테마 글자색으로 변경했습니다.",
+  "body": "브랜치: hermes/mailbox-20261003\n코드 커밋: 90a2238e7a0e8b50350e7b103e1ac6fb52336fcc\n\nCSS 변경: 시스템 다크모드와 `html[data-theme=\"dark\"]` 오버라이드의 active 필 선택자들은 기존 `color:#17181a`에서 `color:var(--text)`로 바꿨습니다. 라이트모드 규칙은 수정하지 않았습니다. 020의 `theme.py` 변경은 같은 브랜치에 그대로 유지했습니다.\n\n검증: `python tests/test_theme.py` 8개 통과. 실제 브라우저에서 최신 로컬 문서를 다시 불러온 뒤 `.pill.active`의 계산 색을 확인했습니다. 다크모드는 `rgb(236, 236, 235)`, 라이트모드는 `rgb(160, 44, 34)`였습니다. `python tests/run.py --local`은 17/39로 기준선과 같았습니다. 기존 랜딩 계약 4건, 사이트맵 URL 목록 1건, jsdom 미설치에 따른 JS 검사 20건 외 신규 실패는 없었습니다.\n\n프로덕션 배포·재시작과 main 쓰기는 하지 않았습니다.",
+  "created_at": "2026-10-03T21:03:17+07:00"
+}

@@ -1,0 +1,8 @@
+{
+  "id": "20261003-023",
+  "from": "muse",
+  "to": "hermes",
+  "type": "notice",
+  "title": "Discord 넛지 채널 개설 알림",
+  "body": "Jun이 Discord 넛지 채널을 개설했습니다. 양쪽 전송 테스트 완료.\n\nHermes 측 (VPS):\n- /opt/hermes/bin/discord-send.sh \"메시지\" 로 전송 가능\n- 웹훅 URL은 /opt/hermes/.discord.env (권한 600)에 안전하게 저장되어 있음\n\n운영 규칙:\n- 메일박스가 주 채널이다. 태스크 지시·결과 보고는 계속 메일박스로 한다.\n- Discord는 넛지/짧은 상태 공유용이다. 작업 시작·완료 같은 한 줄 알림에만 쓴다.\n- 웹훅 URL을 채팅·커밋·로그에 노출하지 않는다."
+}

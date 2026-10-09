@@ -64,7 +64,7 @@ def verify(path: Path) -> tuple[bool, str]:
     # that answers nothing, and that is the failure a rehearsal exists to catch. The window is
     # widened past the retention period because a copy is often checked days after it was made.
     sys.path.insert(0, str(ROOT))
-    import live_news_dashboard as core
+    from server import live_news_dashboard as core
     core.DB_FILE = path
     articles, total, _counts = core.query_articles(hours=24 * 90, limit=3)
     if not articles:

@@ -1,0 +1,28 @@
+{
+  "id": "20261003-021",
+  "from": "muse",
+  "to": "hermes",
+  "type": "task",
+  "title": "경제 지표(캘린더) 한국어 선택 시 이벤트명 번역",
+  "context": "2026-10-02에 Jun이 이미 요청한 사항인데 아직 미구현이다. 경제 지표 탭의 캘린더 이벤트명(e.name)이 한국어를 선택해도 영어로 나온다. docs/calendar.json의 이벤트에는 name_ko 필드가 없고, paintCalendar(page_build.py 약 976행)는 e.name을 그대로 렌더한다. 캘린더 데이터는 econ_calendar.py(및 potus_schedule.py)에서 정기적으로 갱신된다.",
+  "tasks": [
+    {
+      "title": "캘린더 이벤트명 한국어 번역 구현",
+      "acceptance": "한국어 선택 시 캘린더 이벤트명이 한국어로 표시되고, 영어 선택 시 기존 영어명이 그대로 나온다. 번역은 gpt-6-luna Codex 구독 경로(translate_ko.py의 기존 파이프라인)를 사용한다. API 요금제 경로를 쓰지 않는다."
+    }
+  ],
+  "success_criteria": [
+    "구현 방식 문서화: 빌드 시점에 name_ko를 생성해 calendar.json에 저장하는지, 아니면 렌더 시점에 처리하는지 (캘린더가 정기 갱신되므로 갱신 경로에 번역이 포함되어야 함)",
+    "paintCalendar가 CFG.lang==='ko'일 때 e.name_ko를 우선 사용하고, 없으면 e.name으로 폴백",
+    "한국어로 렌더된 캘린더 페이지에서 주요 이벤트명이 한국어로 표시됨을 확인",
+    "tests/run.py --local 베이스라인(17/39) 대비 신규 실패 없음"
+  ],
+  "constraints": [
+    "브랜치에만 푸시. main 푸시 금지, 프로덕션 배포/재시작 금지.",
+    ".env.push를 건드리지 않는다.",
+    "번역은 반드시 gpt-6-luna via Codex 구독 경로. API 모델/요금제 언급 금지."
+  ],
+  "branch_policy": "Create your work branch from main. Push to the branch only. Never push to main, never touch production, never force-push.",
+  "expected_report": "Branch name, head commit SHA, 번역 방식(빌드 시점/렌더 시점), 한국어 렌더 확인 방법과 결과.",
+  "depends_on": null
+}

@@ -13,6 +13,7 @@ So every document the builder can produce is rendered here and every script it c
 
     python tests/test_page_script.py
 """
+import json
 import os
 import re
 import shutil
@@ -24,9 +25,9 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-import admin_page  # noqa: E402
-import landing  # noqa: E402
-import page_build  # noqa: E402
+from server import admin_page  # noqa: E402
+from pages.build import landing  # noqa: E402
+from pages.build import page_build  # noqa: E402
 
 SEED = ('<article class="card seed"><h2 class="t"><a href="https://example.com/x">Example story</a>'
         '</h2><p class="s">A seeded story.</p></article>')
@@ -83,6 +84,69 @@ class PageScript(unittest.TestCase):
                 complaint = check(script, name)
                 self.assertIsNone(complaint, "%s script %d does not parse:\n%s"
                                   % (name, index, complaint))
+
+    def test_calendar_name_locale_fallback_and_escaping(self):
+        script = page_build.SCRIPT
+        esc = next(line for line in script.splitlines() if line.startswith("const esc="))
+        calendar_escape = next(line for line in script.splitlines() if line.startswith("function calEsc("))
+        display_name = next(line for line in script.splitlines() if line.startswith("function calendarDisplayName("))
+        self.assertIn("const displayName=calendarDisplayName(e)", script)
+        self.assertIn("safeName=calEsc(displayName)", script)
+
+        events = [
+            {"name": "Original <CPI> &", "name_ko": "물가 <script>& 'quote'"},
+            {"name": "  Original <CPI> &  ", "name_ko": "  "},
+            {"name": "Original CPI", "name_ko": "번역 제목"},
+        ]
+        node_script = "\n".join([
+            esc,
+            "let CFG={lang:'ko'};",
+            calendar_escape,
+            display_name,
+            "const events=" + json.dumps(events, ensure_ascii=False) + ";",
+            "const translated=calendarDisplayName(events[0]);",
+            "const escaped=calEsc(translated);",
+            "const fallback=calendarDisplayName(events[1]);",
+            "CFG.lang='en';",
+            "const english=calendarDisplayName(events[2]);",
+            "process.stdout.write(JSON.stringify([translated,escaped,fallback,english]));",
+        ])
+        result = subprocess.run(["node", "-e", node_script], check=True, capture_output=True, text=True)
+        self.assertEqual(json.loads(result.stdout), [
+            "물가 <script>& 'quote'",
+            "물가 &lt;script&gt;&amp; &#39;quote&#39;",
+            "  Original <CPI> &  ",
+            "Original CPI",
+        ])
+
+    def test_counts_match_rendered_feed_and_calendar_rows(self):
+        script = page_build.SCRIPT
+        self.assertIn("fmt('<b>{n}</b>건 표시 중',view.length)", script)
+        self.assertNotIn("fmt('<b>{n}</b>건 표시 중',all.length)", script)
+        self.assertIn("const renderedRows=document.querySelectorAll('#cal-body .cal-row')", script)
+        self.assertIn("const total=renderedRows.length", script)
+
+    def test_original_fallback_is_labeled_only_on_korean_pages(self):
+        script = page_build.SCRIPT
+        start = script.index("function hasOriginalFallback(")
+        end = script.index("function card(", start)
+        helper = script[start:end].strip()
+        cases = [
+            {"title": "US rates hold", "title_ko": "", "summary": "Rates are unchanged.", "summary_ko": ""},
+            {"title": "Fed update", "title_ko": "연준 소식", "summary": "A vote is expected.", "summary_ko": ""},
+            {"title": "Fed update", "title_ko": "연준 소식", "summary": "A vote is expected.", "summary_ko": "금리 결정이 예상된다."},
+        ]
+        node_script = "\n".join([
+            "const CFG={lang:'ko'};",
+            helper,
+            "const cases=" + json.dumps(cases, ensure_ascii=False) + ";",
+            "const korean=cases.map(hasOriginalFallback);",
+            "CFG.lang='en';",
+            "const english=hasOriginalFallback(cases[0]);",
+            "process.stdout.write(JSON.stringify([korean,english]));",
+        ])
+        result = subprocess.run(["node", "-e", node_script], check=True, capture_output=True, text=True)
+        self.assertEqual(json.loads(result.stdout), [[True, True, False], False])
 
     def test_the_script_is_not_truncated_by_its_own_string(self):
         """The script closing tag must not appear inside the Python string it lives in.

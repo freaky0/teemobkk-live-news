@@ -7,10 +7,10 @@ from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import landing
-import landing_thai
-import page_build
-import category_rules
+from pages.build import landing
+from pages.build import landing_thai
+from pages.build import page_build
+from pipeline import category_rules
 
 
 class AuditUI(unittest.TestCase):
@@ -37,25 +37,18 @@ class AuditUI(unittest.TestCase):
                 'url': 'https://teemobkk.substack.com/p/example', 'summary': '요약'}]):
             page = landing.render_landing()
         self.assertIn('<time datetime="2026-09-30">2026년 9월 30일</time>', page)
-        self.assertIn('다크 모드 켜기', page)
-        self.assertIn('다크 모드 끄기', page)
 
-    def test_korean_dates_and_theme_actions_agree_on_all_page_variants(self):
+    def test_korean_dates_agree_on_all_page_variants(self):
         for page in (landing.render_landing(), landing_thai.render_thai_landing()):
-            self.assertIn('다크 모드 끄기', page)
-            self.assertNotIn('일반 모드 켜기', page)
+            self.assertIn('function displayStamp(value)', page)
         for lang in ('ko', 'en'):
             for thai in (False, True):
                 page = page_build.render(public=True, datadir='', want_thai=thai,
                                          icon_prefix='', admin=False, lang=lang)
                 self.assertIn('function sameBriefingEvent(', page)
                 self.assertIn('aria-pressed="false"', page)
-                if lang == 'ko':
-                    self.assertIn('다크 모드 켜기', page)
-                    self.assertIn('다크 모드 끄기', page)
-                    self.assertNotIn("get('month')+'월'", page)
         self.assertEqual(page_build._ict_stamp('2026-10-01T03:04:00Z', 'ko'), '10월 1일 10:04')
-        self.assertEqual(page_build._ict_stamp('2026-10-01T03:04:00Z', 'en'), '10-01 10:04')
+        self.assertEqual(page_build._ict_stamp('2026-10-01T03:04:00Z', 'en'), 'Oct 1, 10:04')
 
     def test_headline_cleaners_remove_short_links_on_every_page(self):
         self.assertEqual(page_build._clean_title('시장 소식 reut.rs/abc - 매체'), '시장 소식')
