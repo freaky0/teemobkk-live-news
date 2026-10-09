@@ -10,7 +10,7 @@ _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)
 from pages.build import page_build
 
 class Task003Contract(unittest.TestCase):
-    def test_sitemap_lists_thirteen_pages_with_build_day_lastmod(self):
+    def test_sitemap_lists_fourteen_pages_with_build_day_lastmod(self):
         fixed = datetime.datetime(2026, 10, 3, 6, 11, 0,
                                   tzinfo=datetime.timezone(datetime.timedelta(hours=7)))
         xml_text = page_build.sitemap_xml(fixed)
@@ -32,6 +32,7 @@ class Task003Contract(unittest.TestCase):
             "https://teemobkk.io/news/ko/",
             "https://teemobkk.io/perspectives/",
             "https://teemobkk.io/indicators/",
+            "https://teemobkk.io/blog/",
         }
         self.assertEqual(locations, expected)
         expected_lastmod = fixed.isoformat(timespec="seconds")

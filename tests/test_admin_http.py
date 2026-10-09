@@ -51,6 +51,7 @@ class Gate(unittest.TestCase):
             "summary": "테스트 요약",
         } for index in range(1, 11)]
         for relative, content in (
+                ("index.html", "<script></script>"),
                 ("perspectives/index.html", landing.render_perspectives_page(posts)),
                 ("indicators/index.html", landing.render_indicators_page()),
                 ("sitemap.xml", page_build.sitemap_xml())):
@@ -460,12 +461,14 @@ class Gate(unittest.TestCase):
                                 "https://teemobkk.io/tradingtalk/", "https://teemobkk.io/lab/",
                                 "https://teemobkk.io/thai/",
                                 "https://teemobkk.io/privacy/", "https://teemobkk.io/perspectives/",
-                                "https://teemobkk.io/indicators/", "https://teemobkk.io/privacy/en/",
-                                "https://teemobkk.io/news/", "https://teemobkk.io/news/ko/"])
+                                "https://teemobkk.io/indicators/", "https://teemobkk.io/blog/",
+                                "https://teemobkk.io/thai/news/", "https://teemobkk.io/thai/news/ko/",
+                                "https://teemobkk.io/privacy/en/", "https://teemobkk.io/news/",
+                                "https://teemobkk.io/news/ko/"])
         lastmods = [node.text or "" for node in sitemap.findall("sm:url/sm:lastmod", namespace)]
         ict = timezone(timedelta(hours=7))
         today = datetime.now(ict).date()
-        self.assertEqual(len(lastmods), 11)
+        self.assertEqual(len(lastmods), 14)
         self.assertTrue(all(datetime.fromisoformat(value).date() == today for value in lastmods))
 
     def test_privacy_pages_are_public_translated_and_canonical(self):
@@ -505,6 +508,39 @@ class Gate(unittest.TestCase):
                 self.assertEqual(response.status, 200)
                 self.assertIn("text/html", response.headers.get("Content-Type", ""))
                 self.assertIn(heading, response.read().decode("utf-8"))
+
+    def test_blog_routes_serve_pages_and_reject_traversal(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "blog" / "sample-post").mkdir(parents=True)
+            (root / "pages" / "static").mkdir(parents=True)
+            (root / "pages" / "static" / "404.html").write_text(
+                "Not found", encoding="utf-8")
+            (root / "blog" / "index.html").write_text("Blog listing", encoding="utf-8")
+            (root / "blog" / "sample-post" / "index.html").write_text(
+                "Sample article", encoding="utf-8")
+            (root / "secret.html").write_text("must not be served", encoding="utf-8")
+            old_root = core.ROOT
+            core.ROOT = root
+            try:
+                for path, marker in (
+                    ("/blog", "Blog listing"), ("/blog/", "Blog listing"),
+                    ("/blog/sample-post", "Sample article"),
+                    ("/blog/sample-post/", "Sample article"),
+                ):
+                    with self.subTest(path=path), urllib.request.urlopen(
+                            self.base + path, timeout=10) as response:
+                        self.assertEqual(response.status, 200)
+                        self.assertIn("text/html", response.headers.get("Content-Type", ""))
+                        self.assertIn(marker, response.read().decode("utf-8"))
+                self.assertIsNone(core.blog_page_path("/blog/../secret.html"))
+                self.assertIsNone(core.blog_page_path("/blog/%2e%2e/secret.html"))
+                with self.assertRaises(urllib.error.HTTPError) as error:
+                    urllib.request.urlopen(self.base + "/blog/%2e%2e/secret.html", timeout=10)
+                self.assertEqual(error.exception.code, 404)
+                self.assertNotIn("must not be served", error.exception.read().decode("utf-8"))
+            finally:
+                core.ROOT = old_root
 
     def test_the_page_tells_the_script_it_is_public(self):
         # The page is not JSON, so it is fetched directly rather than through the JSON helper.
