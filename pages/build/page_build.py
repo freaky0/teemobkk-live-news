@@ -1885,6 +1885,60 @@ def not_found_page() -> str:
     return (ROOT / "pages" / "static" / "404.html").read_text(encoding="utf-8")
 
 
+BLOG_CONTENT_DIR = ROOT / "content" / "blog"
+
+_BLOG_SPLIT_RE = None
+
+
+def read_blog_posts(content_dir=None) -> list:
+    """Read TEE-82 converted briefing markdown (frontmatter + body).
+
+    Returns [{title, date, original_slug, original_post_id, category, body}],
+    newest first. Files failing validation are skipped, never half-imported.
+    """
+    import re
+
+    directory = Path(content_dir) if content_dir else BLOG_CONTENT_DIR
+    posts = []
+    if not directory.is_dir():
+        return posts
+    for path in sorted(directory.glob("*.md")):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        match = re.match(r"\A---\s*\n(.*?)\n---\s*\n?", text, re.S)
+        if not match:
+            continue
+        meta = {}
+        for line in match.group(1).splitlines():
+            if ":" not in line:
+                continue
+            key, _, value = line.partition(":")
+            meta[key.strip()] = value.strip().strip('"').strip("'")
+        if not all(meta.get(key) for key in
+                   ("title", "date", "original_slug", "original_post_id", "category")):
+            continue
+        if not re.match(r"\A\d{4}-\d{2}-\d{2}\Z", meta["date"]):
+            continue
+        posts.append({**meta, "body": text[match.end():]})
+    posts.sort(key=lambda post: post["date"], reverse=True)
+    return posts
+
+
+def build_blog(content_dir=None) -> dict:
+    """Write /blog/ list plus one page per post. Returns {path: bytes}."""
+    posts = read_blog_posts(content_dir)
+    sizes = {"blog/index.html": write(
+        ROOT / "blog" / "index.html", landing.render_blog_list(posts))}
+    for post in posts:
+        slug = post["original_slug"]
+        sizes["blog/%s/index.html" % slug] = write(
+            ROOT / "blog" / slug / "index.html",
+            landing.render_blog_post(post, landing.blog_markdown_to_html(post["body"])))
+    return sizes
+
+
 def build_public() -> dict[str, int]:
     """Write the published pages as redirects to the live site.
 
@@ -1911,7 +1965,7 @@ def sitemap_xml(now: datetime.datetime | None = None) -> str:
         moment = moment.replace(tzinfo=ict)
     lastmod = moment.astimezone(ict).isoformat(timespec="seconds")
     locations = ("/", "/about/", "/tradingtalk/", "/lab/", "/thai/", "/privacy/",
-                 "/perspectives/", "/indicators/",
+                 "/perspectives/", "/indicators/", "/blog/",
                  "/thai/news/", "/thai/news/ko/",
                  "/privacy/en/", "/news/", "/news/ko/")
     rows = "\n".join(
@@ -1967,6 +2021,7 @@ def build_server(db_path: str = "news.db") -> dict[str, int]:
     for gone in pruned:
         print("removed stale section %s (its address now redirects)" % gone)
     sizes["index.html"] = write(ROOT / "index.html", landing.render_landing())
+    sizes.update(build_blog())
     sizes["perspectives/index.html"] = write(
         ROOT / "perspectives" / "index.html", landing.render_perspectives_page())
     sizes["indicators/index.html"] = write(

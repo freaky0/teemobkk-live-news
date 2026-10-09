@@ -427,6 +427,92 @@ def render_perspectives_page(posts=None) -> str:
     )
 
 
+def blog_markdown_to_html(body: str) -> str:
+    """Minimal Markdown → HTML for imported briefing posts (stdlib only).
+
+    Covers what the converted files use: ``#``/``##`` headings, ``**bold**``,
+    ``*italic*``, ``>`` quotes, ``-`` lists, paragraphs. Everything is
+    HTML-escaped first, so raw HTML in the source can never break the page.
+    """
+    import re
+
+    blocks = []
+    in_list = False
+    for raw_line in body.splitlines():
+        line = raw_line.strip()
+        if line.startswith("- "):
+            if not in_list:
+                blocks.append("<ul>")
+                in_list = True
+            blocks.append("<li>%s</li>" % _blog_inline(line[2:]))
+            continue
+        if in_list:
+            blocks.append("</ul>")
+            in_list = False
+        if not line:
+            continue
+        if line.startswith("### "):
+            blocks.append("<h4>%s</h4>" % _blog_inline(line[4:]))
+        elif line.startswith("## "):
+            blocks.append("<h3>%s</h3>" % _blog_inline(line[3:]))
+        elif line.startswith("# "):
+            blocks.append("<h3>%s</h3>" % _blog_inline(line[2:]))
+        elif line.startswith("> "):
+            blocks.append("<blockquote><p>%s</p></blockquote>" % _blog_inline(line[2:]))
+        else:
+            blocks.append("<p>%s</p>" % _blog_inline(line))
+    if in_list:
+        blocks.append("</ul>")
+    return "\n".join(blocks)
+
+
+def _blog_inline(text: str) -> str:
+    import re
+
+    safe = escape(text)
+    safe = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", safe)
+    safe = re.sub(r"\*(.+?)\*", r"<em>\1</em>", safe)
+    safe = re.sub(r"`(.+?)`", r"<code>\1</code>", safe)
+    return safe
+
+
+def render_blog_list(posts) -> str:
+    """Render /blog/ list from imported posts (frontmatter date order)."""
+    entries = []
+    for post in sorted(posts, key=lambda p: str(p.get("date", "")), reverse=True):
+        slug = escape(str(post.get("original_slug", "")), quote=True)
+        title = escape(str(post.get("title", "")))
+        date = escape(str(post.get("date", "")), quote=True)
+        visible = escape(theme.display_date(str(post.get("date", ""))))
+        entries.append(
+            '<article class="page-post"><time datetime="{date}">{visible}</time>'
+            '<h2><a href="/blog/{slug}/">{title}</a></h2></article>'.format(
+                date=date, visible=visible, slug=slug, title=title))
+    if not entries:
+        entries.append('<p class="empty">현재 표시할 블로그 글이 없습니다.</p>')
+    return _standalone_page(
+        "블로그", "BLOG · 관점 브리핑", "공개된 관점 브리핑 글을 모았습니다.",
+        '<div class="page-posts">{}</div>'.format("".join(entries))
+    )
+
+
+def render_blog_post(post, body_html: str) -> str:
+    """Render one /blog/<slug>/ page. Title/date come from frontmatter."""
+    title = str(post.get("title", ""))
+    date = str(post.get("date", ""))
+    content = (
+        '<p class="post-meta"><time datetime="{date}">{visible}</time>'
+        ' · 관점 브리핑</p>'
+        '<div class="post-body">{body}</div>'
+        '<a class="page-back" href="/blog/">← 목록으로</a>'.format(
+            date=escape(date, quote=True),
+            visible=escape(theme.display_date(date)),
+            body=body_html,
+        )
+    )
+    return _standalone_page(title, "BLOG · 관점 브리핑", title, content)
+
+
 def render_indicators_page() -> str:
     """Render the complete public TradingView indicator catalogue."""
     content = (
