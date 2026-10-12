@@ -1907,6 +1907,9 @@ class Handler(BaseHTTPRequestHandler):
             target = ROOT / filename
             if target.exists():
                 data = target.read_bytes()
+                if content_type.startswith("text/html"):
+                    from pages.build import theme
+                    data = theme.with_donation(data.decode("utf-8")).encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", content_type)
                 self.send_header("Cache-Control", "public, max-age=86400")

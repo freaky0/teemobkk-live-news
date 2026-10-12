@@ -107,7 +107,32 @@ def render_footer() -> str:
             '<p>뉴스는 자동 매매 신호가 아닙니다 · 중요한 사건은 원문과 공시로 확인하세요. 제공되는 글과 지표만으로 투자 결정을 내리지 마세요.</p>'
             '<nav class="footer-links" aria-label="사이트 정보"><a href="/privacy/">개인정보 처리방침</a>'
             '<a href="https://kr.tradingview.com/u/TeemoBKK/" target="_blank" rel="noopener noreferrer me">트레이딩뷰 TeemoBKK 공식 프로필 ↗</a>'
-            '</nav></div></footer>')
+            '<a class="donate-link" href="#donate">후원하기</a>'
+            '</nav></div>' + donation_dialog() + '</footer>')
+
+
+def with_donation(html: str) -> str:
+    """Ensure static HTML pages have the site-wide donation link and dialog."""
+    footer_end = html.lower().rfind("</footer>")
+    if footer_end < 0:
+        return html
+    if 'class="donate-link"' not in html:
+        html = html[:footer_end] + '<a class="donate-link" href="#donate">후원하기</a>' + html[footer_end:]
+    if 'id="donate-dialog"' not in html:
+        body_end = html.lower().rfind("</body>")
+        if body_end >= 0:
+            html = html[:body_end] + donation_dialog() + html[body_end:]
+    return html
+
+
+def donation_dialog() -> str:
+    return ('<dialog class="donate-dialog" id="donate-dialog" aria-labelledby="donate-title">'
+            '<div class="dialog-head"><p id="donate-title">TeemoBKK 후원</p>'
+            '<button type="button" aria-label="후원 창 닫기" onclick="this.closest(\'dialog\').close()">닫기</button></div>'
+            '<div class="donate-body"><img class="donate-qr" src="/assets/donate-qr.jpg" alt="PromptPay 후원 QR 코드">'
+            '<div class="donate-bank"><div><p class="donate-bank-name">Bangkok Bank</p>'
+            '<p><strong>926-0-280236</strong></p></div></div></div></dialog>'
+            '<script>document.querySelectorAll(\'a[href="#donate"]\').forEach(a=>a.addEventListener(\'click\',e=>{e.preventDefault();document.getElementById("donate-dialog").showModal()}))</script>')
 
 
 def display_date(value: str) -> str:

@@ -16,6 +16,30 @@ from pages.build import theme
 
 
 class SharedThemeContract(unittest.TestCase):
+    def test_sitewide_donation_link_renders_on_every_public_page_builder(self):
+        pages = (
+            landing.render_landing(),
+            landing_thai.render_thai_landing(),
+            landing.render_perspectives_page([]),
+            landing.render_blog_post({"title": "검증", "date": "2026-01-01"}, "본문"),
+            landing.render_indicators_page(),
+            page_build.render(public=True, datadir="", want_thai=False,
+                              icon_prefix="/", admin=False, lang="ko"),
+            page_build.render(public=True, datadir="", want_thai=True,
+                              icon_prefix="/", admin=False, lang="ko"),
+        )
+        for page in pages:
+            with self.subTest(title=page.split("<title>", 1)[-1].split("</title>", 1)[0]):
+                self.assertIn('class="donate-link" href="#donate"', page)
+                self.assertIn('id="donate-dialog"', page)
+        for static in (
+            '<html><body><footer>privacy</footer></body></html>',
+            '<html><body><footer>about</footer></body></html>',
+        ):
+            rendered = theme.with_donation(static)
+            self.assertIn('class="donate-link" href="#donate"', rendered)
+            self.assertIn('id="donate-dialog"', rendered)
+
     def test_shared_module_exports_tokens_renderers_and_date_formatter(self):
         self.assertIn(":root{", theme.CSS_CUSTOM_PROPERTIES)
         self.assertIn(".button{", theme.BUTTON_CSS)
