@@ -21,8 +21,21 @@ const check = (n, ok, d) => { pass.push(ok); console.log('  %s %s%s', ok ? 'PASS
   const dom = new JSDOM(page, {
     runScripts: 'dangerously', url: URL_, pretendToBeVisual: true, virtualConsole: vc,
     beforeParse(w) {
-      w.fetch = async (u, o) => fetch(new URL(String(u), URL_).href,
-        { headers: { 'User-Agent': 'Mozilla/5.0 jsdom' }, cache: (o && o.cache) || 'default' });
+      w.fetch = async (u, o) => {
+        const full = new URL(String(u), URL_).href;
+        if (full.indexOf('/api/news?') >= 0) {
+          const region = new URL(full).searchParams.get('region') || '글로벌';
+          const q = (new URL(full).searchParams.getAll('q').join(' ') || '').toLowerCase();
+          const articles = q.includes('zzzznotanarticle') ? [] : [{
+            title: 'AI market policy update', summary: 'A deterministic story containing AI.',
+            link: 'https://example.test/ai-market-policy', source: 'Fixture', source_type: 'news',
+            region, category: '시장·가격', categories: ['시장·가격'], priority: 2,
+            published_at: new Date().toISOString(),
+          }];
+          return {ok: true, status: 200, json: async () => ({articles, total: articles.length, returned: articles.length, region_counts: {[region]: articles.length}})};
+        }
+        return fetch(full, { headers: { 'User-Agent': 'Mozilla/5.0 jsdom' }, cache: (o && o.cache) || 'default' });
+      };
     },
   });
   const w = dom.window, d = w.document;

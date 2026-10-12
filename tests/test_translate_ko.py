@@ -329,6 +329,7 @@ class PendingTranslations(unittest.TestCase):
              patch.object(core.bluesky_source, "fetch_into", return_value=[]), \
              patch.object(core.whitehouse_source, "fetch_into", return_value=[]), \
              patch.object(core.telegram_source, "fetch_into", return_value=[]), \
+             patch.object(core.mideast_rss, "fetch_into", return_value=[]), \
              patch.object(translate_ko, "translate_pending", side_effect=RuntimeError("provider outage")):
             result = core.collect_news()
         self.assertIn("inserted_article_count", result)

@@ -22,7 +22,17 @@ const check = (n, ok, d) => { pass.push(ok); console.log('  %s %s%s', ok ? 'PASS
     beforeParse(w) {
       w.fetch = async (u, o) => {
         const full = new URL(String(u), URL_).href;
-        if (full.indexOf('/api/news?') >= 0) queries.push(full);
+        if (full.indexOf('/api/news?') >= 0) {
+          queries.push(full);
+          const region = new URL(full).searchParams.get('region') || '글로벌';
+          const articles = Array.from({length: 6}, (_, i) => ({
+            title: `Trump meets Treasury officials ${i}`, summary: 'Markets and policy update',
+            link: `https://example.test/story-${i}`, source: 'Fixture', source_type: 'news',
+            region, category: '시장·가격', categories: ['시장·가격'], priority: 2,
+            published_at: new Date().toISOString(),
+          }));
+          return {ok: true, status: 200, json: async () => ({articles, total: articles.length, returned: articles.length, region_counts: {[region]: articles.length}})};
+        }
         return fetch(full, { headers: { 'User-Agent': 'Mozilla/5.0 jsdom' }, cache: (o && o.cache) || 'default' });
       };
     },
