@@ -40,6 +40,16 @@ class SharedThemeContract(unittest.TestCase):
             self.assertIn('class="donate-link" href="#donate"', rendered)
             self.assertIn('id="donate-dialog"', rendered)
 
+    def test_shared_header_background_follows_light_and_dark_tokens(self):
+        self.assertIn("background:var(--bg)", theme.HEADER_CSS)
+        self.assertIn("color-mix(in srgb,var(--bg) 94%,transparent)", theme.HEADER_CSS)
+        self.assertIn("--bg:#faf8f3", theme.CSS_CUSTOM_PROPERTIES)
+        self.assertIn("--bg:#101412", theme.DARK_THEME_CSS)
+        page = landing.render_landing()
+        self.assertIn("background:var(--bg)", page)
+        self.assertIn("--bg:#faf8f3", page)
+        self.assertIn("--bg:#101412", page)
+
     def test_shared_module_exports_tokens_renderers_and_date_formatter(self):
         self.assertIn(":root{", theme.CSS_CUSTOM_PROPERTIES)
         self.assertIn(".button{", theme.BUTTON_CSS)

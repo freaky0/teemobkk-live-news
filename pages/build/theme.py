@@ -21,7 +21,7 @@ USAGE_BAR_CSS = ('.urow{display:flex;align-items:center;gap:8px}\n'
                  '.urow:last-child{border-bottom:0}\n'
                  '.urow .source{border-bottom:0;padding:4px 0 1px}')
 
-HEADER_CSS = ('.top{border-bottom:1px solid var(--line);background:rgba(250,248,243,.94);backdrop-filter:blur(8px);position:sticky;top:0;z-index:20}\n'
+HEADER_CSS = ('.top{border-bottom:1px solid var(--line);background:var(--bg);background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(8px);position:sticky;top:0;z-index:20}\n'
               '.nav{min-height:66px;display:flex;align-items:center;gap:34px}\n'
               '.brand{font-family:var(--mono);font-weight:700;font-size:18px;letter-spacing:-.02em;white-space:nowrap}\n'
               '.brand .prompt{color:var(--accent)}\n'
