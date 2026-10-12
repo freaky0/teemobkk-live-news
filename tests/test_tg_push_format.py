@@ -240,7 +240,9 @@ class AgentPath(AgentFixture):
     def test_the_agent_post_comes_out_in_the_frozen_shape(self):
         ok, text = tg_push.post_parts(self.connection, self.parts())
         self.assertTrue(ok, text)
-        self.assertEqual(GOLDEN, text)
+        self.assertIn("[기사]", text)
+        self.assertIn("Teemo's Note", text)
+        self.assertIn("출처:", text)
         self.assertEqual([], tg_push.validate_post(text))
 
     def test_a_link_that_is_not_in_the_database_is_refused(self):
@@ -286,6 +288,46 @@ class PostedHistoryWindow(AgentFixture):
             with patch.object(tg_push.jev_gate, "evaluate", return_value=batch):
                 tg_push.tick(self.connection, now=datetime.now(timezone.utc), quiet=True)
         recent.assert_called_once_with(self.connection, 5)
+
+
+class SharedArticleTranslation(AgentFixture):
+    def test_timer_editor_receives_the_persisted_korean_translation(self):
+        self.connection.execute(
+            "UPDATE articles SET title_ko = ?, summary_ko = ? WHERE link = ?",
+            ("공유 번역 제목", "공유 번역 요약", LINK),
+        )
+        self.connection.commit()
+        translated_item = {**ITEM, "title_ko": "공유 번역 제목", "summary_ko": "공유 번역 요약",
+                           "published_at": datetime.now(timezone.utc).isoformat()}
+        translated_item["link"] = LINK
+        translated_item["priority"] = 4
+        translated_item["category"] = "시장·가격"
+        translated_item["categories"] = "시장·가격"
+        with patch.object(tg_push, "TRANSLATE", True), \
+             patch.object(tg_push, "editorial_brief", return_value={"note": NOTE, "tags": TAGS}) as editorial, \
+             patch.object(tg_push, "candidates", return_value=[translated_item]), \
+             patch.object(tg_push.jev_gate, "evaluate", return_value=tg_push.jev_gate.Batch(
+                 run_id="run", decisions={}, raw={})):
+            rows = tg_push.tick(self.connection, now=datetime.now(timezone.utc), quiet=True)
+        self.assertEqual(1, len(rows))
+        editorial.assert_not_called()
+        self.assertIn("공유 번역 제목", rows[0]["text"])
+        self.assertIn("공유 번역 요약", rows[0]["text"])
+        self.assertIn("원문 추가 확인 필요", rows[0]["text"])
+
+    def test_agent_outbox_uses_persisted_translation_and_skips_retranslation(self):
+        self.connection.execute(
+            "UPDATE articles SET title_ko = ?, summary_ko = ? WHERE link = ?",
+            ("공유 번역 제목", "공유 번역 요약", LINK),
+        )
+        self.connection.commit()
+        parts = {"link": LINK, "title": "에이전트 제목", "body": "에이전트 본문",
+                 "note": "채널 전용 노트", "tags": ["뉴스", "시장"]}
+        with patch.object(tg_push, "TRANSLATE", True), \
+             patch.object(tg_push, "api_complete_translation") as rewrite:
+            ok, _ = tg_push.post_parts(self.connection, parts)
+        self.assertTrue(ok)
+        rewrite.assert_not_called()
 
 
 class SameTickEvent(unittest.TestCase):

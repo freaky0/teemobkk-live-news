@@ -740,9 +740,60 @@ def send(text: str, preview: bool) -> dict[str, Any]:
 def article_row(connection: sqlite3.Connection, link: str) -> dict[str, Any]:
     """The stored row the shape's ticker, source and stamp lines are read from."""
     row = connection.execute(
-        "SELECT link, title, summary, source, asset, priority, published_at, categories "
+        "SELECT link, title, summary, title_ko, summary_ko, source, asset, priority, published_at, categories "
         "FROM articles WHERE link = ?", (link,)).fetchone()
     return dict(row) if row else {}
+
+
+def shared_translation(item: dict[str, Any]) -> tuple[str, str]:
+    """Use the persisted site translation as the Telegram article text when both fields exist."""
+    title = str(item.get("title_ko") or "").strip()
+    summary = str(item.get("summary_ko") or "").strip()
+    if title and summary:
+        return title, summary
+    return str(item.get("title") or ""), str(item.get("summary") or "")
+
+
+def editorial_brief(item: dict[str, Any], title: str, summary: str) -> dict[str, Any] | None:
+    """Add channel-only note and tags without generating a second headline or article body."""
+    url, key_name, default_model = PROVIDERS.get(TRANSLATE_PROVIDER, PROVIDERS["openai"])
+    key = os.environ.get(key_name, "").strip()
+    if not TRANSLATE or not key:
+        return None
+    payload_body = {
+        "model": TRANSLATE_MODEL or default_model,
+        "messages": [
+            {"role": "system", "content": (
+                "Given a Korean title and summary, return JSON with only note and tags. "
+                "Keep note interpretive but grounded in the summary. Do not translate or rewrite "
+                "the title or summary. tags must contain three short Korean topic labels. "
+                "Output only {\"note\":\"...\",\"tags\":[\"...\"]}."
+            )},
+            {"role": "user", "content": "제목: %s\n요약: %s" % (title, summary[:700])},
+        ],
+        "temperature": 0,
+        "max_tokens": 250,
+    }
+    request = urllib.request.Request(
+        url, data=json.dumps(payload_body).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Authorization": "Bearer " + key})
+    try:
+        with urllib.request.urlopen(request, timeout=25) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        content = payload["choices"][0]["message"]["content"]
+    except Exception as exc:
+        logging.warning("editorial note failed: %s", str(exc)[:120])
+        return None
+    match = re.search(r"\{.*\}", content, re.S)
+    if not match:
+        return None
+    try:
+        data = json.loads(match.group(0))
+    except json.JSONDecodeError:
+        return None
+    note = re.sub(r"\s+", " ", str(data.get("note") or "")).strip()[:NOTE_CHARS]
+    tags = [str(tag).strip().lstrip("#") for tag in (data.get("tags") or []) if str(tag).strip()]
+    return {"note": note, "tags": tags} if note and tags else None
 
 
 def operator_note(connection: sqlite3.Connection, link: str) -> str:
@@ -752,7 +803,7 @@ def operator_note(connection: sqlite3.Connection, link: str) -> str:
 
 def post_parts(connection: sqlite3.Connection, parts: dict[str, Any],
                now: datetime | None = None, quiet: bool = False) -> tuple[bool, str]:
-    """Post one story the agent picked, through the same render() the timer uses."""
+    """Post one story the agent picked, through the shared translation and channel renderer."""
     now = now or datetime.now(timezone.utc)
     link = str(parts.get("link") or "").strip()
     if not link:
@@ -763,21 +814,17 @@ def post_parts(connection: sqlite3.Connection, parts: dict[str, Any],
     attach_original_link(connection, item)
     note_here = operator_note(connection, link)
     item["channel_pick"] = bool(parts.get("pick")) or bool(note_here)
-    # Picks bypass routine altcoin filtering, but not same-event protection.
+    title, body = shared_translation(item)
+    if not title.strip():
+        return False, "no title"
     if is_single_alt_notice(item):
         return False, "altcoin-noise"
-    title = str(parts.get("title") or "").strip()
-    if not title:
-        return False, "no title"
-
     if jev_gate.MODE == "live":
-        # Compare against the configured recent channel window, not stale stories from the full day.
         recent_rows = posted(connection, POST_COMPARISON_WINDOW_MINUTES)
-        recent_titles = [str(row["title"] or "") for row in recent_rows
-                         if str(row["title"] or "")]
+        recent_titles = [str(row["title"] or "") for row in recent_rows if str(row["title"] or "")]
         try:
             batch = jev_gate.evaluate([item], recent_titles, now)
-        except Exception as exc:  # Never post when the live duplicate gate cannot decide.
+        except Exception as exc:
             logging.warning("outbox JEV error; refusing to post %s: %s", link, str(exc)[:120])
             return False, "jev-unavailable"
         if batch.fallback:
@@ -788,12 +835,14 @@ def post_parts(connection: sqlite3.Connection, parts: dict[str, Any],
                 decision, int(item.get("priority") or 0), bool(item.get("channel_pick"))):
             return False, "jev-same-event %.2f" % decision.duplicate_confidence
 
-    body = clean_body(parts.get("body"), BODY_CHARS)
-    note = (re.sub(r"\s+", " ", str(parts.get("note") or "")).strip()[:NOTE_CHARS]
+    editorial = editorial_brief(item, title, body)
+    body = clean_body(body, BODY_CHARS)
+    note = (str((editorial or {}).get("note") or "").strip()[:NOTE_CHARS]
+            or str(parts.get("note") or "").strip()[:NOTE_CHARS]
             or note_here[:NOTE_CHARS])
     if not note:
         return False, "no note"
-    tags = merge_tags(parts.get("tags") or [], fallback_tags(item))
+    tags = merge_tags((editorial or {}).get("tags") or parts.get("tags") or [], fallback_tags(item))
     text = render(item, title[:80], body, note, tags)
     problems = validate_post(text)
     if problems:
@@ -819,6 +868,7 @@ def post_parts(connection: sqlite3.Connection, parts: dict[str, Any],
          os.environ.get("TELEGRAM_CHAT_ID", "")))
     connection.commit()
     return True, text
+
 
 
 def drain_outbox(connection: sqlite3.Connection, outbox: Path) -> tuple[int, int]:
@@ -979,8 +1029,7 @@ def tick(connection: sqlite3.Connection, now: datetime | None = None, limit: int
             logging.info("hold (%s): %s", why, (item.get("title") or "")[:70])
             continue
 
-        raw_title = str(item.get("title") or "")
-        raw_summary = clean_body(item.get("summary"), SUMMARY_CHARS)
+        raw_title, raw_summary = shared_translation(item)
         written = brief(item, raw_title, raw_summary)
         if written:
             title = written["title"]
