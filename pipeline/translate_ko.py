@@ -137,7 +137,10 @@ def translate_pending(limit: int = COLLECT_BATCH, throttle_seconds: float = 0.0,
             connection.close()
 
     completed = 0
-    strict_codex = os.environ.get("TG_TRANSLATE_PROVIDER", "").strip().lower() == "openai-codex"
+    strict_codex = (
+        os.environ.get("TG_TRANSLATE_PROVIDER", "").strip().lower() == "openai-codex"
+        and links is not None
+    )
     for index, row in enumerate(rows):
         title = str(row.get("title") or "")
         summary = str(row.get("summary") or "")

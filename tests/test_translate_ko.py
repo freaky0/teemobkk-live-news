@@ -256,6 +256,32 @@ class PendingTranslations(unittest.TestCase):
         finally:
             connection.close()
         self.assertEqual(row, ("Market rises 2%", None))
+
+    def test_codex_invalid_item_does_not_block_later_ingest_translation(self):
+        with sqlite3.connect(self.path) as connection:
+            connection.execute(
+                "UPDATE articles SET title = ?, summary = ?, collected_at = ?",
+                ("First invalid", "First summary", "2099-01-02T00:00:00+00:00"),
+            )
+            connection.execute(
+                "INSERT INTO articles (link,title,summary,source,source_type,region,category,priority,published_at,collected_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?)",
+                ("https://example.test/next", "Next article", "Next summary", "Example", "news",
+                 core.GLOBAL_REGION, "시장·가격", 3, "2026-10-11T00:00:00+00:00",
+                 "2099-01-01T00:00:00+00:00"),
+            )
+        with patch.dict(os.environ, {"TG_TRANSLATE_PROVIDER": "openai-codex"}), \
+             patch.object(translate_ko, "_complete_with_codex", side_effect=[
+                 "not json", '{"title":"다음 기사","summary":"다음 요약"}'
+             ]) as complete:
+            self.assertEqual(translate_ko.translate_pending(limit=2), 1)
+        self.assertEqual(complete.call_count, 2)
+        with sqlite3.connect(self.path) as connection:
+            rows = connection.execute(
+                "SELECT link,title_ko,summary_ko FROM articles ORDER BY collected_at DESC"
+            ).fetchall()
+        self.assertEqual(rows[0], ("https://example.test/story", None, None))
+        self.assertEqual(rows[1], ("https://example.test/next", "다음 기사", "다음 요약"))
     def test_init_db_adds_translation_columns_to_a_legacy_database(self):
         handle, legacy_path = tempfile.mkstemp(suffix=".db")
         os.close(handle)
@@ -363,7 +389,7 @@ class BackfillSafety(unittest.TestCase):
             with patch.object(translate_ko, "_complete_with_codex", side_effect=RuntimeError("codex down")) as codex:
                 with patch.object(translate_ko, "_complete_with_api") as api:
                     with self.assertRaisesRegex(RuntimeError, "codex down"):
-                        translate_ko.translate_pending(limit=5, throttle_seconds=0)
+                        translate_ko.translate_pending(limit=5, throttle_seconds=0, links=[self.links[0]])
         codex.assert_called_once()
         api.assert_not_called()
 
