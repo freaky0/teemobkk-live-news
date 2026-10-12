@@ -137,7 +137,7 @@ __THEME_HEAD__
 <title>TeemoBKK | 차트보다 먼저 읽는 뉴스</title>
 <meta name="description" content="시장이 움직이는 이유를 전합니다. 금리와 정책, 지정학과 수급까지. 트레이더의 경제 뉴스와 시장 관점, 무료 트레이딩뷰 지표.">
 <meta name="theme-color" content="#faf8f3">
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="light dark">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ko_KR">
 <meta property="og:title" content="TeemoBKK | 차트보다 먼저 읽는 뉴스">
@@ -150,6 +150,7 @@ __THEME_HEAD__
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <style>
 __SHARED_THEME_CSS__
+[data-theme=dark] .top{background:color-mix(in srgb,var(--bg) 94%,transparent)}
 *{box-sizing:border-box}html{scroll-padding-top:92px}body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.65;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}button{font:inherit}a,button{-webkit-tap-highlight-color:transparent}a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:4px}a:hover{color:var(--accent)}button{cursor:pointer}[hidden]{display:none!important}
 .wrap{max-width:1120px;margin:auto;padding-inline:28px}
 .skip{position:absolute;left:16px;top:-100px;background:var(--accent);color:#ffffff;padding:12px;z-index:50;font-weight:700}.skip:focus{top:12px}
@@ -225,9 +226,10 @@ __INDICATOR_CSS__
 .wrap{padding-inline:18px}
 .nav{min-height:60px;gap:16px;flex-wrap:wrap;padding-block:10px}
 .brand{font-size:16px}
-nav{gap:4px 12px;flex-basis:100%;order:2;flex-wrap:wrap}
-nav a{font-size:12px;padding:4px 2px;min-height:44px}
-nav a.secondary{margin-left:0}
+.nav nav{gap:4px 12px;flex-basis:100%;order:2;flex-wrap:wrap}
+.nav nav a{font-size:12px;padding:4px 2px;min-height:44px}
+.nav nav a.secondary{margin-left:0}
+.theme-toggle{margin-left:auto;min-height:44px;padding:6px 9px;font-size:11px}
 .hero{grid-template-columns:1fr;gap:22px;padding:34px 0 36px}
 .hero-visual{aspect-ratio:16/10;max-height:none}
 .section-visual,.perspective-visual{aspect-ratio:16/9}

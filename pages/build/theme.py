@@ -10,7 +10,8 @@ BUTTON_CSS = ('.button{display:inline-flex;align-items:center;justify-content:ce
               '.button.primary:hover{color:#ffffff;transform:translateY(-1px)}\n'
               '.button:active{transform:translateY(1px)}')
 
-DARK_THEME_CSS = ('[data-theme=dark]{color-scheme:dark;--bg:#101412;--surface:#171d19;--surface2:#202822;'
+DARK_THEME_CSS = (':root{color-scheme:light}\n'
+                  '[data-theme=dark]{color-scheme:dark;--bg:#101412;--surface:#171d19;--surface2:#202822;'
                   '--text:#e7eee8;--muted:#b0bcb3;--dim:#849188;--line:#344039;--accent:#42c98a;'
                   '--accent-dim:rgba(66,201,138,.14);--down:#ff7777}')
 
@@ -22,7 +23,8 @@ USAGE_BAR_CSS = ('.urow{display:flex;align-items:center;gap:8px}\n'
                  '.urow .source{border-bottom:0;padding:4px 0 1px}')
 
 HEADER_CSS = ('.top{border-bottom:1px solid var(--line);background:var(--bg);background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(8px);position:sticky;top:0;z-index:20}\n'
-              '.nav{min-height:66px;display:flex;align-items:center;gap:34px}\n'
+              '.nav{min-height:66px;display:flex;align-items:center;gap:24px}\n'
+              '.nav nav{flex:1;min-width:0}\n'
               '.brand{font-family:var(--mono);font-weight:700;font-size:18px;letter-spacing:-.02em;white-space:nowrap}\n'
               '.brand .prompt{color:var(--accent)}\n'
               '.brand .cursor{display:inline-block;width:9px;height:17px;background:var(--accent);vertical-align:-3px;margin-left:5px;animation:blink 1.1s steps(1) infinite}\n'
@@ -31,7 +33,9 @@ HEADER_CSS = ('.top{border-bottom:1px solid var(--line);background:var(--bg);bac
               'nav a{font-size:13.5px;font-weight:600;padding-block:12px;color:var(--muted)}\n'
               'nav a{min-height:44px;display:inline-flex;align-items:center}\n'
               'nav a:hover{color:var(--accent)}\n'
-              'nav a.secondary{margin-left:auto;font-family:var(--mono);font-size:12.5px}')
+              'nav a.secondary{margin-left:auto;font-family:var(--mono);font-size:12.5px}\n'
+              '.theme-toggle{flex:0 0 auto;min-height:40px;padding:7px 11px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);color:var(--text);font-size:12px;font-weight:650;white-space:nowrap}\n'
+              '.theme-toggle:hover{border-color:var(--accent);color:var(--accent)}')
 
 FOOTER_CSS = ('.footer{border-top:1px solid var(--line);padding:26px 0 38px;color:var(--dim);font-size:12px;background:var(--surface2)}\n'
               '.footer-row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px;align-items:center}\n'
@@ -86,10 +90,16 @@ def shared_css() -> str:
 
 
 def theme_head_script() -> str:
-    """Read the saved color theme before paint, without making storage mandatory."""
+    """Restore the saved theme before first paint."""
     return ('<script>(function(){try{var t=localStorage.getItem("tbn-theme");'
             'if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)'
-            '}catch(e){}})();</script>')
+            '}catch(e){}})();</script>'
+            '<script>document.addEventListener("DOMContentLoaded",function(){var r=document.documentElement,b=document.getElementById("landing-theme-toggle");'
+            'if(!b)return;function update(){var d=r.getAttribute("data-theme")==="dark";'
+            'b.textContent=d?"라이트 모드로 전환":"다크 모드로 전환";'
+            'b.setAttribute("aria-label",b.textContent);b.setAttribute("aria-pressed",String(d))}'
+            'b.addEventListener("click",function(){var t=r.getAttribute("data-theme")==="dark"?"light":"dark";'
+            'r.setAttribute("data-theme",t);try{localStorage.setItem("tbn-theme",t)}catch(e){}update()});update()});</script>')
 
 
 def render_header() -> str:
@@ -97,7 +107,8 @@ def render_header() -> str:
             '<span class="prompt">teemo@bkk</span>:~$ ./live-news<span class="cursor" aria-hidden="true"></span>'
             '</a><nav aria-label="주요 메뉴"><a href="/news/ko/">경제 뉴스</a><a href="/perspectives/">시장 관점</a>'
             '<a href="/indicators/">트레이딩뷰 지표</a><a href="/tradingtalk/">트레이딩 톡</a>'
-            '<a href="/lab/">지표 연구</a><a class="secondary" href="/thai/">/thai ↗</a></nav></div></header>')
+            '<a href="/lab/">지표 연구</a><a class="secondary" href="/thai/">/thai ↗</a></nav>'
+            '<button class="theme-toggle" id="landing-theme-toggle" type="button" aria-label="다크 모드 켜기" aria-pressed="false">다크 모드 켜기</button></div></header>')
 
 
 def render_footer() -> str:
