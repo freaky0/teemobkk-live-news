@@ -4,7 +4,9 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "server"))
 from pages.build import landing  # noqa: E402
+import live_news_dashboard as dashboard  # noqa: E402
 
 
 class LandingEditorialAssets(unittest.TestCase):
@@ -25,6 +27,14 @@ class LandingEditorialAssets(unittest.TestCase):
         self.assertIn('.hero{grid-template-columns:1fr', html)
         self.assertIn('@media(prefers-reduced-motion:reduce)', html)
 
+    def test_images_have_explicit_public_routes(self):
+        for name in ("hero-editorial.webp", "news-editorial.webp", "btc-analysis.webp"):
+            path = f"/assets/landing/{name}"
+            with self.subTest(path=path):
+                self.assertEqual(
+                    dashboard.STATIC_FILES.get(path),
+                    (path.lstrip("/"), "image/webp"),
+                )
 
 if __name__ == "__main__":
     unittest.main()

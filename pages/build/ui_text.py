@@ -138,6 +138,15 @@ UI_EN = {
     "condRelease": "Release this condition",
     "emptyAll": "No story matches every selected condition",
     "emptyAllHint": "Release the narrowest condition above, or search a longer period.",
+    # donation
+    "donateTitle": "TeemoBKK Support",
+    "donateButton": "Donate",
+    "donateCloseAria": "Close the support dialog",
+    "donateClose": "Close",
+    "donateQrAlt": "PromptPay support QR code",
+    "donateCopy": "Copy account number",
+    "donateCopied": "Account number copied.",
+    "donateCopyFail": "Could not copy. Select the account number manually.",
     "footer1": ("Each story belongs to the outlet that published it. Only the headline, the "
                 "summary and a link are shown; check the original through the link."),
     "footer2": ("Collected automatically, so wording or timing may be off. Do not use this as "
@@ -261,6 +270,15 @@ UI_KO = {
     "condRelease": "이 조건을 풉니다",
     "emptyAll": "선택한 조건을 모두 만족하는 뉴스가 없습니다",
     "emptyAllHint": "위 조건 줄에서 가장 좁은 조건을 풀거나 기간을 넓혀 보세요.",
+    # donation
+    "donateTitle": "TeemoBKK 후원",
+    "donateButton": "후원하기",
+    "donateCloseAria": "후원 창 닫기",
+    "donateClose": "닫기",
+    "donateQrAlt": "PromptPay 후원 QR 코드",
+    "donateCopy": "계좌번호 복사",
+    "donateCopied": "계좌번호를 복사했어요.",
+    "donateCopyFail": "복사하지 못했어요. 계좌번호를 직접 선택해 주세요.",
     "footer1": ("각 기사의 저작권은 원 매체에 있습니다. 제목과 요약, 그리고 원문 링크만 "
                 "표시하며 원문 확인은 링크를 통해 해 주세요."),
     "footer2": ("자동 수집 결과이므로 표기 오류나 지연이 있을 수 있습니다. 투자 판단의 "

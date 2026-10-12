@@ -56,6 +56,9 @@ GLOBAL_REGION = "글로벌"
 GENERIC_CATEGORY = "일반"
 STATIC_FILES = {
     "/favicon.ico": ("pages/assets/favicon.ico", "image/x-icon"),
+    "/assets/landing/hero-editorial.webp": ("assets/landing/hero-editorial.webp", "image/webp"),
+    "/assets/landing/news-editorial.webp": ("assets/landing/news-editorial.webp", "image/webp"),
+    "/assets/landing/btc-analysis.webp": ("assets/landing/btc-analysis.webp", "image/webp"),
     "/favicon-32.png": ("pages/assets/favicon-32.png", "image/png"),
     "/favicon-16.png": ("pages/assets/favicon-16.png", "image/png"),
     "/apple-touch-icon.png": ("pages/assets/apple-touch-icon.png", "image/png"),
