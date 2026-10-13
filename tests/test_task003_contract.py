@@ -113,7 +113,7 @@ class Task018CanonicalThaiEntry(unittest.TestCase):
 
     def test_thai_dashboard_global_tab_links_back_to_global_dashboard(self):
         ko = self._render(True, "ko")
-        self.assertIn('<a id="tab-global" class="tab" href="/news/ko/">경제 소식</a>', ko)
+        self.assertIn('<a id="tab-global" class="tab" href="/news/ko/">경제 뉴스</a>', ko)
         en = self._render(True, "en")
         self.assertIn('<a id="tab-global" class="tab" href="/news/">Markets</a>', en)
 

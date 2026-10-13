@@ -1793,7 +1793,7 @@ __TABS__
     global_href = "/news/ko/" if lang == "ko" else "/news/"
     if want_thai:
         tabs_html = (
-            '    <a id="tab-global" class="tab" href="%s">경제 소식</a>\n'
+            '    <a id="tab-global" class="tab" href="%s">경제 뉴스</a>\n'
             '    <button id="tab-cal" class="tab" data-tab="cal" role="tab" aria-selected="false">경제 지표</button>\n'
             '    <button id="tab-thai" class="tab th active" data-tab="thai" role="tab" aria-selected="true">태국 소식</button>'
         ) % global_href
@@ -1803,11 +1803,24 @@ __TABS__
         # /admin/ instead of navigating away to /thai/news/ko/.
         _thai_tab = ('    <button id="tab-thai" class="tab th" data-tab="thai" role="tab" aria-selected="false">태국 소식</button>') if admin else ""
         tabs_html = (
-            '    <button id="tab-global" class="tab active" data-tab="global" role="tab" aria-selected="true">경제 소식</button>\n'
+            '    <button id="tab-global" class="tab active" data-tab="global" role="tab" aria-selected="true">경제 뉴스</button>\n'
             '    <button id="tab-cal" class="tab" data-tab="cal" role="tab" aria-selected="false">경제 지표</button>\n'
             + _thai_tab
         )
     page = page.replace("__TABS__", tabs_html)
+    if not want_thai:
+        menu = (("/", "홈", "Home"), ("/news/ko/", "경제 뉴스", "News"),
+                ("/perspectives/", "시장 관점", "Market views"),
+                ("/news/ko/#tab=cal", "경제 지표", "Calendar"),
+                ("/indicators/", "트레이딩뷰 지표", "Indicators"),
+                ("/lab/", "지표 연구", "Research"), ("/tradingtalk/", "트레이딩톡", "Trading Talk"),
+                ("/blog/", "블로그", "Blog"))
+        nav = '<nav class="editorial-menu" aria-label="%s">%s</nav>' % (
+            "주요 메뉴" if lang == "ko" else "Site navigation",
+            ''.join('<a href="%s">%s</a>' % (url if lang == "ko" or not url.startswith('/news/ko/') else url.replace('/news/ko/', '/news/'), ko if lang == "ko" else en) for url, ko, en in menu))
+        page = page.replace('</header>', '</header>' + nav, 1)
+        page = page.replace('</style>', '.editorial-menu{display:flex;flex-wrap:wrap;gap:4px 22px;max-width:1240px;margin:auto;padding:12px 28px;border-bottom:1px solid var(--line)}.editorial-menu a{font:600 13px var(--sans);color:var(--muted);min-height:44px;display:inline-flex;align-items:center;text-decoration:none}.editorial-menu a:hover{color:var(--accent)}@media(max-width:767px){.editorial-menu{padding:8px 18px;gap:4px 16px}}' + '</style>', 1)
+
     page = (localize(page, lang)
             .replace("__TREND_STOP__", json.dumps(sorted(set((
                 "그리고 그러나 또한 이번 지난 오늘 어제 내일 관련 발표 예정 가능 필요 대해 통해 위해 때문 이라 라고 이라고 있다 없다 했다 한다 된다 등등 경우 상황 내용 사실 우리 전체 주요 최근 현재 기록 "
