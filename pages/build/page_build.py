@@ -2011,7 +2011,8 @@ def build_server(db_path: str = "news.db") -> dict[str, int]:
     indicator pages later. Each has an English default and a Korean copy one directory down,
     which keeps the language switcher a plain relative link.
     """
-    sizes = {"sitemap.xml": write(ROOT / "sitemap.xml", sitemap_xml())}
+    sizes = {name: write(ROOT / name, content) for name, content in theme.editorial_assets().items()}
+    sizes["sitemap.xml"] = write(ROOT / "sitemap.xml", sitemap_xml())
     global_seed = seed_from_db(db_path, "\uae00\ub85c\ubc8c", False, "en")
     thai_seed = seed_from_db(db_path, "\ud0dc\uad6d", True, "en")
     # The section roots are in the keep set: build_server writes them (the section front pages and
