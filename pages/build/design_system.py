@@ -31,8 +31,8 @@ body.public .brand,body.local .brand{font-family:var(--sans)}
 .brand .cursor{display:none}
 .button.primary{color:var(--on-accent)}
 .button.primary:hover{color:var(--on-accent)}
-.table-wrap,.tablewrap,table,.card,.box,.page-posts,.indicator,.chart-open{border-radius:0}
-th,td{font-variant-numeric:tabular-nums}
+.table-wrap,.tablewrap,table,.card,.box,.page-posts,.indicator,.chart-open,.cal,.cal-grid,.cal-day{border-radius:0}
+th,td,.cal-t,.cal-v{font-variant-numeric:tabular-nums}
 a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 '''
