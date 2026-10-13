@@ -11,7 +11,7 @@ class EditorialDesignContract(unittest.TestCase):
         self.assertIn('id="news"', page)
         self.assertIn('id="perspectives"', page)
         self.assertIn('grid-template-columns:1fr 1fr', page)
-        for href in ('/news/ko/', '/perspectives/', '/blog/'):
+        for href in ('/news/ko/', '/news/ko/#tab=cal', '/perspectives/', '/blog/'):
             self.assertIn('href="' + href + '"', page)
 
     def test_perspectives_keep_author_date_and_original_link(self):
