@@ -162,7 +162,12 @@ __SHARED_THEME_CSS__
 .tick .up{color:var(--accent)}.tick .dn{color:var(--down)}
 @keyframes tick{to{transform:translateX(-50%)}}
 
-.hero{display:grid;grid-template-columns:minmax(0,1.02fr) minmax(320px,.98fr);gap:34px;align-items:center;padding:48px 0 52px;max-width:none;overflow:visible}
+.hero{display:grid;grid-template-columns:1fr;gap:0;padding:34px 0 0;margin-bottom:36px;background:var(--surface2)}
+.hero-visual{grid-row:1;aspect-ratio:3.1!important;max-height:none!important}
+.hero-copy{padding:30px 36px;display:grid;grid-template-columns:1.2fr 1fr;gap:10px 36px}
+.hero-copy h1{grid-row:span 2;font-size:46px}.hero-copy .eyebrow,.hero-tags{display:none}.hero-copy .intro{margin:0;font-size:15px}.hero-actions{margin:0}
+.main-sections{display:grid;grid-template-columns:1fr 1fr;gap:48px}.main-sections>section{min-width:0}.main-sections>section+section{border-left:1px solid var(--line);padding-left:30px}
+.main-sections .section-visual,.main-sections .perspective-visual{display:none}.main-sections .posts,.main-sections .news-list{border:0;background:none}.main-sections .post{padding:19px 0}.main-sections .news-row{padding:19px 0}.main-sections .news-row a{flex-wrap:wrap}.main-sections .ntitle{flex-basis:100%}.post-author{font-size:12px;color:var(--muted)}
 .hero-copy{min-width:0}
 .hero-visual,.section-visual,.perspective-visual{margin:0;overflow:hidden;background:var(--surface2)}
 .hero-visual{aspect-ratio:16/10;max-height:470px}
@@ -230,7 +235,8 @@ __INDICATOR_CSS__
 .nav nav a{font-size:12px;padding:4px 2px;min-height:44px}
 .nav nav a.secondary{margin-left:0}
 .theme-toggle{margin-left:auto;min-height:44px;padding:6px 9px;font-size:11px}
-.hero{grid-template-columns:1fr;gap:22px;padding:34px 0 36px}
+.hero{grid-template-columns:1fr;gap:0;padding:0;margin-top:22px}.hero-copy{display:block;padding:22px}.hero-copy h1{font-size:34px}.hero-copy .intro{margin:18px 0}.hero-visual{aspect-ratio:1.6!important}
+.main-sections{grid-template-columns:1fr;gap:0}.main-sections>section+section{border-left:0;padding-left:0}
 .hero-visual{aspect-ratio:16/10;max-height:none}
 .section-visual,.perspective-visual{aspect-ratio:16/9}
 .intro{font-size:14.5px}
@@ -258,9 +264,9 @@ h2{font-size:21px}
 __HEADER__
 <main id="main" class="wrap">
 <section class="hero" aria-labelledby="headline"><div class="hero-copy"><p class="eyebrow">뉴스를 읽고, 관점을 세우고, 차트로 살펴봅니다.</p><h1 id="headline">차트보다 먼저 읽는 뉴스</h1><p class="intro">시장이 움직이는 이유를 전합니다.<br>금리와 정책, 지정학과 수급까지.</p><div class="actions hero-actions"><a class="button primary" href="/news/ko/">오늘의 시장 보기</a></div><p class="hero-tags"><span>• MACRO</span><span>• CRYPTO</span><span>• MARKET STRUCTURE</span></p></div><figure class="hero-visual"><img src="/assets/landing/hero-editorial.webp" width="1672" height="941" fetchpriority="high" decoding="async" alt="방콕의 저녁, 금융 뉴스와 시장 자료를 살펴보는 책상"><figcaption>경제 뉴스와 시장 관점을 읽는 자리</figcaption></figure></section>
-<section class="section" id="news" aria-labelledby="news-title"><div class="sec-head"><span class="sec-tag">01</span><h2 id="news-title">최근 경제 뉴스</h2></div><p class="section-intro">금리와 경기, 기업과 정책, 지정학까지. 시장에 연결되는 소식을 확인하세요.</p><figure class="section-visual"><img src="/assets/landing/news-editorial.webp" width="1536" height="1024" loading="lazy" decoding="async" alt="방콕의 편집 데스크에서 경제 뉴스와 시장 자료를 살펴보는 장면"><figcaption>뉴스는 원문과 게시 시각을 확인해 읽습니다.</figcaption></figure><div class="news-status"><span class="live">● 자동 수집 · 한국어로 표시</span><span id="update-status" role="status">수집 상태 확인 중</span><button class="retry" id="retry" type="button" hidden>다시 불러오기</button></div><div class="news-list" id="news-list" aria-busy="true"><div class="loading-line short"></div><div class="loading-line"></div><div class="loading-line"></div></div><noscript><p>뉴스 목록을 불러오려면 자바스크립트가 필요합니다. <a href="/news/ko/">경제 뉴스 페이지에서 확인하세요.</a></p></noscript><a class="section-link" href="/news/ko/">$ open /news/ko/ →</a></section>
+<div class="main-sections"><section class="section" id="news" aria-labelledby="news-title"><div class="sec-head"><span class="sec-tag">01</span><h2 id="news-title">최근 경제 뉴스</h2></div><p class="section-intro">금리와 경기, 기업과 정책, 지정학까지. 시장에 연결되는 소식을 확인하세요.</p><figure class="section-visual"><img src="/assets/landing/news-editorial.webp" width="1536" height="1024" loading="lazy" decoding="async" alt="방콕의 편집 데스크에서 경제 뉴스와 시장 자료를 살펴보는 장면"><figcaption>뉴스는 원문과 게시 시각을 확인해 읽습니다.</figcaption></figure><div class="news-status"><span class="live">● 자동 수집 · 한국어로 표시</span><span id="update-status" role="status">수집 상태 확인 중</span><button class="retry" id="retry" type="button" hidden>다시 불러오기</button></div><div class="news-list" id="news-list" aria-busy="true"><div class="loading-line short"></div><div class="loading-line"></div><div class="loading-line"></div></div><noscript><p>뉴스 목록을 불러오려면 자바스크립트가 필요합니다. <a href="/news/ko/">경제 뉴스 페이지에서 확인하세요.</a></p></noscript><a class="section-link" href="/news/ko/">$ open /news/ko/ →</a></section>
 <section class="section" id="perspectives" aria-labelledby="perspectives-title"><div class="sec-head"><span class="sec-tag">02</span><h2 id="perspectives-title">시장 관점</h2></div><p class="section-intro">뉴스와 차트를 어떻게 읽는지, 어떤 조건에서 생각을 바꾸는지. 트레이더로서의 판단을 기록합니다.</p><figure class="perspective-visual"><img src="/assets/landing/btc-analysis.webp" width="1536" height="1024" loading="lazy" decoding="async" alt="비트코인 가격 구조를 살펴보는 분석 화면과 노트"><figcaption>차트 이미지는 시장 분석의 참고 시각 자료입니다.</figcaption></figure><div class="posts">__POSTS__</div><a class="section-link" href="/perspectives/">$ open /perspectives/ →</a><p class="note">각 글은 작성 당시의 개인적인 관점입니다. 가격과 시나리오는 현재 시점과 다를 수 있습니다.</p></section>
-<section class="section" id="indicators" aria-labelledby="indicators-title"><div class="sec-head"><span class="sec-tag">03</span><h2 id="indicators-title">직접 만든 트레이딩뷰 지표</h2></div><p class="section-intro">차트의 구조와 파동을 살펴보는 도구입니다. 공식 트레이딩뷰 페이지에서 무료로 사용할 수 있습니다.</p><div class="indicators">__INDICATORS__</div><a class="section-link" href="/indicators/">$ open /indicators/ →</a><a class="section-link" href="https://kr.tradingview.com/u/TeemoBKK/#published-scripts" target="_blank" rel="noopener noreferrer me">$ open profile → 전체 지표 보기 ↗</a><p class="note">파동 카운팅과 목표 구간은 진행 중인 가격에 따라 달라질 수 있습니다. 사용 조건과 설정은 각 지표 페이지에서 확인하세요.</p></section>
+</div><section class="section" id="indicators" aria-labelledby="indicators-title"><div class="sec-head"><span class="sec-tag">03</span><h2 id="indicators-title">직접 만든 트레이딩뷰 지표</h2></div><p class="section-intro">차트의 구조와 파동을 살펴보는 도구입니다. 공식 트레이딩뷰 페이지에서 무료로 사용할 수 있습니다.</p><div class="indicators">__INDICATORS__</div><a class="section-link" href="/indicators/">$ open /indicators/ →</a><a class="section-link" href="https://kr.tradingview.com/u/TeemoBKK/#published-scripts" target="_blank" rel="noopener noreferrer me">$ open profile → 전체 지표 보기 ↗</a><p class="note">파동 카운팅과 목표 구간은 진행 중인 가격에 따라 달라질 수 있습니다. 사용 조건과 설정은 각 지표 페이지에서 확인하세요.</p></section>
 <section class="section about" aria-labelledby="about-title"><div><div class="sec-head"><span class="sec-tag">04</span><h2 id="about-title">TeemoBKK에 대하여</h2></div><p>경제 뉴스를 모으고, 시장을 바라보는 관점을 쓰며, 차트에서 사용하는 지표를 만듭니다.</p><p>뉴스는 시장의 맥락을 살피는 출발점입니다. 해석과 시나리오는 사실과 구분해 기록하겠습니다.</p><a class="section-link" href="/about/">$ open /about/ → 자세히 보기</a></div><div><h3>읽기 전에</h3><ul><li>뉴스는 자동 수집한 원문 제목과 출처를 제공합니다.</li><li>시장 관점은 운영자의 개인적인 해석입니다.</li><li>지표는 분석 보조 도구이며 수익을 보장하지 않습니다.</li></ul></div></section>
 </main>
 __FOOTER__
@@ -377,7 +383,7 @@ def _render_post_cards(posts) -> str:
         fields = {key: escape(str(value or ""), quote=True) for key, value in post.items()}
         fields["visible_date"] = escape(theme.display_date(str(post.get("date", ""))))
         cards.append(
-            '<article class="post"><time datetime="{date}">{visible_date}</time>'
+            '<article class="post"><span class="post-author">TeemoBKK · </span><time datetime="{date}">{visible_date}</time>'
             '<h3><a href="{url}" target="_blank" rel="noopener noreferrer">{title}</a></h3>'
             '<p>{summary}</p><a class="read" href="{url}" target="_blank" rel="noopener noreferrer">'
             '관점 읽기 · 외부 글 ↗</a></article>'.format(**fields)
@@ -423,7 +429,7 @@ def render_perspectives_page(posts=None) -> str:
         fields["visible_date"] = escape(theme.display_date(date))
         fields["date"] = escape(date, quote=True)
         entries.append(
-            '<article class="page-post"><time datetime="{date}">{visible_date}</time>'
+            '<article class="page-post"><span class="post-author">TeemoBKK · </span><time datetime="{date}">{visible_date}</time>'
             '<h2><a href="{url}" target="_blank" rel="noopener noreferrer">{title}</a></h2>'
             '<p>{summary}</p><a class="read" href="{url}" target="_blank" rel="noopener noreferrer">'
             '원문 읽기 ↗</a></article>'.format(**fields)

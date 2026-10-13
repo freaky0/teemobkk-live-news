@@ -105,10 +105,10 @@ def theme_head_script() -> str:
 
 def render_header() -> str:
     return ('<header class="top"><div class="wrap nav"><a class="brand" href="/" aria-label="TeemoBKK 홈">'
-            '<span class="prompt">teemo@bkk</span>:~$ ./live-news<span class="cursor" aria-hidden="true"></span>'
+            '<span class="prompt">Teemo</span>BKK<span class="cursor" aria-hidden="true"></span>'
             '</a><nav aria-label="주요 메뉴"><a href="/news/ko/">경제 뉴스</a><a href="/perspectives/">시장 관점</a>'
             '<a href="/indicators/">트레이딩뷰 지표</a><a href="/tradingtalk/">트레이딩 톡</a>'
-            '<a href="/lab/">지표 연구</a><a class="secondary" href="/thai/">/thai ↗</a></nav>'
+            '<a href="/lab/">지표 연구</a><a href="/blog/">블로그</a><a class="secondary" href="/thai/">태국 ↗</a></nav>'
             '<button class="theme-toggle" id="landing-theme-toggle" type="button" aria-label="다크 모드 켜기" aria-pressed="false">다크 모드 켜기</button></div></header>')
 
 
