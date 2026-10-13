@@ -31,6 +31,17 @@ class EditorialDesignContract(unittest.TestCase):
         for name in assets:
             self.assertIn('/' + name, server.STATIC_FILES)
 
+    def test_calendar_navigation_and_thai_scope(self):
+        from pages.build import page_build
+        page = page_build.render(public=False, datadir='', want_thai=False, icon_prefix='/', admin=False)
+        self.assertIn("window.addEventListener('hashchange',syncTabFromUrl)", page)
+        self.assertIn("window.addEventListener('popstate',syncTabFromUrl)", page)
+        self.assertIn("history.pushState(null,'',hash", page)
+        self.assertIn('href="/news/ko/#tab=cal"', page)
+        thai = page_build.render(public=False, datadir='', want_thai=True, icon_prefix='/', admin=False)
+        self.assertNotIn(theme.DESIGN_CSS, thai)
+        self.assertNotIn('class="editorial-menu"', thai)
+
     def test_thai_landing_keeps_its_own_theme(self):
         page = landing_thai.render_thai_landing()
         self.assertNotIn('WantedSansVariable', page)

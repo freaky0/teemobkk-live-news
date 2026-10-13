@@ -969,12 +969,20 @@ function setTab(next,silent){
   renderGuide();
   // Reflect the tab in the URL so a view can be linked. Written on every change, but
   // not on the silent first call: /thai/ already implies the Thailand tab.
-  if(!silent&&history.replaceState){
+  if(!silent&&history.pushState){
     const hash=next==='cal'?'#tab=cal':next==='thai'?'#tab=thai':'';
-    history.replaceState(null,'',hash||location.pathname+location.search)};
+    history.pushState(null,'',hash||location.pathname+location.search)};
   if(next==='cal'){loadCalendar();return}
   if(PUBLIC){if(MEM[region()]&&MEM[region()].length){renderPills();renderFeed()}else{skeleton();fetchFeed()}}
   else{fetchFeed()}}
+
+function syncTabFromUrl(){
+  const hash=location.hash||'';
+  const next=hash.indexOf('tab=cal')>=0?'cal':CFG.wantThai||(CFG.admin&&hash.indexOf('tab=thai')>=0)?'thai':'global';
+  if(next!==V.tab)setTab(next,true);
+}
+window.addEventListener('hashchange',syncTabFromUrl);
+window.addEventListener('popstate',syncTabFromUrl);
 
 function calendarFailure(message){
   document.querySelector('#cal-stamp').textContent='';
@@ -1112,8 +1120,7 @@ document.addEventListener('visibilitychange',()=>{hidden=document.hidden;
 (function start(){
   const hash=location.hash||'';
   renderGuide();
-  if(CFG.wantThai||hash.indexOf('tab=thai')>=0)setTab('thai',true);
-  else if(hash.indexOf('tab=cal')>=0)setTab('cal',true);
+  syncTabFromUrl();
   // A section landing links straight to a category: #cat=<stored value>. The filter state is
   // set before the first fetch rather than by pressing a pill, because the pills are only
   // built once data arrives and a click at this point would land on nothing.
@@ -1691,7 +1698,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
 <link rel="apple-touch-icon" href="{icon_prefix}apple-touch-icon.png">
 <title>{title}</title>
 <style>
-{CSS}</style>
+{CSS.replace(theme.DESIGN_CSS, "") if want_thai else CSS}</style>
 </head>
 <body class="{"local" if admin else "public"}">
 <header class="bar">
