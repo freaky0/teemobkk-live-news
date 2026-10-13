@@ -257,6 +257,7 @@ h2{font-size:21px}
 *,*::before,*::after{transition:none!important}
 }
 </style>
+<link rel="stylesheet" href="/assets/editorial.css">
 </head>
 <body>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
@@ -399,7 +400,7 @@ def _standalone_page(title: str, eyebrow: str, description: str, content: str, e
         '<!doctype html><html lang="ko"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         '<meta name="description" content="{description}"><title>{title} | TeemoBKK</title>'
-        '<style>{shared_css}{extra_css}{page_css}</style>{head_script}</head><body>'
+        '<style>{shared_css}{extra_css}{page_css}</style><link rel="stylesheet" href="/assets/editorial.css">{head_script}</head><body>'
         '<a class="skip" href="#main">본문으로 건너뛰기</a>{header}'
         '<main class="page-main" id="main"><header class="page-head">'
         '<p class="page-eyebrow">{eyebrow}</p><h1 class="page-title">{title}</h1>'
