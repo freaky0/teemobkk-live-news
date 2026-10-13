@@ -17,11 +17,11 @@ a{color:var(--accent);text-underline-offset:3px}.top{border-bottom:1px solid var
 @media(prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#151c1b;--surface:#1e2927;--text:#edf3f0;--muted:#b1c2bc;--line:#3c4e48;--accent:#89d7cb}}
 html[data-theme="dark"]{color-scheme:dark;--bg:#151c1b;--surface:#1e2927;--text:#edf3f0;--muted:#b1c2bc;--line:#3c4e48;--accent:#89d7cb}
 html[data-theme="light"]{color-scheme:light;--bg:#f8f9f8;--surface:#fff;--text:#192422;--muted:#52625e;--line:#d7dfdc;--accent:#08645d}
-</style>
+</style><link rel="stylesheet" href="/assets/editorial.css"><script src="/assets/editorial.js"></script>
 </head>
 <body>
-<header class="top"><div class="topin"><a class="brand" href="/">TeemoBKK</a><nav class="langs" aria-label="Language"><b>한국어</b><a href="/privacy/en/" lang="en">English</a></nav></div></header>
-<main class="content">
+<header class="top"><div class="wrap nav"><a class="brand" href="/" aria-label="TeemoBKK 홈"><span class="prompt">Teemo</span>BKK<span class="cursor" aria-hidden="true"></span></a><nav aria-label="주요 메뉴"><a href="/news/ko/">경제 뉴스</a><a href="/perspectives/">시장 관점</a><a href="/indicators/">트레이딩뷰 지표</a><a href="/tradingtalk/">트레이딩 톡</a><a href="/lab/">지표 연구</a><a href="/blog/">블로그</a><a class="secondary" href="/thai/">태국 ↗</a></nav><button class="theme-toggle" id="landing-theme-toggle" type="button" aria-label="다크 모드 켜기" aria-pressed="false">다크 모드 켜기</button></div></header>
+<main class="content" id="main"><nav class="langs" aria-label="Language"><b>한국어</b><a href="/privacy/en/" lang="en">English</a></nav>
 <h1>개인정보 처리방침</h1>
 <p class="updated">마지막 확인: 2026년 9월 25일 · 운영자: Keith S. Jun (TeemoBKK) · 문의: <a href="mailto:freaky0@gmail.com">freaky0@gmail.com</a></p>
 <p>이 안내는 TeemoBKK 웹사이트에서 처리하는 정보와 이용자가 선택할 수 있는 방법을 설명합니다. 광고·분석 서비스가 실제로 추가되면 적용 시점에 맞춰 이 방침과 동의 절차를 다시 확인합니다.</p>
@@ -46,6 +46,6 @@ html[data-theme="light"]{color-scheme:light;--bg:#f8f9f8;--surface:#fff;--text:#
 <h2>문의와 방침 변경</h2>
 <p>개인정보 처리에 관한 문의나 요청은 <a href="mailto:freaky0@gmail.com">freaky0@gmail.com</a>으로 보내 주세요. 서비스나 관련 법규가 바뀌면 이 페이지를 갱신하고 마지막 확인 날짜를 바꿉니다.</p>
 </main>
-<footer class="footer"><div class="topin"><a href="/">TeemoBKK 홈</a><span>자동 수집 뉴스와 개인적인 시장 관점을 구분해 제공합니다.</span></div></footer>
+<footer class="footer"><div class="wrap"><div class="footer-row"><span class="fbrand">teemo@bkk:~$ ./live-news --v2026</span><a href="/thai/">별도 소식 · 태국 교민 뉴스 ↗</a></div><p>뉴스는 자동 매매 신호가 아닙니다 · 중요한 사건은 원문과 공시로 확인하세요. 제공되는 글과 지표만으로 투자 결정을 내리지 마세요.</p><nav class="footer-links" aria-label="사이트 정보"><a href="/privacy/">개인정보 처리방침</a><a href="https://kr.tradingview.com/u/TeemoBKK/" target="_blank" rel="noopener noreferrer me">트레이딩뷰 TeemoBKK 공식 프로필 ↗</a><a class="donate-link" href="#donate">후원하기</a></nav></div><dialog class="donate-dialog" id="donate-dialog" aria-labelledby="donate-title"><div class="dialog-head"><p id="donate-title">TeemoBKK 후원</p><button type="button" aria-label="후원 창 닫기" onclick="this.closest('dialog').close()">닫기</button></div><div class="donate-body"><img class="donate-qr" src="/assets/donate-qr.jpg" alt="PromptPay 후원 QR 코드"><div class="donate-bank"><div><p class="donate-bank-name">Bangkok Bank</p><p><strong>926-0-280236</strong></p></div></div></div></dialog><script>document.querySelectorAll('a[href="#donate"]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();document.getElementById("donate-dialog").showModal()}))</script></footer>
 </body>
 </html>
