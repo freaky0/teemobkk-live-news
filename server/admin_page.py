@@ -16,6 +16,7 @@ the collector imports this module on the request path, and pulling the whole pag
 startup would make every run pay for a page most requests never ask for.
 """
 from __future__ import annotations
+from pages.build.design_system import LIGHT_TOKENS, DARK_TOKENS
 
 LOGIN = """<!doctype html>
 <html lang="ko">
@@ -86,6 +87,19 @@ f.onsubmit=async ev=>{
 </body>
 </html>
 """
+
+
+_LOGIN_CSS = (':root,html[data-theme="light"]{' + LIGHT_TOKENS + '}html[data-theme="dark"]{' + DARK_TOKENS + '}' + '''
+@font-face{font-family:"Wanted Sans";src:url(/assets/fonts/WantedSansVariable.woff2);font-weight:100 900;font-display:swap}
+*{box-sizing:border-box}body{margin:0;min-height:100dvh;display:grid;place-items:center;padding:24px;background:var(--bg);color:var(--text);font:15px/1.6 var(--sans)}
+form{width:100%;max-width:380px;padding:28px;border:1px solid var(--line);background:var(--surface)}
+.brand{display:block;margin-bottom:28px;font-size:26px;font-weight:700}.brand span{color:var(--accent)}
+h1{font-size:26px;line-height:1.3;margin:0 0 4px}p.note{font-size:13px;color:var(--muted);margin:0 0 26px}
+label{display:block;margin-bottom:8px}input,button{font:inherit;border-radius:0;width:100%;min-height:44px;padding:10px;border:1px solid var(--line);background:var(--surface);color:var(--text)}
+button{margin-top:16px;background:var(--accent);color:var(--on-accent);cursor:pointer;font-weight:700}button[disabled]{opacity:.55}
+input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}#msg{color:var(--error);min-height:18px;margin-top:12px;font-size:13px}
+''')
+LOGIN = LOGIN[:LOGIN.index('<style>') + 7] + _LOGIN_CSS + LOGIN[LOGIN.index('</style>'):]
 
 
 def login_page(status_note: str = "") -> str:

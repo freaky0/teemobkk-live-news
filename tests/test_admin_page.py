@@ -185,10 +185,12 @@ class LoginDocument(unittest.TestCase):
     def test_login_matches_reader_palette_without_dashboard_markup(self):
         page = admin_page.login_page()
         self.assertIn('<span class="brand"><span>티모</span> 라이브뉴스</span>', page)
-        self.assertIn('--bg:#fbfaf7', page)
-        self.assertIn('--accent:#a02c22', page)
-        self.assertIn('--serif:', page)
-        self.assertIn('prefers-color-scheme:dark', page)
+        self.assertIn('--bg:#f5f5f4', page)
+        self.assertIn('--accent:#a34230', page)
+        self.assertIn('--bg:#142332', page)
+        self.assertIn('--accent:#94bfea', page)
+        self.assertIn('WantedSansVariable.woff2', page)
+        self.assertIn('border-radius:0', page)
         self.assertIn('for="pw"', page)
         self.assertNotIn('id="feed"', page)
 
