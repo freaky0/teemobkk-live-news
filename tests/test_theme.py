@@ -81,6 +81,19 @@ class SharedThemeContract(unittest.TestCase):
         self.assertNotIn("__INDICATOR_CSS__", html)
         self.assertNotIn("__INDICATORS__", html)
 
+    def test_standalone_skip_links_hide_until_focus(self):
+        pages = (
+            landing.render_perspectives_page([]),
+            landing.render_indicators_page(),
+            landing.render_blog_list([]),
+            landing.render_blog_post({"title": "검증", "date": "2026-01-01"}, "본문"),
+        )
+        for page in pages:
+            with self.subTest(title=page.split("<title>", 1)[-1].split("</title>", 1)[0]):
+                self.assertIn('<a class="skip" href="#main">본문으로 건너뛰기</a>', page)
+                self.assertIn(".skip{position:absolute;left:16px;top:-100px", page)
+                self.assertIn(".skip:focus{top:12px}", page)
+
     def test_standalone_pages_share_the_theme_and_render_their_full_catalogues(self):
         posts = [{
             "title": "관점 글 {}".format(index),

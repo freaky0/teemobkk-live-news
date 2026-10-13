@@ -46,6 +46,7 @@ FOOTER_CSS = ('.footer{border-top:1px solid var(--line);padding:26px 0 38px;colo
               '.footer-links a:hover{color:var(--accent)}')
 
 SUBPAGE_CSS = """\
+.skip{position:absolute;left:16px;top:-100px;background:var(--accent);color:#ffffff;padding:12px;z-index:50;font-weight:700}.skip:focus{top:12px}
 body{margin:0;background:var(--bg);color:var(--text);font:16px/1.75 var(--sans)}
 .wrap{max-width:1120px;margin:auto;padding-inline:28px}
 .page-main{max-width:900px;margin:auto;padding:52px 28px 72px}
