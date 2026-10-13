@@ -1,5 +1,6 @@
 """Shared TeemoBKK design tokens and landing-page renderers."""
 from datetime import date
+from pages.build.design_system import DESIGN_CSS
 
 
 CSS_CUSTOM_PROPERTIES = ':root{color-scheme:light;--bg:#faf8f3;--surface:#ffffff;--surface2:#f3f0e8;--text:#1a1c1a;--muted:#5f665f;--dim:#9aa099;--line:#e5e0d3;--accent:#0a7a4a;--accent-dim:rgba(10,122,74,.10);--down:#d33f3f;--radius:6px;--sans:system-ui,-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"D2Coding","JetBrains Mono","Courier New",monospace}'
@@ -86,7 +87,7 @@ INDICATOR_CSS = """\
 def shared_css() -> str:
     """Return the common tokens and components included in page stylesheets."""
     return '\n'.join((CSS_CUSTOM_PROPERTIES, BUTTON_CSS, HEADER_CSS, FOOTER_CSS,
-                      DARK_THEME_CSS, USAGE_BAR_CSS))
+                      DARK_THEME_CSS, USAGE_BAR_CSS, DESIGN_CSS))
 
 
 def theme_head_script() -> str:
@@ -734,6 +735,7 @@ NEWS_THEME_SCRIPT = """\
   update();
 })();
 """
+DASHBOARD_CSS += '\n' + DESIGN_CSS
 DASHBOARD_THEME_BOOTSTRAP = "<script>(function(){try{var t=localStorage.getItem('tbn-theme');document.documentElement.dataset.theme=t==='dark'?'dark':'light'}catch(e){document.documentElement.dataset.theme='light'}})();</script>"
 
 THAI_CSS += """
