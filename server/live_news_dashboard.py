@@ -55,6 +55,9 @@ THAI_REGION = "태국"
 GLOBAL_REGION = "글로벌"
 GENERIC_CATEGORY = "일반"
 STATIC_FILES = {
+    "/assets/fonts/WantedSansVariable.woff2": ("assets/fonts/WantedSansVariable.woff2", "font/woff2"),
+    "/assets/editorial.css": ("assets/editorial.css", "text/css; charset=utf-8"),
+    "/assets/editorial.js": ("assets/editorial.js", "text/javascript; charset=utf-8"),
     "/favicon.ico": ("pages/assets/favicon.ico", "image/x-icon"),
     "/assets/landing/hero-editorial.webp": ("assets/landing/hero-editorial.webp", "image/webp"),
     "/assets/landing/news-editorial.webp": ("assets/landing/news-editorial.webp", "image/webp"),

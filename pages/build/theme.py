@@ -103,6 +103,29 @@ def theme_head_script() -> str:
             'r.setAttribute("data-theme",t);try{localStorage.setItem("tbn-theme",t)}catch(e){}update()});update()});</script>')
 
 
+def editorial_assets() -> dict[str, str]:
+    """Shared assets for source static documents and generated public pages."""
+    css = shared_css() + '\n' + SUBPAGE_CSS + '''
+*{box-sizing:border-box}a{color:inherit;text-underline-offset:3px}
+.top .wrap{max-width:1240px;width:100%;padding-inline:28px}
+.top .nav{flex-wrap:wrap;gap:12px 24px;padding-block:20px}
+.top .brand{font-size:32px;line-height:1.2;text-decoration:none}
+.top .nav nav{flex-wrap:wrap;gap:4px 18px}
+.top .nav nav a{font-family:var(--sans);font-size:13px;text-decoration:none}
+.page-main,.content,.main{max-width:1000px;width:100%;margin:auto;padding:40px 28px 64px}
+.page-main h1,.content h1,.main h1{font-family:var(--sans);font-size:clamp(30px,5vw,46px);line-height:1.25;letter-spacing:-.045em}
+.lead,.page-intro{color:var(--muted)!important}.brand,.indicator,.button,.notice{border-radius:0}
+.footer .wrap{max-width:1240px;width:100%;padding-inline:28px}
+.page-posts{border:0;background:none}.page-post{padding:24px 0}.post-author{color:var(--muted);font-size:12px}
+.table-wrap,.tablewrap{overflow:auto;border:1px solid var(--line)}table{width:100%;border-collapse:collapse;background:var(--surface)}
+th,td{padding:14px 18px;border-bottom:1px solid var(--line);text-align:left}th{background:var(--surface2);color:var(--muted)}
+@media(max-width:1000px){.top .nav nav{order:3;flex-basis:100%;gap:4px 16px}.top .theme-toggle{margin-left:auto}}
+@media(max-width:767px){.top .wrap,.footer .wrap{padding-inline:18px}.page-main,.content,.main{padding:30px 18px 48px}.top .brand{font-size:26px}.top .nav{padding-block:14px}.top .nav nav a{font-size:12px;min-height:44px}.page-post{padding:20px 0}}
+'''
+    js = theme_head_script().replace('<script>', '').replace('</script>', '\n')
+    return {'assets/editorial.css': css, 'assets/editorial.js': js}
+
+
 def render_header() -> str:
     return ('<header class="top"><div class="wrap nav"><a class="brand" href="/" aria-label="TeemoBKK 홈">'
             '<span class="prompt">Teemo</span>BKK<span class="cursor" aria-hidden="true"></span>'

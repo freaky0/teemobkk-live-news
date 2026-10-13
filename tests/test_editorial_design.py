@@ -21,6 +21,16 @@ class EditorialDesignContract(unittest.TestCase):
         self.assertIn('href="https://example.com/post"', page)
         self.assertIn('현재 표시할 관점 글이 없습니다', landing.render_perspectives_page([]))
 
+    def test_editorial_assets_are_generated_from_shared_tokens(self):
+        from server import live_news_dashboard as server
+        assets = theme.editorial_assets()
+        self.assertIn(theme.DESIGN_CSS, assets['assets/editorial.css'])
+        self.assertIn('localStorage.getItem', assets['assets/editorial.js'])
+        self.assertNotIn('<script>', assets['assets/editorial.js'])
+        self.assertEqual(server.STATIC_FILES['/assets/fonts/WantedSansVariable.woff2'][1], 'font/woff2')
+        for name in assets:
+            self.assertIn('/' + name, server.STATIC_FILES)
+
     def test_thai_landing_keeps_its_own_theme(self):
         page = landing_thai.render_thai_landing()
         self.assertNotIn('WantedSansVariable', page)
