@@ -93,6 +93,13 @@ class PollPlanTest(unittest.TestCase):
         for name, _kind, _url in core.RSS_SOURCES:
             self.assertEqual(core.GLOBAL_REGION, regions[name], name)
 
+    def test_blocked_publishers_use_recent_site_filtered_rss(self):
+        feeds = {name: url for name, _kind, url in core.RSS_SOURCES + core.THAI_RSS_SOURCES}
+        self.assertIn("news.google.com/rss/search?q=site%3Afinance.yahoo.com%2Fnews", feeds["Yahoo Finance"])
+        self.assertIn("when%3A1d", feeds["Yahoo Finance"])
+        self.assertIn("news.google.com/rss/search?q=site%3Athairath.co.th", feeds["Thairath"])
+        self.assertIn("when%3A1d", feeds["Thairath"])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

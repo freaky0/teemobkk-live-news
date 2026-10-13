@@ -118,7 +118,8 @@ RSS_SOURCES = [
     # a day, so they are alive rather than cached shells (tools/probe_sources.py).
     ("MarketWatch", "news", "https://feeds.marketwatch.com/marketwatch/topstories/"),
     ("CNBC Finance", "news", "https://www.cnbc.com/id/10000664/device/rss/rss.html"),
-    ("Yahoo Finance", "news", "https://finance.yahoo.com/news/rssindex"),
+    # Yahoo's native RSS now returns 404 from the collector; use Google News site-filtered RSS.
+    ("Yahoo Finance", "news", "https://news.google.com/rss/search?q=site%3Afinance.yahoo.com%2Fnews%20when%3A1d&hl=en-US&gl=US&ceid=US%3Aen"),
     ("Investing.com", "news", "https://www.investing.com/rss/news.rss"),
     ("Seeking Alpha", "news", "https://seekingalpha.com/market_currents.xml"),
     ("FinancialJuice", "breaking", "https://www.financialjuice.com/feed.ashx?xy=rss"),
@@ -176,7 +177,8 @@ THAI_RSS_SOURCES = [
     ("TAT Newsroom", "thai", "https://www.tatnews.org/feed/"),
     ("Phuket Express", "thai", "https://thephuketexpress.com/feed/"),
     ("Hua Hin Today", "thai", "https://www.huahintoday.com/feed/"),
-    ("Thairath", "thai", "https://www.thairath.co.th/rss/news"),
+    # Thairath blocks the collector host with 403; use Google News site-filtered RSS.
+    ("Thairath", "thai", "https://news.google.com/rss/search?q=site%3Athairath.co.th%20when%3A1d&hl=th&gl=TH&ceid=TH%3Ath"),
     ("Matichon", "thai", "https://www.matichon.co.th/feed"),
     ("MGR Online", "thai", "https://mgronline.com/store/rss/index.xml"),
     ("Prachachat", "thai", "https://www.prachachat.net/feed"),
