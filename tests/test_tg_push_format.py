@@ -6,7 +6,9 @@ The channel is fed by the one-minute timer and an optional outbox bridge, but bo
 """
 import json
 import os
+import select
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -287,7 +289,8 @@ class PostedHistoryWindow(AgentFixture):
         with patch.object(tg_push, "posted", return_value=[]) as recent:
             with patch.object(tg_push.jev_gate, "evaluate", return_value=batch):
                 tg_push.tick(self.connection, now=datetime.now(timezone.utc), quiet=True)
-        recent.assert_called_once_with(self.connection, 5)
+        self.assertEqual([5, 180], [args[1] for args, _kwargs in recent.call_args_list])
+        self.assertTrue(all(args[0] is self.connection for args, _kwargs in recent.call_args_list))
 
 
 class SharedArticleTranslation(AgentFixture):
@@ -367,6 +370,37 @@ class SameTickEvent(unittest.TestCase):
         self.assertEqual(1, len(rows))
         self.assertIn("바이낸스", rows[0]["title"])
 
+    def test_jev_receives_the_persisted_korean_candidate_title(self):
+        now = datetime.now(timezone.utc)
+        source = "Thai Enquirer News Summary – October 12, 2026"
+        rendered = "IMF·세계은행 연례회의, 방콕서 첫날 일정 시작"
+        earlier = "방콕서 IMF·세계은행 연차총회 시작"
+        link = "https://example.com/b"
+        self.connection.execute(
+            "UPDATE articles SET title=?, title_ko=?, summary_ko=?, priority=5, "
+            "published_at=?, collected_at=? WHERE link=?",
+            (source, rendered, BODY, now.isoformat(), now.isoformat(), link),
+        )
+        self.connection.execute(
+            "INSERT INTO tg_posted (link, posted_at, title, title_key) VALUES (?,?,?,?)",
+            ("https://example.com/earlier", (now - timedelta(minutes=1)).isoformat(),
+             earlier, core.normalize_title("unrelated source title")),
+        )
+        self.connection.commit()
+        candidate = dict(self.connection.execute(
+            "SELECT * FROM articles WHERE link=?", (link,)).fetchone())
+        decision = tg_push.jev_gate.Decision(
+            link=link, importance="high", duplicate_confidence=0.95,
+            freshness="fresh", raw={})
+        batch = tg_push.jev_gate.Batch(run_id="run", decisions={link: decision}, raw={})
+        with patch.object(tg_push, "candidates", return_value=[candidate]), \
+                patch.object(tg_push.jev_gate, "MODE", "live"), \
+                patch.object(tg_push.jev_gate, "evaluate", return_value=batch) as evaluate:
+            rows = tg_push.tick(self.connection, now=now, quiet=True)
+        self.assertEqual([], rows)
+        self.assertEqual(rendered, evaluate.call_args.args[0][0]["title"])
+        self.assertEqual([earlier], evaluate.call_args.args[1])
+
 
 class OutboxDrain(AgentFixture):
     """The container cannot call the pusher: it queues JSON parts, the host drains them."""
@@ -390,7 +424,8 @@ class OutboxDrain(AgentFixture):
             ok, detail = tg_push.post_parts(self.connection, parts, now=datetime.now(timezone.utc))
         self.assertFalse(ok)
         self.assertIn("jev-same-event", detail)
-        recent.assert_called_once_with(self.connection, 5)
+        self.assertEqual([5, 180], [args[1] for args, _kwargs in recent.call_args_list])
+        self.assertTrue(all(args[0] is self.connection for args, _kwargs in recent.call_args_list))
         self.assertEqual(["Earlier ETF headline"], evaluate.call_args.args[1])
 
     def test_queued_post_fails_closed_if_live_jev_is_unavailable(self):
@@ -425,6 +460,48 @@ class OutboxDrain(AgentFixture):
 
         self.assertTrue(ok, detail)
         self.assertEqual(["Recent ETF headline"], evaluate.call_args.args[1])
+
+    def test_queued_same_event_overlaps_the_180_minute_event_window(self):
+        now = datetime.now(timezone.utc)
+        earlier = "방콕서 IMF·세계은행 연차총회 시작"
+        current = "IMF·세계은행 연례회의, 방콕서 첫날 일정 시작"
+        self.connection.execute(
+            "UPDATE articles SET title=?, title_ko=?, summary_ko=? WHERE link=?",
+            ("Unrelated English aggregator headline", current, BODY, LINK),
+        )
+        self.connection.execute(
+            "INSERT INTO tg_posted (link, posted_at, title, title_key, mode) "
+            "VALUES (?,?,?,?,?)",
+            ("https://example.com/earlier", (now - timedelta(minutes=5, seconds=1)).isoformat(),
+             earlier, core.normalize_title("unrelated source title"), "tick"),
+        )
+        self.connection.commit()
+        with patch.object(tg_push.jev_gate, "MODE", "off"), \
+                patch.object(tg_push, "editorial_brief", return_value={"note": NOTE, "tags": TAGS}):
+            ok, detail = tg_push.post_parts(self.connection, self.parts(), now=now)
+        self.assertFalse(ok)
+        self.assertEqual("same-event", detail)
+
+    def test_queued_near_identical_published_title_is_refused(self):
+        now = datetime.now(timezone.utc)
+        earlier = "방콕국제공항공사운영정보공지"
+        current = "방콕국제공항공사운영정보통지"
+        self.connection.execute(
+            "UPDATE articles SET title=?, title_ko=?, summary_ko=? WHERE link=?",
+            ("Unrelated English aggregator headline", current, BODY, LINK),
+        )
+        self.connection.execute(
+            "INSERT INTO tg_posted (link, posted_at, title, title_key, mode) "
+            "VALUES (?,?,?,?,?)",
+            ("https://example.com/earlier", (now - timedelta(minutes=2)).isoformat(),
+             earlier, core.normalize_title("unrelated source title"), "tick"),
+        )
+        self.connection.commit()
+        with patch.object(tg_push.jev_gate, "MODE", "off"), \
+                patch.object(tg_push, "editorial_brief", return_value={"note": NOTE, "tags": TAGS}):
+            ok, detail = tg_push.post_parts(self.connection, self.parts(), now=now)
+        self.assertFalse(ok)
+        self.assertEqual("duplicate-published-title", detail)
 
     def test_a_queued_file_is_rendered_and_reported(self):
         outbox = self.outbox()
@@ -532,6 +609,105 @@ class OutputLength(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(len(result["body"]), tg_push.BODY_CHARS)
         self.assertEqual(len(result["note"]), tg_push.NOTE_CHARS)
+
+
+class DuplicatePrecision(unittest.TestCase):
+    def test_three_shared_topic_tokens_do_not_block_a_distinct_update(self):
+        first = "태국 산업단지공단, 5개년 디지털 계획 수립 추진"
+        second = "태국·싱가포르, 디지털 경제·청정에너지 협력 추진"
+        one, two = tg_push.tokens(first), tg_push.tokens(second)
+        self.assertTrue(tg_push.same_event(one, two))
+        self.assertFalse(tg_push.likely_same_event(one, two))
+
+    def test_social_security_followup_is_not_suppressed_by_topic_overlap(self):
+        first = "태국 사회보장위원회 선거 투표 종료"
+        second = "실롬 콤플렉스서 사회보장위원회 선거 투표 대기 줄"
+        one, two = tg_push.tokens(first), tg_push.tokens(second)
+        self.assertTrue(tg_push.same_event(one, two))
+        self.assertFalse(tg_push.likely_same_event(one, two))
+
+    def test_empty_normalized_thai_titles_are_not_mistaken_for_duplicates(self):
+        first = "ยงยุทธร่วมซ้อมทีมฟุตบอลชายหาดไทย"
+        second = "ธนกรจับมือ ส.ส.ปาร์ม แก้รถบรรทุกจอดกีดขวางในสมุทรปราการ"
+        first_key = core.normalize_title(first)
+        second_key = core.normalize_title(second)
+        self.assertEqual("", first_key)
+        self.assertEqual("", second_key)
+        self.assertTrue(core._similar_title(first_key, second_key))
+        self.assertFalse(tg_push.near_identical_title(first, second))
+
+    def test_near_identical_notice_rewrite_is_still_recognized(self):
+        first = "방콕국제공항공사운영정보공지"
+        second = "방콕국제공항공사운영정보통지"
+        self.assertFalse(tg_push.same_event(tg_push.tokens(first), tg_push.tokens(second)))
+        self.assertTrue(tg_push.near_identical_title(first, second))
+
+
+class AtomicPushLock(unittest.TestCase):
+    def test_lock_is_exclusive_and_keeps_a_stable_file_after_release(self):
+        directory = Path(tempfile.mkdtemp())
+        lock_path = directory / "tg-push.lock"
+        child_code = (
+            "import sys; from pathlib import Path; "
+            "sys.path.insert(0, sys.argv[2]); "
+            "from deploy import tg_push; "
+            "tg_push.LOCK_FILE = Path(sys.argv[1]); "
+            "print('attempting', flush=True); "
+            "ok = tg_push.lock(); "
+            "print('acquired' if ok else 'not-acquired', flush=True); "
+            "tg_push.unlock(); sys.exit(0 if ok else 2)"
+        )
+        with patch.object(tg_push, "LOCK_FILE", lock_path):
+            self.assertTrue(tg_push.lock())
+            inode = lock_path.stat().st_ino
+            process = subprocess.Popen(
+                [sys.executable, "-c", child_code, str(lock_path), ROOT],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            )
+            pipe = process.stdout
+            assert pipe is not None
+            try:
+                self.assertEqual("attempting", pipe.readline().strip())
+                ready, _, _ = select.select([pipe], [], [], 0.1)
+                self.assertFalse(ready)
+            finally:
+                tg_push.unlock()
+                stdout, stderr = process.communicate(timeout=2)
+            self.assertEqual(0, process.returncode, stderr)
+            self.assertEqual(["acquired"], stdout.strip().splitlines())
+            self.assertTrue(lock_path.exists())
+            self.assertEqual(inode, lock_path.stat().st_ino)
+            self.assertTrue(tg_push.lock())
+            tg_push.unlock()
+
+    def test_outbox_entrypoint_refuses_to_drain_when_publish_lock_is_busy(self):
+        with tempfile.TemporaryDirectory() as outbox:
+            with patch.object(sys, "argv", ["tg_push.py", "--drain-outbox", outbox]), \
+                    patch.object(tg_push, "lock", return_value=False) as publish_lock, \
+                    patch.object(tg_push, "connect") as connect, \
+                    patch.object(tg_push, "drain_outbox", return_value=(0, 0)) as drain:
+                tg_push.main()
+        publish_lock.assert_called_once()
+        connect.assert_not_called()
+        drain.assert_not_called()
+
+    def test_agent_json_entrypoint_refuses_to_post_when_publish_lock_is_busy(self):
+        with tempfile.TemporaryDirectory() as directory:
+            parts = Path(directory) / "parts.json"
+            parts.write_text("{}", encoding="utf-8")
+            with patch.object(sys, "argv", ["tg_push.py", "--agent-json", str(parts)]), \
+                    patch.object(tg_push, "lock", return_value=False) as publish_lock, \
+                    patch.object(tg_push, "connect") as connect, \
+                    patch.object(tg_push, "post_parts", return_value=(True, "")) as post:
+                tg_push.main()
+        publish_lock.assert_called_once()
+        connect.assert_not_called()
+        post.assert_not_called()
+
+    def test_lock_path_error_fails_closed(self):
+        lock_path = Path(tempfile.mkdtemp()) / "missing" / "tg-push.lock"
+        with patch.object(tg_push, "LOCK_FILE", lock_path):
+            self.assertFalse(tg_push.lock())
 
 
 if __name__ == "__main__":

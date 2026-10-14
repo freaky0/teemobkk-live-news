@@ -25,6 +25,7 @@ Environment (systemd EnvironmentFile, never on the command line):
 from __future__ import annotations
 
 import argparse
+import fcntl
 import html
 import json
 import logging
@@ -35,6 +36,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from difflib import SequenceMatcher
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -58,6 +60,7 @@ BOT_API = "https://api.telegram.org/bot%s/%s"
 STATE_TABLE = "tg_posted"
 POST_COMPARISON_WINDOW_MINUTES = 5
 LOCK_FILE = Path(os.environ.get("TG_LOCK_FILE") or (Path(tempfile.gettempdir()) / "teemo-tg-push.lock"))
+_LOCK_FD: int | None = None
 LINK_CHARS = 4096
 
 # Stories that are technically "important" by score but are noise in a channel: tick-by-tick price
@@ -427,6 +430,22 @@ def same_event(one: set[str], other: set[str]) -> bool:
         return False
     union = len(one) + len(other) - shared
     return shared >= 3 or (union and shared / union >= 0.5)
+
+
+def likely_same_event(one: set[str], other: set[str]) -> bool:
+    """Require several shared identifiers and substantial headline overlap."""
+    if not one or not other:
+        return False
+    shared = min(_shared_tokens(one, other), len(one), len(other))
+    union = len(one) + len(other) - shared
+    return shared >= 3 and union > 0 and shared / union >= 0.5
+
+
+def near_identical_title(one: str, other: str) -> bool:
+    """Catch a direct headline rewrite despite differences in tokenization."""
+    left = core.normalize_title(one or "")
+    right = core.normalize_title(other or "")
+    return bool(left and right and SequenceMatcher(None, left, right).ratio() >= 0.90)
 
 
 # ----------------------------------------------------------------------------- text
@@ -819,11 +838,26 @@ def post_parts(connection: sqlite3.Connection, parts: dict[str, Any],
         return False, "no title"
     if is_single_alt_notice(item):
         return False, "altcoin-noise"
+    recent_rows = posted(connection, POST_COMPARISON_WINDOW_MINUTES)
+    event_rows = posted(connection, EVENT_WINDOW_MINUTES)
+    source_key = core.normalize_title(str(item.get("title") or title))
+    if source_key and any(core._similar_title(source_key, str(row["title_key"] or ""))
+                          for row in recent_rows
+                          if "title_key" in row.keys() and row["title_key"]):
+        return False, "duplicate-source-title"
+    candidate_sig = tokens(title)
+    for row in event_rows:
+        previous_title = str(row["title"] or "")
+        stamp = row["posted_at"] if "posted_at" in row.keys() else ""
+        if near_identical_title(title, previous_title):
+            return False, "duplicate-published-title"
+        if recently_posted(stamp, now) and \
+                likely_same_event(candidate_sig, tokens(previous_title)):
+            return False, "same-event"
     if jev_gate.MODE == "live":
-        recent_rows = posted(connection, POST_COMPARISON_WINDOW_MINUTES)
         recent_titles = [str(row["title"] or "") for row in recent_rows if str(row["title"] or "")]
         try:
-            batch = jev_gate.evaluate([item], recent_titles, now)
+            batch = jev_gate.evaluate([{**item, "title": title}], recent_titles, now)
         except Exception as exc:
             logging.warning("outbox JEV error; refusing to post %s: %s", link, str(exc)[:120])
             return False, "jev-unavailable"
@@ -945,6 +979,7 @@ def tick(connection: sqlite3.Connection, now: datetime | None = None, limit: int
     now = now or datetime.now(timezone.utc)
     items = candidates(connection, WINDOW_HOURS)
     recent = posted(connection, POST_COMPARISON_WINDOW_MINUTES)
+    event_recent = posted(connection, EVENT_WINDOW_MINUTES)
     jev_items: list[dict[str, Any]] = []
     for candidate in items:
         if len(jev_items) >= jev_gate.BATCH_SIZE:
@@ -956,6 +991,7 @@ def tick(connection: sqlite3.Connection, now: datetime | None = None, limit: int
         if not ok:
             continue
         probe = dict(candidate)
+        probe["title"] = str(candidate.get("title_ko") or candidate.get("title") or "")
         probe["_age_minutes"] = age_minutes(candidate, now)
         jev_items.append(probe)
     jev_batch = jev_gate.evaluate(
@@ -971,7 +1007,8 @@ def tick(connection: sqlite3.Connection, now: datetime | None = None, limit: int
             logging.info("JEV evaluated %d candidates (%s)", len(jev_batch.decisions), jev_batch.run_id)
     keys = [row["title_key"] or "" for row in recent]
     keep: set[str] = {row["link"] for row in recent}
-    events = [(row["posted_at"], tokens(row["title"] or "")) for row in recent]
+    events = [(row["posted_at"], tokens(row["title"] or "")) for row in event_recent]
+    tick_titles: list[str] = [str(row["title"] or "") for row in event_recent if row["title"]]
     # Keep signatures for candidates seen in this tick too. A candidate that is skipped because it
     # duplicates an older post must still block the next rewrite of the same event; otherwise the
     # second wording can slip through one minute later.
@@ -993,8 +1030,9 @@ def tick(connection: sqlite3.Connection, now: datetime | None = None, limit: int
         if not ok:
             logging.info("skip (%s): %s", why, (item.get("title") or "")[:70])
             continue
-        title_now = str(item.get("title") or "")
-        key = core.normalize_title(title_now)
+        source_title = str(item.get("title") or "")
+        title_now = str(item.get("title_ko") or source_title)
+        key = core.normalize_title(source_title)
         sig = tokens(title_now)
         jev_decision = jev_batch.decisions.get(link)
         if jev_decision and jev_gate.MODE == "live" and jev_gate.should_block_duplicate(
@@ -1008,10 +1046,14 @@ def tick(connection: sqlite3.Connection, now: datetime | None = None, limit: int
             tick_events.append(sig)
             continue
         if key and any(core._similar_title(key, old) for old in keys if old):
-            logging.info("skip (duplicate of an earlier post): %s", title_now[:70])
+            logging.info("skip (duplicate of an earlier source title): %s", title_now[:70])
             tick_events.append(sig)
             continue
-        if any(same_event(sig, old) for old in tick_events):
+        if any(near_identical_title(title_now, old_title) for old_title in tick_titles):
+            logging.info("skip (near-identical published title): %s", title_now[:70])
+            tick_events.append(sig)
+            continue
+        if any(likely_same_event(sig, old) for old in tick_events):
             logging.info("skip (same story as an earlier candidate/post): %s", title_now[:70])
             tick_events.append(sig)
             continue
@@ -1046,6 +1088,23 @@ def tick(connection: sqlite3.Connection, now: datetime | None = None, limit: int
         if item.get("channel_pick") and str(item.get("pick_note") or "").strip():
             # A pick carries the operator's own sentence; that outranks a written note.
             note = str(item["pick_note"]).strip()[:NOTE_CHARS]
+        tick_events.pop()  # Replace the source/persisted signature with the final rendered title.
+        final_sig = tokens(title)
+        if any(near_identical_title(title, old_title) for old_title in tick_titles):
+            logging.info("skip (near-identical rendered title): %s", title[:70])
+            tick_events.append(final_sig)
+            if title.strip():
+                tick_titles.append(title)
+            continue
+        if any(likely_same_event(final_sig, old) for old in tick_events):
+            logging.info("skip (same event after rendering): %s", title[:70])
+            tick_events.append(final_sig)
+            if title.strip():
+                tick_titles.append(title)
+            continue
+        tick_events.append(final_sig)
+        if title.strip():
+            tick_titles.append(title)
         attach_original_link(connection, item)
         text = render(item, title, body, note, tags)
         problems = validate_post(text)
@@ -1066,7 +1125,7 @@ def tick(connection: sqlite3.Connection, now: datetime | None = None, limit: int
                         "tag": pick_tag(item), "title": title, "recap": recap})
             keep.add(link)
             keys.append(key)
-            events.append((now.isoformat(), sig))
+            events.append((now.isoformat(), final_sig))
             if recap:
                 last_recap = now
             sent += 1
@@ -1093,7 +1152,7 @@ def tick(connection: sqlite3.Connection, now: datetime | None = None, limit: int
         connection.commit()
         keep.add(link)
         keys.append(key)
-        events.append((now.isoformat(), sig))
+        events.append((now.isoformat(), final_sig))
         if recap:
             last_recap = now
         last = now
@@ -1122,7 +1181,7 @@ def replay(connection: sqlite3.Connection, hours: int, step_seconds: int = 60) -
     by_time = sorted(items, key=lambda item: item.get("published_at") or "")
     taken: set[str] = set()
     keys: list[str] = []
-    events: list[tuple[str, set[str]]] = []
+    events: list[tuple[str, set[str], str]] = []
     last: datetime | None = None
     last_recap: datetime | None = None
     hour_count = 0
@@ -1144,16 +1203,23 @@ def replay(connection: sqlite3.Connection, hours: int, step_seconds: int = 60) -
             if not ok:
                 taken.add(link)
                 continue
-            key = core.normalize_title(item.get("title") or "")
-            sig = tokens(str(item.get("title") or ""))
+            key = core.normalize_title(str(item.get("title") or ""))
+            rendered_title = str(item.get("title_ko") or item.get("title") or "")
+            sig = tokens(rendered_title)
             if key and any(core._similar_title(key, old) for old in keys if old):
                 taken.add(link)
                 keys.append(key)
-                events.append((now.isoformat(), sig))
+                events.append((now.isoformat(), sig, rendered_title))
                 continue
-            if any(same_event(sig, old) for stamp, old in events if recently_posted(stamp, now)):
+            if any(near_identical_title(rendered_title, old_title)
+                   for stamp, _old_sig, old_title in events if recently_posted(stamp, now)):
                 taken.add(link)
-                events.append((now.isoformat(), sig))
+                events.append((now.isoformat(), sig, rendered_title))
+                continue
+            if any(likely_same_event(sig, old_sig)
+                   for stamp, old_sig, _old_title in events if recently_posted(stamp, now)):
+                taken.add(link)
+                events.append((now.isoformat(), sig, rendered_title))
                 continue
             recap = is_recap(item.get("title") or "")
             if recap and last_recap is not None and not item.get("channel_pick") and \
@@ -1169,36 +1235,53 @@ def replay(connection: sqlite3.Connection, hours: int, step_seconds: int = 60) -
                     continue
             taken.add(link)
             keys.append(key)
-            events.append((now.isoformat(), sig))
+            events.append((now.isoformat(), sig, rendered_title))
             if recap:
                 last_recap = now
             last = now
             hour_count += 1
             out.append({"at": now.astimezone(ICT).strftime("%H:%M"), "tag": pick_tag(item),
                         "source": item.get("source"), "priority": item.get("priority"),
-                        "recap": recap, "title": (item.get("title") or "")[:80]})
+                        "recap": recap, "title": rendered_title[:80]})
     return out
 
 
 def lock() -> bool:
+    """Acquire an exclusive process lock shared by every Telegram publish path."""
+    global _LOCK_FD
+    if _LOCK_FD is not None:
+        return False
+    fd = None
+    flags = os.O_CREAT | os.O_RDWR | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
     try:
-        stamp = LOCK_FILE.read_text().strip()
-        if time.time() - float(stamp) < 180:
-            return False
-    except (OSError, ValueError):
-        pass
-    try:
-        LOCK_FILE.write_text(str(time.time()))
-    except OSError:
-        return True  # an unwritable /tmp must not stop the channel
+        fd = os.open(str(LOCK_FILE), flags, 0o600)
+        fcntl.flock(fd, fcntl.LOCK_EX)
+    except BlockingIOError:
+        if fd is not None:
+            os.close(fd)
+        return False
+    except OSError as exc:
+        if fd is not None:
+            os.close(fd)
+        logging.error("cannot acquire Telegram publish lock: %s", str(exc)[:120])
+        return False
+    _LOCK_FD = fd
     return True
 
 
 def unlock() -> None:
+    """Release the kernel lock; keep the file so every process locks the same inode."""
+    global _LOCK_FD
+    fd = _LOCK_FD
+    _LOCK_FD = None
+    if fd is None:
+        return
     try:
-        LOCK_FILE.unlink()
-    except OSError:
-        pass
+        fcntl.flock(fd, fcntl.LOCK_UN)
+    except OSError as exc:
+        logging.error("cannot release Telegram publish lock: %s", str(exc)[:120])
+    finally:
+        os.close(fd)
 
 
 def main() -> None:
@@ -1207,7 +1290,6 @@ def main() -> None:
     parser.add_argument("--replay", type=int, metavar="HOURS",
                         help="walk a past window through the same rules and print the result")
     parser.add_argument("--limit", type=int, default=0, help="stop after N messages")
-    parser.add_argument("--skip-lock", action="store_true")
     parser.add_argument("--agent-json", metavar="PATH",
                         help="post one story the VPS agent wrote: JSON with link, title, body, "
                              "note, tags - rendered here, so both pipelines write one shape")
@@ -1231,8 +1313,24 @@ def main() -> None:
         print("shape: %s" % ("ok" if not problems else "broken"))
         sys.exit(1 if problems else 0)
 
-    connection = connect()
+    if args.replay:
+        connection = connect()
+        try:
+            rows = replay(connection, args.replay)
+        finally:
+            connection.close()
+        print("replay %dh: %d messages" % (args.replay, len(rows)))
+        for row in rows:
+            print("  %s %-14s %s ★%s  %s" % (row["at"], row["tag"], row["source"],
+                                             row["priority"], row["title"]))
+        return
+
+    if not lock():
+        logging.error("publish lock unavailable; refusing to send")
+        return
+    connection = None
     try:
+        connection = connect()
         if args.drain_outbox:
             posted, held = drain_outbox(connection, Path(args.drain_outbox))
             print("outbox: %d posted, %d held" % (posted, held))
@@ -1245,29 +1343,20 @@ def main() -> None:
                 return
             logging.error("agent post refused: %s", detail)
             sys.exit(2)
-        if args.replay:
-            rows = replay(connection, args.replay)
-            print("replay %dh: %d messages" % (args.replay, len(rows)))
-            for row in rows:
-                print("  %s %-14s %s ★%s  %s" % (row["at"], row["tag"], row["source"],
-                                                 row["priority"], row["title"]))
-            return
-        if not args.skip_lock and not lock():
-            logging.info("another run is in progress")
-            return
+        rows = tick(connection, limit=args.limit)
+    finally:
         try:
-            rows = tick(connection, limit=args.limit)
+            if connection is not None:
+                connection.close()
         finally:
             unlock()
-        if args.dry_run:
-            print("dry run: %d messages" % len(rows))
-            for row in rows:
-                print("-" * 60)
-                for problem in row.get("problems") or ():
-                    print("PROBLEM:", problem)
-                print(row["text"])
-    finally:
-        connection.close()
+    if args.dry_run:
+        print("dry run: %d messages" % len(rows))
+        for row in rows:
+            print("-" * 60)
+            for problem in row.get("problems") or ():
+                print("PROBLEM:", problem)
+            print(row["text"])
 
 
 if __name__ == "__main__":
