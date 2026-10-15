@@ -16,7 +16,8 @@ class WebTests(TestCase):
             self.assertEqual(response.status_code, 200, url)
             self.assertContains(response, "TEEMOBKK")
             self.assertIn("script-src 'self'", response.headers["Content-Security-Policy"])
-        self.assertContains(self.client.get("/accounts/login/"), "Google 로그인 연결 전")
+        self.assertContains(self.client.get("/accounts/login/"), "Google 인증 설정 전")
+        self.assertContains(self.client.get("/accounts/login/"), "이메일로 가입·로그인")
         self.assertEqual(self.client.post("/accounts/google/login/").status_code, 503)
     def test_anonymous_cannot_write(self):
         before = Post.objects.count()

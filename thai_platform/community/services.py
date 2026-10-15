@@ -13,6 +13,9 @@ from .serializers import (CommentInputSerializer, PostInputSerializer,
 def require_active(user):
     if not user or not user.is_authenticated or not user.is_active:
         raise PermissionDenied('An active signed-in account is required.')
+    profile = getattr(user, 'membership', None)
+    if profile is not None and not profile.is_complete:
+        raise PermissionDenied('Complete nickname and consent onboarding first.')
 
 
 def require_staff(user):

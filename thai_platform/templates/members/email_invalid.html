@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<section class="editor panel auth-card"><h1>인증 링크를 사용할 수 없습니다.</h1><p>만료되었거나 이미 사용한 링크입니다. 신청한 브라우저가 다른 경우에도 사용할 수 없습니다.</p><a class="btn primary" href="{% url 'email-request' %}">새 인증 메일 요청</a></section>{% endblock %}

@@ -425,6 +425,18 @@ socialaccount = [
 ]
 
 [[package]]
+name = "django-sesame"
+version = "3.2.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c3/9c/43e3b6981e864f23d438eb07f691c6d005c07d5d6ef149f367d0e4abf78b/django_sesame-3.2.5.tar.gz", hash = "sha256:eeb662069ea74d635ab11e0f93446c8a7c187f41b0788ddc3c6c72c6f8db2eb1", size = 17583, upload-time = "2026-10-02T20:36:28.941Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/32/35/02e4f7602e56427a9bcb9a8445c1b9d18d4e4b0c5f751daef8dda5b79232/django_sesame-3.2.5-py3-none-any.whl", hash = "sha256:dfca2b0e0d480408894d9d0423109dc659d186e1946184f62506eeda2b4377c1", size = 20267, upload-time = "2026-10-02T20:36:27.906Z" },
+]
+
+[[package]]
 name = "djangorestframework"
 version = "3.17.2"
 source = { registry = "https://pypi.org/simple" }
@@ -984,6 +996,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "django" },
     { name = "django-allauth", extra = ["socialaccount"] },
+    { name = "django-sesame" },
     { name = "djangorestframework" },
     { name = "pillow" },
 ]
@@ -998,6 +1011,7 @@ dev = [
 requires-dist = [
     { name = "django", specifier = ">=5.2,<5.3" },
     { name = "django-allauth", extras = ["socialaccount"], specifier = ">=65,<66" },
+    { name = "django-sesame", specifier = ">=3.2.4,<4" },
     { name = "djangorestframework", specifier = ">=3.17.2,<3.18" },
     { name = "pillow", specifier = ">=11,<13" },
 ]

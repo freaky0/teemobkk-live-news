@@ -59,6 +59,10 @@ DB 권한·접근 방식은 실제 운영 배포 전에 별도로 검토해야 �
 
 ## 인증 경계
 
+이메일 인증 링크 또는 Google 인증을 선택합니다. 이메일 링크는 10분·1회·신청 브라우저 세션에 제한합니다. 인증 뒤 닉네임과 문서 동의를 완료해야 게시할 수 있습니다. 이메일은 본인 계정에서만 표시합니다.
+
+상세 계약·준비 상태·검사와 공식 근거는 [members/AUTH-DESIGN.md](members/AUTH-DESIGN.md)에 있습니다.
+
 실제 Google 로그인은 `POST_GOOGLE_CLIENT_ID`와 `POST_GOOGLE_CLIENT_SECRET`을 안전한 서버 환경에 설정한 뒤 사용할 수 있습니다.
 값을 채팅·소스·일반 로그에 넣지 마세요. Google OAuth 동의 화면과 정확한 리디렉션 URI 설정이 필요합니다.
 콜백은 최종 서비스 원점의 `/accounts/google/login/callback/`입니다. 설정 전에는 Google 로그인 경로를 503으로 닫습니다.
@@ -88,11 +92,11 @@ API에서 요청을 반복 전송하면 중복 생성될 수 있습니다. 멱�
 ```sh
 POST_LOCAL_DEVELOPMENT=1 uv run python manage.py check
 POST_LOCAL_DEVELOPMENT=1 uv run python manage.py makemigrations --check --dry-run
-POST_LOCAL_DEVELOPMENT=1 uv run python manage.py test community.tests_api community.tests_web community.tests_news
+POST_LOCAL_DEVELOPMENT=1 uv run python manage.py test members.tests community.tests_api community.tests_web community.tests_news
 uv run pip-audit --local --progress-spinner off
 node --check static/service.js
 uv run playwright install chromium
-POST_LOCAL_DEVELOPMENT=1 POST_RUN_BROWSER_TESTS=1 uv run python manage.py test community.tests_browser
+POST_LOCAL_DEVELOPMENT=1 POST_RUN_BROWSER_TESTS=1 uv run python manage.py test members.tests_browser community.tests_browser
 ```
 
 이미 설치된 Chromium을 사용하려면 `POST_BROWSER_EXECUTABLE`에 실행 파일 경로를 설정하세요.
@@ -100,7 +104,7 @@ POST_LOCAL_DEVELOPMENT=1 POST_RUN_BROWSER_TESTS=1 uv run python manage.py test c
 
 ## 아직 미완료
 
-Google 실계정 인증 확인, 약관·개인정보 동의 온보딩, 탈퇴·계정 복구, 이미지 서버 업로드, 가이드 CMS, 앱용 인증, 푸시, 백업 복구 실습, 운영 인프라·도메인·배포.
+Google 실계정 인증 확인, 실제 SMTP 발송, 약관·개인정보 문서 확정, 외부 HTTPS 검토 주소, 탈퇴·계정 복구, 이미지 서버 업로드, 가이드 CMS, 앱용 인증, 푸시, 백업 복구 실습, 운영 인프라·도메인·배포.
 기존 기사·회원 데이터를 자동으로 가져오지 않습니다. 예시 회원·글을 개발 DB에 자동 생성하지 않습니다.
 브라우저 로컬 저장소 초안은 같은 기기·원점에서만 복구됩니다. 동시 편집 충돌·초안 서버 동기화는 후속 범위입니다.
 Django 관리자 화면은 기반 관리 도구입니다. 별도 A안 운영자 대시보드 전체를 구현한 것은 아닙니다.
