@@ -20,6 +20,11 @@ class RestrictedPreviewMiddleware(MiddlewareMixin):
             if email not in settings.POST_PREVIEW_ALLOWED_EMAILS:
                 # Same response as an accepted request; no account or mail is created.
                 return redirect('email-sent')
+        if settings.GOOGLE_CONFIGURED and request.path in {
+            '/accounts/google/login/', '/accounts/google/login/callback/',
+        }:
+            # Allauth owns OAuth state/CSRF checks. Do not open other account routes.
+            return None
         if request.path in self.public_paths or request.path.startswith('/static/'):
             return None
         if request.user.is_authenticated and request.user.is_active:
