@@ -1,11 +1,15 @@
 from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
-from community import web
+from community import web, news_views
 urlpatterns = [
     path("health/", lambda request: JsonResponse({"status": "ok", "service": "teemobkk-post"})),
     path("admin/", admin.site.urls),
     path("accounts/", include("allauth.urls")),
+    path("api/v1/news/", news_views.api_list, name="news-api-list"),
+    path("api/v1/news/<str:article_id>/", news_views.api_detail, name="news-api-detail"),
+    path("news/", news_views.listing, name="news-list"),
+    path("news/<str:article_id>/", news_views.detail, name="news-detail"),
     path("api/v1/", include("community.api")),
     path("", web.home, name="home"),
     path("community/", web.post_list, name="post-list"),

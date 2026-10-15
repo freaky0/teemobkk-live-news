@@ -5,7 +5,7 @@ document.querySelector('[data-open-report]')?.addEventListener('click',e=>{trigg
 document.querySelector('[data-close-report]')?.addEventListener('click',()=>dialog.close());
 dialog?.addEventListener('close',()=>trigger?.focus());
 document.querySelectorAll('form[data-confirm]').forEach(f=>f.addEventListener('submit',e=>{if(!confirm(f.dataset.confirm))e.preventDefault();}));
-const listPage=location.pathname==='/'||location.pathname==='/community/';const scrollKey='post-scroll:'+location.pathname+location.search;
+const listPage=location.pathname==='/'||location.pathname==='/community/'||location.pathname==='/news/';const scrollKey='post-scroll:'+location.pathname+location.search;
 function remember(){if(listPage)try{sessionStorage.setItem(scrollKey,String(scrollY));}catch{}}
 window.addEventListener('pagehide',remember);document.addEventListener('click',e=>{if(e.target.closest('a[href]'))remember();});
 window.addEventListener('pageshow',e=>{if(listPage&&!e.persisted)try{requestAnimationFrame(()=>scrollTo(0,Number(sessionStorage.getItem(scrollKey)||0)));}catch{}});

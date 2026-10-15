@@ -27,6 +27,7 @@ AUTH_PASSWORD_VALIDATORS = [{"NAME": "django.contrib.auth.password_validation.Us
 LANGUAGE_CODE = "ko-kr"
 TIME_ZONE = "Asia/Bangkok"
 USE_TZ = True
+POST_NEWS_DB = os.environ.get("POST_NEWS_DB", "")
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"

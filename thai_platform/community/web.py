@@ -32,7 +32,13 @@ def back_url(request):
     return reverse("post-list")
 
 def home(request):
-    return render(request, "community/home.html", {"posts": published()[:4]})
+    from . import news
+    context = {"posts": published()[:4]}
+    try:
+        context["news_page"] = news.list_articles(page_size=5)
+    except news.NewsUnavailable:
+        context["news_error"] = "뉴스를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요."
+    return render(request, "community/home.html", context)
 
 def post_list(request):
     qs = published()
