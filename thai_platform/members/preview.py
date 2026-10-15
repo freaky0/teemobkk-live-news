@@ -25,6 +25,11 @@ class RestrictedPreviewMiddleware(MiddlewareMixin):
         }:
             # Allauth owns OAuth state/CSRF checks. Do not open other account routes.
             return None
+        if request.method in {'GET', 'HEAD'} and request.path in {
+            '/accounts/policy/terms/', '/accounts/policy/privacy/',
+        }:
+            # Publish only the two read-only notices, not the account namespace.
+            return None
         if request.path in self.public_paths or request.path.startswith('/static/'):
             return None
         if request.user.is_authenticated and request.user.is_active:

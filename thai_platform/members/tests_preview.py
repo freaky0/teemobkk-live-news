@@ -16,6 +16,25 @@ from .models import MemberProfile, EmailChallenge
     DEFAULT_FROM_EMAIL='test@example.invalid',
 )
 class RestrictedPreviewTests(TestCase):
+    def test_policy_pages_are_readable_before_authentication(self):
+        for kind in ['terms', 'privacy']:
+            for method in ['get', 'head']:
+                with self.subTest(kind=kind, method=method):
+                    response=getattr(self.client, method)('/accounts/policy/'+kind+'/')
+                    self.assertEqual(response.status_code,200)
+                    self.assertIn('no-store',response['Cache-Control'])
+                    self.assertEqual(response['X-Robots-Tag'],'noindex, nofollow, noarchive')
+
+    def test_policy_exception_does_not_open_other_paths_or_methods(self):
+        for path in ['/accounts/policy/unknown/', '/accounts/policy/privacy/extra/',
+                     '/accounts/policy/terms/edit/', '/accounts/profile/']:
+            with self.subTest(path=path):
+                self.assertRedirects(self.client.get(path),'/accounts/login/',fetch_redirect_response=False)
+        for kind in ['terms','privacy']:
+            self.assertRedirects(self.client.post('/accounts/policy/'+kind+'/'),'/accounts/login/',fetch_redirect_response=False)
+        self.assertFalse(get_user_model().objects.exists())
+        self.assertFalse(EmailChallenge.objects.exists())
+
     def test_all_content_families_are_closed_to_anonymous_users(self):
         for path in ['/', '/community/', '/community/new/', '/news/', '/news/any/', '/admin/', '/health/']:
             with self.subTest(path=path):
