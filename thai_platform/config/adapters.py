@@ -20,10 +20,19 @@ class ClosedAccountAdapter(DefaultAccountAdapter):
         return '/accounts/profile/' if profile and profile.is_complete else '/accounts/onboarding/'
 
 class GoogleOnlyAdapter(DefaultSocialAccountAdapter):
+    def preview_identity_allowed(self,sociallogin):
+        # Provider verification is performed by allauth, not by this allowlist.
+        # https://docs.allauth.org/en/latest/socialaccount/adapter.html
+        if not settings.POST_RESTRICTED_PREVIEW:
+            return True
+        verified=[a.email.strip().casefold() for a in sociallogin.email_addresses if a.verified]
+        if len(verified)!=1 or verified[0] not in settings.POST_PREVIEW_ALLOWED_EMAILS:
+            return False
+        return not sociallogin.is_existing or sociallogin.user.email.strip().casefold()==verified[0]
     def is_open_for_signup(self,request,sociallogin):
-        return settings.GOOGLE_CONFIGURED and settings.POST_SIGNUP_ENABLED and sociallogin.account.provider=='google'
+        return settings.GOOGLE_CONFIGURED and settings.POST_SIGNUP_ENABLED and sociallogin.account.provider=='google' and self.preview_identity_allowed(sociallogin)
     def pre_social_login(self,request,sociallogin):
-        if sociallogin.account.provider!='google' or sociallogin.state.get('process')=='connect':
+        if sociallogin.account.provider!='google' or sociallogin.state.get('process')=='connect' or not self.preview_identity_allowed(sociallogin):
             raise ImmediateHttpResponse(render(request,'members/provider_error.html',status=403))
         if sociallogin.is_existing:
             return
