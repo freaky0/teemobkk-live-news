@@ -85,7 +85,17 @@ if POST_POLICY_APPROVED:
         POST_POLICY_TEXTS[_kind] = _file.read_text()
     if POST_TERMS_VERSION.startswith("draft") or POST_PRIVACY_VERSION.startswith("draft"):
         raise ImproperlyConfigured("Approved policies need non-draft version identifiers.")
-POST_SIGNUP_ENABLED = LOCAL_DEVELOPMENT or POST_POLICY_APPROVED
+# Restricted previews permit only explicitly invited, verified identities.
+POST_RESTRICTED_PREVIEW = os.environ.get("POST_RESTRICTED_PREVIEW") == "1"
+POST_PREVIEW_ALLOWED_EMAILS = frozenset(e.strip().casefold() for e in os.environ.get("POST_PREVIEW_ALLOWED_EMAILS", "").split(",") if e.strip())
+if POST_RESTRICTED_PREVIEW and not POST_PREVIEW_ALLOWED_EMAILS:
+    raise ImproperlyConfigured("Restricted previews require an explicit email allowlist.")
+if POST_RESTRICTED_PREVIEW:
+    MIDDLEWARE.append("members.preview.RestrictedPreviewMiddleware")
+POST_SIGNUP_ENABLED = LOCAL_DEVELOPMENT or POST_POLICY_APPROVED or POST_RESTRICTED_PREVIEW
+# Enable only behind the loopback-bound, trusted reverse proxy.
+if os.environ.get("POST_TRUST_PROXY") == "1":
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 POST_MAIL_ENABLED = os.environ.get("POST_MAIL_ENABLED") == "1"
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend" if POST_MAIL_ENABLED or not LOCAL_DEVELOPMENT else "django.core.mail.backends.locmem.EmailBackend"
 EMAIL_HOST = os.environ.get("POST_EMAIL_HOST", "")
