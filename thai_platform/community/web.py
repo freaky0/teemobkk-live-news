@@ -8,11 +8,11 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.http import Http404
 from rest_framework.exceptions import PermissionDenied as APIPermissionDenied, NotFound as APINotFound
 from django.urls import reverse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.cache import never_cache
 from rest_framework.exceptions import ValidationError as APIValidationError
 from .forms import CATEGORIES, REGIONS, CommentForm, PostForm, ReportForm
-from .models import Post
+from .models import Notification, Post
 from . import services
 
 def call_service(name, *args):
@@ -152,6 +152,29 @@ def post_delete(request, pk):
     call_service("delete_post", request.user, post)
     messages.success(request, "질문을 삭제했습니다.")
     return redirect("post-list")
+
+@login_required
+@require_GET
+def notifications_page(request):
+    if not request.user.is_active:
+        raise PermissionDenied
+    items = Notification.objects.filter(recipient=request.user).select_related('post').order_by('-created_at', '-pk')
+    response = render(request, 'community/notifications.html', {'notifications': items[:50]})
+    response['Cache-Control'] = 'no-store, private'
+    return response
+
+
+@login_required
+@require_POST
+def notification_read(request, pk):
+    if not request.user.is_active:
+        raise PermissionDenied
+    item = get_object_or_404(Notification, pk=pk, recipient=request.user)
+    if not item.is_read:
+        item.is_read = True
+        item.save(update_fields=['is_read', 'updated_at'])
+    return redirect('notifications')
+
 
 @login_required
 @require_POST

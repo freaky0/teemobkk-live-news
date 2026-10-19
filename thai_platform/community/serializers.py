@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Comment, Post, Report
+from .models import Comment, Notification, Post, Report
 
 
 class StrictInputMixin:
@@ -62,6 +62,13 @@ class ReportInputSerializer(StrictInputMixin, serializers.Serializer):
 
 class ReportResolutionSerializer(StrictInputMixin, serializers.Serializer):
     status = serializers.ChoiceField(choices=[Report.Status.RESOLVED, Report.Status.DISMISSED])
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'kind', 'post', 'comment', 'report', 'is_read', 'created_at']
+        read_only_fields = fields
 
 
 class ReportSerializer(serializers.ModelSerializer):

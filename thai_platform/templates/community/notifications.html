@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}알림 · TEEMOBKK's POST{% endblock %}
+{% block content %}
+<section class="editor">
+  <nav class="breadcrumb" aria-label="현재 위치"><a href="{% url 'post-list' %}">커뮤니티</a><span aria-hidden="true">›</span><span aria-current="page">알림</span></nav>
+  <div class="heading"><h1>알림</h1><p>최근 알림 50개까지 표시합니다. 신고 내용과 답변 본문은 알림에 포함하지 않습니다.</p></div>
+  {% if notifications %}<ul class="activity-list">
+    {% for item in notifications %}<li class="panel">
+      <p>{% if item.kind == 'reply' %}내 질문에 새 답변이 등록되었습니다.{% elif item.kind == 'moderation_report' %}새 신고가 접수되었습니다.{% else %}내 신고의 검토 상태가 변경되었습니다.{% endif %}</p>
+      <time datetime="{{ item.created_at|date:'c' }}">{{ item.created_at|date:'Y-m-d H:i' }}</time>
+      {% if item.kind == 'moderation_report' and user.is_staff and item.report_id %}<a class="btn" href="{% url 'admin:community_report_change' item.report_id %}">운영 화면</a>
+      {% elif item.post_id %}<a class="btn" href="{% url 'post-detail' item.post_id %}">관련 질문 보기</a>{% endif %}
+      {% if not item.is_read %}<form method="post" action="{% url 'notification-read' item.pk %}">{% csrf_token %}<button class="btn" type="submit">읽음 처리</button></form>{% else %}<span>읽음</span>{% endif %}
+    </li>{% endfor %}
+  </ul>{% else %}<p class="panel">새 알림이 없습니다.</p>{% endif %}
+</section>
+{% endblock %}

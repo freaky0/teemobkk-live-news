@@ -105,6 +105,22 @@ class Report(Timestamped):
         if self.comment_id and self.comment.post_id != self.post_id:
             raise ValidationError({'comment': 'Comment must belong to this post.'})
 
+class Notification(Timestamped):
+    class Kind(models.TextChoices):
+        REPLY = 'reply', 'Reply'
+        MODERATION_REPORT = 'moderation_report', 'New report'
+        REPORT_UPDATE = 'report_update', 'Report update'
+
+    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='community_notifications')
+    kind = models.CharField(max_length=24, choices=Kind.choices)
+    post = models.ForeignKey(Post, on_delete=models.SET_NULL, null=True, blank=True, related_name='notifications')
+    comment = models.ForeignKey(Comment, on_delete=models.SET_NULL, null=True, blank=True, related_name='notifications')
+    report = models.ForeignKey(Report, on_delete=models.SET_NULL, null=True, blank=True, related_name='notifications')
+    is_read = models.BooleanField(default=False, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at', '-pk']
+
 
 class AuditEvent(models.Model):
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)

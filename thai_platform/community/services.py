@@ -5,7 +5,7 @@ Post. Requests are not idempotency-key protected; do not blindly retry creates.
 """
 from django.db import transaction
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
-from .models import AuditEvent, Comment, Post, Report, Helpful, Bookmark
+from .models import AuditEvent, Comment, Post, Report, Helpful, Bookmark, Notification
 from django.db.models import Count, Exists, OuterRef
 from .serializers import (CommentInputSerializer, PostInputSerializer, PostResolutionSerializer, EngagementInputSerializer,
                           ReportInputSerializer, ReportResolutionSerializer)
@@ -157,6 +157,8 @@ def create_comment(user, post, data):
     post = Post.objects.select_for_update().get(pk=post.pk)
     _published(post)
     comment = Comment.objects.create(author=user, post=post, **_validate(CommentInputSerializer, data))
+    if post.author_id != user.pk and post.author.is_active:
+        Notification.objects.create(recipient=post.author, kind=Notification.Kind.REPLY, post=post, comment=comment)
     _audit(user, 'comment.create', comment)
     return comment
 
@@ -171,6 +173,9 @@ def create_report(user, post, data):
     if comment and comment.post_id != post.pk:
         raise ValidationError({'comment': 'Comment must belong to this post.'})
     report = Report.objects.create(reporter=user, post=post, **values)
+    from django.contrib.auth import get_user_model
+    for staff_user in get_user_model().objects.filter(is_active=True, is_staff=True).only('pk'):
+        Notification.objects.create(recipient=staff_user, kind=Notification.Kind.MODERATION_REPORT, post=post, report=report)
     _audit(user, 'report.create', report)
     return report
 
@@ -183,5 +188,7 @@ def resolve_report(user, report, data):
     previous = report.status
     report.status = values['status']
     report.save(update_fields=['status', 'updated_at'])
+    if previous != report.status and report.reporter.is_active:
+        Notification.objects.create(recipient=report.reporter, kind=Notification.Kind.REPORT_UPDATE, post=report.post, report=report)
     _audit(user, 'report.resolve', report, {'previous_status': previous, 'status': report.status})
     return report

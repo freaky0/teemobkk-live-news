@@ -8,8 +8,8 @@ from rest_framework.permissions import BasePermission, SAFE_METHODS
 from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
 from . import services
-from .models import Post, Report
-from .serializers import CommentSerializer, PostSerializer, ReportSerializer
+from .models import Notification, Post, Report
+from .serializers import CommentSerializer, NotificationSerializer, PostSerializer, ReportSerializer
 
 
 class CommunityPagination(PageNumberPagination):
@@ -22,6 +22,11 @@ class ActiveWritePermission(BasePermission):
     def has_permission(self, request, view):
         if request.method in SAFE_METHODS:
             return True
+        return bool(request.user.is_authenticated and request.user.is_active)
+
+
+class ActiveUserPermission(BasePermission):
+    def has_permission(self, request, view):
         return bool(request.user.is_authenticated and request.user.is_active)
 
 
@@ -120,6 +125,34 @@ class ReportViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
         return Response(ReportSerializer(report).data)
 
 
+class NotificationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [ActiveUserPermission]
+    pagination_class = CommunityPagination
+    serializer_class = NotificationSerializer
+    http_method_names = ['get', 'post', 'head', 'options']
+
+    def get_queryset(self):
+        if not self.request.user.is_authenticated:
+            return Notification.objects.none()
+        return Notification.objects.filter(recipient=self.request.user).select_related('post', 'comment', 'report')
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        response['Cache-Control'] = 'no-store, private'
+        return response
+
+    @action(detail=True, methods=['post'])
+    def read(self, request, pk=None):
+        item = self.get_object()
+        if not item.is_read:
+            item.is_read = True
+            item.save(update_fields=['is_read', 'updated_at'])
+        response = Response(NotificationSerializer(item).data)
+        response['Cache-Control'] = 'no-store, private'
+        return response
+
+
 class ActivityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     authentication_classes = [SessionAuthentication]
     pagination_class = CommunityPagination
@@ -137,6 +170,7 @@ class ActivityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
 router = DefaultRouter()
 router.register('posts', PostViewSet, basename='post')
+router.register('notifications', NotificationViewSet, basename='notification')
 router.register('activity', ActivityViewSet, basename='activity')
 router.register('reports', ReportViewSet, basename='report')
 urlpatterns = router.urls
