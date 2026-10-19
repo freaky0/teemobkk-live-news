@@ -16,11 +16,17 @@ class AuthDisclosureTests(TestCase):
                 response=self.client.get(path)
                 self.assertEqual(response.status_code,200)
                 html=response.content.decode()
-                for href in ['/accounts/policy/terms/','/accounts/policy/privacy/','mailto:freaky0@gmail.com']:
+                for href in ['/accounts/policy/terms/','/accounts/policy/privacy/','mailto:admin@teemobkk.io']:
                     self.assertContains(response,'href="'+href+'"')
                     self.assertLess(html.index('href="'+href+'"'),html.index(control))
+                self.assertContains(response,'admin@teemobkk.io')
+                self.assertNotContains(response,'freaky0@gmail.com')
                 self.assertContains(response,'운영: TeemoBKK')
                 self.assertContains(response,'https://teemobkk.io/about/')
+        response=self.client.get('/accounts/login/')
+        self.assertContains(response,'뉴스와 공개 질문은 가입 없이 읽을 수 있습니다')
+        self.assertContains(response,'질문·답변·도움 반응·스크랩은 로그인 후 이용할 수 있습니다')
+        self.assertContains(response,'현재 회원 등록은 초대 전용입니다')
 
     def test_email_requirements_do_not_conflict_with_sensitive_data_warning(self):
         for path in ['/accounts/login/','/accounts/email/','/accounts/email/confirm/','/accounts/policy/privacy/']:
@@ -65,6 +71,6 @@ class DisclosureBrowserTests(StaticLiveServerTestCase):
                     self.assertTrue(page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'))
                     page.go_back(wait_until='networkidle')
                     self.assertTrue(page.locator('#id_email').is_visible())
-            self.assertEqual(context.request.get(self.live_server_url+'/api/v1/posts/').status,403)
+            self.assertEqual(context.request.get(self.live_server_url+'/api/v1/posts/').status,200)
             self.assertEqual(errors,[])
             browser.close()

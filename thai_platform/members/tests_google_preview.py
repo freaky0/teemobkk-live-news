@@ -125,7 +125,7 @@ class GooglePreviewFlowTests(TestCase):
     def test_only_exact_oauth_endpoints_are_open(self):
         response=self.client.get('/accounts/google/login/callback/extra/')
         self.assertRedirects(response,'/accounts/login/',fetch_redirect_response=False)
-        self.assertEqual(self.client.get('/api/v1/posts/').status_code,403)
+        self.assertEqual(self.client.get('/api/v1/posts/').status_code,200)
 
     def test_get_google_start_does_not_redirect_without_confirmation(self):
         response=self.client.get('/accounts/google/login/')

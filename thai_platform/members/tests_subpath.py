@@ -63,3 +63,23 @@ class EmailLinkSubpathTests(TestCase):
 
         confirmation = self.client.get("/accounts/email/confirm/", SCRIPT_NAME="/thai")
         self.assertEqual(confirmation.status_code, 200)
+
+    def test_preview_public_reads_and_write_gate_keep_mount_prefix(self):
+        home = self.client.get("/", SCRIPT_NAME="/thai")
+        self.assertEqual(home.status_code, 200)
+        self.assertContains(home, "태국 주요 소식")
+        self.assertEqual(home["X-Robots-Tag"], "noindex, nofollow, noarchive")
+
+        community = self.client.get("/community/", SCRIPT_NAME="/thai")
+        self.assertEqual(community.status_code, 200)
+
+        news = self.client.get("/newsroom/", SCRIPT_NAME="/thai")
+        self.assertIn(news.status_code, {200, 503})
+        self.assertNotIn("/thai/accounts/login/", news.get("Location", ""))
+
+        private = self.client.get("/accounts/profile/", SCRIPT_NAME="/thai")
+        self.assertEqual(private.status_code, 302)
+        self.assertEqual(private["Location"], "/thai/accounts/login/")
+
+        write = self.client.post("/api/v1/posts/", {"title": "guest"}, SCRIPT_NAME="/thai")
+        self.assertEqual(write.status_code, 403)
