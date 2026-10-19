@@ -211,7 +211,11 @@ def hide_reported_content(user, report):
     if report.target_type == Report.TargetType.COMMENT:
         if report.comment_id is None:
             raise ValidationError({'target': 'The reported comment is no longer available.'})
-        content = Comment.objects.select_for_update().select_related('author').get(pk=report.comment_id)
+        content = Comment.objects.select_for_update().select_related('author').filter(
+            pk=report.comment_id, post_id=report.post_id
+        ).first()
+        if content is None:
+            raise ValidationError({'target': 'The reported comment cannot be verified for this post.'})
     else:
         content = Post.objects.select_for_update().select_related('author').get(pk=report.post_id)
     if content.status != Post.Status.PUBLISHED:

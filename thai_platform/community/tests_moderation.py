@@ -136,6 +136,29 @@ class ModeratorRoleTests(TestCase):
         self.assertEqual(self.client.get('/admin/community/report/').status_code, 200)
         self.assertEqual(self.client.get('/admin/community/auditevent/').status_code, 200)
 
+    def test_hide_rejects_comment_from_a_different_post(self):
+        owner = get_user_model().objects.create_user(username="mismatched-content-author")
+        reporter = get_user_model().objects.create_user(username="mismatched-content-reporter")
+        reported_post = Post.objects.create(author=owner, title="Reported post", body="Reported body")
+        other_post = Post.objects.create(author=owner, title="Other post", body="Other body")
+        comment = Comment.objects.create(post=other_post, author=owner, body="Other answer")
+        report = Report.objects.create(
+            reporter=reporter, post=reported_post, comment=comment,
+            target_type=Report.TargetType.COMMENT, reason="spam",
+        )
+
+        with self.assertRaises(ValidationError):
+            services.hide_reported_content(self.moderator, report)
+
+        reported_post.refresh_from_db()
+        other_post.refresh_from_db()
+        comment.refresh_from_db()
+        report.refresh_from_db()
+        self.assertEqual(reported_post.status, Post.Status.PUBLISHED)
+        self.assertEqual(other_post.status, Post.Status.PUBLISHED)
+        self.assertEqual(comment.status, Comment.Status.PUBLISHED)
+        self.assertEqual(report.status, Report.Status.OPEN)
+
     def test_deleted_reported_comment_is_never_misinterpreted_as_post_report(self):
         owner = get_user_model().objects.create_user(username="deleted-comment-author")
         reporter = get_user_model().objects.create_user(username="deleted-comment-reporter")
