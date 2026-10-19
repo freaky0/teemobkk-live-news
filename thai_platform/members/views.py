@@ -111,7 +111,7 @@ def deactivate(request):
                 form.add_error(None, str(exc))
             else:
                 logout(request)
-                messages.info(request, '계정을 비활성화했습니다. 실제 삭제는 운영자 검토 전까지 진행되지 않습니다.')
+                messages.info(request, '계정을 비활성화했습니다. 질문과 답변은 보존되며 영구 삭제는 진행하지 않았습니다.')
                 return redirect('member-login')
         return render(request, 'members/deactivate.html', {'form': form}, status=400)
     return render(request, 'members/deactivate.html', {'form': form})

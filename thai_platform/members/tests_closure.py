@@ -38,7 +38,8 @@ class AccountClosureTests(TestCase):
         page = self.client.get('/accounts/deactivate/')
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, '질문과 답변은 삭제하지 않고 보존합니다.')
-        self.assertContains(page, '실제 삭제 여부는 운영자가 별도로 검토합니다.')
+        self.assertContains(page, '계정 비활성화만 수행하며 영구 삭제는 현재 진행하지 않습니다.')
+        self.assertContains(page, '계정 비활성화와 질문·답변 보존을 확인했습니다.')
         response = self.client.post('/accounts/deactivate/', {})
         self.assertEqual(response.status_code, 400)
         self.user.refresh_from_db()
@@ -48,6 +49,8 @@ class AccountClosureTests(TestCase):
     def test_confirmed_request_deactivates_but_preserves_content_for_review(self):
         response = self.client.post('/accounts/deactivate/', {'confirm': 'on'})
         self.assertEqual(response.status_code, 302)
+        response = self.client.get(response['Location'])
+        self.assertContains(response, '계정을 비활성화했습니다. 질문과 답변은 보존되며 영구 삭제는 진행하지 않았습니다.')
         self.user.refresh_from_db()
         self.assertFalse(self.user.is_active)
         request = AccountClosureRequest.objects.get(user=self.user)

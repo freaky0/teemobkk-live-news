@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from .models import MemberProfile
 
 class AccountClosureForm(forms.Form):
-    confirm = forms.BooleanField(label="계정 비활성화 및 삭제 검토 요청을 확인했습니다.")
+    confirm = forms.BooleanField(label="계정 비활성화와 질문·답변 보존을 확인했습니다.")
 
 
 class EmailRequestForm(forms.Form):

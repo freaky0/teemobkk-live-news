@@ -3,7 +3,7 @@ from django.utils import timezone
 from .models import AccountClosureRequest, MemberProfile
 
 
-@admin.action(description="삭제 여부 검토 완료로 표시")
+@admin.action(description="비활성화 요청 검토 완료로 표시")
 def mark_closure_reviewed(modeladmin, request, queryset):
     queryset.filter(status=AccountClosureRequest.Status.PENDING_REVIEW).update(
         status=AccountClosureRequest.Status.REVIEWED,
