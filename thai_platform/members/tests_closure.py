@@ -1,7 +1,10 @@
+from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.utils import timezone
-from members.models import AccountClosureRequest, MemberProfile
+from sesame.utils import get_token
+from members import services
+from members.models import AccountClosureRequest, EmailChallenge, MemberProfile
 from community.models import Post
 
 
@@ -74,3 +77,21 @@ class AccountClosureTests(TestCase):
         self.assertEqual(request.reviewed_by, operator)
         self.assertIsNotNone(request.reviewed_at)
         self.assertTrue(get_user_model().objects.filter(pk=self.user.pk).exists())
+
+    def test_deactivation_revokes_existing_email_challenge(self):
+        nonce = 'closure-session-nonce'
+        challenge = EmailChallenge.objects.create(
+            user=self.user,
+            digest='',
+            session_digest=services.digest(nonce),
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+        token = get_token(self.user, scope='post-email:' + str(challenge.pk))
+        challenge.digest = services.digest(token)
+        challenge.save(update_fields=['digest'])
+
+        services.request_account_closure(self.user)
+
+        challenge.refresh_from_db()
+        self.assertIsNotNone(challenge.used_at)
+        self.assertIsNone(services.consume_email(str(challenge.pk), token, nonce))

@@ -86,7 +86,7 @@ def consume_email(challenge_id,token,session_nonce):
         return None
     now=timezone.now()
     challenge=EmailChallenge.objects.select_for_update().select_related('user').filter(pk=ident,used_at__isnull=True,expires_at__gt=now).first()
-    if not challenge or not hmac.compare_digest(challenge.digest,digest(token)) or not hmac.compare_digest(challenge.session_digest,digest(session_nonce)):
+    if not challenge or not challenge.user.is_active or not hmac.compare_digest(challenge.digest,digest(token)) or not hmac.compare_digest(challenge.session_digest,digest(session_nonce)):
         return None
     profile=MemberProfile.objects.select_for_update().filter(user=challenge.user).first()
     if not profile or not profile.email_login_enabled or profile.email_key!=challenge.user.email.strip().casefold():
@@ -133,6 +133,8 @@ def request_account_closure(user):
     if AccountClosureRequest.objects.filter(user=locked_user, status=AccountClosureRequest.Status.PENDING_REVIEW).exists():
         raise ValueError('A closure request is already pending review.')
     closure = AccountClosureRequest.objects.create(user=locked_user)
+    now = timezone.now()
+    EmailChallenge.objects.filter(user=locked_user, used_at__isnull=True).update(used_at=now)
     locked_user.is_active = False
     locked_user.save(update_fields=['is_active'])
     return closure
