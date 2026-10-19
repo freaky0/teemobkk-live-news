@@ -28,6 +28,7 @@ urlpatterns = [
     path("community/<int:pk>/", web.post_detail, name="post-detail"),
     path("community/<int:pk>/edit/", web.post_edit, name="post-edit"),
     path("community/<int:pk>/delete/", web.post_delete, name="post-delete"),
+    path("community/<int:pk>/resolution/", web.post_resolution, name="post-resolution"),
     path("community/<int:pk>/comments/", web.comment_create, name="comment-create"),
     path("community/<int:pk>/report/", web.report_create, name="report-create"),
 ]

@@ -18,6 +18,10 @@ class Timestamped(models.Model):
 
 
 class Post(Timestamped):
+    class Resolution(models.TextChoices):
+        UNRESOLVED = "unresolved", "미해결"
+        RESOLVED = "resolved", "작성자 해결 확인"
+
     class Region(models.TextChoices):
         BANGKOK = 'bangkok', 'Bangkok'
         CHIANGMAI = 'chiangmai', 'Chiang Mai'
@@ -37,6 +41,7 @@ class Post(Timestamped):
     body = models.TextField(validators=[MaxLengthValidator(6000)])
     region = models.CharField(max_length=10, choices=Region.choices, default=Region.COMMON)
     category = models.CharField(max_length=10, choices=Category.choices, default=Category.LIVING)
+    resolution = models.CharField(max_length=10, choices=Resolution.choices, default=Resolution.UNRESOLVED, db_index=True)
     status = models.CharField(max_length=10, choices=ContentStatus.choices, default=ContentStatus.PUBLISHED, db_index=True)
 
     class Meta:

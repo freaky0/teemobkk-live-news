@@ -6,7 +6,7 @@ Post. Requests are not idempotency-key protected; do not blindly retry creates.
 from django.db import transaction
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from .models import AuditEvent, Comment, Post, Report
-from .serializers import (CommentInputSerializer, PostInputSerializer,
+from .serializers import (CommentInputSerializer, PostInputSerializer, PostResolutionSerializer,
                           ReportInputSerializer, ReportResolutionSerializer)
 
 
@@ -77,6 +77,23 @@ def delete_post(user, post):
         post.status = Post.Status.DELETED
         post.save(update_fields=['status', 'updated_at'])
         _audit(user, 'post.delete', post)
+    return post
+
+
+@transaction.atomic
+def set_resolution(user, post, data):
+    require_active(user)
+    post = Post.objects.select_for_update().get(pk=post.pk)
+    if post.status != Post.Status.PUBLISHED:
+        raise NotFound('Post not found.')
+    if post.author_id != user.pk:
+        raise PermissionDenied('Only the author may confirm resolution.')
+    value = _validate(PostResolutionSerializer, data)['resolution']
+    previous = post.resolution
+    if previous != value:
+        post.resolution = value
+        post.save(update_fields=['resolution', 'updated_at'])
+        _audit(user, 'post.resolution', post, {'previous_resolution': previous, 'resolution': value})
     return post
 
 

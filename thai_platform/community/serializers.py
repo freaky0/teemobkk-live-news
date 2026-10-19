@@ -26,8 +26,12 @@ class PostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = ['id', 'author', 'title', 'body', 'region', 'category', 'status', 'created_at', 'updated_at']
+        fields = ['id', 'author', 'title', 'body', 'region', 'category', 'status', 'resolution', 'created_at', 'updated_at']
         read_only_fields = fields
+
+
+class PostResolutionSerializer(StrictInputMixin, serializers.Serializer):
+    resolution = serializers.ChoiceField(choices=Post.Resolution.choices)
 
 
 class CommentInputSerializer(StrictInputMixin, serializers.Serializer):

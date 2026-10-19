@@ -42,6 +42,9 @@ def home(request):
 
 def post_list(request):
     qs = published()
+    resolution = request.GET.get('resolution', '')
+    if resolution in Post.Resolution.values:
+        qs = qs.filter(resolution=resolution)
     q = request.GET.get("q", "").strip()[:200]
     region, category = request.GET.get("region", ""), request.GET.get("category", "")
     if q:
@@ -53,7 +56,7 @@ def post_list(request):
     pagination = Paginator(qs, 20).get_page(request.GET.get("page"))
     keep = request.GET.copy()
     keep.pop("page", None)
-    return render(request, "community/list.html", {"page_obj": pagination, "q": q, "region": region, "category": category, "regions": REGIONS, "categories": CATEGORIES, "list_query": "?" + request.GET.urlencode(), "filter_query": keep.urlencode()})
+    return render(request, "community/list.html", {"resolution": resolution, "resolutions": Post.Resolution.choices, "page_obj": pagination, "q": q, "region": region, "category": category, "regions": REGIONS, "categories": CATEGORIES, "list_query": "?" + request.GET.urlencode(), "filter_query": keep.urlencode()})
 
 def post_detail(request, pk):
     post = get_object_or_404(published(), pk=pk)
@@ -95,6 +98,18 @@ def post_edit(request, pk):
         except (ValidationError, APIValidationError) as exc:
             service_error(form, exc)
     return render(request, "community/write.html", {"form": form, "editing": True, "post": post})
+
+@require_POST
+def post_resolution(request, pk):
+    if not request.user.is_authenticated or not request.user.is_active:
+        raise PermissionDenied
+    post = get_object_or_404(published(), pk=pk)
+    try:
+        call_service('set_resolution', request.user, post, {k: v for k, v in request.POST.items() if k != 'csrfmiddlewaretoken'})
+    except APIValidationError:
+        return render(request, 'community/action.html', {'form': None, 'title': '해결 상태를 확인해 주세요', 'post': post}, status=400)
+    return redirect('post-detail', pk=pk)
+
 
 @login_required
 @require_POST

@@ -74,6 +74,34 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         p.wait_for_load_state("networkidle")
         self.assertIn("수정한", p.locator("h1").inner_text())
         self.assertEqual(self.errors, [])
+    def test_author_resolution_and_filter(self):
+        p = self.page
+        self.go(f'/community/{self.post.pk}/')
+        p.get_by_role('button', name='해결로 표시', exact=True).click()
+        p.wait_for_load_state('networkidle')
+        response = self.context.request.get(self.live_server_url + f'/api/v1/posts/{self.post.pk}/')
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.json()['resolution'], 'resolved')
+        self.assertTrue(p.get_by_role('button', name='미해결로 되돌리기').is_visible())
+        for width in [320, 390, 768, 1440]:
+            p.set_viewport_size({'width': width, 'height': 950})
+            self.go('/community/?resolution=resolved&region=bangkok')
+            self.assertTrue(p.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'))
+            self.assertEqual(p.locator('#resolution').input_value(), 'resolved')
+            p.locator('a.title').first.click()
+            self.assertTrue(p.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'))
+            if width == 390:
+                p.screenshot(path=str(self.output / 'resolution-detail-390.png'), full_page=True)
+            p.locator('a.return').click()
+            self.assertEqual(p.locator('#resolution').input_value(), 'resolved')
+        p.locator('a.title').first.click()
+        p.get_by_role('button', name='미해결로 되돌리기').click()
+        p.wait_for_load_state('networkidle')
+        response = self.context.request.get(self.live_server_url + f'/api/v1/posts/{self.post.pk}/')
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.json()['resolution'], 'unresolved')
+        self.assertEqual(self.errors, [])
+
     def test_responsive_links_draft_and_back(self):
         p = self.page
         urls = ["/", "/community/", f"/community/{self.post.pk}/", "/community/new/", "/accounts/login/"]

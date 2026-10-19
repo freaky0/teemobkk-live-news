@@ -8,7 +8,7 @@ class PostAdmin(admin.ModelAdmin):
     list_display = ['id', 'title', 'author', 'region', 'category', 'status', 'created_at']
     list_filter = ['status', 'region', 'category']
     search_fields = ['title', 'body']
-    readonly_fields = ['author', 'created_at', 'updated_at']
+    readonly_fields = ['author', 'resolution', 'created_at', 'updated_at']
     actions = None
 
     def has_add_permission(self, request):

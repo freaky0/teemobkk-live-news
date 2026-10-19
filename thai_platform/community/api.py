@@ -42,6 +42,11 @@ class PostViewSet(viewsets.ModelViewSet):
         if self.action != 'list':
             return qs
         params = self.request.query_params
+        resolution = params.get('resolution')
+        if resolution:
+            if resolution not in Post.Resolution.values:
+                raise ValidationError({'resolution': 'Invalid resolution.'})
+            qs = qs.filter(resolution=resolution)
         region, category, query = params.get('region'), params.get('category'), params.get('q')
         if region:
             if region not in Post.Region.values:
@@ -66,6 +71,11 @@ class PostViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         services.delete_post(request.user, self.get_object())
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'])
+    def resolution(self, request, pk=None):
+        post = services.set_resolution(request.user, self.get_object(), request.data)
+        return Response(PostSerializer(post).data)
 
     @action(detail=True, methods=['get', 'post'])
     def comments(self, request, pk=None):
