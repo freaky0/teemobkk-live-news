@@ -35,8 +35,8 @@ class InfoOnlyTests(unittest.TestCase):
             self.assertFalse(set(parsed.tags)&{'script','form','input','iframe','object','embed'})
             self.assertIn('가입과 로그인은 중단되어 있습니다',html)
             self.assertIn('운영: TeemoBKK',html)
-            self.assertIn('mailto:freaky0@gmail.com',parsed.urls)
-            self.assertTrue(all(url.startswith(('/','mailto:freaky0@gmail.com','https://teemobkk.io/about/')) for url in parsed.urls))
+            self.assertIn('mailto:admin@teemobkk.io',parsed.urls)
+            self.assertTrue(all(url.startswith(('/','mailto:admin@teemobkk.io','https://teemobkk.io/about/')) for url in parsed.urls))
             self.assertNotIn('/accounts/email/',html)
             if name!='index.html':self.assertIn('개발 검토용 초안',html)
 

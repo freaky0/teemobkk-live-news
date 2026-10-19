@@ -25,7 +25,7 @@ def document(title,body):
     return f'''<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>{escape(title)} · TEEMOBKK's POST</title><link rel="stylesheet" href="/info-assets/style.css"></head><body>
 <header><img src="/info-assets/cat.webp" alt="" width="62" height="62"><a href="/">TEEMOBKK's POST<small>태국 커뮤니티 · 개발 검토 안내</small></a></header>
 <main><h1>{escape(title)}</h1><div class="status"><strong>가입과 로그인은 중단되어 있습니다.</strong>현재는 안내 페이지만 제공합니다. 이메일 주소나 인증 정보를 입력하지 마세요.</div>{body}
-<section class="identity" aria-label="운영자와 문의"><h2>운영자와 문의</h2><p>운영: TeemoBKK · <a href="https://teemobkk.io/about/">기존 사이트의 운영자 소개</a></p><p>문의: <a href="mailto:freaky0@gmail.com">freaky0@gmail.com</a></p></section>
+<section class="identity" aria-label="운영자와 문의"><h2>운영자와 문의</h2><p>운영: TeemoBKK · <a href="https://teemobkk.io/about/">기존 사이트의 운영자 소개</a></p><p>문의: <a href="mailto:admin@teemobkk.io">admin@teemobkk.io</a></p></section>
 <nav aria-label="안내 페이지"><a href="/">검토 안내</a><a href="/accounts/policy/terms/">이용약관</a><a href="/accounts/policy/privacy/">개인정보 안내</a></nav></main>
 <footer>TEEMOBKK's POST · 안내 전용 페이지입니다. 로그인이나 회원 기능의 재개를 뜻하지 않습니다.</footer></body></html>'''
 def config():
