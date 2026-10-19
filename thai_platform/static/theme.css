@@ -1,0 +1,21 @@
+:root{color-scheme:light;--toggle-border:#718695}
+@media(prefers-color-scheme:dark){:root:not([data-theme]){color-scheme:dark;--bg:#101b27;--paper:#182a3a;--ink:#e5eef7;--muted:#b8c9d8;--line:#395064;--navy:#24527a;--soft:#21394d;--danger:#ff958c;--toggle-border:#5c7a93}}
+html[data-theme="dark"]{color-scheme:dark;--bg:#101b27;--paper:#182a3a;--ink:#e5eef7;--muted:#b8c9d8;--line:#395064;--navy:#24527a;--soft:#21394d;--danger:#ff958c;--toggle-border:#5c7a93}
+html[data-theme="light"]{color-scheme:light;--bg:#f5f9fc;--paper:#fff;--ink:#14304d;--muted:#53677a;--line:#d0dde6;--navy:#14395b;--soft:#eaf4fa;--danger:#a52e26;--toggle-border:#718695}
+.theme-toggle{width:44px;height:44px;flex:none;display:grid;place-items:center;border:1px solid var(--toggle-border);border-radius:10px;background:var(--paper);color:var(--ink);padding:0}
+.theme-toggle:hover{background:var(--soft)}
+.theme-toggle svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+html[data-theme="light"] .theme-toggle [data-theme-icon="sun"],:root:not([data-theme]) .theme-toggle [data-theme-icon="sun"]{display:none}
+html[data-theme="dark"] .theme-toggle [data-theme-icon="moon"]{display:none}
+html[data-theme="dark"] .notice{color:var(--muted)}
+html[data-theme="dark"] .hero{background:#1a3044}
+html[data-theme="dark"] .hero:after{background:linear-gradient(90deg,#101b27ed 20%,#101b27bf 42%,transparent 68%)}
+html[data-theme="dark"] .hero-copy p,html[data-theme="dark"] .news-item p,html[data-theme="dark"] .news-meta,html[data-theme="dark"] .auth-divider{color:var(--muted)}
+html[data-theme="dark"] .tag{color:#d0e6f8}
+html[data-theme="dark"] .note{background:#393321;color:#f4e8c5}
+html[data-theme="dark"] .news-search{background:var(--soft)}
+html[data-theme="dark"] .news-search input,html[data-theme="dark"] .auth-card .field input:not([type=checkbox]){background:var(--paper);color:var(--ink);border-color:var(--line)}
+html[data-theme="dark"] .auth-verified{background:#203b4d;color:var(--ink)}
+html[data-theme="dark"] .skip{background:var(--paper);color:var(--ink)}
+@media(max-width:600px){.theme-toggle{width:42px;height:42px}}
+@media(prefers-reduced-motion:no-preference){.theme-toggle{transition:background-color .12s ease,color .12s ease}}

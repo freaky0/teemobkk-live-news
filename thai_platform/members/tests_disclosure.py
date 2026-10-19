@@ -38,6 +38,7 @@ class AuthDisclosureTests(TestCase):
                 self.assertContains(response,'신분증 번호')
                 self.assertContains(response,'금융정보')
         response=self.client.get('/accounts/policy/privacy/')
+        self.assertContains(response,'화면 테마 선택은 브라우저 저장소에 저장됩니다.')
         self.assertContains(response,'개발 검토용 초안')
         self.assertContains(response,'인증 메일 발송과 계정 관리')
 

@@ -91,3 +91,41 @@ class MembershipBrowserTests(StaticLiveServerTestCase):
             self.assertEqual(errors,[])
             browser.close()
         (output/'results.json').write_text(json.dumps({'mail_backend':'in-memory test only','external_google_login':'NOT_TESTED','external_email_delivery':'NOT_TESTED','views':views,'signup_consent_write_logout':'PASS','console_errors':errors},ensure_ascii=False,indent=2))
+
+    def test_header_theme_toggle_persists_across_reload(self):
+        errors=[]
+        output=Path(os.environ.get('POST_BROWSER_CAPTURE_DIR',Path(__file__).resolve().parent.parent/'var'/'theme-browser'))
+        output.mkdir(parents=True,exist_ok=True)
+        with sync_playwright() as pw:
+            launch={'headless':True,'args':['--no-sandbox']}
+            if os.environ.get('POST_BROWSER_EXECUTABLE'):
+                launch['executable_path']=os.environ['POST_BROWSER_EXECUTABLE']
+            browser=pw.chromium.launch(**launch)
+            page=browser.new_page(color_scheme='light')
+            page.on('pageerror',lambda err:errors.append(str(err)))
+            self.assertEqual(page.goto(self.live_server_url+'/',wait_until='networkidle').status,200)
+            for width in [320,390,768,1024,1440]:
+                page.set_viewport_size({'width':width,'height':900})
+                self.assertTrue(page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'),f'horizontal overflow at {width}px')
+                if width==320:page.screenshot(path=str(output/'header-mobile-light.png'),clip={'x':0,'y':0,'width':320,'height':120})
+            self.assertTrue(page.locator('[data-theme-icon="moon"]').is_visible())
+            page.screenshot(path=str(output/'header-light.png'),clip={'x':0,'y':0,'width':1440,'height':120})
+            page.screenshot(path=str(output/'theme-light.png'),full_page=True)
+            page.get_by_role('button',name='다크 모드로 전환').click()
+            page.wait_for_function("document.documentElement.dataset.theme === 'dark'")
+            self.assertEqual(page.get_by_role('button',name='라이트 모드로 전환').get_attribute('aria-pressed'),'true')
+            self.assertTrue(page.locator('[data-theme-icon="sun"]').is_visible())
+            notice_color=page.locator('.notice').first.evaluate('(e)=>getComputedStyle(e).color')
+            self.assertNotEqual(notice_color,'rgb(56, 83, 106)')
+            dark_bg=page.locator('body').evaluate('(e)=>getComputedStyle(e).backgroundColor')
+            page.screenshot(path=str(output/'header-dark.png'),clip={'x':0,'y':0,'width':1440,'height':120})
+            page.screenshot(path=str(output/'theme-dark.png'),full_page=True)
+            page.reload(wait_until='networkidle')
+            page.wait_for_function("document.documentElement.dataset.theme === 'dark'")
+            self.assertEqual(page.get_by_role('button',name='라이트 모드로 전환').count(),1)
+            page.get_by_role('button',name='라이트 모드로 전환').click()
+            page.wait_for_function("document.documentElement.dataset.theme === 'light'")
+            light_bg=page.locator('body').evaluate('(e)=>getComputedStyle(e).backgroundColor')
+            self.assertNotEqual(dark_bg,light_bg)
+            self.assertEqual(errors,[])
+            browser.close()

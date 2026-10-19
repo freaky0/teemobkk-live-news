@@ -51,6 +51,12 @@ class RestrictedPreviewTests(TestCase):
                 self.assertIn(response.status_code,{200,404,503})
         self.assertEqual(self.client.get('/api/v1/posts/').status_code,200)
 
+    def test_public_app_header_exposes_theme_toggle(self):
+        response=self.client.get('/')
+        self.assertEqual(response.status_code,200)
+        self.assertContains(response,'data-theme-toggle')
+        self.assertContains(response,'다크 모드로 전환')
+
     def test_private_pages_and_guest_write_actions_still_require_login(self):
         for path in ['/accounts/profile/', '/community/activity/',
                      '/community/notifications/', '/community/new/', '/admin/', '/health/']:
