@@ -18,7 +18,7 @@ from django.utils import timezone
 from allauth.account.models import EmailAddress
 from allauth.socialaccount.models import SocialAccount
 from sesame.utils import get_token, get_user
-from .models import EmailChallenge, MemberProfile
+from .models import EmailChallenge, MemberProfile, AccountClosureRequest
 
 logger=logging.getLogger(__name__)
 
@@ -123,3 +123,16 @@ def complete_profile(user,nickname):
     profile.save(update_fields=['nickname_key','terms_version','privacy_version','accepted_at'])
     user.username=nickname
     user.save(update_fields=['username'])
+
+
+@transaction.atomic
+def request_account_closure(user):
+    locked_user = get_user_model().objects.select_for_update().get(pk=user.pk)
+    if not locked_user.is_active:
+        raise ValueError('An active account is required.')
+    if AccountClosureRequest.objects.filter(user=locked_user, status=AccountClosureRequest.Status.PENDING_REVIEW).exists():
+        raise ValueError('A closure request is already pending review.')
+    closure = AccountClosureRequest.objects.create(user=locked_user)
+    locked_user.is_active = False
+    locked_user.save(update_fields=['is_active'])
+    return closure

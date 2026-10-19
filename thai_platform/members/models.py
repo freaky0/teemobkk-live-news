@@ -24,3 +24,18 @@ class EmailChallenge(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     used_at = models.DateTimeField(null=True, blank=True)
+
+
+class AccountClosureRequest(models.Model):
+    class Status(models.TextChoices):
+        PENDING_REVIEW = 'pending_review', 'Pending review'
+        REVIEWED = 'reviewed', 'Reviewed'
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='closure_requests')
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING_REVIEW, db_index=True)
+    requested_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_closure_requests')
+
+    class Meta:
+        ordering = ['status', 'requested_at', 'pk']

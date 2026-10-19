@@ -14,6 +14,7 @@ urlpatterns = [
     path("accounts/email/confirm/", member_views.email_confirm, name="email-confirm"),
     path("accounts/onboarding/", member_views.onboarding, name="member-onboarding"),
     path("accounts/profile/", member_views.profile, name="member-profile"),
+    path("accounts/deactivate/", member_views.deactivate, name="member-deactivate"),
     path("accounts/policy/<str:kind>/", member_views.policy, name="member-policy"),
     path("api/v1/me/", member_views.me, name="member-me"),
     path("accounts/", include("allauth.urls")),

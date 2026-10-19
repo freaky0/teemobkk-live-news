@@ -1,6 +1,7 @@
 import secrets
 from django.conf import settings
-from django.contrib.auth import login
+from django.contrib.auth import login, logout
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, OperationalError
 from django.http import HttpResponse
@@ -10,7 +11,7 @@ from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_http_methods
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .forms import EmailRequestForm, OnboardingForm
+from .forms import AccountClosureForm, EmailRequestForm, OnboardingForm
 from .models import MemberProfile
 from . import services
 
@@ -96,6 +97,25 @@ def profile(request):
     if member and not member.is_complete:
         return redirect('member-onboarding')
     return render(request,'members/profile.html',{'profile':member})
+
+@never_cache
+@login_required
+@require_http_methods(['GET', 'POST'])
+def deactivate(request):
+    form = AccountClosureForm(request.POST or None)
+    if request.method == 'POST':
+        if form.is_valid():
+            try:
+                services.request_account_closure(request.user)
+            except ValueError as exc:
+                form.add_error(None, str(exc))
+            else:
+                logout(request)
+                messages.info(request, '계정을 비활성화했습니다. 실제 삭제는 운영자 검토 전까지 진행되지 않습니다.')
+                return redirect('member-login')
+        return render(request, 'members/deactivate.html', {'form': form}, status=400)
+    return render(request, 'members/deactivate.html', {'form': form})
+
 
 @never_cache
 def policy(request,kind):
