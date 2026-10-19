@@ -5,10 +5,10 @@ Post. Requests are not idempotency-key protected; do not blindly retry creates.
 """
 from django.db import transaction
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
-from .models import AuditEvent, Comment, Post, Report, Helpful, Bookmark, Notification
+from .models import AuditEvent, Comment, ModerationAppeal, Post, Report, Helpful, Bookmark, Notification
 from django.db.models import Count, Exists, OuterRef
 from .serializers import (CommentInputSerializer, PostInputSerializer, PostResolutionSerializer, EngagementInputSerializer,
-                          ReportInputSerializer, ReportResolutionSerializer)
+                          ReportInputSerializer, ReportResolutionSerializer, AppealInputSerializer)
 
 
 def require_active(user):
@@ -19,16 +19,23 @@ def require_active(user):
         raise PermissionDenied('Complete nickname and consent onboarding first.')
 
 
-def require_staff(user):
+def is_report_moderator(user):
+    return bool(
+        user and user.is_authenticated and user.is_active and user.is_staff
+        and user.groups.filter(name='Report moderators').exists()
+    )
+
+
+def require_report_moderator(user):
     require_active(user)
-    if not user.is_staff:
-        raise PermissionDenied('Staff access required.')
+    if not is_report_moderator(user):
+        raise PermissionDenied('Report moderator access required.')
 
 
 def require_owner(user, post):
     require_active(user)
-    if post.author_id != user.pk and not user.is_staff:
-        raise PermissionDenied('Only the author or staff may change this post.')
+    if post.author_id != user.pk:
+        raise PermissionDenied('Only the author may change this post.')
 
 
 def _published(post):
@@ -172,19 +179,19 @@ def create_report(user, post, data):
     comment = values.get('comment')
     if comment and comment.post_id != post.pk:
         raise ValidationError({'comment': 'Comment must belong to this post.'})
-    report = Report.objects.create(reporter=user, post=post, **values)
+    report = Report.objects.create(reporter=user, post=post, target_type=Report.TargetType.COMMENT if comment else Report.TargetType.POST, **values)
     from django.contrib.auth import get_user_model
-    for staff_user in get_user_model().objects.filter(is_active=True, is_staff=True).only('pk'):
-        Notification.objects.create(recipient=staff_user, kind=Notification.Kind.MODERATION_REPORT, post=post, report=report)
+    for moderator in get_user_model().objects.filter(is_active=True, is_staff=True, groups__name='Report moderators').distinct().only('pk'):
+        Notification.objects.create(recipient=moderator, kind=Notification.Kind.MODERATION_REPORT, post=post, report=report)
     _audit(user, 'report.create', report)
     return report
 
 
 @transaction.atomic
 def resolve_report(user, report, data):
-    require_staff(user)
+    require_report_moderator(user)
     values = _validate(ReportResolutionSerializer, data)
-    report = Report.objects.select_for_update().get(pk=report.pk)
+    report = Report.objects.select_for_update().select_related('post', 'comment', 'reporter').get(pk=report.pk)
     previous = report.status
     report.status = values['status']
     report.save(update_fields=['status', 'updated_at'])
@@ -192,3 +199,50 @@ def resolve_report(user, report, data):
         Notification.objects.create(recipient=report.reporter, kind=Notification.Kind.REPORT_UPDATE, post=report.post, report=report)
     _audit(user, 'report.resolve', report, {'previous_status': previous, 'status': report.status})
     return report
+
+
+@transaction.atomic
+def hide_reported_content(user, report):
+    require_report_moderator(user)
+    report = Report.objects.select_for_update().select_related('post', 'comment', 'reporter').get(pk=report.pk)
+    if report.status != Report.Status.OPEN:
+        raise ValidationError({'status': 'Only open reports can hide content.'})
+    if report.target_type == Report.TargetType.COMMENT:
+        if report.comment_id is None:
+            raise ValidationError({'target': 'The reported comment is no longer available.'})
+        content = Comment.objects.select_for_update().select_related('author').get(pk=report.comment_id)
+    else:
+        content = Post.objects.select_for_update().select_related('author').get(pk=report.post_id)
+    if content.status != Post.Status.PUBLISHED:
+        raise ValidationError({'status': 'Reported content is no longer published.'})
+    content.status = Post.Status.HIDDEN
+    content.save(update_fields=['status', 'updated_at'])
+    report.status = Report.Status.RESOLVED
+    report.save(update_fields=['status', 'updated_at'])
+    if content.author.is_active:
+        Notification.objects.create(
+            recipient=content.author, kind=Notification.Kind.CONTENT_HIDDEN,
+            post=report.post, comment=report.comment, report=report,
+        )
+    _audit(user, 'content.hide', content, {'report_id': report.pk, 'content_type': content._meta.model_name})
+    _audit(user, 'report.resolve', report, {'previous_status': Report.Status.OPEN, 'status': Report.Status.RESOLVED, 'action': 'content_hidden'})
+    if report.reporter.is_active:
+        Notification.objects.create(recipient=report.reporter, kind=Notification.Kind.REPORT_UPDATE, post=report.post, report=report)
+    return report
+
+
+@transaction.atomic
+def create_appeal(user, data):
+    require_active(user)
+    values = _validate(AppealInputSerializer, data)
+    post = Post.objects.select_for_update().get(pk=values['post'].pk)
+    comment = values.get('comment')
+    if comment:
+        comment = Comment.objects.select_for_update().get(pk=comment.pk)
+        if comment.post_id != post.pk or comment.author_id != user.pk or comment.status != Comment.Status.HIDDEN:
+            raise PermissionDenied('Only the author of a hidden comment may appeal it.')
+    elif post.author_id != user.pk or post.status != Post.Status.HIDDEN:
+        raise PermissionDenied('Only the author of a hidden post may appeal it.')
+    appeal = ModerationAppeal.objects.create(author=user, post=post, comment=comment, details=values['details'])
+    _audit(user, 'appeal.create', appeal, {'content_type': 'comment' if comment else 'post'})
+    return appeal

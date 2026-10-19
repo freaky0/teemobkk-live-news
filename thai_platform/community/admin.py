@@ -1,6 +1,7 @@
-from django.contrib import admin
-from .models import AuditEvent, Comment, Post, Report
-from .services import resolve_report
+from django.contrib import admin, messages
+from rest_framework.exceptions import ValidationError as APIValidationError
+from .models import AuditEvent, Comment, ModerationAppeal, Post, Report
+from .services import hide_reported_content, is_report_moderator, resolve_report
 
 
 @admin.register(Post)
@@ -8,11 +9,14 @@ class PostAdmin(admin.ModelAdmin):
     list_display = ['id', 'title', 'author', 'region', 'category', 'status', 'created_at']
     list_filter = ['status', 'region', 'category']
     search_fields = ['title', 'body']
-    readonly_fields = ['author', 'resolution', 'created_at', 'updated_at']
+    readonly_fields = [field.name for field in Post._meta.fields]
     actions = None
 
     def has_add_permission(self, request):
         return False
+
+    def has_change_permission(self, request, obj=None):
+        return request.method in ('GET', 'HEAD') and super().has_view_permission(request, obj)
 
     def has_delete_permission(self, request, obj=None):
         return False
@@ -22,11 +26,14 @@ class PostAdmin(admin.ModelAdmin):
 class CommentAdmin(admin.ModelAdmin):
     list_display = ['id', 'post', 'author', 'status', 'created_at']
     list_filter = ['status']
-    readonly_fields = ['post', 'author', 'body', 'created_at', 'updated_at']
+    readonly_fields = [field.name for field in Comment._meta.fields]
     actions = None
 
     def has_add_permission(self, request):
         return False
+
+    def has_change_permission(self, request, obj=None):
+        return request.method in ('GET', 'HEAD') and super().has_view_permission(request, obj)
 
     def has_delete_permission(self, request, obj=None):
         return False
@@ -34,10 +41,19 @@ class CommentAdmin(admin.ModelAdmin):
 
 @admin.register(Report)
 class ReportAdmin(admin.ModelAdmin):
-    list_display = ['id', 'post', 'reason', 'status', 'created_at']
+    list_display = ['id', 'target_type', 'post', 'comment', 'reason', 'status', 'created_at']
     list_filter = ['status', 'reason']
-    readonly_fields = ['reporter', 'post', 'comment', 'reason', 'details', 'status', 'created_at', 'updated_at']
-    actions = ['mark_resolved', 'mark_dismissed']
+    readonly_fields = ['reporter', 'post', 'comment', 'target_type', 'reason', 'details', 'status', 'created_at', 'updated_at']
+    actions = ['mark_resolved', 'mark_dismissed', 'hide_reported']
+
+    def has_module_permission(self, request):
+        return is_report_moderator(request.user)
+
+    def has_view_permission(self, request, obj=None):
+        return is_report_moderator(request.user)
+
+    def has_change_permission(self, request, obj=None):
+        return is_report_moderator(request.user)
 
     def has_add_permission(self, request):
         return False
@@ -45,15 +61,46 @@ class ReportAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
+    def apply_reports(self, request, queryset, operation):
+        for report in queryset:
+            try:
+                operation(request.user, report)
+            except APIValidationError:
+                self.message_user(request, f'Report {report.pk} could not be processed; review its current state.', level=messages.ERROR)
+
     @admin.action(description='Resolve selected reports')
     def mark_resolved(self, request, queryset):
-        for report in queryset:
-            resolve_report(request.user, report, {'status': 'resolved'})
+        self.apply_reports(request, queryset, lambda user, report: resolve_report(user, report, {'status': Report.Status.RESOLVED}))
 
     @admin.action(description='Dismiss selected reports')
     def mark_dismissed(self, request, queryset):
-        for report in queryset:
-            resolve_report(request.user, report, {'status': 'dismissed'})
+        self.apply_reports(request, queryset, lambda user, report: resolve_report(user, report, {'status': Report.Status.DISMISSED}))
+
+    @admin.action(description='Hide only reported content')
+    def hide_reported(self, request, queryset):
+        self.apply_reports(request, queryset, hide_reported_content)
+
+
+@admin.register(ModerationAppeal)
+class ModerationAppealAdmin(admin.ModelAdmin):
+    list_display = ['id', 'author', 'post', 'comment', 'created_at']
+    readonly_fields = [field.name for field in ModerationAppeal._meta.fields]
+    actions = None
+
+    def has_module_permission(self, request):
+        return is_report_moderator(request.user)
+
+    def has_view_permission(self, request, obj=None):
+        return is_report_moderator(request.user)
+
+    def has_change_permission(self, request, obj=None):
+        return is_report_moderator(request.user)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(AuditEvent)
@@ -64,6 +111,12 @@ class AuditEventAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+    def has_module_permission(self, request):
+        return is_report_moderator(request.user)
+
+    def has_view_permission(self, request, obj=None):
+        return is_report_moderator(request.user)
 
     def has_delete_permission(self, request, obj=None):
         return False

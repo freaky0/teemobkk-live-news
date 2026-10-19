@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.test import TestCase, override_settings
 from django.middleware.csrf import _get_new_csrf_string
 from rest_framework.test import APIClient
@@ -16,6 +17,7 @@ class CommunityAPITests(TestCase):
         cls.owner = User.objects.create_user(username='owner', email='private@example.test')
         cls.other = User.objects.create_user(username='other')
         cls.staff = User.objects.create_user(username='staff', is_staff=True)
+        cls.staff.groups.add(Group.objects.get_or_create(name='Report moderators')[0])
         cls.inactive = User.objects.create_user(username='inactive', is_active=False)
         cls.post = Post.objects.create(author=cls.owner, title='Bangkok guide', body='Useful content', region='bangkok', category='living')
 
@@ -34,13 +36,15 @@ class CommunityAPITests(TestCase):
         self.assertEqual(self.client.post(self.url + 'comments/', {'body': 'x'}).status_code, 403)
         self.assertEqual(self.client.post(self.url + 'reports/', {'reason': 'spam'}).status_code, 403)
 
-    def test_owner_other_and_staff_mutations(self):
+    def test_owner_and_staff_mutations(self):
         self.client.force_authenticate(self.other)
         self.assertEqual(self.client.patch(self.url, {'title': 'Other'}).status_code, 403)
         self.assertEqual(self.client.delete(self.url).status_code, 403)
-        for user in [self.owner, self.staff]:
-            self.client.force_authenticate(user)
-            self.assertEqual(self.client.patch(self.url, {'title': user.username}).status_code, 200)
+        self.client.force_authenticate(self.staff)
+        self.assertEqual(self.client.patch(self.url, {'title': 'Staff'}).status_code, 403)
+        self.assertEqual(self.client.delete(self.url).status_code, 403)
+        self.client.force_authenticate(self.owner)
+        self.assertEqual(self.client.patch(self.url, {'title': 'Owner'}).status_code, 200)
         self.assertEqual(self.client.delete(self.url).status_code, 204)
         self.post.refresh_from_db()
         self.assertEqual(self.post.status, 'deleted')
@@ -176,12 +180,15 @@ class CommunityAPITests(TestCase):
         client = APIClient(enforce_csrf_checks=True)
         client.force_login(self.staff)
         report = Report.objects.create(reporter=self.owner, post=self.post, reason='spam')
+        hidden_post = Post.objects.create(author=self.staff, title='Hidden staff appeal', body='Hidden post for CSRF checks.', status=Post.Status.HIDDEN)
         requests = [
             ('patch', self.url, {'title': 'Changed'}),
             ('delete', self.url, {}),
             ('post', self.url + 'comments/', {'body': 'Comment'}),
             ('post', self.url + 'reports/', {'reason': 'spam'}),
             ('patch', f'/api/v1/reports/{report.pk}/', {'status': 'resolved'}),
+            ('post', f'/api/v1/reports/{report.pk}/hide/', {}),
+            ('post', '/api/v1/appeals/', {'post': hidden_post.pk, 'details': 'Appeal test detail.'}),
         ]
         for method, url, data in requests:
             with self.subTest(method=method, url=url):

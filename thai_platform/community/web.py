@@ -11,8 +11,8 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.cache import never_cache
 from rest_framework.exceptions import ValidationError as APIValidationError
-from .forms import CATEGORIES, REGIONS, CommentForm, PostForm, ReportForm
-from .models import Notification, Post
+from .forms import CATEGORIES, REGIONS, AppealForm, CommentForm, PostForm, ReportForm
+from .models import Comment, Notification, Post
 from . import services
 
 def call_service(name, *args):
@@ -100,7 +100,7 @@ def post_create(request):
 @login_required
 def post_edit(request, pk):
     post = get_object_or_404(published(), pk=pk)
-    if request.user.pk != post.author_id and not request.user.is_staff:
+    if request.user.pk != post.author_id:
         raise PermissionDenied
     form = PostForm(request.POST or None, initial={"title": post.title, "body": post.body, "region": post.region, "category": post.category})
     if request.method == "POST" and form.is_valid():
@@ -203,3 +203,28 @@ def report_create(request, pk):
         except (ValidationError, APIValidationError) as exc:
             service_error(form, exc)
     return render(request, "community/action.html", {"form": form, "title": "신고 내용을 확인해 주세요", "post": post}, status=400)
+
+
+@login_required
+@never_cache
+def appeal_create(request, pk):
+    post = get_object_or_404(Post, pk=pk)
+    comment_id = request.GET.get('comment')
+    comment = None
+    if comment_id:
+        if not comment_id.isdecimal():
+            raise Http404
+        comment = get_object_or_404(Comment, pk=int(comment_id), post=post, author=request.user, status=Comment.Status.HIDDEN)
+    elif post.author_id != request.user.pk or post.status != Post.Status.HIDDEN:
+        raise Http404
+    form = AppealForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        try:
+            call_service('create_appeal', request.user, {'post': post.pk, 'comment': comment.pk if comment else None, **form.cleaned_data})
+            messages.success(request, '이의신청을 접수했습니다. 심사 상태와 처리 방식은 운영 정책 확정 후 안내됩니다.')
+            return redirect('notifications')
+        except (ValidationError, APIValidationError) as exc:
+            service_error(form, exc)
+    response = render(request, 'community/appeal.html', {'form': form, 'post': post, 'comment': comment})
+    response['Cache-Control'] = 'no-store, private'
+    return response

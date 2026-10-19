@@ -8,8 +8,8 @@ from rest_framework.permissions import BasePermission, SAFE_METHODS
 from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
 from . import services
-from .models import Notification, Post, Report
-from .serializers import CommentSerializer, NotificationSerializer, PostSerializer, ReportSerializer
+from .models import ModerationAppeal, Notification, Post, Report
+from .serializers import AppealSerializer, CommentSerializer, NotificationSerializer, PostSerializer, ReportSerializer
 
 
 class CommunityPagination(PageNumberPagination):
@@ -28,11 +28,6 @@ class ActiveWritePermission(BasePermission):
 class ActiveUserPermission(BasePermission):
     def has_permission(self, request, view):
         return bool(request.user.is_authenticated and request.user.is_active)
-
-
-class StaffPermission(BasePermission):
-    def has_permission(self, request, view):
-        return bool(request.user.is_authenticated and request.user.is_active and request.user.is_staff)
 
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -112,17 +107,52 @@ class PostViewSet(viewsets.ModelViewSet):
         return Response({'id': report.pk, 'status': report.status}, status=status.HTTP_201_CREATED)
 
 
+class ReportModeratorPermission(BasePermission):
+    def has_permission(self, request, view):
+        return services.is_report_moderator(request.user)
+
+
 class ReportViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        response['Cache-Control'] = 'no-store, private'
+        return response
+
     authentication_classes = [SessionAuthentication]
-    permission_classes = [StaffPermission]
+    permission_classes = [ReportModeratorPermission]
     pagination_class = CommunityPagination
     serializer_class = ReportSerializer
     queryset = Report.objects.all()
-    http_method_names = ['get', 'patch', 'head', 'options']
+    http_method_names = ['get', 'patch', 'post', 'head', 'options']
 
     def partial_update(self, request, *args, **kwargs):
         report = services.resolve_report(request.user, self.get_object(), request.data)
         return Response(ReportSerializer(report).data)
+
+    @action(detail=True, methods=['post'])
+    def hide(self, request, pk=None):
+        report = services.hide_reported_content(request.user, self.get_object())
+        return Response(ReportSerializer(report).data)
+
+
+class AppealViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        response['Cache-Control'] = 'no-store, private'
+        return response
+
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [ActiveUserPermission]
+    pagination_class = CommunityPagination
+    serializer_class = AppealSerializer
+    http_method_names = ['get', 'post', 'head', 'options']
+
+    def get_queryset(self):
+        return ModerationAppeal.objects.filter(author=self.request.user).select_related('post', 'comment')
+
+    def create(self, request, *args, **kwargs):
+        appeal = services.create_appeal(request.user, request.data)
+        return Response(AppealSerializer(appeal).data, status=status.HTTP_201_CREATED)
 
 
 class NotificationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
@@ -173,4 +203,5 @@ router.register('posts', PostViewSet, basename='post')
 router.register('notifications', NotificationViewSet, basename='notification')
 router.register('activity', ActivityViewSet, basename='activity')
 router.register('reports', ReportViewSet, basename='report')
+router.register('appeals', AppealViewSet, basename='appeal')
 urlpatterns = router.urls

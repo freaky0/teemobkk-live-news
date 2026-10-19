@@ -29,6 +29,7 @@ urlpatterns = [
     path("community/activity/", web.my_activity, name="my-activity"),
     path("community/notifications/", web.notifications_page, name="notifications"),
     path("community/notifications/<int:pk>/read/", web.notification_read, name="notification-read"),
+    path("community/<int:pk>/appeal/", web.appeal_create, name="appeal-create"),
     path("community/<int:pk>/", web.post_detail, name="post-detail"),
     path("community/<int:pk>/edit/", web.post_edit, name="post-edit"),
     path("community/<int:pk>/delete/", web.post_delete, name="post-delete"),

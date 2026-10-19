@@ -28,7 +28,7 @@ class ResolutionTests(TestCase):
             'category': self.post.category, 'status': self.post.status,
             'resolution': 'resolved', '_save': 'Save',
         })
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 403)
         self.post.refresh_from_db()
         self.assertEqual(self.post.resolution, 'unresolved')
 

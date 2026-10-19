@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}이의신청 · TEEMOBKK's POST{% endblock %}
+{% block content %}
+<section class="editor">
+  <nav class="breadcrumb" aria-label="현재 위치"><a href="{% url 'post-list' %}">커뮤니티</a><span aria-hidden="true">›</span><span aria-current="page">이의신청</span></nav>
+  <div class="heading"><h1>숨김 조치 이의신청</h1><p>숨김된 게시글이나 답변 작성자만 신청할 수 있습니다. 이 양식은 검토 요청을 접수하며, 현재 자동 해제나 계정 제한은 수행하지 않습니다.</p></div>
+  <form class="panel" method="post">{% csrf_token %}{% include 'community/fields.html' %}<div class="actions"><button class="btn primary" type="submit">이의신청 접수</button><a class="btn" href="{% url 'notifications' %}">알림으로 돌아가기</a></div></form>
+</section>
+{% endblock %}

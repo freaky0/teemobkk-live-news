@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.test import TestCase
 from rest_framework.test import APIClient
 from .models import Notification, Post
@@ -11,12 +12,15 @@ class NotificationTests(TestCase):
         self.owner = users.objects.create_user(username='notification-owner')
         self.other = users.objects.create_user(username='notification-other')
         self.staff = users.objects.create_user(username='notification-staff', is_staff=True)
+        self.staff.groups.add(Group.objects.get_or_create(name='Report moderators')[0])
+        self.regular_staff = users.objects.create_user(username='notification-regular-staff', is_staff=True)
         self.post = Post.objects.create(author=self.owner, title='개인정보 없는 질문', body='Test')
         self.api = APIClient()
 
     def test_report_notifies_active_staff_and_resolution_notifies_reporter(self):
         report = services.create_report(self.other, self.post, {'reason': 'spam', 'details': '스팸 신고 내용'})
         self.assertEqual(Notification.objects.filter(recipient=self.staff, kind=Notification.Kind.MODERATION_REPORT, report=report).count(), 1)
+        self.assertEqual(Notification.objects.filter(recipient=self.regular_staff, kind=Notification.Kind.MODERATION_REPORT, report=report).count(), 0)
         services.resolve_report(self.staff, report, {'status': 'resolved'})
         self.assertEqual(Notification.objects.filter(recipient=self.other, kind=Notification.Kind.REPORT_UPDATE, report=report).count(), 1)
         self.api.force_authenticate(self.staff)

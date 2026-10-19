@@ -6,7 +6,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from playwright.sync_api import sync_playwright
-from .models import Post
+from .models import Notification, Post
 
 @skipUnless(os.environ.get("POST_RUN_BROWSER_TESTS") == "1", "Explicit browser test opt-in required")
 class BrowserFlowTests(StaticLiveServerTestCase):
@@ -14,6 +14,10 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.member = get_user_model().objects.create_user(username="브라우저검증")
         self.post = Post.objects.create(author=self.member, title="브라우저 검증용 첫 생활 질문", body="실제 개인정보를 포함하지 않은 브라우저 검증용 게시글입니다. 목록 이동과 서버 저장을 확인합니다.", region="bangkok", category="housing")
         self.client.force_login(self.member)
+        if self._testMethodName == "test_hidden_content_notification_leads_to_appeal_submission":
+            self.post.status = Post.Status.HIDDEN
+            self.post.save(update_fields=['status', 'updated_at'])
+            Notification.objects.create(recipient=self.member, kind=Notification.Kind.CONTENT_HIDDEN, post=self.post)
         self.pw = sync_playwright().start()
         launch = {"headless": True, "args": ["--no-sandbox"]}
         if os.environ.get("POST_BROWSER_EXECUTABLE"):
@@ -177,3 +181,20 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.assertEqual(p.locator("#id_title").input_value(), "자동 복구 확인용 초안 제목")
         self.assertEqual(self.errors, [])
         (self.output / "responsive.json").write_text(json.dumps(results, ensure_ascii=False, indent=2))
+
+    def test_hidden_content_notification_leads_to_appeal_submission(self):
+        self.page.set_viewport_size({"width": 390, "height": 844})
+        self.go('/community/notifications/')
+        self.assertTrue(self.page.get_by_role('link', name='이의신청', exact=True).is_visible())
+        self.page.screenshot(path=str(self.output / 'moderation-notification-390.png'), full_page=True)
+        self.page.get_by_role('link', name='이의신청', exact=True).click()
+        self.page.wait_for_url('**/community/*/appeal/')
+        self.assertTrue(self.page.locator('#id_details').is_visible())
+        self.page.locator('#id_details').fill('숨김 조치에 이의가 있어 검토를 요청합니다.')
+        self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'))
+        self.page.screenshot(path=str(self.output / 'moderation-appeal-390.png'), full_page=True)
+        self.page.get_by_role('button', name='이의신청 접수', exact=True).click()
+        self.page.wait_for_url('**/community/notifications/')
+        self.assertIn('이의신청을 접수했습니다.', self.page.locator('body').inner_text())
+        self.assertEqual(self.context.request.get(self.live_server_url + '/api/v1/appeals/').json()['count'], 1)
+        self.assertEqual(self.errors, [])

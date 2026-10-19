@@ -85,14 +85,19 @@ class Report(Timestamped):
         SPAM = 'spam', 'Spam'
         ABUSE = 'abuse', 'Abuse'
 
+    class TargetType(models.TextChoices):
+        POST = 'post', 'Post'
+        COMMENT = 'comment', 'Comment'
+
     class Status(models.TextChoices):
         OPEN = 'open', 'Open'
         RESOLVED = 'resolved', 'Resolved'
         DISMISSED = 'dismissed', 'Dismissed'
 
     reporter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='community_reports')
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='reports')
+    post = models.ForeignKey(Post, on_delete=models.PROTECT, related_name='reports')
     comment = models.ForeignKey(Comment, on_delete=models.SET_NULL, null=True, blank=True, related_name='reports')
+    target_type = models.CharField(max_length=10, choices=TargetType.choices, default=TargetType.POST, db_index=True)
     reason = models.CharField(max_length=10, choices=Reason.choices)
     details = models.TextField(blank=True, validators=[MaxLengthValidator(2000)])
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.OPEN, db_index=True)
@@ -105,11 +110,22 @@ class Report(Timestamped):
         if self.comment_id and self.comment.post_id != self.post_id:
             raise ValidationError({'comment': 'Comment must belong to this post.'})
 
+class ModerationAppeal(Timestamped):
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='community_appeals')
+    post = models.ForeignKey(Post, on_delete=models.PROTECT, related_name='moderation_appeals')
+    comment = models.ForeignKey(Comment, on_delete=models.SET_NULL, null=True, blank=True, related_name='moderation_appeals')
+    details = models.TextField(validators=[MaxLengthValidator(2000)])
+
+    class Meta:
+        ordering = ['-created_at', '-pk']
+
+
 class Notification(Timestamped):
     class Kind(models.TextChoices):
         REPLY = 'reply', 'Reply'
         MODERATION_REPORT = 'moderation_report', 'New report'
         REPORT_UPDATE = 'report_update', 'Report update'
+        CONTENT_HIDDEN = 'content_hidden', 'Content hidden'
 
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='community_notifications')
     kind = models.CharField(max_length=24, choices=Kind.choices)

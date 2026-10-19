@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Comment, Notification, Post, Report
+from .models import Comment, ModerationAppeal, Notification, Post, Report
 
 
 class StrictInputMixin:
@@ -74,5 +74,18 @@ class NotificationSerializer(serializers.ModelSerializer):
 class ReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = Report
-        fields = ['id', 'reporter', 'post', 'comment', 'reason', 'details', 'status', 'created_at', 'updated_at']
+        fields = ['id', 'reporter', 'post', 'comment', 'target_type', 'reason', 'details', 'status', 'created_at', 'updated_at']
+        read_only_fields = fields
+
+
+class AppealInputSerializer(StrictInputMixin, serializers.Serializer):
+    post = serializers.PrimaryKeyRelatedField(queryset=Post.objects.all())
+    comment = serializers.PrimaryKeyRelatedField(queryset=Comment.objects.all(), required=False, allow_null=True)
+    details = serializers.CharField(min_length=5, max_length=2000)
+
+
+class AppealSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ModerationAppeal
+        fields = ['id', 'post', 'comment', 'details', 'created_at']
         read_only_fields = fields
