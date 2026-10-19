@@ -28,7 +28,8 @@ class MembershipBrowserTests(StaticLiveServerTestCase):
             context=browser.new_context(reduced_motion='reduce')
             page=context.new_page()
             page.on('pageerror',lambda err:errors.append(str(err)))
-            page.on('console',lambda msg:errors.append(msg.text) if msg.type=='error' else None)
+            # The public origin serves /favicon.ico; the isolated Django test server does not.
+            page.on('console',lambda msg:errors.append(msg.text) if msg.type=='error' and not (msg.text.startswith('Failed to load resource: the server responded with a status of 404') and msg.location.get('url')==self.live_server_url+'/favicon.ico') else None)
             for width in [320,390,768,1024,1440]:
                 page.set_viewport_size({'width':width,'height':950})
                 for name,path in [('choices','/accounts/login/'),('email','/accounts/email/')]:

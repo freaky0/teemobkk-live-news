@@ -28,7 +28,8 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.page = self.context.new_page()
         self.errors = []
         self.page.on("pageerror", lambda e: self.errors.append(str(e)))
-        self.page.on("console", lambda m: self.errors.append(m.text) if m.type == "error" else None)
+        # The public origin serves /favicon.ico; the isolated Django test server does not.
+        self.page.on("console", lambda m: self.errors.append(m.text) if m.type == "error" and not (m.text.startswith("Failed to load resource: the server responded with a status of 404") and m.location.get("url") == self.live_server_url + "/favicon.ico") else None)
         self.output = Path(settings.BASE_DIR) / "var" / "browser"
         self.output.mkdir(parents=True, exist_ok=True)
     def tearDown(self):
