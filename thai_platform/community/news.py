@@ -106,6 +106,15 @@ def visibility(conn):
 FIELDS='a.link,a.title_ko,a.summary_ko,a.source,a.original_source,a.category,a.published_at'
 
 
+def projection_fields(conn):
+    columns={row['name'] for row in conn.execute('PRAGMA table_info(articles)')}
+    if 'image_url' in columns:
+        image="CASE WHEN safe_url(a.image_url)=1 AND lower(a.image_url) LIKE 'https://%' THEN a.image_url ELSE '' END AS image_url"
+    else:
+        image="'' AS image_url"
+    return FIELDS+','+image
+
+
 def project(row):
     published=parse_datetime(row['published_at'])
     if published and timezone.is_naive(published):
@@ -118,6 +127,7 @@ def project(row):
         'category':row['category'] or '',
         'published_at':published,
         'source_url':row['link'],
+        'image_url':row['image_url'] or '',
     }
 
 
@@ -127,13 +137,14 @@ def list_articles(page=1,query='',page_size=20):
     with open_news() as conn:
         conn.execute('BEGIN') # Consistent policy, count and rows in one read snapshot.
         conditions,params=visibility(conn)
+        fields=projection_fields(conn)
         if query:
             needle='%'+query[:200].replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%'
             conditions.append("(a.title_ko LIKE ? ESCAPE '\\' OR a.summary_ko LIKE ? ESCAPE '\\')")
             params.extend([needle,needle])
         clause=' AND '.join(conditions)
         total=conn.execute('SELECT COUNT(*) FROM articles a WHERE '+clause,params).fetchone()[0]
-        rows=conn.execute('SELECT '+FIELDS+' FROM articles a WHERE '+clause+' ORDER BY a.published_at DESC,a.link LIMIT ? OFFSET ?',params+[page_size,(page-1)*page_size]).fetchall()
+        rows=conn.execute('SELECT '+fields+' FROM articles a WHERE '+clause+' ORDER BY a.published_at DESC,a.link LIMIT ? OFFSET ?',params+[page_size,(page-1)*page_size]).fetchall()
         return NewsPage([project(row) for row in rows],total,page,page_size)
 
 
@@ -143,6 +154,7 @@ def get_article(article_id):
     with open_news() as conn:
         conn.execute('BEGIN')
         conditions,params=visibility(conn)
+        fields=projection_fields(conn)
         conditions.append('public_id(a.link)=?')
-        row=conn.execute('SELECT '+FIELDS+' FROM articles a WHERE '+' AND '.join(conditions),params+[article_id]).fetchone()
+        row=conn.execute('SELECT '+fields+' FROM articles a WHERE '+' AND '.join(conditions),params+[article_id]).fetchone()
         return project(row) if row else None

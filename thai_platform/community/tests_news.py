@@ -12,7 +12,7 @@ class NewsTests(TestCase):
         self.tmp = TemporaryDirectory(dir=Path(__file__).resolve().parent.parent / 'var')
         self.path = Path(self.tmp.name) / 'fixture.sqlite3'
         with sqlite3.connect(self.path) as c:
-            c.executescript('''CREATE TABLE articles(link TEXT PRIMARY KEY,title_ko TEXT,summary_ko TEXT,summary TEXT,source TEXT,original_source TEXT,region TEXT,category TEXT,post_status TEXT,published_at TEXT);
+            c.executescript('''CREATE TABLE articles(link TEXT PRIMARY KEY,title_ko TEXT,summary_ko TEXT,summary TEXT,source TEXT,original_source TEXT,region TEXT,category TEXT,post_status TEXT,published_at TEXT,image_url TEXT);
 CREATE TABLE hidden_links(link TEXT);
 CREATE TABLE filter_rules(id INTEGER PRIMARY KEY,enabled INTEGER);
 CREATE TABLE filter_hits(link TEXT,rule_id INTEGER);
@@ -24,10 +24,10 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
         self.addCleanup(self.tmp.cleanup)
     def add(self, slug, **changes):
         from django.utils import timezone
-        row = dict(link='https://example.org/'+slug,title_ko='검증용 태국 뉴스 '+slug,summary_ko='테스트 전용 한국어 요약입니다.',summary='Original summary',source='Fixture',original_source='',region='태국',category='생활',post_status='ready',published_at=timezone.now().isoformat())
+        row = dict(link='https://example.org/'+slug,title_ko='검증용 태국 뉴스 '+slug,summary_ko='테스트 전용 한국어 요약입니다.',summary='Original summary',source='Fixture',original_source='',region='태국',category='생활',post_status='ready',published_at=timezone.now().isoformat(),image_url='')
         row.update(changes)
         with sqlite3.connect(self.path) as c:
-            c.execute('INSERT INTO articles VALUES (:link,:title_ko,:summary_ko,:summary,:source,:original_source,:region,:category,:post_status,:published_at)',row)
+            c.execute('INSERT INTO articles (link,title_ko,summary_ko,summary,source,original_source,region,category,post_status,published_at,image_url) VALUES (:link,:title_ko,:summary_ko,:summary,:source,:original_source,:region,:category,:post_status,:published_at,:image_url)',row)
         return row['link']
     def sql(self, statement, args=()):
         with sqlite3.connect(self.path) as c:
@@ -56,6 +56,24 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
         ident=sha256(public.encode()).hexdigest()
         self.assertEqual(self.client.get('/newsroom/'+ident+'/').status_code,200)
         self.assertEqual(self.client.get('/api/v1/news/'+ident+'/').status_code,200)
+    def test_article_image_is_projected_and_rendered_on_home_news_detail_and_api(self):
+        image='https://images.publisher.example/story.jpg'
+        link=self.add('with-image',image_url=image)
+        ident=sha256(link.encode()).hexdigest()
+        self.assertEqual(news.get_article(ident)['image_url'],image)
+        self.assertContains(self.client.get('/'),image)
+        self.assertContains(self.client.get('/newsroom/'),image)
+        self.assertContains(self.client.get('/newsroom/'+ident+'/'),image)
+        payload=self.client.get('/api/v1/news/').json()
+        self.assertEqual(payload['results'][0]['image_url'],image)
+
+    def test_article_image_rejects_non_https_and_credential_urls(self):
+        unsafe=['http://images.publisher.example/story.jpg','https://user:pass@images.publisher.example/story.jpg','javascript:alert(1)']
+        for index,image in enumerate(unsafe):
+            with self.subTest(image=image):
+                link=self.add('unsafe-image-'+str(index),image_url=image)
+                self.assertEqual(news.get_article(sha256(link.encode()).hexdigest())['image_url'],'')
+
     def test_keep_and_disabled_rule_do_not_bypass_manual_hide(self):
         link=self.add('kept')
         self.sql('INSERT INTO filter_rules VALUES (1,1)')
