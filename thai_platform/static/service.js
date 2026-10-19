@@ -5,6 +5,9 @@ document.querySelector('[data-open-report]')?.addEventListener('click',e=>{trigg
 document.querySelector('[data-close-report]')?.addEventListener('click',()=>dialog.close());
 dialog?.addEventListener('close',()=>trigger?.focus());
 document.querySelectorAll('form[data-confirm]').forEach(f=>f.addEventListener('submit',e=>{if(!confirm(f.dataset.confirm))e.preventDefault();}));
+function removeFailedNewsImage(image){if(!(image instanceof HTMLImageElement)||!image.classList.contains('news-image'))return;image.closest('.news-item')?.classList.remove('has-image');image.remove();}
+document.addEventListener('error',e=>removeFailedNewsImage(e.target),true);
+document.querySelectorAll('img.news-image').forEach(image=>{if(image.complete&&image.naturalWidth===0)removeFailedNewsImage(image);});
 const scriptPrefix=(document.body.dataset.scriptPrefix||'').replace(/\/+$/,'');const listPage=[`${scriptPrefix}/`,`${scriptPrefix}/community/`,`${scriptPrefix}/newsroom/`].includes(location.pathname);const scrollKey='post-scroll:'+location.pathname+location.search;
 function remember(){if(listPage)try{sessionStorage.setItem(scrollKey,String(scrollY));}catch{}}
 window.addEventListener('pagehide',remember);document.addEventListener('click',e=>{if(e.target.closest('a[href]'))remember();});

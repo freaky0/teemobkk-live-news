@@ -1,9 +1,12 @@
 import json
 import os
+import sqlite3
+from tempfile import TemporaryDirectory
 from pathlib import Path
 from unittest import skipUnless
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from playwright.sync_api import sync_playwright
 from .models import Notification, Post
@@ -199,3 +202,60 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.assertIn('이의신청을 접수했습니다.', self.page.locator('body').inner_text())
         self.assertEqual(self.context.request.get(self.live_server_url + '/api/v1/appeals/').json()['count'], 1)
         self.assertEqual(self.errors, [])
+
+    def test_failed_news_image_removes_empty_thumbnail_column(self):
+        from django.utils import timezone
+        from hashlib import sha256
+
+        link = "https://example.org/broken-image"
+        with TemporaryDirectory(dir=Path(settings.BASE_DIR) / "var") as temp_dir:
+            news_db = Path(temp_dir) / "news.sqlite3"
+            with sqlite3.connect(news_db) as connection:
+                connection.executescript("""CREATE TABLE articles(link TEXT PRIMARY KEY,title_ko TEXT,summary_ko TEXT,summary TEXT,source TEXT,original_source TEXT,region TEXT,category TEXT,post_status TEXT,published_at TEXT,image_url TEXT);
+CREATE TABLE hidden_links(link TEXT);
+CREATE TABLE filter_rules(id INTEGER PRIMARY KEY,enabled INTEGER);
+CREATE TABLE filter_hits(link TEXT,rule_id INTEGER);
+CREATE TABLE filter_keeps(link TEXT);
+CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);""")
+                connection.execute(
+                    "INSERT INTO articles VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                    (
+                        link,
+                        "이미지 오류 뉴스",
+                        "이미지 요청 실패에도 본문은 읽을 수 있습니다.",
+                        "Fixture summary",
+                        "Fixture",
+                        "",
+                        "태국",
+                        "생활",
+                        "ready",
+                        timezone.now().isoformat(),
+                        "https://images.example.test/broken.jpg",
+                    ),
+                )
+
+            with override_settings(POST_NEWS_DB=str(news_db)):
+                self.page.route("https://images.example.test/**", lambda route: route.abort())
+                for path in ["/", "/newsroom/"]:
+                    self.go(path)
+                    self.page.wait_for_function("""() => {
+                        const image = document.querySelector('.news-item img.news-image');
+                        return !image || (image.complete && image.naturalWidth === 0);
+                    }""")
+                    article = self.page.locator(".news-item").filter(has_text="이미지 오류 뉴스")
+                    self.assertEqual(article.locator("img.news-image").count(), 0)
+                    self.assertNotIn("has-image", article.get_attribute("class"))
+                    self.assertTrue(article.locator("h3").is_visible())
+                    self.assertIn("이미지 요청 실패에도 본문은 읽을 수 있습니다", article.inner_text())
+
+                self.go(f"/newsroom/{sha256(link.encode()).hexdigest()}/")
+                self.page.wait_for_function("""() => {
+                    const image = document.querySelector('img.news-detail-image');
+                    return !image || (image.complete && image.naturalWidth === 0);
+                }""")
+                detail = self.page.locator(".news-detail")
+                self.assertEqual(detail.locator("img.news-detail-image").count(), 0)
+                self.assertEqual(detail.locator("h1").inner_text(), "이미지 오류 뉴스")
+                for width in [320, 390, 768, 1440]:
+                    self.page.set_viewport_size({"width": width, "height": 900})
+                    self.assertTrue(self.page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), width)
