@@ -15,22 +15,22 @@ class RestrictedPreviewMiddleware(MiddlewareMixin):
     def process_request(self, request):
         if not settings.POST_RESTRICTED_PREVIEW:
             return None
-        if request.path == '/accounts/email/' and request.method == 'POST':
+        if request.path_info == '/accounts/email/' and request.method == 'POST':
             email = request.POST.get('email', '').strip().casefold()
             if email not in settings.POST_PREVIEW_ALLOWED_EMAILS:
                 # Same response as an accepted request; no account or mail is created.
                 return redirect('email-sent')
-        if settings.GOOGLE_CONFIGURED and request.path in {
+        if settings.GOOGLE_CONFIGURED and request.path_info in {
             '/accounts/google/login/', '/accounts/google/login/callback/',
         }:
             # Allauth owns OAuth state/CSRF checks. Do not open other account routes.
             return None
-        if request.method in {'GET', 'HEAD'} and request.path in {
+        if request.method in {'GET', 'HEAD'} and request.path_info in {
             '/accounts/policy/terms/', '/accounts/policy/privacy/',
         }:
             # Publish only the two read-only notices, not the account namespace.
             return None
-        if request.path in self.public_paths or request.path.startswith('/static/'):
+        if request.path_info in self.public_paths or request.path_info.startswith('/static/'):
             return None
         if request.user.is_authenticated and request.user.is_active:
             email = request.user.email.strip().casefold()
@@ -39,7 +39,7 @@ class RestrictedPreviewMiddleware(MiddlewareMixin):
             ).exists():
                 return None
             return HttpResponse('검토 환경 접근 권한이 없습니다.', status=403)
-        if request.path.startswith('/api/'):
+        if request.path_info.startswith('/api/'):
             return JsonResponse({'detail': '검토 환경은 초대받은 회원만 이용할 수 있습니다.'}, status=403)
         return redirect('member-login')
 
