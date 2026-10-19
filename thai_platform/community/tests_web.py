@@ -16,6 +16,8 @@ class WebTests(TestCase):
             self.assertEqual(response.status_code, 200, url)
             self.assertContains(response, "TEEMOBKK")
             self.assertIn("script-src 'self'", response.headers["Content-Security-Policy"])
+            self.assertIn("media-src 'self' https:", response.headers["Content-Security-Policy"])
+            self.assertIn("frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com", response.headers["Content-Security-Policy"])
         self.assertContains(self.client.get("/accounts/login/"), "Google 인증 설정 전")
         self.assertContains(self.client.get("/accounts/login/"), "이메일로 가입·로그인")
         self.assertEqual(self.client.post("/accounts/google/login/").status_code, 503)

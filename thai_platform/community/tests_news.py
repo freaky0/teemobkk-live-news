@@ -67,6 +67,46 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
         payload=self.client.get('/api/v1/news/').json()
         self.assertEqual(payload['results'][0]['image_url'],image)
 
+    def test_video_uses_static_poster_in_list_and_player_in_detail(self):
+        poster='https://images.publisher.example/video-poster.jpg'
+        video='https://video.publisher.example/story.mp4'
+        self.sql('ALTER TABLE articles ADD COLUMN video_url TEXT')
+        link=self.add('with-video',image_url=poster)
+        self.sql('UPDATE articles SET video_url=? WHERE link=?',(video,link))
+        ident=sha256(link.encode()).hexdigest()
+        article=news.get_article(ident)
+        self.assertEqual(article['video_kind'],'file')
+        self.assertEqual(article['video_url'],video)
+        listing=self.client.get('/newsroom/')
+        self.assertContains(listing,poster)
+        self.assertNotContains(listing,'<video')
+        detail=self.client.get('/newsroom/'+ident+'/')
+        self.assertContains(detail,'<video')
+        self.assertContains(detail,'controls')
+        self.assertContains(detail,'poster="'+poster+'"')
+        self.assertContains(detail,video)
+
+    def test_youtube_video_is_projected_to_a_privacy_enhanced_player(self):
+        self.sql('ALTER TABLE articles ADD COLUMN video_url TEXT')
+        link=self.add('with-youtube')
+        self.sql('UPDATE articles SET video_url=? WHERE link=?',('https://www.youtube.com/watch?v=dQw4w9WgXcQ',link))
+        article=news.get_article(sha256(link.encode()).hexdigest())
+        self.assertEqual(article['video_kind'],'embed')
+        self.assertEqual(article['video_embed_url'],'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')
+        detail=self.client.get('/newsroom/'+sha256(link.encode()).hexdigest()+'/')
+        self.assertContains(detail,'<iframe')
+        self.assertContains(detail,article['video_embed_url'])
+
+    def test_video_projection_rejects_untrusted_schemes_and_hosts(self):
+        self.sql('ALTER TABLE articles ADD COLUMN video_url TEXT')
+        for index,video in enumerate(('javascript:alert(1)','https://evil.example/embed/abc')):
+            link=self.add('unsafe-video-'+str(index))
+            self.sql('UPDATE articles SET video_url=? WHERE link=?',(video,link))
+            article=news.get_article(sha256(link.encode()).hexdigest())
+            self.assertEqual(article['video_kind'],'')
+            self.assertEqual(article['video_url'],'')
+            self.assertEqual(article['video_embed_url'],'')
+
     def test_article_image_rejects_non_https_and_credential_urls(self):
         unsafe=['http://images.publisher.example/story.jpg','https://user:pass@images.publisher.example/story.jpg','javascript:alert(1)']
         for index,image in enumerate(unsafe):

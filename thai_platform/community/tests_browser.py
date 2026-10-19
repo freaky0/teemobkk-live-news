@@ -259,3 +259,53 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);""")
                 for width in [320, 390, 768, 1440]:
                     self.page.set_viewport_size({"width": width, "height": 900})
                     self.assertTrue(self.page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), width)
+
+    def test_video_uses_static_poster_in_list_and_player_in_detail(self):
+        from django.utils import timezone
+        from hashlib import sha256
+
+        link = "https://example.org/video-story"
+        poster = "https://images.example.test/video-poster.png"
+        video = "https://video.example.test/video-story.mp4"
+        with TemporaryDirectory(dir=Path(settings.BASE_DIR) / "var") as temp_dir:
+            news_db = Path(temp_dir) / "news.sqlite3"
+            with sqlite3.connect(news_db) as connection:
+                connection.executescript("""CREATE TABLE articles(link TEXT PRIMARY KEY,title_ko TEXT,summary_ko TEXT,summary TEXT,source TEXT,original_source TEXT,region TEXT,category TEXT,post_status TEXT,published_at TEXT,image_url TEXT,video_url TEXT);
+CREATE TABLE hidden_links(link TEXT);
+CREATE TABLE filter_rules(id INTEGER PRIMARY KEY,enabled INTEGER);
+CREATE TABLE filter_hits(link TEXT,rule_id INTEGER);
+CREATE TABLE filter_keeps(link TEXT);
+CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);""")
+                connection.execute(
+                    "INSERT INTO articles VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (link, "동영상 검증 기사", "검증용 요약입니다.", "Synthetic summary", "Fixture", "", "태국", "생활", "ready", timezone.now().isoformat(), poster, video),
+                )
+
+            with override_settings(POST_NEWS_DB=str(news_db)):
+                self.page.route(
+                    "https://images.example.test/**",
+                    lambda route: route.fulfill(
+                        status=200,
+                        content_type="image/svg+xml",
+                        body='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360"><rect width="640" height="360" fill="#173c5c"/><path d="M0 280 640 80v280H0" fill="#286e7d"/><text x="32" y="330" fill="#ffffff" font-size="18" font-family="sans-serif">SYNTHETIC VIDEO POSTER</text></svg>',
+                    ),
+                )
+                self.go("/newsroom/")
+                card = self.page.locator(".news-item").filter(has_text="동영상 검증 기사")
+                self.assertEqual(card.locator("img.news-image").get_attribute("src"), poster)
+                self.assertEqual(card.locator("video").count(), 0)
+                self.assertTrue(card.locator(".video-badge").is_visible())
+                self.page.screenshot(path=str(self.output / "video-news-list-1440.png"), full_page=True)
+
+                self.go(f"/newsroom/{sha256(link.encode()).hexdigest()}/")
+                player = self.page.locator("video.news-video-player")
+                self.assertEqual(player.count(), 1)
+                self.assertIsNotNone(player.get_attribute("controls"))
+                self.assertEqual(player.get_attribute("preload"), "none")
+                self.assertEqual(player.get_attribute("poster"), poster)
+                self.assertEqual(player.locator("source").get_attribute("src"), video)
+                self.page.screenshot(path=str(self.output / "video-news-detail-1440.png"), full_page=True)
+                for width in [320, 390, 768, 1440]:
+                    self.page.set_viewport_size({"width": width, "height": 900})
+                    self.assertTrue(self.page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), width)
+                self.assertEqual(self.errors, [])

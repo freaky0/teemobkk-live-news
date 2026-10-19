@@ -9,9 +9,10 @@ from datetime import timedelta, timezone as dt_timezone
 from hashlib import sha256
 import json
 from pathlib import Path
+import re
 import sqlite3
 import time
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 from django.conf import settings
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -112,13 +113,48 @@ def projection_fields(conn):
         image="CASE WHEN safe_url(a.image_url)=1 AND lower(a.image_url) LIKE 'https://%' THEN a.image_url ELSE '' END AS image_url"
     else:
         image="'' AS image_url"
-    return FIELDS+','+image
+    if 'video_url' in columns:
+        video="CASE WHEN safe_url(a.video_url)=1 AND lower(a.video_url) LIKE 'https://%' THEN a.video_url ELSE '' END AS video_url"
+    else:
+        video="'' AS video_url"
+    return FIELDS+','+image+','+video
+
+
+def project_video(value):
+    """Return a playable URL only for direct files and explicitly supported embeds."""
+    if not safe_url(value):
+        return {'kind':'','url':'','embed_url':''}
+    parsed=urlsplit(value)
+    if parsed.scheme.lower()!='https':
+        return {'kind':'','url':'','embed_url':''}
+    host=(parsed.hostname or '').lower().rstrip('.')
+    path_parts=[part for part in parsed.path.split('/') if part]
+    suffix=Path(parsed.path).suffix.lower()
+    if suffix in {'.mp4','.m4v','.webm','.ogv','.ogg'}:
+        return {'kind':'file','url':value,'embed_url':''}
+
+    video_id=''
+    if host in {'youtube.com','www.youtube.com','m.youtube.com','youtube-nocookie.com','www.youtube-nocookie.com','youtu.be'}:
+        if host=='youtu.be' and path_parts:
+            video_id=path_parts[0]
+        elif path_parts and path_parts[0] in {'embed','v','shorts','live'} and len(path_parts)>1:
+            video_id=path_parts[1]
+        elif path_parts and path_parts[0]=='watch':
+            video_id=parse_qs(parsed.query).get('v',[''])[0]
+        if re.fullmatch(r'[A-Za-z0-9_-]{11}',video_id):
+            return {'kind':'embed','url':'','embed_url':'https://www.youtube-nocookie.com/embed/'+video_id}
+    if host in {'vimeo.com','www.vimeo.com','player.vimeo.com'} and path_parts:
+        video_id=path_parts[-1] if path_parts[-1].isdigit() else ''
+        if video_id:
+            return {'kind':'embed','url':'','embed_url':'https://player.vimeo.com/video/'+video_id}
+    return {'kind':'','url':'','embed_url':''}
 
 
 def project(row):
     published=parse_datetime(row['published_at'])
     if published and timezone.is_naive(published):
         published=published.replace(tzinfo=dt_timezone.utc)
+    video=project_video(row['video_url'] or '')
     return {
         'id':public_id(row['link']),
         'title':strip_tags(row['title_ko']).strip(),
@@ -128,6 +164,9 @@ def project(row):
         'published_at':published,
         'source_url':row['link'],
         'image_url':row['image_url'] or '',
+        'video_kind':video['kind'],
+        'video_url':video['url'],
+        'video_embed_url':video['embed_url'],
     }
 
 
