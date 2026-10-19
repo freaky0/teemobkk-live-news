@@ -92,11 +92,11 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         for width in [320, 390, 768, 1440]:
             p.set_viewport_size({'width': width, 'height': 950})
             self.go('/community/activity/?kind=bookmarks')
-            self.assertTrue(p.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'))
+            self.assertTrue(p.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), width)
             if width == 390:
                 p.screenshot(path=str(self.output / 'activity-bookmarks-390.png'), full_page=True)
             p.locator('a.title').first.click()
-            self.assertTrue(p.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'))
+            self.assertTrue(p.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), width)
             if width == 390:
                 p.screenshot(path=str(self.output / 'engagement-detail-390.png'), full_page=True)
         p.get_by_role('button', name='스크랩 해제', exact=True).click()
@@ -117,10 +117,10 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         for width in [320, 390, 768, 1440]:
             p.set_viewport_size({'width': width, 'height': 950})
             self.go('/community/?resolution=resolved&region=bangkok')
-            self.assertTrue(p.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'))
+            self.assertTrue(p.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), width)
             self.assertEqual(p.locator('#resolution').input_value(), 'resolved')
             p.locator('a.title').first.click()
-            self.assertTrue(p.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'))
+            self.assertTrue(p.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), width)
             if width == 390:
                 p.screenshot(path=str(self.output / 'resolution-detail-390.png'), full_page=True)
             p.locator('a.return').click()
@@ -132,6 +132,20 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.assertEqual(response.status, 200)
         self.assertEqual(response.json()['resolution'], 'unresolved')
         self.assertEqual(self.errors, [])
+
+    def test_mobile_nav_does_not_cover_focused_post_body(self):
+        p = self.page
+        for width in [320, 390]:
+            p.set_viewport_size({"width": width, "height": 844})
+            self.go("/community/new/")
+            p.locator("#id_body").click()
+            nav = p.locator(".bottom").bounding_box()
+            body = p.locator("#id_body").bounding_box()
+            self.assertIsNotNone(nav)
+            self.assertIsNotNone(body)
+            self.assertLessEqual(body["y"] + body["height"], nav["y"] + 1, width)
+            if width == 390:
+                p.screenshot(path=str(self.output / "mobile-nav-clearance-390.png"))
 
     def test_responsive_links_draft_and_back(self):
         p = self.page
