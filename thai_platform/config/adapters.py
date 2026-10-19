@@ -4,6 +4,7 @@ https://docs.allauth.org/en/latest/socialaccount/adapter.html
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils import timezone
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.account.models import EmailAddress
@@ -17,7 +18,7 @@ class ClosedAccountAdapter(DefaultAccountAdapter):
         return False
     def get_login_redirect_url(self,request):
         profile=MemberProfile.objects.filter(user=request.user).first()
-        return '/accounts/profile/' if profile and profile.is_complete else '/accounts/onboarding/'
+        return reverse('member-profile') if profile and profile.is_complete else reverse('member-onboarding')
 
 class GoogleOnlyAdapter(DefaultSocialAccountAdapter):
     def preview_identity_allowed(self,sociallogin):

@@ -49,7 +49,9 @@ POST_LOCAL_DEVELOPMENT=1 POST_NEWS_DB=/opt/teemo-live-news/news.db uv run python
 - 한국어 제목과 요약을 그대로 재사용합니다. 사실 재검증이나 새 번역을 수행한 결과가 아닙니다. 뉴스 상세에 원문 링크와 요약임을 표시합니다.
 - 이미지 사용권·원격 이미지 추적 문제를 피하기 위해 기사별 외부 이미지는 이 묶음에 포함하지 않았습니다.
 
-웹 경로는 `/news/`, `/news/{id}/`입니다. 앱 공통 API는 `GET /api/v1/news/`, `GET /api/v1/news/{id}/`입니다.
+웹 경로는 `/newsroom/`, `/newsroom/{id}/`입니다. `/thai/news/`와 `/thai/news/ko/`의 기존 운영 페이지와 겹치지 않도록 분리했습니다. 앱 공통 API는 `GET /api/v1/news/`, `GET /api/v1/news/{id}/`입니다.
+
+경로 접두사 아래에 배포할 때는 `POST_SCRIPT_PREFIX=/thai`를 서버 환경에 설정합니다. 프록시는 접두사만 제거한 요청 경로를 Django로 전달하고, Django의 `FORCE_SCRIPT_NAME`과 상대 `STATIC_URL`이 브라우저 경로를 다시 `/thai/` 아래로 만듭니다. 운영 프록시 설정은 별도 검증 후 적용해야 하며, 이 문서는 현재 라이브 설정이 변경됐다는 뜻이 아닙니다.
 목록 매개변수는 `q`(최대 200자)와 `page`(1~10000)입니다. 응답은 `count`, `page`, `page_size`, `has_next`, `results`입니다.
 각 기사는 `id`, `title`, `summary`, `source`, `category`, `published_at`, `source_url`을 제공합니다. POST·PATCH·DELETE는 허용하지 않습니다.
 DB 권한·접근 방식은 실제 운영 배포 전에 별도로 검토해야 합니다. 이번 연결은 로컬 개발 서버에서만 실행합니다.

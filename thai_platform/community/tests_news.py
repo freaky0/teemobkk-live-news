@@ -42,7 +42,7 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
         self.sql('INSERT INTO settings VALUES (?,?)',('hidden_sources',json.dumps(['Disabled'])))
         result = news.list_articles()
         self.assertEqual(result.total,2)
-        for endpoint in ['/', '/news/', '/api/v1/news/']:
+        for endpoint in ['/', '/newsroom/', '/api/v1/news/']:
             response = self.client.get(endpoint)
             self.assertEqual(response.status_code,200)
             self.assertContains(response,'검증용 태국 뉴스 public')
@@ -51,10 +51,10 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
                 self.assertNotContains(response,'검증용 태국 뉴스 '+slug)
         for link in blocked:
             ident=sha256(link.encode()).hexdigest()
-            self.assertEqual(self.client.get('/news/'+ident+'/').status_code,404)
+            self.assertEqual(self.client.get('/newsroom/'+ident+'/').status_code,404)
             self.assertEqual(self.client.get('/api/v1/news/'+ident+'/').status_code,404)
         ident=sha256(public.encode()).hexdigest()
-        self.assertEqual(self.client.get('/news/'+ident+'/').status_code,200)
+        self.assertEqual(self.client.get('/newsroom/'+ident+'/').status_code,200)
         self.assertEqual(self.client.get('/api/v1/news/'+ident+'/').status_code,200)
     def test_keep_and_disabled_rule_do_not_bypass_manual_hide(self):
         link=self.add('kept')
@@ -81,7 +81,7 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
         self.add('safe')
         self.sql("INSERT INTO settings VALUES ('hidden_sources','not-json')")
         with self.assertRaises(news.NewsUnavailable):news.list_articles()
-        self.assertEqual(self.client.get('/news/').status_code,503)
+        self.assertEqual(self.client.get('/newsroom/').status_code,503)
         self.assertEqual(self.client.get('/api/v1/news/').status_code,503)
         self.sql('DELETE FROM settings')
         self.sql('DROP TABLE filter_rules')
@@ -89,7 +89,7 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
     def test_missing_database_does_not_create_file(self):
         missing=Path(self.tmp.name)/'missing.db'
         with override_settings(POST_NEWS_DB=str(missing)):
-            self.assertEqual(self.client.get('/news/').status_code,503)
+            self.assertEqual(self.client.get('/newsroom/').status_code,503)
             self.assertEqual(self.client.get('/').status_code,200)
         self.assertFalse(missing.exists())
     def test_search_pagination_readonly_methods_and_payload(self):
@@ -115,19 +115,19 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
         from urllib.parse import urlencode
         link=self.add('return')
         query='?q=검증&page=2'
-        path='/news/'+sha256(link.encode()).hexdigest()+'/'
+        path='/newsroom/'+sha256(link.encode()).hexdigest()+'/'
         response=self.client.get(path,{'from':query})
-        self.assertEqual(response.context['back_url'],'/news/'+query)
+        self.assertEqual(response.context['back_url'],'/newsroom/'+query)
         response=self.client.get(path,{'from':'https://evil.example/'})
-        self.assertEqual(response.context['back_url'],'/news/')
-        response=self.client.get('/news/',{'q':'검증','page':1})
+        self.assertEqual(response.context['back_url'],'/newsroom/')
+        response=self.client.get('/newsroom/',{'q':'검증','page':1})
         self.assertContains(response,'?from=')
 
     def test_unconfigured_and_escaped_output(self):
         with override_settings(POST_NEWS_DB=''):
             with self.assertRaises(news.NewsUnavailable):news.list_articles()
         link=self.add('escaped',title_ko='<script>alert(1)</script>테스트',summary_ko='<img src=x onerror=alert(2)>요약')
-        response=self.client.get('/news/'+sha256(link.encode()).hexdigest()+'/')
+        response=self.client.get('/newsroom/'+sha256(link.encode()).hexdigest()+'/')
         self.assertEqual(response.status_code,200)
         self.assertNotContains(response,'<script>alert(1)</script>')
         self.assertNotContains(response,'<img src=x')

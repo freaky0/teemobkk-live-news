@@ -4,7 +4,7 @@ class SecurityHeadersMiddleware:
     def __call__(self, request):
         from django.conf import settings
         from django.http import HttpResponse
-        if request.path.startswith("/accounts/google/") and not settings.GOOGLE_CONFIGURED:
+        if request.path_info.startswith("/accounts/google/") and not settings.GOOGLE_CONFIGURED:
             return HttpResponse("Google 로그인 연결 전입니다.", status=503, content_type="text/plain; charset=utf-8")
         response = self.get_response(request)
         response.setdefault("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self' https://accounts.google.com")

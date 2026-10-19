@@ -1,5 +1,6 @@
 from django.http import Http404
 from django.shortcuts import render
+from django.urls import reverse
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -39,7 +40,8 @@ def detail(request,article_id):
     if not article:
         raise Http404
     origin=request.GET.get('from','')
-    back_url='/news/'+origin if origin.startswith('?') and len(origin)<2000 else '/news/'
+    news_url=reverse('news-list')
+    back_url=news_url+origin if origin.startswith('?') and len(origin)<2000 else news_url
     return render(request,'news/detail.html',{'article':article,'back_url':back_url})
 
 

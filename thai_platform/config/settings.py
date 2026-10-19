@@ -1,7 +1,18 @@
 from pathlib import Path
 import os
 from django.core.exceptions import ImproperlyConfigured
+from django.urls import reverse_lazy
 BASE_DIR = Path(__file__).resolve().parent.parent
+POST_SCRIPT_PREFIX = os.environ.get("POST_SCRIPT_PREFIX", "").strip()
+if POST_SCRIPT_PREFIX and (
+    not POST_SCRIPT_PREFIX.startswith("/")
+    or POST_SCRIPT_PREFIX.endswith("/")
+    or "//" in POST_SCRIPT_PREFIX
+    or any(part in {"", ".", ".."} for part in POST_SCRIPT_PREFIX[1:].split("/"))
+    or any(char in POST_SCRIPT_PREFIX for char in "?#\\")
+):
+    raise ImproperlyConfigured("POST_SCRIPT_PREFIX must be an absolute path without a trailing slash.")
+FORCE_SCRIPT_NAME = POST_SCRIPT_PREFIX or None
 LOCAL_DEVELOPMENT = os.environ.get("POST_LOCAL_DEVELOPMENT") == "1"
 DEBUG = LOCAL_DEVELOPMENT and os.environ.get("POST_DEBUG") == "1"
 SECRET_KEY = os.environ.get("POST_SECRET_KEY", "")
@@ -28,14 +39,14 @@ LANGUAGE_CODE = "ko-kr"
 TIME_ZONE = "Asia/Bangkok"
 USE_TZ = True
 POST_NEWS_DB = os.environ.get("POST_NEWS_DB", "")
-STATIC_URL = "/static/"
+STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 SITE_ID = 1
-LOGIN_URL = "/accounts/login/"
-LOGIN_REDIRECT_URL = "/community/"
-ACCOUNT_LOGOUT_REDIRECT_URL = "/"
+LOGIN_URL = reverse_lazy("member-login")
+LOGIN_REDIRECT_URL = reverse_lazy("post-list")
+ACCOUNT_LOGOUT_REDIRECT_URL = reverse_lazy("home")
 ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "username*"]
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"

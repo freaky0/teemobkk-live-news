@@ -7,12 +7,13 @@ import re
 
 class AuthBoundaryMiddleware(MiddlewareMixin):
     def process_request(self,request):
-        if request.path.startswith(('/accounts/password/','/accounts/3rdparty/','/accounts/social/')):
+        path = request.path_info
+        if path.startswith(('/accounts/password/','/accounts/3rdparty/','/accounts/social/')):
             return render(request,'403.html',status=403)
-        if request.user.is_authenticated and request.path.startswith('/accounts/'):
+        if request.user.is_authenticated and path.startswith('/accounts/'):
             request._post_private_account_response=True
     def process_response(self,request,response):
-        if request.path.startswith(('/accounts/','/api/v1/me/')):
+        if request.path_info.startswith(('/accounts/','/api/v1/me/')):
             response['Cache-Control']='no-store, private'
             # Django's HTTPS CSRF checks require a same-origin Referer when
             # Origin is absent. Tokens use fragments and are removed by JS.
