@@ -111,10 +111,23 @@ class Report(Timestamped):
             raise ValidationError({'comment': 'Comment must belong to this post.'})
 
 class ModerationAppeal(Timestamped):
+    class TargetType(models.TextChoices):
+        POST = 'post', 'Post'
+        COMMENT = 'comment', 'Comment'
+
+    class Status(models.TextChoices):
+        PENDING_REVIEW = 'pending_review', 'Pending review'
+        UPHELD = 'upheld', 'Hidden decision upheld'
+        RESTORED = 'restored', 'Content restored'
+
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='community_appeals')
     post = models.ForeignKey(Post, on_delete=models.PROTECT, related_name='moderation_appeals')
     comment = models.ForeignKey(Comment, on_delete=models.SET_NULL, null=True, blank=True, related_name='moderation_appeals')
+    target_type = models.CharField(max_length=10, choices=TargetType.choices, null=True, blank=True)
     details = models.TextField(validators=[MaxLengthValidator(2000)])
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING_REVIEW, db_index=True)
+    reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_community_appeals')
+    reviewed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at', '-pk']
@@ -126,12 +139,14 @@ class Notification(Timestamped):
         MODERATION_REPORT = 'moderation_report', 'New report'
         REPORT_UPDATE = 'report_update', 'Report update'
         CONTENT_HIDDEN = 'content_hidden', 'Content hidden'
+        APPEAL_UPDATE = 'appeal_update', 'Appeal update'
 
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='community_notifications')
     kind = models.CharField(max_length=24, choices=Kind.choices)
     post = models.ForeignKey(Post, on_delete=models.SET_NULL, null=True, blank=True, related_name='notifications')
     comment = models.ForeignKey(Comment, on_delete=models.SET_NULL, null=True, blank=True, related_name='notifications')
     report = models.ForeignKey(Report, on_delete=models.SET_NULL, null=True, blank=True, related_name='notifications')
+    appeal = models.ForeignKey(ModerationAppeal, on_delete=models.SET_NULL, null=True, blank=True, related_name='notifications')
     is_read = models.BooleanField(default=False, db_index=True)
 
     class Meta:

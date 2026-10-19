@@ -67,7 +67,7 @@ class ReportResolutionSerializer(StrictInputMixin, serializers.Serializer):
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
-        fields = ['id', 'kind', 'post', 'comment', 'report', 'is_read', 'created_at']
+        fields = ['id', 'kind', 'post', 'comment', 'report', 'appeal', 'is_read', 'created_at']
         read_only_fields = fields
 
 
@@ -87,5 +87,5 @@ class AppealInputSerializer(StrictInputMixin, serializers.Serializer):
 class AppealSerializer(serializers.ModelSerializer):
     class Meta:
         model = ModerationAppeal
-        fields = ['id', 'post', 'comment', 'details', 'created_at']
+        fields = ['id', 'post', 'comment', 'details', 'target_type', 'status', 'reviewed_at', 'created_at']
         read_only_fields = fields

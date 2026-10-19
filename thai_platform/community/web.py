@@ -158,7 +158,7 @@ def post_delete(request, pk):
 def notifications_page(request):
     if not request.user.is_active:
         raise PermissionDenied
-    items = Notification.objects.filter(recipient=request.user).select_related('post').order_by('-created_at', '-pk')
+    items = Notification.objects.filter(recipient=request.user).select_related('post', 'appeal').order_by('-created_at', '-pk')
     response = render(request, 'community/notifications.html', {'notifications': items[:50]})
     response['Cache-Control'] = 'no-store, private'
     return response

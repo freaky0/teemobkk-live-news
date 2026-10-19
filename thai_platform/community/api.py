@@ -165,7 +165,7 @@ class NotificationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     def get_queryset(self):
         if not self.request.user.is_authenticated:
             return Notification.objects.none()
-        return Notification.objects.filter(recipient=self.request.user).select_related('post', 'comment', 'report')
+        return Notification.objects.filter(recipient=self.request.user).select_related('post', 'comment', 'report', 'appeal')
 
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)

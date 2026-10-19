@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
-from rest_framework.exceptions import ValidationError as APIValidationError
+from rest_framework.exceptions import PermissionDenied as APIPermissionDenied, ValidationError as APIValidationError
 from .models import AuditEvent, Comment, ModerationAppeal, Post, Report
-from .services import hide_reported_content, is_report_moderator, resolve_report
+from .services import hide_reported_content, is_report_moderator, resolve_appeal, resolve_report
 
 
 @admin.register(Post)
@@ -83,9 +83,10 @@ class ReportAdmin(admin.ModelAdmin):
 
 @admin.register(ModerationAppeal)
 class ModerationAppealAdmin(admin.ModelAdmin):
-    list_display = ['id', 'author', 'post', 'comment', 'created_at']
+    list_display = ['id', 'author', 'target_type', 'post', 'comment', 'status', 'reviewed_by', 'created_at']
+    list_filter = ['status']
     readonly_fields = [field.name for field in ModerationAppeal._meta.fields]
-    actions = None
+    actions = ['uphold_appeals', 'restore_appeals']
 
     def has_module_permission(self, request):
         return is_report_moderator(request.user)
@@ -101,6 +102,21 @@ class ModerationAppealAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+    def apply_decisions(self, request, queryset, outcome):
+        for appeal in queryset:
+            try:
+                resolve_appeal(request.user, appeal, outcome)
+            except (APIValidationError, APIPermissionDenied) as exc:
+                self.message_user(request, f'Appeal {appeal.pk} could not be processed: {exc}', level=messages.ERROR)
+
+    @admin.action(description='Uphold selected hidden-content decisions')
+    def uphold_appeals(self, request, queryset):
+        self.apply_decisions(request, queryset, ModerationAppeal.Status.UPHELD)
+
+    @admin.action(description='Restore selected appealed content')
+    def restore_appeals(self, request, queryset):
+        self.apply_decisions(request, queryset, ModerationAppeal.Status.RESTORED)
 
 
 @admin.register(AuditEvent)

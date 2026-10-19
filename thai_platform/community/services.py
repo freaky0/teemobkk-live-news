@@ -4,6 +4,7 @@ model kwargs. Mutations return model instances; delete_post returns the deleted
 Post. Requests are not idempotency-key protected; do not blindly retry creates.
 """
 from django.db import transaction
+from django.utils import timezone
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from .models import AuditEvent, Comment, ModerationAppeal, Post, Report, Helpful, Bookmark, Notification
 from django.db.models import Count, Exists, OuterRef
@@ -243,6 +244,62 @@ def create_appeal(user, data):
             raise PermissionDenied('Only the author of a hidden comment may appeal it.')
     elif post.author_id != user.pk or post.status != Post.Status.HIDDEN:
         raise PermissionDenied('Only the author of a hidden post may appeal it.')
-    appeal = ModerationAppeal.objects.create(author=user, post=post, comment=comment, details=values['details'])
+    appeal = ModerationAppeal.objects.create(
+        author=user, post=post, comment=comment,
+        target_type=ModerationAppeal.TargetType.COMMENT if comment else ModerationAppeal.TargetType.POST,
+        details=values['details'],
+    )
     _audit(user, 'appeal.create', appeal, {'content_type': 'comment' if comment else 'post'})
     return appeal
+
+
+@transaction.atomic
+def resolve_appeal(user, appeal, outcome):
+    require_report_moderator(user)
+    if outcome not in (ModerationAppeal.Status.UPHELD, ModerationAppeal.Status.RESTORED):
+        raise ValidationError({'status': 'Choose uphold or restore.'})
+
+    appeal = ModerationAppeal.objects.select_for_update().select_related('author', 'post', 'comment').get(pk=appeal.pk)
+    if appeal.status != ModerationAppeal.Status.PENDING_REVIEW:
+        raise ValidationError({'status': 'Only pending appeals can be reviewed.'})
+    if appeal.target_type == ModerationAppeal.TargetType.COMMENT:
+        if not appeal.comment_id:
+            raise ValidationError({'target': 'The appealed comment is no longer available.'})
+        content = Comment.objects.select_for_update().filter(pk=appeal.comment_id, post_id=appeal.post_id).first()
+        if content is None:
+            raise ValidationError({'target': 'The appealed comment is no longer available.'})
+    elif appeal.target_type == ModerationAppeal.TargetType.POST:
+        content = Post.objects.select_for_update().get(pk=appeal.post_id)
+    else:
+        raise ValidationError({'target': 'The appeal target cannot be verified; manual review is required.'})
+    if content.status != Post.Status.HIDDEN:
+        raise ValidationError({'status': 'The appealed content is no longer hidden.'})
+
+    hide_event = AuditEvent.objects.filter(
+        action='content.hide', target_type=appeal.target_type, target_id=str(content.pk)
+    ).order_by('-created_at', '-pk').first()
+    if hide_event is None or hide_event.actor_id is None:
+        raise ValidationError({'reviewer': 'The original moderator cannot be verified; manual review is required.'})
+    if hide_event.actor_id == user.pk:
+        raise PermissionDenied('The moderator who hid this content cannot review its appeal.')
+
+    now = timezone.now()
+    claimed = ModerationAppeal.objects.filter(
+        pk=appeal.pk, status=ModerationAppeal.Status.PENDING_REVIEW
+    ).update(status=outcome, reviewed_by=user, reviewed_at=now)
+    if claimed != 1:
+        raise ValidationError({'status': 'This appeal has already been reviewed.'})
+
+    if outcome == ModerationAppeal.Status.RESTORED:
+        content.status = Post.Status.PUBLISHED
+        content.save(update_fields=['status', 'updated_at'])
+        _audit(user, 'content.restore', content, {'appeal_id': appeal.pk})
+    _audit(user, 'appeal.review', appeal, {'decision': outcome, 'target_type': appeal.target_type})
+    Notification.objects.create(
+        recipient=appeal.author,
+        kind=Notification.Kind.APPEAL_UPDATE,
+        post=appeal.post,
+        comment=appeal.comment,
+        appeal=appeal,
+    )
+    return ModerationAppeal.objects.select_related('author', 'post', 'comment', 'reviewed_by').get(pk=appeal.pk)
