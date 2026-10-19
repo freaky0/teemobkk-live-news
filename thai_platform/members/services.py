@@ -14,6 +14,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.mail import send_mail
 from django.db import transaction
+from django.urls import reverse
 from django.utils import timezone
 from allauth.account.models import EmailAddress
 from allauth.socialaccount.models import SocialAccount
@@ -65,7 +66,7 @@ def request_email(email,remote_addr,session_nonce):
         challenge.save()
     # Fragment is never sent in HTTP request URLs/access logs. The page requires
     # an explicit CSRF-protected POST, so mail link scanners cannot consume it.
-    link=settings.POST_PUBLIC_ORIGIN+'/accounts/email/confirm/#'+urlencode({'id':str(challenge.pk),'token':token})
+    link=settings.POST_PUBLIC_ORIGIN+reverse('email-confirm')+'#'+urlencode({'id':str(challenge.pk),'token':token})
     body='TEEMOBKK POST 가입·로그인 요청입니다.\n\n'+link+'\n\n인증 링크는 10분 동안 한 번만 사용할 수 있습니다.\n신청한 브라우저에서 링크를 열어 주세요.\n직접 요청하지 않았다면 링크를 열지 마세요. 다른 사람에게 전달하지 마세요.'
     try:
         sent=send_mail('TEEMOBKK POST 이메일 인증',body,settings.DEFAULT_FROM_EMAIL,[email],fail_silently=False)
