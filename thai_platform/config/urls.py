@@ -25,10 +25,13 @@ urlpatterns = [
     path("", web.home, name="home"),
     path("community/", web.post_list, name="post-list"),
     path("community/new/", web.post_create, name="post-create"),
+    path("community/activity/", web.my_activity, name="my-activity"),
     path("community/<int:pk>/", web.post_detail, name="post-detail"),
     path("community/<int:pk>/edit/", web.post_edit, name="post-edit"),
     path("community/<int:pk>/delete/", web.post_delete, name="post-delete"),
     path("community/<int:pk>/resolution/", web.post_resolution, name="post-resolution"),
+    path("community/<int:pk>/helpful/", web.post_helpful, name="post-helpful"),
+    path("community/<int:pk>/bookmark/", web.post_bookmark, name="post-bookmark"),
     path("community/<int:pk>/comments/", web.comment_create, name="comment-create"),
     path("community/<int:pk>/report/", web.report_create, name="report-create"),
 ]

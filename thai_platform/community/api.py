@@ -31,6 +31,11 @@ class StaffPermission(BasePermission):
 
 
 class PostViewSet(viewsets.ModelViewSet):
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        response['Cache-Control'] = 'no-store, private'
+        return response
+
     authentication_classes = [SessionAuthentication]
     permission_classes = [ActiveWritePermission]
     pagination_class = CommunityPagination
@@ -38,7 +43,7 @@ class PostViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
 
     def get_queryset(self):
-        qs = Post.objects.filter(status=Post.Status.PUBLISHED)
+        qs = services.public_posts(self.request.user)
         if self.action != 'list':
             return qs
         params = self.request.query_params
@@ -62,20 +67,28 @@ class PostViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         post = services.create_post(request.user, request.data)
-        return Response(PostSerializer(post).data, status=status.HTTP_201_CREATED)
+        return Response(PostSerializer(services.public_posts(request.user).get(pk=post.pk)).data, status=status.HTTP_201_CREATED)
 
     def partial_update(self, request, *args, **kwargs):
         post = services.update_post(request.user, self.get_object(), request.data)
-        return Response(PostSerializer(post).data)
+        return Response(PostSerializer(services.public_posts(request.user).get(pk=post.pk)).data)
 
     def destroy(self, request, *args, **kwargs):
         services.delete_post(request.user, self.get_object())
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['post'])
+    def bookmark(self, request, pk=None):
+        return Response(services.set_bookmark(request.user, self.get_object(), request.data))
+
+    @action(detail=True, methods=['post'])
+    def helpful(self, request, pk=None):
+        return Response(services.set_helpful(request.user, self.get_object(), request.data))
+
+    @action(detail=True, methods=['post'])
     def resolution(self, request, pk=None):
         post = services.set_resolution(request.user, self.get_object(), request.data)
-        return Response(PostSerializer(post).data)
+        return Response(PostSerializer(services.public_posts(request.user).get(pk=post.pk)).data)
 
     @action(detail=True, methods=['get', 'post'])
     def comments(self, request, pk=None):
@@ -107,7 +120,23 @@ class ReportViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
         return Response(ReportSerializer(report).data)
 
 
+class ActivityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    authentication_classes = [SessionAuthentication]
+    pagination_class = CommunityPagination
+    http_method_names = ['get', 'head', 'options']
+
+    def list(self, request, *args, **kwargs):
+        kind = request.query_params.get('kind', 'posts')
+        qs = services.activity(request.user, kind)
+        page = self.paginate_queryset(qs)
+        serializer = CommentSerializer if kind == 'comments' else PostSerializer
+        response = self.get_paginated_response(serializer(page, many=True).data)
+        response['Cache-Control'] = 'no-store, private'
+        return response
+
+
 router = DefaultRouter()
 router.register('posts', PostViewSet, basename='post')
+router.register('activity', ActivityViewSet, basename='activity')
 router.register('reports', ReportViewSet, basename='report')
 urlpatterns = router.urls

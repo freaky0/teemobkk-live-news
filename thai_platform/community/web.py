@@ -9,6 +9,7 @@ from django.http import Http404
 from rest_framework.exceptions import PermissionDenied as APIPermissionDenied, NotFound as APINotFound
 from django.urls import reverse
 from django.views.decorators.http import require_POST
+from django.views.decorators.cache import never_cache
 from rest_framework.exceptions import ValidationError as APIValidationError
 from .forms import CATEGORIES, REGIONS, CommentForm, PostForm, ReportForm
 from .models import Post
@@ -23,7 +24,7 @@ def call_service(name, *args):
         raise Http404 from exc
 
 def published():
-    return Post.objects.filter(status="published").select_related("author").order_by("-created_at", "-pk")
+    return services.public_posts()
 
 def back_url(request):
     query = request.GET.get("from", "")
@@ -58,8 +59,20 @@ def post_list(request):
     keep.pop("page", None)
     return render(request, "community/list.html", {"resolution": resolution, "resolutions": Post.Resolution.choices, "page_obj": pagination, "q": q, "region": region, "category": category, "regions": REGIONS, "categories": CATEGORIES, "list_query": "?" + request.GET.urlencode(), "filter_query": keep.urlencode()})
 
+@never_cache
+def my_activity(request):
+    kind = request.GET.get('kind', 'posts')
+    try:
+        qs = call_service('activity', request.user, kind)
+    except APIValidationError:
+        raise Http404
+    page = Paginator(qs, 20).get_page(request.GET.get('page'))
+    return render(request, 'community/activity.html', {'page_obj': page, 'kind': kind})
+
+
+@never_cache
 def post_detail(request, pk):
-    post = get_object_or_404(published(), pk=pk)
+    post = get_object_or_404(services.public_posts(request.user), pk=pk)
     return render(request, "community/detail.html", {"post": post, "comments": post.comments.filter(status="published").select_related("author").order_by("created_at"), "comment_form": CommentForm(), "report_form": ReportForm(), "back_url": back_url(request)})
 
 def service_error(form, exc):
@@ -98,6 +111,27 @@ def post_edit(request, pk):
         except (ValidationError, APIValidationError) as exc:
             service_error(form, exc)
     return render(request, "community/write.html", {"form": form, "editing": True, "post": post})
+
+@require_POST
+def post_helpful(request, pk):
+    return engagement_action(request, pk, 'set_helpful')
+
+
+@require_POST
+def post_bookmark(request, pk):
+    return engagement_action(request, pk, 'set_bookmark')
+
+
+def engagement_action(request, pk, service):
+    if not request.user.is_authenticated or not request.user.is_active:
+        raise PermissionDenied
+    post = get_object_or_404(published(), pk=pk)
+    try:
+        call_service(service, request.user, post, {k: v for k, v in request.POST.items() if k != 'csrfmiddlewaretoken'})
+    except APIValidationError:
+        return render(request, 'community/action.html', {'form': None, 'title': '요청 값을 확인해 주세요', 'post': post}, status=400)
+    return redirect('post-detail', pk=pk)
+
 
 @require_POST
 def post_resolution(request, pk):

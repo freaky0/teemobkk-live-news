@@ -23,11 +23,18 @@ class PostInputSerializer(StrictInputMixin, serializers.ModelSerializer):
 
 class PostSerializer(serializers.ModelSerializer):
     author = serializers.IntegerField(source='author_id', read_only=True)
+    helpful_count = serializers.IntegerField(read_only=True, default=0)
+    helpful_active = serializers.BooleanField(read_only=True, default=False)
+    bookmarked = serializers.BooleanField(read_only=True, default=False)
 
     class Meta:
         model = Post
-        fields = ['id', 'author', 'title', 'body', 'region', 'category', 'status', 'resolution', 'created_at', 'updated_at']
+        fields = ['id', 'author', 'title', 'body', 'region', 'category', 'status', 'resolution', 'helpful_count', 'helpful_active', 'bookmarked', 'created_at', 'updated_at']
         read_only_fields = fields
+
+
+class EngagementInputSerializer(StrictInputMixin, serializers.Serializer):
+    active = serializers.BooleanField()
 
 
 class PostResolutionSerializer(StrictInputMixin, serializers.Serializer):

@@ -5,8 +5,9 @@ Post. Requests are not idempotency-key protected; do not blindly retry creates.
 """
 from django.db import transaction
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
-from .models import AuditEvent, Comment, Post, Report
-from .serializers import (CommentInputSerializer, PostInputSerializer, PostResolutionSerializer,
+from .models import AuditEvent, Comment, Post, Report, Helpful, Bookmark
+from django.db.models import Count, Exists, OuterRef
+from .serializers import (CommentInputSerializer, PostInputSerializer, PostResolutionSerializer, EngagementInputSerializer,
                           ReportInputSerializer, ReportResolutionSerializer)
 
 
@@ -78,6 +79,59 @@ def delete_post(user, post):
         post.save(update_fields=['status', 'updated_at'])
         _audit(user, 'post.delete', post)
     return post
+
+
+def public_posts(user=None):
+    qs = Post.objects.filter(status=Post.Status.PUBLISHED).select_related('author').annotate(helpful_count=Count('helpful_votes', distinct=True)).order_by('-created_at', '-pk')
+    if user and user.is_authenticated:
+        qs = qs.annotate(
+            helpful_active=Exists(Helpful.objects.filter(user=user, post_id=OuterRef('pk'))),
+            bookmarked=Exists(Bookmark.objects.filter(user=user, post_id=OuterRef('pk'))),
+        )
+    return qs
+
+
+def activity(user, kind):
+    require_active(user)
+    qs = public_posts(user)
+    if kind == 'posts':
+        return qs.filter(author=user)
+    if kind == 'comments':
+        return Comment.objects.filter(author=user, status=Post.Status.PUBLISHED, post__status=Post.Status.PUBLISHED).order_by('-created_at', '-pk')
+    if kind == 'helpful':
+        return qs.filter(helpful_votes__user=user)
+    if kind == 'bookmarks':
+        return qs.filter(bookmarks__user=user)
+    raise ValidationError({'kind': 'Invalid activity kind.'})
+
+
+@transaction.atomic
+def set_bookmark(user, post, data):
+    require_active(user)
+    post = Post.objects.select_for_update().get(pk=post.pk)
+    _published(post)
+    active = _validate(EngagementInputSerializer, data)['active']
+    if active:
+        Bookmark.objects.get_or_create(user=user, post=post)
+    else:
+        Bookmark.objects.filter(user=user, post=post).delete()
+    # Private interests are not copied into the general moderation audit log.
+    return {'active': active}
+
+
+@transaction.atomic
+def set_helpful(user, post, data):
+    require_active(user)
+    post = Post.objects.select_for_update().get(pk=post.pk)
+    _published(post)
+    active = _validate(EngagementInputSerializer, data)['active']
+    if active:
+        _, changed = Helpful.objects.get_or_create(user=user, post=post)
+    else:
+        changed, _ = Helpful.objects.filter(user=user, post=post).delete()
+    if changed:
+        _audit(user, 'post.helpful', post, {'active': active})
+    return {'active': active, 'helpful_count': Helpful.objects.filter(post=post).count()}
 
 
 @transaction.atomic

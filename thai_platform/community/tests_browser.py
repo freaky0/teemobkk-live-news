@@ -74,6 +74,37 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         p.wait_for_load_state("networkidle")
         self.assertIn("수정한", p.locator("h1").inner_text())
         self.assertEqual(self.errors, [])
+    def test_helpful_bookmark_activity_browser(self):
+        p = self.page
+        self.go(f'/community/{self.post.pk}/')
+        p.get_by_role('button', name='도움됐어요 0', exact=True).click()
+        p.wait_for_load_state('networkidle')
+        self.assertTrue(p.get_by_role('button', name='도움됐어요 취소 1', exact=True).is_visible())
+        p.get_by_role('button', name='스크랩', exact=True).click()
+        p.wait_for_load_state('networkidle')
+        self.assertTrue(p.get_by_role('button', name='스크랩 해제', exact=True).is_visible())
+        response = self.context.request.get(self.live_server_url + f'/api/v1/posts/{self.post.pk}/')
+        self.assertEqual(response.json()['helpful_count'], 1)
+        self.assertTrue(response.json()['bookmarked'])
+        p.get_by_role('link', name='내 활동', exact=True).click()
+        p.get_by_role('link', name='비공개 스크랩', exact=True).click()
+        self.assertTrue(p.locator('a.title').first.is_visible())
+        for width in [320, 390, 768, 1440]:
+            p.set_viewport_size({'width': width, 'height': 950})
+            self.go('/community/activity/?kind=bookmarks')
+            self.assertTrue(p.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'))
+            if width == 390:
+                p.screenshot(path=str(self.output / 'activity-bookmarks-390.png'), full_page=True)
+            p.locator('a.title').first.click()
+            self.assertTrue(p.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'))
+            if width == 390:
+                p.screenshot(path=str(self.output / 'engagement-detail-390.png'), full_page=True)
+        p.get_by_role('button', name='스크랩 해제', exact=True).click()
+        p.wait_for_load_state('networkidle')
+        response = self.context.request.get(self.live_server_url + '/api/v1/activity/?kind=bookmarks')
+        self.assertEqual(response.json()['count'], 0)
+        self.assertEqual(self.errors, [])
+
     def test_author_resolution_and_filter(self):
         p = self.page
         self.go(f'/community/{self.post.pk}/')

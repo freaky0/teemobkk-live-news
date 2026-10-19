@@ -51,6 +51,22 @@ class Post(Timestamped):
         return self.title
 
 
+class Helpful(Timestamped):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='helpful_votes')
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['user', 'post'], name='unique_helpful_user_post')]
+
+
+class Bookmark(Timestamped):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='bookmarks')
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['user', 'post'], name='unique_bookmark_user_post')]
+
+
 class Comment(Timestamped):
     Status = ContentStatus
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')

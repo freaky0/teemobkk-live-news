@@ -147,4 +147,5 @@ class ResolutionMigrationTests(TransactionTestCase):
             self.assertEqual(original.body, '보존해야 할 원문')
             self.assertEqual(original.author_id, user.pk)
         finally:
-            MigrationExecutor(connection).migrate(new)
+            executor = MigrationExecutor(connection)
+            executor.migrate(executor.loader.graph.leaf_nodes())

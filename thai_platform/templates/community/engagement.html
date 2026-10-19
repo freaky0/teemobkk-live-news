@@ -1,0 +1,16 @@
+<section aria-label="도움 반응과 스크랩">
+<p class="meta">도움 반응 {{ post.helpful_count }}개 · 반응 수는 정보의 정확성이나 전문성을 보증하지 않습니다.</p>
+{% if user.is_authenticated %}
+<div class="actions">
+<form method="post" action="{% url 'post-helpful' post.pk %}">{% csrf_token %}
+<input type="hidden" name="active" value="{% if post.helpful_active %}false{% else %}true{% endif %}">
+<button class="btn" type="submit" aria-pressed="{% if post.helpful_active %}true{% else %}false{% endif %}">{% if post.helpful_active %}도움됐어요 취소{% else %}도움됐어요{% endif %} {{ post.helpful_count }}</button>
+</form>
+<form method="post" action="{% url 'post-bookmark' post.pk %}">{% csrf_token %}
+<input type="hidden" name="active" value="{% if post.bookmarked %}false{% else %}true{% endif %}">
+<button class="btn" type="submit" aria-pressed="{% if post.bookmarked %}true{% else %}false{% endif %}">{% if post.bookmarked %}스크랩 해제{% else %}스크랩{% endif %}</button>
+</form>
+<a class="btn" href="{% url 'my-activity' %}">내 활동</a>
+</div><p class="meta">스크랩 목록은 본인만 볼 수 있습니다.</p>
+{% else %}<a class="btn" href="{% url 'account_login' %}">로그인하고 반응·스크랩하기</a>{% endif %}
+</section>
