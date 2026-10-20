@@ -65,12 +65,12 @@ function stubFetch(realFetch) {
       w.prompt = () => NOTE;   // the phrase prompt, answered here
     },
   });
-  const w = dom.window, d = w.document;
-  await waitFor(() => d.querySelectorAll('#feed .card').length > 0);
-  await sleep(1200);
-
+  const w = dom.window, d = dom.window.document;
   const cards = () => Array.from(d.querySelectorAll('#feed .card'));
   const badges = () => Array.from(d.querySelectorAll('#feed .card .pickbadge'));
+  await waitFor(() => cards().length > 0);
+  await waitFor(() => badges().length === 1);
+
   const pickPill = () => d.querySelector('.pills button[data-pick]');
   const chipTexts = () => Array.from(d.querySelectorAll('#conds [data-cond-off]')).map((b) => b.textContent);
 
