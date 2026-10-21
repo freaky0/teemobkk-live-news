@@ -59,6 +59,25 @@ class Helpful(Timestamped):
         constraints = [models.UniqueConstraint(fields=['user', 'post'], name='unique_helpful_user_post')]
 
 
+class NewsLike(Timestamped):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='news_likes')
+    article_id = models.CharField(max_length=64, db_index=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['user', 'article_id'], name='unique_news_like_user_article')]
+
+
+class NewsComment(Timestamped):
+    Status = ContentStatus
+    article_id = models.CharField(max_length=64, db_index=True)
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='news_comments')
+    body = models.TextField(validators=[MaxLengthValidator(3000)])
+    status = models.CharField(max_length=10, choices=ContentStatus.choices, default=ContentStatus.PUBLISHED, db_index=True)
+
+    class Meta:
+        ordering = ['created_at', 'pk']
+
+
 class Bookmark(Timestamped):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='bookmarks')

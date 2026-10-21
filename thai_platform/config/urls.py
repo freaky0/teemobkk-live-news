@@ -20,6 +20,8 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),
     path("api/v1/news/", news_views.api_list, name="news-api-list"),
     path("api/v1/news/<str:article_id>/", news_views.api_detail, name="news-api-detail"),
+    path("newsroom/<str:article_id>/like/", news_views.news_like_toggle, name="news-like-toggle"),
+    path("newsroom/<str:article_id>/comments/", news_views.news_comment_create, name="news-comment-create"),
     path("newsroom/", news_views.listing, name="news-list"),
     path("newsroom/<str:article_id>/", news_views.detail, name="news-detail"),
     path("api/v1/", include("community.api")),

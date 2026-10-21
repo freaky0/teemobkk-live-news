@@ -260,6 +260,44 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);""")
                     self.page.set_viewport_size({"width": width, "height": 900})
                     self.assertTrue(self.page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), width)
 
+    def test_news_detail_engagement_responsive_share_and_comments(self):
+        from django.utils import timezone
+        from hashlib import sha256
+
+        link = "https://example.org/news-engagement"
+        with TemporaryDirectory(dir=Path(settings.BASE_DIR) / "var") as temp_dir:
+            news_db = Path(temp_dir) / "news.sqlite3"
+            with sqlite3.connect(news_db) as connection:
+                connection.executescript("""CREATE TABLE articles(link TEXT PRIMARY KEY,title_ko TEXT,summary_ko TEXT,summary TEXT,source TEXT,original_source TEXT,region TEXT,category TEXT,post_status TEXT,published_at TEXT,image_url TEXT);
+CREATE TABLE hidden_links(link TEXT);
+CREATE TABLE filter_rules(id INTEGER PRIMARY KEY,enabled INTEGER);
+CREATE TABLE filter_hits(link TEXT,rule_id INTEGER);
+CREATE TABLE filter_keeps(link TEXT);
+CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);""")
+                connection.execute(
+                    "INSERT INTO articles VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                    (link, "좋아요와 댓글 검증 기사", "검증용 요약입니다.", "Synthetic summary", "Fixture", "", "태국", "생활", "ready", timezone.now().isoformat(), ""),
+                )
+
+            with override_settings(POST_NEWS_DB=str(news_db)):
+                self.context.add_init_script("window.__shareCalls=[];Object.defineProperty(navigator,'share',{configurable:true,value:async payload=>window.__shareCalls.push(payload)});")
+                self.go(f"/newsroom/{sha256(link.encode()).hexdigest()}/")
+                self.page.get_by_role("button", name="좋아요 0", exact=False).click()
+                self.page.wait_for_load_state("networkidle")
+                self.assertEqual(self.page.get_by_role("button", name="♥ 좋아요 1").get_attribute("aria-pressed"), "true")
+                self.page.get_by_role("button", name="공유하기").click()
+                self.assertEqual(self.page.evaluate("window.__shareCalls[0].title"), "좋아요와 댓글 검증 기사")
+                self.assertEqual(self.page.evaluate("window.__shareCalls[0].url"), self.page.url)
+                self.page.locator("#id_news_comment_body").fill("브라우저에서 저장하는 기사 댓글입니다.")
+                self.page.get_by_role("button", name="댓글 등록").click()
+                self.page.wait_for_load_state("networkidle")
+                self.assertIn("브라우저에서 저장하는 기사 댓글입니다.", self.page.locator(".news-comments").inner_text())
+                self.page.screenshot(path=str(self.output / "news-engagement-1440.png"), full_page=True)
+                for width in [320, 390, 768, 1440]:
+                    self.page.set_viewport_size({"width": width, "height": 900})
+                    self.assertTrue(self.page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), width)
+                self.assertEqual(self.errors, [])
+
     def test_video_uses_static_poster_in_list_and_player_in_detail(self):
         from django.utils import timezone
         from hashlib import sha256

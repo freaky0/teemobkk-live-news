@@ -1,6 +1,6 @@
 from django.contrib import admin, messages
 from rest_framework.exceptions import PermissionDenied as APIPermissionDenied, ValidationError as APIValidationError
-from .models import AuditEvent, Comment, ModerationAppeal, Post, Report
+from .models import AuditEvent, Comment, ModerationAppeal, NewsComment, NewsLike, Post, Report
 from .services import hide_reported_content, is_report_moderator, resolve_appeal, resolve_report
 
 
@@ -34,6 +34,47 @@ class CommentAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return request.method in ('GET', 'HEAD') and super().has_view_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(NewsComment)
+class NewsCommentAdmin(admin.ModelAdmin):
+    list_display = ['id', 'article_id', 'author', 'status', 'created_at']
+    list_filter = ['status']
+    search_fields = ['article_id', 'body', 'author__username']
+    readonly_fields = [field.name for field in NewsComment._meta.fields]
+    actions = None
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return request.method in ('GET', 'HEAD') and super().has_view_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(NewsLike)
+class NewsLikeAdmin(admin.ModelAdmin):
+    list_display = ['id', 'article_id', 'user', 'created_at']
+    list_filter = ['created_at']
+    readonly_fields = [field.name for field in NewsLike._meta.fields]
+    actions = None
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_module_permission(self, request):
+        return is_report_moderator(request.user)
+
+    def has_view_permission(self, request, obj=None):
+        return is_report_moderator(request.user)
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
     def has_delete_permission(self, request, obj=None):
         return False

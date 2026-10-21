@@ -9,6 +9,10 @@ class PostForm(forms.Form):
     privacy = forms.BooleanField(label="개인정보와 타인의 비공개 정보를 넣지 않았습니다.")
 class CommentForm(forms.Form):
     body = forms.CharField(label="답변 내용", min_length=5, max_length=3000, widget=forms.Textarea(attrs={"rows": 5}))
+
+class NewsCommentForm(forms.Form):
+    body = forms.CharField(label="댓글 내용", min_length=5, max_length=3000, widget=forms.Textarea(attrs={"rows": 4, "id": "id_news_comment_body"}))
+
 class AppealForm(forms.Form):
     details = forms.CharField(label="이의신청 내용", min_length=5, max_length=2000, widget=forms.Textarea(attrs={"rows": 5}))
 

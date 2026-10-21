@@ -8,6 +8,16 @@ document.querySelectorAll('form[data-confirm]').forEach(f=>f.addEventListener('s
 function removeFailedNewsImage(image){if(!(image instanceof HTMLImageElement)||!image.classList.contains('news-image'))return;const item=image.closest('.news-item');const thumbnail=image.closest('.news-thumbnail');image.remove();if(item?.classList.contains('has-video'))thumbnail?.classList.add('no-poster');else{thumbnail?.remove();item?.classList.remove('has-image');}}
 document.addEventListener('error',e=>removeFailedNewsImage(e.target),true);
 document.querySelectorAll('img.news-image').forEach(image=>{if(image.complete&&image.naturalWidth===0)removeFailedNewsImage(image);});
+const shareButton=document.querySelector('[data-share-article]');
+shareButton?.addEventListener('click',async()=>{
+const status=document.querySelector('[data-share-status]');
+if(status)status.textContent='';
+try{
+if(typeof navigator.share==='function'){await navigator.share({title:shareButton.dataset.shareTitle||document.title,url:location.href});return;}
+if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(location.href);if(status)status.textContent='기사 링크를 복사했습니다.';return;}
+if(status)status.textContent='공유 기능을 사용할 수 없습니다. 주소 표시줄에서 링크를 복사해 주세요.';
+}catch(error){if(error?.name!=='AbortError'&&status)status.textContent='공유하지 못했습니다. 주소 표시줄에서 링크를 복사해 주세요.';}
+});
 const scriptPrefix=(document.body.dataset.scriptPrefix||'').replace(/\/+$/,'');const listPage=[`${scriptPrefix}/`,`${scriptPrefix}/community/`,`${scriptPrefix}/newsroom/`].includes(location.pathname);const scrollKey='post-scroll:'+location.pathname+location.search;
 function remember(){if(listPage)try{sessionStorage.setItem(scrollKey,String(scrollY));}catch{}}
 window.addEventListener('pagehide',remember);document.addEventListener('click',e=>{if(e.target.closest('a[href]'))remember();});

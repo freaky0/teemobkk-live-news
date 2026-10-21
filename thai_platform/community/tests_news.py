@@ -190,3 +190,60 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
         self.assertNotContains(response,'<script>alert(1)</script>')
         self.assertNotContains(response,'<img src=x')
         self.assertContains(response,'rel="noopener noreferrer"')
+
+    def test_article_detail_shows_share_like_count_and_comment_form(self):
+        link=self.add('interactions')
+        ident=sha256(link.encode()).hexdigest()
+        response=self.client.get('/newsroom/'+ident+'/')
+        self.assertEqual(response.status_code,200)
+        self.assertContains(response,'공유하기')
+        self.assertContains(response,'좋아요')
+        self.assertContains(response,'댓글')
+        self.assertContains(response,'로그인하고 댓글 쓰기')
+
+    def test_news_like_is_member_only_and_toggles_for_current_user(self):
+        from django.contrib.auth import get_user_model
+        link=self.add('like')
+        ident=sha256(link.encode()).hexdigest()
+        self.assertEqual(self.client.post('/newsroom/'+ident+'/like/').status_code,302)
+        user=get_user_model().objects.create_user(username='news-liker')
+        self.client.force_login(user)
+        self.assertEqual(self.client.post('/newsroom/'+ident+'/like/').status_code,302)
+        response=self.client.get('/newsroom/'+ident+'/')
+        self.assertContains(response,'aria-pressed="true"')
+        self.assertContains(response,'좋아요 1')
+        self.assertEqual(self.client.post('/newsroom/'+ident+'/like/').status_code,302)
+        response=self.client.get('/newsroom/'+ident+'/')
+        self.assertContains(response,'aria-pressed="false"')
+        self.assertContains(response,'좋아요 0')
+
+    def test_news_comment_is_member_only_saved_and_escaped(self):
+        from django.contrib.auth import get_user_model
+        from .models import NewsComment
+        link=self.add('comment')
+        ident=sha256(link.encode()).hexdigest()
+        payload={'body':'<script>alert(1)</script>태국 뉴스에 남기는 검증 댓글입니다.'}
+        self.assertEqual(self.client.post('/newsroom/'+ident+'/comments/',payload).status_code,302)
+        user=get_user_model().objects.create_user(username='news-commenter')
+        self.client.force_login(user)
+        self.assertEqual(self.client.post('/newsroom/'+ident+'/comments/',payload).status_code,302)
+        self.assertEqual(NewsComment.objects.get().article_id,ident)
+        detail=self.client.get('/newsroom/'+ident+'/')
+        self.assertContains(detail,'&lt;script&gt;alert(1)&lt;/script&gt;')
+        self.assertNotContains(detail,'<script>alert(1)</script>')
+
+    def test_news_comment_rejects_short_and_hidden_article_writes(self):
+        from django.contrib.auth import get_user_model
+        from .models import NewsComment
+        link=self.add('comment-validation')
+        ident=sha256(link.encode()).hexdigest()
+        user=get_user_model().objects.create_user(username='news-comment-validation')
+        self.client.force_login(user)
+        invalid=self.client.post('/newsroom/'+ident+'/comments/',{'body':'too'})
+        self.assertEqual(invalid.status_code,400)
+        self.assertContains(invalid,'aria-invalid="true"',status_code=400)
+        self.assertContains(invalid,'aria-describedby="news-comment-error"',status_code=400)
+        self.assertEqual(NewsComment.objects.count(),0)
+        self.sql('INSERT INTO hidden_links VALUES (?)',(link,))
+        self.assertEqual(self.client.post('/newsroom/'+ident+'/comments/',{'body':'이 뉴스는 공개 대상이 아니므로 댓글이 저장되면 안 됩니다.'}).status_code,404)
+        self.assertEqual(NewsComment.objects.count(),0)
