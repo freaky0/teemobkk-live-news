@@ -91,7 +91,10 @@ function stubFetch(realFetch) {
 
   // The pill narrows the feed and, like every other selection, turns into a condition with a count.
   pickPill().click();
-  await sleep(2500);
+  await waitFor(() => chipTexts().some((t) => t.indexOf("Teemo's Pick") >= 0)
+    && (d.querySelector('#conds [data-cond-off] .n') || {}).textContent === '1'
+    && cards().length === 1 && badges().length === 1
+    && pickPill().getAttribute('aria-pressed') === 'true');
   check('알약을 누르면 조건 칩이 생김',
     chipTexts().some((t) => t.indexOf("Teemo's Pick") >= 0), chipTexts().join(' / ') || '없음');
   check('칩에 그 조건의 건수가 붙음',
@@ -102,8 +105,11 @@ function stubFetch(realFetch) {
   check('알약이 켜진 상태가 됨', pickPill().getAttribute('aria-pressed') === 'true');
 
   // Releasing the condition puts the list back, from the same row as every other condition.
-  d.querySelector('#conds [data-cond-off]').click();
-  await sleep(2500);
+  const offButton = d.querySelector('#conds [data-cond-off]');
+  if (offButton) offButton.click();
+  await waitFor(() => pickPill().getAttribute('aria-pressed') === 'false'
+    && !chipTexts().some((t) => t.indexOf("Teemo's Pick") >= 0)
+    && cards().length > 1);
   check('칩을 풀면 알약도 꺼짐', pickPill().getAttribute('aria-pressed') === 'false');
   check('칩이 사라짐', !chipTexts().some((t) => t.indexOf("Teemo's Pick") >= 0), chipTexts().join(' / ') || '없음');
   check('목록이 다시 넓어짐', cards().length > 1, cards().length + '장');
