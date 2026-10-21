@@ -46,7 +46,7 @@ SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = False
 SOCIALACCOUNT_LOGIN_ON_GET = False
 SOCIALACCOUNT_STORE_TOKENS = False
 GOOGLE_CONFIGURED = bool(os.environ.get("POST_GOOGLE_CLIENT_ID") and os.environ.get("POST_GOOGLE_CLIENT_SECRET"))
-SOCIALACCOUNT_PROVIDERS = {"google": {"SCOPE": ["profile", "email"], "AUTH_PARAMS": {"access_type": "online"}, "OAUTH_PKCE_ENABLED": True}}
+SOCIALACCOUNT_PROVIDERS = {"google": {"SCOPE": ["openid", "email"], "AUTH_PARAMS": {"access_type": "online"}, "OAUTH_PKCE_ENABLED": True}}
 if GOOGLE_CONFIGURED:
     SOCIALACCOUNT_PROVIDERS["google"]["APP"] = {"client_id": os.environ["POST_GOOGLE_CLIENT_ID"], "secret": os.environ["POST_GOOGLE_CLIENT_SECRET"], "key": ""}
 REST_FRAMEWORK = {"DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"], "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"], "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination", "PAGE_SIZE": 20, "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.AnonRateThrottle", "rest_framework.throttling.UserRateThrottle"], "DEFAULT_THROTTLE_RATES": {"anon": "60/min", "user": "120/min"}}

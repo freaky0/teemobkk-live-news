@@ -34,7 +34,7 @@ class GooglePreviewFlowTests(TestCase):
         self.assertTrue(params['code_challenge'][0])
         self.assertTrue(params['state'][0])
         self.assertEqual(urlsplit(params['redirect_uri'][0]).path,'/accounts/google/login/callback/')
-        self.assertFalse(set(params['scope'][0].split())-{'openid','email','profile'})
+        self.assertEqual(set(params['scope'][0].split()),{'openid','email'})
         self.assertEqual(params['access_type'],['online'])
 
     def test_callback_reaches_allauth_but_invalid_state_never_calls_google(self):
