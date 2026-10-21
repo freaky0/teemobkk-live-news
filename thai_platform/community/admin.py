@@ -1,6 +1,7 @@
-from django.contrib import admin
+from django.contrib import admin, messages
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from .models import AuditEvent, Comment, Post, Report
-from .services import resolve_report
+from .services import moderate_comment, resolve_report
 
 
 @admin.register(Post)
@@ -23,13 +24,28 @@ class CommentAdmin(admin.ModelAdmin):
     list_display = ['id', 'post', 'author', 'status', 'created_at']
     list_filter = ['status']
     readonly_fields = ['post', 'author', 'body', 'created_at', 'updated_at']
-    actions = None
+    actions = ['hide_selected', 'restore_selected']
 
     def has_add_permission(self, request):
         return False
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+    def apply_moderation(self, request, queryset, status):
+        for comment in queryset:
+            try:
+                moderate_comment(request.user, comment, status)
+            except (PermissionDenied, ValidationError) as exc:
+                self.message_user(request, f'Comment {comment.pk} could not be moderated: {exc}', level=messages.ERROR)
+
+    @admin.action(description='Hide selected comments')
+    def hide_selected(self, request, queryset):
+        self.apply_moderation(request, queryset, Comment.Status.HIDDEN)
+
+    @admin.action(description='Restore selected comments after review')
+    def restore_selected(self, request, queryset):
+        self.apply_moderation(request, queryset, Comment.Status.PUBLISHED)
 
 
 @admin.register(Report)

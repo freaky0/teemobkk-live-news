@@ -97,11 +97,36 @@ def create_report(user, post, data):
     _published(post)
     values = _validate(ReportInputSerializer, data)
     comment = values.get('comment')
-    if comment and comment.post_id != post.pk:
-        raise ValidationError({'comment': 'Comment must belong to this post.'})
-    report = Report.objects.create(reporter=user, post=post, **values)
+    if comment:
+        comment_id = comment.pk if isinstance(comment, Comment) else comment
+        comment = Comment.objects.select_for_update().get(pk=comment_id)
+        if comment.post_id != post.pk:
+            raise ValidationError({'comment': 'Comment must belong to this post.'})
+    report = Report.objects.create(reporter=user, post=post, comment=comment, **{k: v for k, v in values.items() if k != 'comment'})
     _audit(user, 'report.create', report)
+    if comment and comment.status == Comment.Status.PUBLISHED:
+        reporter_count = comment.reports.filter(status=Report.Status.OPEN).values('reporter_id').distinct().count()
+        if reporter_count >= 10:
+            comment.status = Comment.Status.HIDDEN
+            comment.save(update_fields=['status', 'updated_at'])
+            _audit(user, 'comment.auto_hide', comment, {
+                'reason': 'report_threshold', 'distinct_open_reporters': reporter_count,
+            })
     return report
+
+
+@transaction.atomic
+def moderate_comment(user, comment, status):
+    require_staff(user)
+    if status not in (Comment.Status.PUBLISHED, Comment.Status.HIDDEN):
+        raise ValidationError({'status': 'Comment moderation supports published or hidden status.'})
+    comment = Comment.objects.select_for_update().get(pk=comment.pk)
+    previous = comment.status
+    if previous != status:
+        comment.status = status
+        comment.save(update_fields=['status', 'updated_at'])
+        _audit(user, 'comment.moderate', comment, {'previous_status': previous, 'status': status})
+    return comment
 
 
 @transaction.atomic
@@ -109,6 +134,8 @@ def resolve_report(user, report, data):
     require_staff(user)
     values = _validate(ReportResolutionSerializer, data)
     report = Report.objects.select_for_update().get(pk=report.pk)
+    if report.status != Report.Status.OPEN:
+        raise ValidationError({'status': 'Only open reports can be reviewed.'})
     previous = report.status
     report.status = values['status']
     report.save(update_fields=['status', 'updated_at'])

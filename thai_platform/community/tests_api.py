@@ -1,9 +1,11 @@
+from django.contrib import admin
 from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.middleware.csrf import _get_new_csrf_string
 from rest_framework.test import APIClient
 
 from .models import AuditEvent, Comment, Post, Report
+from .admin import CommentAdmin
 from . import services
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
@@ -76,6 +78,54 @@ class CommunityAPITests(TestCase):
         self.client.force_authenticate(self.other)
         self.assertEqual(self.client.post(self.url + 'comments/', {'body': 'Comment'}, format='json').status_code, 201)
         self.assertEqual(self.client.post(self.url + 'comments/', {'body': 'Comment', 'author': self.owner.pk}, format='json').status_code, 400)
+
+    def test_tenth_unique_comment_report_temporarily_hides_comment(self):
+        comment = Comment.objects.create(post=self.post, author=self.owner, body='Potentially harmful comment')
+        User = get_user_model()
+        for index in range(9):
+            reporter = User.objects.create_user(username=f'reporter-{index}')
+            services.create_report(reporter, self.post, {
+                'reason': 'abuse', 'details': 'Please review', 'comment': comment.pk,
+            })
+        comment.refresh_from_db()
+        self.assertEqual(comment.status, Comment.Status.PUBLISHED)
+
+        tenth_reporter = User.objects.create_user(username='reporter-9')
+        services.create_report(tenth_reporter, self.post, {
+            'reason': 'abuse', 'details': 'Please review', 'comment': comment.pk,
+        })
+        comment.refresh_from_db()
+        self.assertEqual(comment.status, Comment.Status.HIDDEN)
+
+    def test_repeated_reports_by_one_account_do_not_reach_unique_reporter_threshold(self):
+        comment = Comment.objects.create(post=self.post, author=self.owner, body='Repeated reports')
+        for _ in range(10):
+            services.create_report(self.other, self.post, {
+                'reason': 'spam', 'details': 'Please review', 'comment': comment.pk,
+            })
+        comment.refresh_from_db()
+        self.assertEqual(comment.status, Comment.Status.PUBLISHED)
+
+    def test_staff_review_can_restore_temporarily_hidden_comment_with_audit(self):
+        comment = Comment.objects.create(post=self.post, author=self.owner, body='Hidden for review', status=Comment.Status.HIDDEN)
+        with self.assertRaises(PermissionDenied):
+            services.moderate_comment(self.other, comment, Comment.Status.PUBLISHED)
+
+        reviewed = services.moderate_comment(self.staff, comment, Comment.Status.PUBLISHED)
+        self.assertEqual(reviewed.status, Comment.Status.PUBLISHED)
+        event = AuditEvent.objects.get(action='comment.moderate', target_id=str(comment.pk))
+        self.assertEqual(event.actor_id, self.staff.pk)
+        self.assertEqual(event.metadata, {'previous_status': 'hidden', 'status': 'published'})
+
+    def test_staff_admin_restore_action_restores_comment(self):
+        comment = Comment.objects.create(post=self.post, author=self.owner, body='Review complete', status=Comment.Status.HIDDEN)
+        request = RequestFactory().post('/admin/community/comment/')
+        request.user = self.staff
+        comment_admin = CommentAdmin(Comment, admin.site)
+        comment_admin.restore_selected(request, Comment.objects.filter(pk=comment.pk))
+        comment.refresh_from_db()
+        self.assertEqual(comment.status, Comment.Status.PUBLISHED)
+        self.assertTrue(AuditEvent.objects.filter(action='comment.moderate', actor=self.staff).exists())
 
     def test_report_private_and_cross_post_mismatch(self):
         other_post = Post.objects.create(author=self.owner, title='Other', body='Body')
@@ -156,6 +206,12 @@ class CommunityAPITests(TestCase):
         report.refresh_from_db()
         self.assertEqual(report.status, 'dismissed')
         self.assertEqual(AuditEvent.objects.get(action='report.resolve').metadata['status'], 'dismissed')
+
+    def test_resolved_report_cannot_be_resolved_again(self):
+        report = services.create_report(self.owner, self.post, {'reason': 'spam', 'details': 'Repeated review'})
+        services.resolve_report(self.staff, report, {'status': Report.Status.RESOLVED})
+        with self.assertRaises(ValidationError):
+            services.resolve_report(self.staff, report, {'status': Report.Status.DISMISSED})
 
     def test_report_details_minimum(self):
         self.client.force_authenticate(self.owner)
