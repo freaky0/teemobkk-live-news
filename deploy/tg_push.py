@@ -603,34 +603,17 @@ def attach_original_link(connection: sqlite3.Connection, item: dict[str, Any]) -
 
 def render(item: dict[str, Any], title: str, body: str, note: str,
            tags: list[str]) -> str:
-    """Render the single approved channel shape.
+    """Render stored article text in the fixed Telegram channel shape.
 
-    The channel uses one format only:
-
-        [기사] 제목
-
-        본문 1
-        본문 2
-
-        Teemo's Note
-        해석 한 줄
-
-        관련 : #태그1 #태그2
-        출처 (@url:`<원문>`) | YYYY-MM-DD HH:MM:SS ICT
-        TeemoBKK 라이브 뉴스 (@url:`<채널 링크>`)
-
-    The old markdown, raw-URL, separate ticker, and separate hashtag-line renderers are deliberately
-    gone. A missing editor note gets a visible fallback sentence so the timer cannot create a second
-    shape when the rewrite provider is unavailable.
+    The article title and body are the persisted translation (or per-field original fallback).
+    A note is deliberately not part of the channel format.
     """
     safe_title = html.escape(title, quote=False)
     safe_body = html.escape(body, quote=False)
-    safe_note = html.escape((note.strip() or "원문 추가 확인 필요")[:NOTE_CHARS], quote=False)
     clean_tags = [str(tag).strip().lstrip("#") for tag in tags if str(tag).strip()]
     lines = ["%s %s" % (pick_tag(item), safe_title)]
     if safe_body:
         lines.extend(["", safe_body])
-    lines.extend(["", NOTE_LABEL, safe_note])
     if clean_tags:
         lines.extend(["", "관련 : " + " ".join("#" + html.escape(tag, quote=False) for tag in clean_tags[:4])])
     stamp = when(item)
@@ -684,12 +667,8 @@ def validate_post(text: str) -> list[str]:
     if not lines[0] or not TITLE_LINE.match(lines[0]):
         problems.append("first line is not '[태그] 제목'")
     notes = [i for i, line in enumerate(lines) if NOTE_HEAD.match(line)]
-    if len(notes) != 1:
-        problems.append("expected exactly one '%s' line, found %d" % (NOTE_LABEL, len(notes)))
     if notes:
-        note_index = notes[0]
-        if note_index + 1 >= len(lines) or not lines[note_index + 1].strip():
-            problems.append("note body is missing")
+        problems.append("note section is not allowed")
     related = [i for i, line in enumerate(lines) if RELATED_LINE.match(line)]
     if len(related) != 1:
         problems.append("expected one '관련 : #tag ...' line, found %d" % len(related))
@@ -699,8 +678,8 @@ def validate_post(text: str) -> list[str]:
     footer = '<a href="%s">TeemoBKK 라이브 뉴스</a>' % html.escape(CHANNEL_LINK, quote=True)
     if lines[-1].strip() != footer:
         problems.append("footer line is not '%s'" % footer)
-    if notes and related and sources and not (notes[0] < related[0] < sources[0]):
-        problems.append("line order is not note -> related -> source")
+    if related and sources and related[0] >= sources[0]:
+        problems.append("line order is not related -> source")
     for pattern, label in BANNED_SHAPES:
         if pattern.search(text):
             problems.append("carries %s" % label)
@@ -746,12 +725,14 @@ def article_row(connection: sqlite3.Connection, link: str) -> dict[str, Any]:
 
 
 def shared_translation(item: dict[str, Any]) -> tuple[str, str]:
-    """Use the persisted site translation as the Telegram article text when both fields exist."""
-    title = str(item.get("title_ko") or "").strip()
-    summary = str(item.get("summary_ko") or "").strip()
-    if title and summary:
-        return title, summary
-    return str(item.get("title") or ""), str(item.get("summary") or "")
+    """Use each persisted site translation verbatim, with per-field original fallback."""
+    title = item.get("title_ko")
+    summary = item.get("summary_ko")
+    if title is None or title == "":
+        title = item.get("title")
+    if summary is None or summary == "":
+        summary = item.get("summary")
+    return str(title or ""), str(summary or "")
 
 
 def editorial_brief(item: dict[str, Any], title: str, summary: str) -> dict[str, Any] | None:
@@ -815,7 +796,7 @@ def post_parts(connection: sqlite3.Connection, parts: dict[str, Any],
     note_here = operator_note(connection, link)
     item["channel_pick"] = bool(parts.get("pick")) or bool(note_here)
     title, body = shared_translation(item)
-    if not title.strip():
+    if not title:
         return False, "no title"
     if is_single_alt_notice(item):
         return False, "altcoin-noise"
@@ -835,15 +816,9 @@ def post_parts(connection: sqlite3.Connection, parts: dict[str, Any],
                 decision, int(item.get("priority") or 0), bool(item.get("channel_pick"))):
             return False, "jev-same-event %.2f" % decision.duplicate_confidence
 
-    editorial = editorial_brief(item, title, body)
-    body = clean_body(body, BODY_CHARS)
-    note = (str((editorial or {}).get("note") or "").strip()[:NOTE_CHARS]
-            or str(parts.get("note") or "").strip()[:NOTE_CHARS]
-            or note_here[:NOTE_CHARS])
-    if not note:
-        return False, "no note"
-    tags = merge_tags((editorial or {}).get("tags") or parts.get("tags") or [], fallback_tags(item))
-    text = render(item, title[:80], body, note, tags)
+    # The outbox may include model-suggested tags; the channel uses only the stored article categories.
+    tags = fallback_tags(item)
+    text = render(item, title, body, "", tags)
     problems = validate_post(text)
     if problems:
         return False, "shape check failed: " + "; ".join(problems)
@@ -1029,25 +1004,10 @@ def tick(connection: sqlite3.Connection, now: datetime | None = None, limit: int
             logging.info("hold (%s): %s", why, (item.get("title") or "")[:70])
             continue
 
-        raw_title, raw_summary = shared_translation(item)
-        written = brief(item, raw_title, raw_summary)
-        if written:
-            title = written["title"]
-            body = written["body"] or raw_summary[:BODY_CHARS]
-            tags = merge_tags(written["tags"], fallback_tags(item))
-            note = written["note"]
-        else:
-            # The editor call is what makes the body/note/tag lines; without it the post still goes
-            # out in the same shape, with the stored text and the stored categories as tags.
-            title = raw_title[:120] + ("…" if len(raw_title) > 120 else "")
-            body = raw_summary[:SUMMARY_CHARS] + ("…" if len(raw_summary) > SUMMARY_CHARS else "")
-            tags = fallback_tags(item)
-            note = ""
-        if item.get("channel_pick") and str(item.get("pick_note") or "").strip():
-            # A pick carries the operator's own sentence; that outranks a written note.
-            note = str(item["pick_note"]).strip()[:NOTE_CHARS]
+        title, body = shared_translation(item)
+        tags = fallback_tags(item)
         attach_original_link(connection, item)
-        text = render(item, title, body, note, tags)
+        text = render(item, title, body, "", tags)
         problems = validate_post(text)
         if problems:
             # Fail closed: a post that does not match the frozen shape stays out of the channel.

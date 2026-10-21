@@ -1,8 +1,8 @@
-"""The channel's frozen shape, and the check that keeps it frozen.
+"""The channel's fixed shape and the check that keeps it fixed.
 
-The channel is fed by the one-minute timer and an optional outbox bridge, but both paths now render through `render()`. What this file locks down is the exact approved shape: one bracket tag, factual body, `Teemo's Note`, related hashtags, an `@url:` source line with ICT time, and the Korean footer. Legacy markdown links, raw source lines, and English footer variants must keep failing.
-
-    python tests/test_tg_push_format.py
+Both the one-minute timer and optional outbox bridge reuse stored article text and render through
+`render()`. The channel posts the article translation, related hashtags, an ICT source line, and the
+Korean footer; it does not add an editorial note or rewrite the saved title/body.
 """
 import json
 import os
@@ -49,9 +49,6 @@ GOLDEN = (
     "[기사] 소프트뱅크, 110억 달러 정크본드 발행 추진\n"
     "\n"
     "소프트뱅크그룹이 110억 달러 규모의 달러·유로 채권 발행을 추진하고 있다.\n"
-    "\n"
-    "Teemo's Note\n"
-    "조달 자금이 오픈AI 후속 투자에 쓰일 수 있다.\n"
     "\n"
     "관련 : #소프트뱅크 #오픈AI #정크본드\n"
     "출처: <a href=\"https://example.com/story\">출처</a> | 2026-09-21 09:00:00 ICT\n"
@@ -129,9 +126,11 @@ class GoldenShape(unittest.TestCase):
         self.assertIn("본문 &amp; 확인", text)
         self.assertIn("story?a=1&amp;b=2", text)
 
-    def test_the_note_label_is_fixed_even_when_env_requests_another_one(self):
-        self.assertIn("Teemo's Note\n조달", frozen())
-        self.assertNotIn("TeemoBKK's Note", frozen())
+    def test_editorial_note_is_not_in_the_channel_shape(self):
+        text = frozen()
+        self.assertNotIn("Teemo's Note", text)
+        self.assertNotIn(NOTE, text)
+        self.assertEqual([], tg_push.validate_post(text))
 
     def test_the_footer_keeps_its_link_when_the_env_is_empty(self):
         original = tg_push.CHANNEL_LINK
@@ -147,7 +146,7 @@ class ShapeCheck(unittest.TestCase):
         broken = "\n".join(["[기사] 제목", "", "본문", "", "출처: https://example.com/x",
                             "TeemoBKK Live News (https://teemobkk.io/news/)"])
         joined = " | ".join(tg_push.validate_post(broken))
-        self.assertIn("Note", joined)
+        self.assertNotIn("note section", joined)
         self.assertIn("관련", joined)
         self.assertIn("ICT source", joined)
 
@@ -168,21 +167,18 @@ class ShapeCheck(unittest.TestCase):
         text = GOLDEN.replace("#소프트뱅크 #오픈AI #정크본드", "#가 #나 #다 #라 #마")
         self.assertIn("관련", " | ".join(tg_push.validate_post(text)))
 
-    def test_the_note_block_is_required_for_every_publisher(self):
-        text = "\n".join(line for line in GOLDEN.split("\n")
-                         if line not in (tg_push.NOTE_LABEL, NOTE))
-        problems = " | ".join(tg_push.validate_post(text))
-        self.assertIn("Note", problems)
+    def test_the_note_block_is_not_required_for_every_publisher(self):
+        self.assertEqual([], tg_push.validate_post(GOLDEN))
 
-    def test_note_body_is_required_after_the_note_header(self):
-        text = GOLDEN.replace("Teemo's Note\n조달", "Teemo's Note\n\n조달")
-        self.assertIn("note body", " | ".join(tg_push.validate_post(text)))
+    def test_note_section_is_rejected_even_when_it_has_a_body(self):
+        text = GOLDEN.replace("관련 :", "Teemo's Note\n조달 자금 관련 해석\n\n관련 :")
+        self.assertIn("note section is not allowed", " | ".join(tg_push.validate_post(text)))
 
     def test_lines_out_of_order_are_rejected(self):
         lines = GOLDEN.split("\n")
-        notes = lines.index(tg_push.NOTE_LABEL)
         related = [i for i, line in enumerate(lines) if line.startswith("관련 :")][0]
-        lines[notes], lines[related] = lines[related], lines[notes]
+        source = [i for i, line in enumerate(lines) if line.startswith("출처:")][0]
+        lines[related], lines[source] = lines[source], lines[related]
         self.assertIn("order", " | ".join(tg_push.validate_post("\n".join(lines))))
 
 
@@ -241,7 +237,8 @@ class AgentPath(AgentFixture):
         ok, text = tg_push.post_parts(self.connection, self.parts())
         self.assertTrue(ok, text)
         self.assertIn("[기사]", text)
-        self.assertIn("Teemo's Note", text)
+        self.assertNotIn("Teemo's Note", text)
+        self.assertNotIn(NOTE, text)
         self.assertIn("출처:", text)
         self.assertEqual([], tg_push.validate_post(text))
 
@@ -250,10 +247,10 @@ class AgentPath(AgentFixture):
         self.assertFalse(ok)
         self.assertIn("news.db", why)
 
-    def test_a_post_without_a_note_is_refused(self):
-        ok, why = tg_push.post_parts(self.connection, self.parts(note=""))
-        self.assertFalse(ok)
-        self.assertIn("no note", why)
+    def test_a_post_without_a_note_is_allowed(self):
+        ok, text = tg_push.post_parts(self.connection, self.parts(note=""))
+        self.assertTrue(ok, text)
+        self.assertNotIn("Teemo's Note", text)
 
     def test_a_second_post_of_the_same_link_is_refused(self):
         self.connection.execute(
@@ -291,7 +288,7 @@ class PostedHistoryWindow(AgentFixture):
 
 
 class SharedArticleTranslation(AgentFixture):
-    def test_timer_editor_receives_the_persisted_korean_translation(self):
+    def test_timer_posts_the_persisted_translation_without_rewriting_or_note(self):
         self.connection.execute(
             "UPDATE articles SET title_ko = ?, summary_ko = ? WHERE link = ?",
             ("공유 번역 제목", "공유 번역 요약", LINK),
@@ -303,19 +300,21 @@ class SharedArticleTranslation(AgentFixture):
         translated_item["priority"] = 4
         translated_item["category"] = "시장·가격"
         translated_item["categories"] = "시장·가격"
-        with patch.object(tg_push, "TRANSLATE", True), \
-             patch.object(tg_push, "editorial_brief", return_value={"note": NOTE, "tags": TAGS}) as editorial, \
+        with patch.object(tg_push, "brief", return_value={
+                 "title": "다시 쓴 제목", "body": "다시 쓴 본문", "tags": TAGS, "note": NOTE}) as editor, \
              patch.object(tg_push, "candidates", return_value=[translated_item]), \
              patch.object(tg_push.jev_gate, "evaluate", return_value=tg_push.jev_gate.Batch(
                  run_id="run", decisions={}, raw={})):
             rows = tg_push.tick(self.connection, now=datetime.now(timezone.utc), quiet=True)
         self.assertEqual(1, len(rows))
-        editorial.assert_not_called()
-        self.assertIn("공유 번역 제목", rows[0]["text"])
-        self.assertIn("공유 번역 요약", rows[0]["text"])
-        self.assertIn("원문 추가 확인 필요", rows[0]["text"])
+        editor.assert_not_called()
+        text = rows[0]["text"]
+        self.assertEqual("[기사] 공유 번역 제목", text.splitlines()[0])
+        self.assertEqual("공유 번역 요약", text.split("\n\n", 1)[1].split("\n\n", 1)[0])
+        self.assertNotIn("다시 쓴", text)
+        self.assertNotIn("Note", text)
 
-    def test_agent_outbox_uses_persisted_translation_and_skips_retranslation(self):
+    def test_agent_outbox_uses_persisted_translation_without_rewriting_or_note(self):
         self.connection.execute(
             "UPDATE articles SET title_ko = ?, summary_ko = ? WHERE link = ?",
             ("공유 번역 제목", "공유 번역 요약", LINK),
@@ -323,11 +322,31 @@ class SharedArticleTranslation(AgentFixture):
         self.connection.commit()
         parts = {"link": LINK, "title": "에이전트 제목", "body": "에이전트 본문",
                  "note": "채널 전용 노트", "tags": ["뉴스", "시장"]}
-        with patch.object(tg_push, "TRANSLATE", True), \
-             patch.object(tg_push, "api_complete_translation") as rewrite:
-            ok, _ = tg_push.post_parts(self.connection, parts)
+        with patch.object(tg_push, "brief", return_value={
+                 "title": "다시 쓴 제목", "body": "다시 쓴 본문", "tags": TAGS, "note": NOTE}) as rewrite, \
+             patch.object(tg_push, "editorial_brief", return_value={"note": NOTE, "tags": TAGS}) as editorial, \
+             patch.object(tg_push, "api_complete_translation") as translation:
+            ok, text = tg_push.post_parts(self.connection, parts, quiet=True)
         self.assertTrue(ok)
         rewrite.assert_not_called()
+        editorial.assert_not_called()
+        translation.assert_not_called()
+        self.assertEqual("[기사] 공유 번역 제목", text.splitlines()[0])
+        self.assertEqual("공유 번역 요약", text.split("\n\n", 1)[1].split("\n\n", 1)[0])
+        self.assertEqual("관련 : #시장가격 #비트코인", text.splitlines()[4])
+        self.assertNotIn("에이전트", text)
+        self.assertNotIn("다시 쓴", text)
+        self.assertNotIn("Note", text)
+        self.assertNotIn("채널 전용 노트", text)
+
+    def test_partial_translation_falls_back_per_field_without_trimming_saved_text(self):
+        item = {
+            "title_ko": "  저장 제목  ",
+            "summary_ko": "",
+            "title": "원문 제목",
+            "summary": "원문 요약",
+        }
+        self.assertEqual(("  저장 제목  ", "원문 요약"), tg_push.shared_translation(item))
 
 
 class SameTickEvent(unittest.TestCase):
@@ -496,12 +515,12 @@ class OutputLength(unittest.TestCase):
         self.assertIn("두 문장", tg_push.SYSTEM_PROMPT)
         self.assertIn("약 100자", tg_push.SYSTEM_PROMPT)
 
-    def test_body_and_rendered_note_obey_character_caps(self):
+    def test_render_preserves_body_and_omits_editor_note(self):
         body = tg_push.clean_body("가" * 700, tg_push.BODY_CHARS)
         text = tg_push.render(ITEM, TITLE, body, "노" * 150, TAGS)
-        note = text.split("Teemo's Note\n", 1)[1].split("\n\n", 1)[0]
         self.assertEqual(len(body), tg_push.BODY_CHARS)
-        self.assertEqual(len(note), tg_push.NOTE_CHARS)
+        self.assertNotIn("Teemo's Note", text)
+        self.assertNotIn("노" * 150, text)
         self.assertEqual([], tg_push.validate_post(text))
 
     def test_editor_output_is_clamped_before_it_reaches_any_publish_path(self):
