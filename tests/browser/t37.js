@@ -19,12 +19,19 @@ const pass = [];
 const check = (n, ok, d) => { pass.push(ok); console.log('  %s %s%s', ok ? 'PASS' : 'FAIL', n, d ? '  (' + d + ')' : ''); };
 
 const NOTE = '직접 확인한 내용';
+const ARTICLES = [
+  { title: 'Picked story', title_ko: '고른 기사', summary: 'Summary', summary_ko: '요약', link: 'https://example.com/picked', source: 'Reuters',
+    source_type: 'rss', region: '글로벌', category: '시장·가격', priority: 3, title_lang: 'ko',
+    published_at: new Date().toISOString(), picked: true, pick_note: NOTE },
+  { title: '일반 기사', summary: '요약 2', link: 'https://example.com/plain', source: 'AP',
+    source_type: 'rss', region: '글로벌', category: '시장·가격', priority: 2, title_lang: 'ko',
+    published_at: new Date().toISOString(), picked: false },
+];
 let writes = [];
 
 function stubFetch(realFetch) {
   return async (u, o) => {
     const url = new URL(String(u), URL_);
-    const method = ((o && o.method) || 'GET').toUpperCase();
     if (/^\/api\/(pick|unpick)$/.test(url.pathname)) {
       writes.push({ path: url.pathname, body: JSON.parse((o && o.body) || '{}') });
       return { ok: true, json: async () => ({ ok: true, picked_total: 1 }) };
@@ -32,27 +39,16 @@ function stubFetch(realFetch) {
     if (url.pathname === '/api/hidden') {
       return { ok: true, json: async () => ({ hidden: [], total: 0 }) };
     }
-    const picked = url.searchParams.get('picked') === '1';
-    // The stub owns the pick state, so it asks the real server for the unfiltered list and applies
-    // the pick itself. Letting the server filter would be asking the real archive about a pick that
-    // only exists here - and the answer would be "none", which is what this check saw once the
-    // server learned the parameter.
-    const ask = new URL(url.href);
-    ask.searchParams.delete('picked');
-    const real = await realFetch(ask.href, { headers: { 'User-Agent': 'Mozilla/5.0 jsdom' }, cache: 'no-store' });
-    if (url.pathname !== '/api/news') return { ok: real.ok, json: async () => real.json() };
-    const payload = await real.json();
-    if (picked) {
-      payload.articles = (payload.articles || []).slice(0, 1);
-      payload.total = payload.articles.length;
+    if (url.pathname === '/api/news') {
+      const picked = url.searchParams.get('picked') === '1';
+      const articles = picked ? ARTICLES.slice(0, 1) : ARTICLES;
+      return { ok: true, json: async () => ({
+        articles, total: articles.length, has_more: false, hours: 24, limit: 25, offset: 0,
+        returned: articles.length, region_counts: { '글로벌': articles.length },
+      }) };
     }
-    // The first story is the picked one in this simulated feed, and it stays marked when the pill
-    // filters down to it - the server marks every row it returns, filtered or not.
-    if (payload.articles && payload.articles.length) {
-      payload.articles = payload.articles.map((a, i) => (i === 0
-        ? Object.assign({}, a, { picked: true, pick_note: NOTE }) : Object.assign({}, a, { picked: false })));
-    }
-    return { ok: real.ok, json: async () => payload };
+    const real = await realFetch(url.href, { headers: { 'User-Agent': 'Mozilla/5.0 jsdom' }, cache: 'no-store' });
+    return { ok: real.ok, json: async () => real.json() };
   };
 }
 
