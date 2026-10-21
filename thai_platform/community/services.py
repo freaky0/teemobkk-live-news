@@ -193,6 +193,8 @@ def resolve_report(user, report, data):
     require_report_moderator(user)
     values = _validate(ReportResolutionSerializer, data)
     report = Report.objects.select_for_update().select_related('post', 'comment', 'reporter').get(pk=report.pk)
+    if report.status != Report.Status.OPEN:
+        raise ValidationError({'status': 'Only open reports can be resolved.'})
     previous = report.status
     report.status = values['status']
     report.save(update_fields=['status', 'updated_at'])
