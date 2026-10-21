@@ -63,7 +63,7 @@ DB 권한·접근 방식은 실제 운영 배포 전에 별도로 검토해야 �
 
 이메일 인증 링크 또는 Google 인증을 선택합니다. 이메일 링크는 10분·1회·신청 브라우저 세션에 제한합니다. 인증 뒤 닉네임과 문서 동의를 완료해야 게시할 수 있습니다. 이메일은 본인 계정에서만 표시합니다.
 
-상세 계약·준비 상태·검사와 공식 근거는 [members/AUTH-DESIGN.md](members/AUTH-DESIGN.md)에 있습니다.
+상세 계약·준비 상태·검사와 공식 근거는 [members/AUTH-DESIGN.md](members/AUTH-DESIGN.md)에 있습니다. Google Console 설정은 [docs/GOOGLE-OAUTH-SETUP-KO.md](docs/GOOGLE-OAUTH-SETUP-KO.md)를 참고하세요. 이용약관·개인정보 처리방침은 [docs/policy-draft/](docs/policy-draft/)에 준비했으며, 운영자 정보와 실제 삭제 절차가 확정될 때까지 공개 승인하지 마세요.
 
 실제 Google 로그인은 `POST_GOOGLE_CLIENT_ID`와 `POST_GOOGLE_CLIENT_SECRET`을 안전한 서버 환경에 설정한 뒤 사용할 수 있습니다.
 값을 채팅·소스·일반 로그에 넣지 마세요. Google OAuth 동의 화면과 정확한 리디렉션 URI 설정이 필요합니다.
