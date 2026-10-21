@@ -295,7 +295,33 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);""")
                 self.page.screenshot(path=str(self.output / "news-engagement-1440.png"), full_page=True)
                 for width in [320, 390, 768, 1440]:
                     self.page.set_viewport_size({"width": width, "height": 900})
-                    self.assertTrue(self.page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), width)
+                    layout = self.page.evaluate("""() => {
+                        const rect = selector => {
+                            const element = document.querySelector(selector);
+                            if (!element) return null;
+                            const box = element.getBoundingClientRect();
+                            return {x: box.x, width: box.width};
+                        };
+                        const controls = [...document.querySelectorAll('[data-news-actions] .btn')];
+                        return {
+                            article: rect('.news-detail'),
+                            comments: rect('.news-comments'),
+                            controls: controls.map(element => {
+                                const box = element.getBoundingClientRect();
+                                return {x: box.x, y: box.y, width: box.width};
+                            }),
+                            scrollWidth: document.documentElement.scrollWidth
+                        };
+                    }""")
+                    self.assertTrue(layout["article"] and layout["comments"], width)
+                    self.assertAlmostEqual(layout["article"]["x"], layout["comments"]["x"], delta=1, msg=f"article/comment alignment at {width}px")
+                    self.assertAlmostEqual(layout["article"]["width"], layout["comments"]["width"], delta=1, msg=f"article/comment width at {width}px")
+                    self.assertEqual(len(layout["controls"]), 4, f"action controls at {width}px")
+                    rows = {round(control["y"]) for control in layout["controls"]}
+                    self.assertLessEqual(len(rows), 2, f"action rows at {width}px")
+                    self.assertLessEqual(layout["scrollWidth"], width + 1, width)
+                    if width == 390:
+                        self.page.screenshot(path=str(self.output / "news-engagement-390.png"), full_page=True)
                 self.assertEqual(self.errors, [])
 
     def test_video_uses_static_poster_in_list_and_player_in_detail(self):
