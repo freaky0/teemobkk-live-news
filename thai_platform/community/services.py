@@ -6,7 +6,7 @@ Post. Requests are not idempotency-key protected; do not blindly retry creates.
 from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
-from .models import AuditEvent, Comment, ModerationAppeal, Post, Report, Helpful, Bookmark, Notification
+from .models import AuditEvent, Bookmark, Comment, Helpful, ModerationAppeal, NewsComment, Notification, Post, Report
 from django.db.models import Count, Exists, OuterRef
 from .serializers import (CommentInputSerializer, PostInputSerializer, PostResolutionSerializer, EngagementInputSerializer,
                           ReportInputSerializer, ReportResolutionSerializer, AppealInputSerializer)
@@ -186,6 +186,32 @@ def create_report(user, post, data):
         Notification.objects.create(recipient=moderator, kind=Notification.Kind.MODERATION_REPORT, post=post, report=report)
     _audit(user, 'report.create', report)
     return report
+
+
+@transaction.atomic
+def moderate_news_comment(user, comment, status):
+    require_report_moderator(user)
+    if status not in (NewsComment.Status.HIDDEN, NewsComment.Status.PUBLISHED):
+        raise ValidationError({'status': 'Choose hide or restore.'})
+
+    comment = NewsComment.objects.select_for_update().get(pk=comment.pk)
+    if comment.status == NewsComment.Status.DELETED:
+        raise ValidationError({'status': 'Deleted comments cannot be moderated.'})
+    if comment.status == status:
+        return comment
+    if comment.status not in (NewsComment.Status.PUBLISHED, NewsComment.Status.HIDDEN):
+        raise ValidationError({'status': 'This comment cannot be moderated from its current state.'})
+
+    previous = comment.status
+    comment.status = status
+    comment.save(update_fields=['status', 'updated_at'])
+    action = 'content.hide' if status == NewsComment.Status.HIDDEN else 'content.restore'
+    _audit(user, action, comment, {
+        'previous_status': previous,
+        'status': status,
+        'article_id': comment.article_id,
+    })
+    return comment
 
 
 @transaction.atomic

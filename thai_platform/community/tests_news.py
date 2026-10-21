@@ -232,6 +232,22 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
         self.assertContains(detail,'&lt;script&gt;alert(1)&lt;/script&gt;')
         self.assertNotContains(detail,'<script>alert(1)</script>')
 
+    def test_hidden_news_comments_are_not_rendered_publicly(self):
+        from django.contrib.auth import get_user_model
+        from .models import NewsComment
+        link=self.add('hidden-comment')
+        ident=sha256(link.encode()).hexdigest()
+        author=get_user_model().objects.create_user(username='hidden-news-comment-author')
+        NewsComment.objects.create(
+            article_id=ident,
+            author=author,
+            body='This hidden comment must not be public.',
+            status=NewsComment.Status.HIDDEN,
+        )
+        response=self.client.get('/newsroom/'+ident+'/')
+        self.assertEqual(response.status_code,200)
+        self.assertNotContains(response,'This hidden comment must not be public.')
+
     def test_news_comment_rejects_short_and_hidden_article_writes(self):
         from django.contrib.auth import get_user_model
         from .models import NewsComment

@@ -1,11 +1,14 @@
+from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
+from django.urls import reverse
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.test import APIClient
 
 from . import services
-from .models import AuditEvent, Comment, Notification, Post, Report
+from .admin import NewsCommentAdmin
+from .models import AuditEvent, Comment, NewsComment, Notification, Post, Report
 
 
 @override_settings(ROOT_URLCONF='config.urls')
@@ -135,6 +138,80 @@ class ModeratorRoleTests(TestCase):
         self.client.force_login(self.moderator)
         self.assertEqual(self.client.get('/admin/community/report/').status_code, 200)
         self.assertEqual(self.client.get('/admin/community/auditevent/').status_code, 200)
+
+    def test_news_comment_moderation_is_restricted_audited_and_reversible(self):
+        author = get_user_model().objects.create_user(username='news-comment-author')
+        comment = NewsComment.objects.create(
+            article_id='a' * 64,
+            author=author,
+            body='A public article comment that needs moderation.',
+        )
+
+        with self.assertRaises(PermissionDenied):
+            services.moderate_news_comment(self.staff, comment, NewsComment.Status.HIDDEN)
+
+        services.moderate_news_comment(self.moderator, comment, NewsComment.Status.HIDDEN)
+        comment.refresh_from_db()
+        self.assertEqual(comment.status, NewsComment.Status.HIDDEN)
+        self.assertEqual(
+            AuditEvent.objects.filter(
+                actor=self.moderator,
+                action='content.hide',
+                target_type='newscomment',
+                target_id=str(comment.pk),
+            ).count(),
+            1,
+        )
+
+        services.moderate_news_comment(self.moderator, comment, NewsComment.Status.HIDDEN)
+        self.assertEqual(AuditEvent.objects.filter(target_id=str(comment.pk)).count(), 1)
+        services.moderate_news_comment(self.moderator, comment, NewsComment.Status.PUBLISHED)
+        comment.refresh_from_db()
+        self.assertEqual(comment.status, NewsComment.Status.PUBLISHED)
+        self.assertEqual(
+            AuditEvent.objects.filter(
+                actor=self.moderator,
+                action='content.restore',
+                target_type='newscomment',
+                target_id=str(comment.pk),
+            ).count(),
+            1,
+        )
+
+    def test_news_comment_admin_actions_hide_and_restore(self):
+        author = get_user_model().objects.create_user(username='news-comment-admin-author')
+        comment = NewsComment.objects.create(
+            article_id='b' * 64,
+            author=author,
+            body='A comment moderated through the admin action.',
+        )
+        url = reverse('admin:community_newscomment_changelist')
+
+        self.client.force_login(self.staff)
+        self.assertNotEqual(self.client.get(url).status_code, 200)
+
+        self.client.force_login(self.moderator)
+        hidden = self.client.post(url, {'action': 'hide_selected', '_selected_action': str(comment.pk)})
+        self.assertEqual(hidden.status_code, 302)
+        comment.refresh_from_db()
+        self.assertEqual(comment.status, NewsComment.Status.HIDDEN)
+        self.assertTrue(AuditEvent.objects.filter(action='content.hide', target_id=str(comment.pk)).exists())
+
+        restored = self.client.post(url, {'action': 'restore_selected', '_selected_action': str(comment.pk)})
+        self.assertEqual(restored.status_code, 302)
+        comment.refresh_from_db()
+        self.assertEqual(comment.status, NewsComment.Status.PUBLISHED)
+        self.assertTrue(AuditEvent.objects.filter(action='content.restore', target_id=str(comment.pk)).exists())
+
+    def test_news_comment_admin_is_visible_only_to_moderators(self):
+        model_admin = NewsCommentAdmin(NewsComment, admin.site)
+        request = RequestFactory().get('/admin/community/newscomment/')
+        request.user = self.staff
+        self.assertFalse(model_admin.has_module_permission(request))
+        self.assertFalse(model_admin.has_view_permission(request))
+        request.user = self.moderator
+        self.assertTrue(model_admin.has_module_permission(request))
+        self.assertTrue(model_admin.has_view_permission(request))
 
     def test_hide_rejects_comment_from_a_different_post(self):
         owner = get_user_model().objects.create_user(username="mismatched-content-author")

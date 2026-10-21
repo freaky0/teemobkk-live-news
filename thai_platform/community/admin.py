@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
 from rest_framework.exceptions import PermissionDenied as APIPermissionDenied, ValidationError as APIValidationError
 from .models import AuditEvent, Comment, ModerationAppeal, NewsComment, NewsLike, Post, Report
-from .services import hide_reported_content, is_report_moderator, resolve_appeal, resolve_report
+from .services import hide_reported_content, is_report_moderator, moderate_news_comment, resolve_appeal, resolve_report
 
 
 @admin.register(Post)
@@ -45,16 +45,37 @@ class NewsCommentAdmin(admin.ModelAdmin):
     list_filter = ['status']
     search_fields = ['article_id', 'body', 'author__username']
     readonly_fields = [field.name for field in NewsComment._meta.fields]
-    actions = None
+    actions = ['hide_selected', 'restore_selected']
+
+    def has_module_permission(self, request):
+        return is_report_moderator(request.user)
+
+    def has_view_permission(self, request, obj=None):
+        return is_report_moderator(request.user)
+
+    def has_change_permission(self, request, obj=None):
+        return is_report_moderator(request.user)
 
     def has_add_permission(self, request):
         return False
 
-    def has_change_permission(self, request, obj=None):
-        return request.method in ('GET', 'HEAD') and super().has_view_permission(request, obj)
-
     def has_delete_permission(self, request, obj=None):
         return False
+
+    def apply_moderation(self, request, queryset, status):
+        for comment in queryset:
+            try:
+                moderate_news_comment(request.user, comment, status)
+            except (APIValidationError, APIPermissionDenied) as exc:
+                self.message_user(request, f'News comment {comment.pk} could not be moderated: {exc}', level=messages.ERROR)
+
+    @admin.action(description='Hide selected news comments')
+    def hide_selected(self, request, queryset):
+        self.apply_moderation(request, queryset, NewsComment.Status.HIDDEN)
+
+    @admin.action(description='Restore selected news comments')
+    def restore_selected(self, request, queryset):
+        self.apply_moderation(request, queryset, NewsComment.Status.PUBLISHED)
 
 
 @admin.register(NewsLike)
