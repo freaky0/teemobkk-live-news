@@ -341,12 +341,78 @@ class SharedArticleTranslation(AgentFixture):
 
     def test_partial_translation_falls_back_per_field_without_trimming_saved_text(self):
         item = {
-            "title_ko": "  저장 제목  ",
+            "title_ko": "저장 제목 ",
             "summary_ko": "",
             "title": "원문 제목",
             "summary": "원문 요약",
         }
-        self.assertEqual(("  저장 제목  ", "원문 요약"), tg_push.shared_translation(item))
+        self.assertEqual(("저장 제목 ", "원문 요약"), tg_push.shared_translation(item))
+
+    def test_timer_renders_each_partial_translation_with_original_fallback(self):
+        cases = (
+            ("원문 제목 A", "원문 요약 A", "저장 제목 A", "", "저장 제목 A", "원문 요약 A"),
+            ("원문 제목 B", "원문 요약 B", "", "저장 요약 B", "원문 제목 B", "저장 요약 B"),
+        )
+        for index, (title, summary, title_ko, summary_ko, expected_title, expected_summary) in enumerate(cases):
+            with self.subTest(index=index):
+                now = datetime.now(timezone.utc)
+                item = {**ITEM, "link": LINK, "title": title, "summary": summary,
+                        "title_ko": title_ko, "summary_ko": summary_ko,
+                        "published_at": now.isoformat(), "priority": 4,
+                        "category": "시장·가격", "categories": "시장·가격"}
+                batch = tg_push.jev_gate.Batch(run_id="run", decisions={}, raw={})
+                with patch.object(tg_push, "candidates", return_value=[item]), \
+                     patch.object(tg_push.jev_gate, "evaluate", return_value=batch):
+                    rows = tg_push.tick(self.connection, now=now, quiet=True)
+                self.assertEqual(1, len(rows))
+                self.assertNotIn("problems", rows[0])
+                text = rows[0]["text"]
+                self.assertEqual("[기사] " + expected_title, text.splitlines()[0])
+                self.assertEqual(expected_summary, text.split("\n\n", 1)[1].split("\n\n", 1)[0])
+
+    def test_outbox_renders_each_partial_translation_with_original_fallback(self):
+        cases = (
+            ("원문 제목 A", "원문 요약 A", "저장 제목 A", "", "저장 제목 A", "원문 요약 A"),
+            ("원문 제목 B", "원문 요약 B", "", "저장 요약 B", "원문 제목 B", "저장 요약 B"),
+        )
+        for index, (title, summary, title_ko, summary_ko, expected_title, expected_summary) in enumerate(cases):
+            with self.subTest(index=index):
+                self.connection.execute(
+                    "UPDATE articles SET title = ?, summary = ?, title_ko = ?, summary_ko = ? WHERE link = ?",
+                    (title, summary, title_ko, summary_ko, LINK),
+                )
+                self.connection.commit()
+                ok, text = tg_push.post_parts(self.connection, self.parts(), quiet=True)
+                self.assertTrue(ok, text)
+                self.assertEqual("[기사] " + expected_title, text.splitlines()[0])
+                self.assertEqual(expected_summary, text.split("\n\n", 1)[1].split("\n\n", 1)[0])
+
+    def test_timer_rejects_oversized_persisted_summary_without_sending(self):
+        now = datetime.now(timezone.utc)
+        item = {**ITEM, "link": LINK, "title_ko": "저장 제목",
+                "summary_ko": "요약" * tg_push.LINK_CHARS,
+                "published_at": now.isoformat(), "priority": 4,
+                "category": "시장·가격", "categories": "시장·가격"}
+        batch = tg_push.jev_gate.Batch(run_id="run", decisions={}, raw={})
+        with patch.object(tg_push, "DRY_RUN", False), \
+             patch.object(tg_push, "candidates", return_value=[item]), \
+             patch.object(tg_push.jev_gate, "evaluate", return_value=batch), \
+             patch.object(tg_push, "send") as send:
+            rows = tg_push.tick(self.connection, now=now)
+        self.assertEqual([], rows)
+        send.assert_not_called()
+
+    def test_outbox_rejects_oversized_persisted_summary_without_sending(self):
+        self.connection.execute(
+            "UPDATE articles SET title_ko = ?, summary_ko = ? WHERE link = ?",
+            ("저장 제목", "요약" * tg_push.LINK_CHARS, LINK),
+        )
+        self.connection.commit()
+        with patch.object(tg_push, "DRY_RUN", False), patch.object(tg_push, "send") as send:
+            ok, detail = tg_push.post_parts(self.connection, self.parts(), quiet=False)
+        self.assertFalse(ok)
+        self.assertIn("shape check failed", detail)
+        send.assert_not_called()
 
 
 class SameTickEvent(unittest.TestCase):
