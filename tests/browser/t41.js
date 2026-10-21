@@ -11,21 +11,25 @@ const dom = new JSDOM(python.stdout, {url:'http://localhost/',runScripts:'danger
 }});
 const w = dom.window, d = w.document;
 const title = 'Market & <policy> reut.rs/abc - Publisher';
-const story = {title,link:'https://example.com/raw',source:'Example',published_at:new Date().toISOString()};
+const story = {title,link:'https://example.com/raw',source:'Google News: Example',published_at:new Date().toISOString()};
 const article = w.eval('card')(story,false,false,false,false);
 const node = new JSDOM(article).window.document;
 assert.equal(node.querySelector('.title').textContent, 'Market & <policy>');
 assert.equal(node.querySelector('.title a').getAttribute('href'), story.link);
+const substantive = {title:'$CRWV - CrowdStrike, NVIDIA Expand AI Agent Security From Software to Silicon',
+  link:'https://example.com/crwv',source:'Walter Bloomberg',published_at:new Date().toISOString()};
+const substantiveNode = new JSDOM(w.eval('card')(substantive,false,false,false,false)).window.document;
+assert.equal(substantiveNode.querySelector('.title').textContent, substantive.title);
 if (process.argv[2] === 'admin') {
   assert.equal(node.querySelector('[data-hide]').dataset.title, title);
   assert.equal(node.querySelector('[data-picklink]').dataset.title, title);
   w.eval(`HIDE_UNDO=${JSON.stringify({link:story.link,title})}; renderUndo()`);
-  assert.equal(d.querySelector('#undobar .utext').textContent, 'Market & <policy>');
+  assert.equal(d.querySelector('#undobar .utext').textContent, 'Market & <policy> - Publisher');
   assert.equal(w.eval('HIDE_UNDO.title'), title);
   w.fetch = async u => ({ok:true,json:async()=>({hidden:[{link:story.link,title}]})});
   w.eval('loadHidden()');
   setTimeout(()=>{
-    try {assert.equal(d.querySelector('#hidden .hidrow a').textContent,'Market & <policy>');
+    try {assert.equal(d.querySelector('#hidden .hidrow a').textContent,'Market & <policy> - Publisher');
       assert.equal(d.querySelector('#hidden [data-unhide]').dataset.unhide,story.link);console.log('admin title OK');process.exit(0)}
     catch(e){console.error(e);process.exit(1)}
   },50);

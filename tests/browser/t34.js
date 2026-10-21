@@ -49,6 +49,12 @@ const check = (n, ok, d) => { pass.push(ok); console.log('  %s %s%s', ok ? 'PASS
   const cards = () => [...d.querySelectorAll('#feed .card')];
   const textOf = (c) => ((c.querySelector('.title') || {}).textContent || '') + ' '
     + ((c.querySelector('.summary') || {}).textContent || '');
+  // Search also checks the original title/summary when shown, the source, and category labels.
+  // Those fields are searchable even when the translated headline/summary do not repeat the term.
+  const searchableTextOf = (c) => textOf(c) + ' '
+    + ((c.querySelector('.original-toggle') || {}).textContent || '') + ' '
+    + [...c.querySelectorAll('.meta button[data-k="src"], .meta button[data-k="cat"]')]
+      .map((b) => b.getAttribute('data-v') || b.textContent || '').join(' ');
   const q = d.querySelector('#q');
   const search = async (term) => {
     q.value = term; q.oninput();
@@ -56,18 +62,21 @@ const check = (n, ok, d) => { pass.push(ok); console.log('  %s %s%s', ok ? 'PASS
     return cards();
   };
 
-  // Pick a card that contains "ai" only inside another word ("said", "Thailand"), then check the
-  // search leaves it out. Asserting "no card contains an embedded ai" would be wrong: a card can
-  // carry both the embedded letters and the real word.
+  // Pick a card that has "ai" only inside another word in its searchable fields ("said", "Thailand"),
+  // then check the search leaves it out. Asserting "no card contains embedded ai" would be wrong: a
+  // card can carry both the embedded letters and the real word.
   const hrefOf = (c) => ((c.querySelector('.title a') || {}).getAttribute?.('href')) || '';
   const beforeSearch = cards();
-  const embeddedOnly = beforeSearch.find((c) => textOf(c).toLowerCase().indexOf('ai') >= 0 && !m(textOf(c), 'ai'));
+  const embeddedOnly = beforeSearch.find((c) => searchableTextOf(c).toLowerCase().indexOf('ai') >= 0
+    && !m(searchableTextOf(c), 'ai'));
   const embeddedHref = embeddedOnly ? hrefOf(embeddedOnly) : '';
 
   const aiCards = await search('ai');
-  check('AI 검색 결과가 모두 낱말로 AI를 포함',
-    aiCards.length > 0 && aiCards.every((c) => m(textOf(c), 'ai')),
-    aiCards.length + '건 · 합격 ' + aiCards.filter((c) => m(textOf(c), 'ai')).length);
+  const unmatchedAi = aiCards.filter((c) => !m(searchableTextOf(c), 'ai'));
+  check('AI 검색 결과 카드가 검색 조건과 일치',
+    aiCards.length > 0 && unmatchedAi.length === 0,
+    aiCards.length + '건 · 합격 ' + (aiCards.length - unmatchedAi.length)
+      + (unmatchedAi.length ? ' · 예외 ' + JSON.stringify({title:textOf(unmatchedAi[0]), original:(unmatchedAi[0].querySelector('.original-toggle')||{}).textContent||'', meta:[...unmatchedAi[0].querySelectorAll('.meta button[data-k]')].map(b=>[b.dataset.k,b.dataset.v])}) : ''));
   if (embeddedHref) {
     check('낱말 안쪽에만 AI가 있는 카드는 빠짐',
       !aiCards.some((c) => hrefOf(c) === embeddedHref),
