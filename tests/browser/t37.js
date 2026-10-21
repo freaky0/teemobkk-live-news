@@ -19,12 +19,19 @@ const pass = [];
 const check = (n, ok, d) => { pass.push(ok); console.log('  %s %s%s', ok ? 'PASS' : 'FAIL', n, d ? '  (' + d + ')' : ''); };
 
 const NOTE = '직접 확인한 내용';
+const ARTICLES = [
+  { title: 'Picked story', title_ko: '고른 기사', summary: 'Summary', summary_ko: '요약', link: 'https://example.com/picked', source: 'Reuters',
+    source_type: 'rss', region: '글로벌', category: '시장·가격', priority: 3, title_lang: 'ko',
+    published_at: new Date().toISOString(), picked: true, pick_note: NOTE },
+  { title: '일반 기사', summary: '요약 2', link: 'https://example.com/plain', source: 'AP',
+    source_type: 'rss', region: '글로벌', category: '시장·가격', priority: 2, title_lang: 'ko',
+    published_at: new Date().toISOString(), picked: false },
+];
 let writes = [];
 
 function stubFetch(realFetch) {
   return async (u, o) => {
     const url = new URL(String(u), URL_);
-    const method = ((o && o.method) || 'GET').toUpperCase();
     if (/^\/api\/(pick|unpick)$/.test(url.pathname)) {
       writes.push({ path: url.pathname, body: JSON.parse((o && o.body) || '{}') });
       return { ok: true, json: async () => ({ ok: true, picked_total: 1 }) };
@@ -34,22 +41,10 @@ function stubFetch(realFetch) {
     }
     if (url.pathname === '/api/news') {
       const picked = url.searchParams.get('picked') === '1';
-      const articles = [
-        { title: 'Picked fixture headline', summary: 'Picked fixture summary', link: 'https://example.org/picked',
-          original_link: 'https://example.org/picked', source: 'Fixture', source_type: 'rss', region: '글로벌',
-          category: '기타', categories: ['기타'], asset: '시장', priority: 2,
-          published_at: new Date(Date.now() - 60000).toISOString(), lang: 'en', summary_lang: 'en',
-          picked: true, pick_note: NOTE },
-        { title: 'Unpicked fixture headline', summary: 'Unpicked fixture summary', link: 'https://example.org/unpicked',
-          original_link: 'https://example.org/unpicked', source: 'Fixture', source_type: 'rss', region: '글로벌',
-          category: '기타', categories: ['기타'], asset: '시장', priority: 1,
-          published_at: new Date(Date.now() - 120000).toISOString(), lang: 'en', summary_lang: 'en',
-          picked: false, pick_note: '' },
-      ].filter((article) => !picked || article.picked);
+      const articles = picked ? ARTICLES.slice(0, 1) : ARTICLES;
       return { ok: true, json: async () => ({
-        articles, total: articles.length, archived_total: articles.length,
-        updated_at: new Date().toISOString(), region_counts: { '글로벌': articles.length },
-        sources: { Fixture: { ok: true, count: articles.length } },
+        articles, total: articles.length, has_more: false, hours: 24, limit: 25, offset: 0,
+        returned: articles.length, region_counts: { '글로벌': articles.length },
       }) };
     }
     const real = await realFetch(url.href, { headers: { 'User-Agent': 'Mozilla/5.0 jsdom' }, cache: 'no-store' });
