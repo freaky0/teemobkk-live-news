@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
-from rest_framework.exceptions import PermissionDenied as APIPermissionDenied, ValidationError as APIValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from .models import AuditEvent, Comment, ModerationAppeal, NewsComment, NewsLike, Post, Report
-from .services import hide_reported_content, is_report_moderator, moderate_news_comment, resolve_appeal, resolve_report
+from .services import hide_reported_content, is_report_moderator, moderate_comment, moderate_news_comment, resolve_appeal, resolve_report
 
 
 @admin.register(Post)
@@ -27,16 +27,31 @@ class CommentAdmin(admin.ModelAdmin):
     list_display = ['id', 'post', 'author', 'status', 'created_at']
     list_filter = ['status']
     readonly_fields = [field.name for field in Comment._meta.fields]
-    actions = None
+    actions = ['hide_selected', 'restore_selected']
 
     def has_add_permission(self, request):
         return False
 
     def has_change_permission(self, request, obj=None):
-        return request.method in ('GET', 'HEAD') and super().has_view_permission(request, obj)
+        return is_report_moderator(request.user)
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+    def apply_moderation(self, request, queryset, status):
+        for comment in queryset:
+            try:
+                moderate_comment(request.user, comment, status)
+            except (PermissionDenied, ValidationError) as exc:
+                self.message_user(request, f'Comment {comment.pk} could not be moderated: {exc}', level=messages.ERROR)
+
+    @admin.action(description='Hide selected comments')
+    def hide_selected(self, request, queryset):
+        self.apply_moderation(request, queryset, Comment.Status.HIDDEN)
+
+    @admin.action(description='Restore selected comments after review')
+    def restore_selected(self, request, queryset):
+        self.apply_moderation(request, queryset, Comment.Status.PUBLISHED)
 
 
 @admin.register(NewsComment)
@@ -66,7 +81,7 @@ class NewsCommentAdmin(admin.ModelAdmin):
         for comment in queryset:
             try:
                 moderate_news_comment(request.user, comment, status)
-            except (APIValidationError, APIPermissionDenied) as exc:
+            except (ValidationError, PermissionDenied) as exc:
                 self.message_user(request, f'News comment {comment.pk} could not be moderated: {exc}', level=messages.ERROR)
 
     @admin.action(description='Hide selected news comments')
@@ -127,7 +142,7 @@ class ReportAdmin(admin.ModelAdmin):
         for report in queryset:
             try:
                 operation(request.user, report)
-            except APIValidationError:
+            except ValidationError:
                 self.message_user(request, f'Report {report.pk} could not be processed; review its current state.', level=messages.ERROR)
 
     @admin.action(description='Resolve selected reports')
@@ -169,7 +184,7 @@ class ModerationAppealAdmin(admin.ModelAdmin):
         for appeal in queryset:
             try:
                 resolve_appeal(request.user, appeal, outcome)
-            except (APIValidationError, APIPermissionDenied) as exc:
+            except (ValidationError, PermissionDenied) as exc:
                 self.message_user(request, f'Appeal {appeal.pk} could not be processed: {exc}', level=messages.ERROR)
 
     @admin.action(description='Uphold selected hidden-content decisions')

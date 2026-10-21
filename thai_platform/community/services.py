@@ -178,13 +178,28 @@ def create_report(user, post, data):
     _published(post)
     values = _validate(ReportInputSerializer, data)
     comment = values.get('comment')
-    if comment and comment.post_id != post.pk:
-        raise ValidationError({'comment': 'Comment must belong to this post.'})
-    report = Report.objects.create(reporter=user, post=post, target_type=Report.TargetType.COMMENT if comment else Report.TargetType.POST, **values)
+    if comment:
+        comment = Comment.objects.select_for_update().get(pk=comment.pk)
+        if comment.post_id != post.pk:
+            raise ValidationError({'comment': 'Comment must belong to this post.'})
+        values['comment'] = comment
+    report = Report.objects.create(
+        reporter=user, post=post,
+        target_type=Report.TargetType.COMMENT if comment else Report.TargetType.POST,
+        **values,
+    )
     from django.contrib.auth import get_user_model
     for moderator in get_user_model().objects.filter(is_active=True, is_staff=True, groups__name='Report moderators').distinct().only('pk'):
         Notification.objects.create(recipient=moderator, kind=Notification.Kind.MODERATION_REPORT, post=post, report=report)
     _audit(user, 'report.create', report)
+    if comment and comment.status == Comment.Status.PUBLISHED:
+        reporter_count = comment.reports.filter(status=Report.Status.OPEN).values('reporter_id').distinct().count()
+        if reporter_count >= 10:
+            comment.status = Comment.Status.HIDDEN
+            comment.save(update_fields=['status', 'updated_at'])
+            _audit(user, 'comment.auto_hide', comment, {
+                'reason': 'report_threshold', 'distinct_open_reporters': reporter_count,
+            })
     return report
 
 
@@ -211,6 +226,22 @@ def moderate_news_comment(user, comment, status):
         'status': status,
         'article_id': comment.article_id,
     })
+    return comment
+
+
+@transaction.atomic
+def moderate_comment(user, comment, status):
+    require_report_moderator(user)
+    if status not in (Comment.Status.PUBLISHED, Comment.Status.HIDDEN):
+        raise ValidationError({'status': 'Comment moderation supports published or hidden status.'})
+    comment = Comment.objects.select_for_update().get(pk=comment.pk)
+    if comment.status == Comment.Status.DELETED:
+        raise ValidationError({'status': 'Deleted comments cannot be moderated.'})
+    previous = comment.status
+    if previous != status:
+        comment.status = status
+        comment.save(update_fields=['status', 'updated_at'])
+        _audit(user, 'comment.moderate', comment, {'previous_status': previous, 'status': status})
     return comment
 
 
