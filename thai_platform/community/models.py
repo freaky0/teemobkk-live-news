@@ -120,6 +120,7 @@ class Report(Timestamped):
     reason = models.CharField(max_length=10, choices=Reason.choices)
     details = models.TextField(blank=True, validators=[MaxLengthValidator(2000)])
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.OPEN, db_index=True)
+    closed_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         ordering = ['-created_at', '-pk']

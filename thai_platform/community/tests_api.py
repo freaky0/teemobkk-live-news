@@ -209,6 +209,7 @@ class CommunityAPITests(TestCase):
         self.assertEqual(self.client.patch(url, {'status': 'dismissed'}, format='json').status_code, 200)
         report.refresh_from_db()
         self.assertEqual(report.status, 'dismissed')
+        self.assertIsNotNone(report.closed_at)
         self.assertEqual(AuditEvent.objects.get(action='report.resolve').metadata['status'], 'dismissed')
 
     def test_resolved_report_cannot_be_resolved_again(self):

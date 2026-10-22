@@ -254,7 +254,8 @@ def resolve_report(user, report, data):
         raise ValidationError({'status': 'Only open reports can be resolved.'})
     previous = report.status
     report.status = values['status']
-    report.save(update_fields=['status', 'updated_at'])
+    report.closed_at = timezone.now()
+    report.save(update_fields=['status', 'closed_at', 'updated_at'])
     if previous != report.status and report.reporter.is_active:
         Notification.objects.create(recipient=report.reporter, kind=Notification.Kind.REPORT_UPDATE, post=report.post, report=report)
     _audit(user, 'report.resolve', report, {'previous_status': previous, 'status': report.status})
