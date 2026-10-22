@@ -32,27 +32,28 @@ function stubFetch(realFetch) {
     if (url.pathname === '/api/hidden') {
       return { ok: true, json: async () => ({ hidden: [], total: 0 }) };
     }
-    const picked = url.searchParams.get('picked') === '1';
-    // The stub owns the pick state, so it asks the real server for the unfiltered list and applies
-    // the pick itself. Letting the server filter would be asking the real archive about a pick that
-    // only exists here - and the answer would be "none", which is what this check saw once the
-    // server learned the parameter.
-    const ask = new URL(url.href);
-    ask.searchParams.delete('picked');
-    const real = await realFetch(ask.href, { headers: { 'User-Agent': 'Mozilla/5.0 jsdom' }, cache: 'no-store' });
-    if (url.pathname !== '/api/news') return { ok: real.ok, json: async () => real.json() };
-    const payload = await real.json();
-    if (picked) {
-      payload.articles = (payload.articles || []).slice(0, 1);
-      payload.total = payload.articles.length;
+    if (url.pathname === '/api/news') {
+      const picked = url.searchParams.get('picked') === '1';
+      const articles = [
+        { title: 'Picked fixture headline', summary: 'Picked fixture summary', link: 'https://example.org/picked',
+          original_link: 'https://example.org/picked', source: 'Fixture', source_type: 'rss', region: '글로벌',
+          category: '기타', categories: ['기타'], asset: '시장', priority: 2,
+          published_at: new Date(Date.now() - 60000).toISOString(), lang: 'en', summary_lang: 'en',
+          picked: true, pick_note: NOTE },
+        { title: 'Unpicked fixture headline', summary: 'Unpicked fixture summary', link: 'https://example.org/unpicked',
+          original_link: 'https://example.org/unpicked', source: 'Fixture', source_type: 'rss', region: '글로벌',
+          category: '기타', categories: ['기타'], asset: '시장', priority: 1,
+          published_at: new Date(Date.now() - 120000).toISOString(), lang: 'en', summary_lang: 'en',
+          picked: false, pick_note: '' },
+      ].filter((article) => !picked || article.picked);
+      return { ok: true, json: async () => ({
+        articles, total: articles.length, archived_total: articles.length,
+        updated_at: new Date().toISOString(), region_counts: { '글로벌': articles.length },
+        sources: { Fixture: { ok: true, count: articles.length } },
+      }) };
     }
-    // The first story is the picked one in this simulated feed, and it stays marked when the pill
-    // filters down to it - the server marks every row it returns, filtered or not.
-    if (payload.articles && payload.articles.length) {
-      payload.articles = payload.articles.map((a, i) => (i === 0
-        ? Object.assign({}, a, { picked: true, pick_note: NOTE }) : Object.assign({}, a, { picked: false })));
-    }
-    return { ok: real.ok, json: async () => payload };
+    const real = await realFetch(url.href, { headers: { 'User-Agent': 'Mozilla/5.0 jsdom' }, cache: 'no-store' });
+    return { ok: real.ok, json: async () => real.json() };
   };
 }
 
@@ -91,7 +92,9 @@ function stubFetch(realFetch) {
 
   // The pill narrows the feed and, like every other selection, turns into a condition with a count.
   pickPill().click();
-  await sleep(2500);
+  await waitFor(() => chipTexts().some((t) => t.indexOf("Teemo's Pick") >= 0)
+    && (d.querySelector('#conds [data-cond-off] .n') || {}).textContent === '1'
+    && cards().length === 1 && badges().length === 1);
   check('알약을 누르면 조건 칩이 생김',
     chipTexts().some((t) => t.indexOf("Teemo's Pick") >= 0), chipTexts().join(' / ') || '없음');
   check('칩에 그 조건의 건수가 붙음',
@@ -103,7 +106,8 @@ function stubFetch(realFetch) {
 
   // Releasing the condition puts the list back, from the same row as every other condition.
   d.querySelector('#conds [data-cond-off]').click();
-  await sleep(2500);
+  await waitFor(() => !chipTexts().some((t) => t.indexOf("Teemo's Pick") >= 0)
+    && pickPill().getAttribute('aria-pressed') === 'false' && cards().length > 1);
   check('칩을 풀면 알약도 꺼짐', pickPill().getAttribute('aria-pressed') === 'false');
   check('칩이 사라짐', !chipTexts().some((t) => t.indexOf("Teemo's Pick") >= 0), chipTexts().join(' / ') || '없음');
   check('목록이 다시 넓어짐', cards().length > 1, cards().length + '장');
@@ -115,7 +119,8 @@ function stubFetch(realFetch) {
   if (btn) {
     check('Pick 버튼의 상태가 꺼짐으로 표시됨', btn.dataset.picked === '0', btn.dataset.picked);
     btn.click();
-    await sleep(1500);
+    await waitFor(() => writes.some((x) => x.path === '/api/pick'
+      && x.body.link === btn.dataset.picklink && x.body.note === NOTE));
     const call = writes.filter((x) => x.path === '/api/pick')[0];
     check('Pick이 링크와 문구를 보냄', !!call && call.body.link === btn.dataset.picklink
       && call.body.note === NOTE, call ? call.body.note : '호출 없음');
@@ -129,7 +134,8 @@ function stubFetch(realFetch) {
     onBtn ? onBtn.textContent.trim() : '없음');
   if (onBtn) {
     onBtn.click();
-    await sleep(1500);
+    await waitFor(() => writes.some((x) => x.path === '/api/unpick'
+      && x.body.link === onBtn.dataset.picklink));
     check('해제가 그 링크를 보냄', writes.some((x) => x.path === '/api/unpick'
       && x.body.link === onBtn.dataset.picklink), writes.length + '회 호출');
   }
