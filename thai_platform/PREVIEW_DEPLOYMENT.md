@@ -62,6 +62,6 @@ Caddy가 `/thai/static/*`을 릴리스의 `staticfiles`에서 제공하고, `/th
 
 ## 현재 호스트 확인 메모
 
-2026-10-22 읽기 전용 점검에서 `/thai/`는 `teemobkk-post-preview.service`로 연결되고, 현재 릴리스는 `6cb2195e5e6e713f216edc71217e2014bc03868d`였다. 커뮤니티 DB는 `/var/lib/teemobkk-post-preview/community.sqlite3`이며 뉴스 DB와 분리되어 있다. 병합 커밋 `70d85b8c3fc5d06c8e3937e3726fd3322d717b66`의 앱 트리는 현재 릴리스와 다르므로 배포 작업은 여전히 필요하다. 비교 결과는 소스 136개 파일, 라이브 125개 파일이며, `/thai/news/*` 규칙은 별도 경로로 유지된다. `check --deploy`는 종료 코드 0이었으며 `security.W021`(HSTS preload 미사용) 경고가 남았다. 이 경고를 없애려고 preload를 켜지 않는다.
+2026-10-22 배포 전 읽기 전용 점검에서 `/thai/`는 `teemobkk-post-preview.service`로 연결되고, 활성 릴리스는 `6cb2195e5e6e713f216edc71217e2014bc03868d`였다. 커뮤니티 DB는 `/var/lib/teemobkk-post-preview/community.sqlite3`이며 뉴스 DB와 분리되어 있다. 배포 대상 `f169dd5c07b9a4c59378cd976b656af10782f8d5`에는 앱 변경 `70d85b8c3fc5d06c8e3937e3726fd3322d717b66`과 이 runbook이 포함된다. 대상 앱은 137개 파일, 활성 릴리스는 125개 파일이며 트리가 일치하지 않아 배포 작업은 필요하다. `thai_platform/static/`은 변경되지 않았고 `/thai/news/*`는 별도 규칙으로 유지된다. 활성 릴리스의 기존 `check --deploy`는 종료 코드 0이었고 `security.W021`(HSTS preload 미사용) 경고가 남았다. 새 릴리스는 배포 전 다시 점검한다. 이 경고를 없애려고 preload를 켜지 않는다.
 
 현재 호스트 PATH에는 `uv`가 없고 공유 preview 가상환경의 `certifi`는 `uv.lock`보다 오래됐지만, 새 코드에는 직접 의존성 추가가 없으며 호스트 `pip check`는 `No broken requirements found`를 반환했다. 공유 가상환경을 변경하지 않고 기존의 성공한 릴리스 절차를 사용한다. 새 코드 점검이나 import 검사가 실패하면 배포를 중단한다.
