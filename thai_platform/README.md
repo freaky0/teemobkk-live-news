@@ -107,6 +107,8 @@ POST_LOCAL_DEVELOPMENT=1 POST_RUN_BROWSER_TESTS=1 uv run python manage.py test m
 ## 아직 미완료
 
 Google 실계정 인증 확인, 실제 SMTP 발송, 약관·개인정보 문서 확정, 외부 HTTPS 검토 주소, 탈퇴·계정 복구, 이미지 서버 업로드, 가이드 CMS, 앱용 인증, 푸시, 백업 복구 실습, 운영 인프라·도메인·배포.
+
+개발용 preview 경로 배포 절차는 [PREVIEW_DEPLOYMENT.md](PREVIEW_DEPLOYMENT.md)를 참고하세요. 이 절차는 `/thai/` preview 전용이며 운영 배포 승인이 아닙니다.
 기존 기사·회원 데이터를 자동으로 가져오지 않습니다. 예시 회원·글을 개발 DB에 자동 생성하지 않습니다.
 브라우저 로컬 저장소 초안은 같은 기기·원점에서만 복구됩니다. 동시 편집 충돌·초안 서버 동기화는 후속 범위입니다.
 Django 관리자 화면은 기반 관리 도구입니다. 별도 A안 운영자 대시보드 전체를 구현한 것은 아닙니다.
