@@ -1,0 +1,8 @@
+.venv/
+var/
+.dev-secret
+.env
+__pycache__/
+*.pyc
+staticfiles/
+coverage/

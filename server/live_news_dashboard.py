@@ -25,6 +25,7 @@ from collectors import mideast_rss
 import difflib
 import email.utils
 import html
+from html.parser import HTMLParser
 import json
 import logging
 import os
@@ -774,6 +775,12 @@ def init_db() -> None:
         # per-category image, which needs no backfill.
         if "image_url" not in columns:
             connection.execute("ALTER TABLE articles ADD COLUMN image_url TEXT")
+        # A video URL is optional; old rows remain NULL and are filled by the same
+        # best-effort media pass as article images. The reader checks for this column.
+        if "video_url" not in columns:
+            connection.execute("ALTER TABLE articles ADD COLUMN video_url TEXT")
+        if "media_checked_at" not in columns:
+            connection.execute("ALTER TABLE articles ADD COLUMN media_checked_at TEXT")
         # No index on `categories`: the filter is a contains-match, which no index can serve.
         for column in ("published_at", "region", "category", "source", "priority"):
             connection.execute(f"CREATE INDEX IF NOT EXISTS idx_articles_{column} ON articles({column})")
@@ -872,6 +879,131 @@ def insert_articles(articles: list[dict[str, Any]]) -> int:
         return inserted
 
 
+class _ArticleMediaParser(HTMLParser):
+    """Read only simple publisher media hints; never execute or preserve markup."""
+
+    IMAGE_KEYS = ("og:image:secure_url", "og:image", "twitter:image", "twitter:image:src")
+    VIDEO_KEYS = ("og:video:secure_url", "og:video:url", "og:video", "twitter:player", "twitter:player:stream")
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.images: dict[str, str] = {}
+        self.videos: dict[str, str] = {}
+        self.video_sources: list[str] = []
+        self.video_posters: list[str] = []
+        self.in_video = False
+
+    def handle_starttag(self, tag, attrs):
+        values = {key.lower(): value or "" for key, value in attrs}
+        if tag == "meta":
+            key = (values.get("property") or values.get("name") or "").lower()
+            content = values.get("content", "").strip()
+            if key in self.IMAGE_KEYS and content:
+                self.images.setdefault(key, content)
+            if key in self.VIDEO_KEYS and content:
+                self.videos.setdefault(key, content)
+        elif tag == "video":
+            self.in_video = True
+            if values.get("poster"):
+                self.video_posters.append(values["poster"])
+            if values.get("src"):
+                self.video_sources.append(values["src"])
+        elif tag == "source" and self.in_video and values.get("src"):
+            self.video_sources.append(values["src"])
+        elif tag == "iframe" and values.get("src"):
+            self.video_sources.append(values["src"])
+
+    def handle_endtag(self, tag):
+        if tag == "video":
+            self.in_video = False
+
+
+def _absolute_media_url(value: str, base_url: str) -> str:
+    value = html.unescape(str(value or "")).strip()
+    if not value:
+        return ""
+    candidate = urllib.parse.urljoin(base_url, value)
+    try:
+        parsed = urllib.parse.urlsplit(candidate)
+        if (parsed.scheme not in ("http", "https") or not parsed.hostname
+                or parsed.username or parsed.password
+                or any(ord(char) < 33 for char in candidate)):
+            return ""
+    except (TypeError, ValueError):
+        return ""
+    return candidate
+
+
+def parse_article_media(markup: str, base_url: str) -> dict[str, str]:
+    """Extract a still image and one video source from bounded publisher HTML."""
+    parser = _ArticleMediaParser()
+    parser.feed(markup or "")
+    parser.close()
+    image_candidates = list(parser.video_posters)
+    image_candidates.extend(parser.images.get(key, "") for key in parser.IMAGE_KEYS)
+    video_candidates = [parser.videos.get(key, "") for key in parser.VIDEO_KEYS]
+    video_candidates.extend(parser.video_sources)
+
+    def first_valid(candidates):
+        for value in candidates:
+            resolved = _absolute_media_url(value, base_url)
+            if resolved:
+                return resolved
+        return ""
+
+    def supported_video(value):
+        resolved = _absolute_media_url(value, base_url)
+        if not resolved:
+            return ""
+        parsed = urllib.parse.urlsplit(resolved)
+        if parsed.scheme != "https":
+            return ""
+        host = (parsed.hostname or "").lower().rstrip(".")
+        suffix = os.path.splitext(parsed.path.lower())[1]
+        if suffix in {".mp4", ".m4v", ".webm", ".ogv", ".ogg"}:
+            return resolved
+        parts = [part for part in parsed.path.split("/") if part]
+        video_id = ""
+        if host == "youtu.be" and parts:
+            video_id = parts[0]
+        elif host in {"youtube.com", "www.youtube.com", "m.youtube.com", "youtube-nocookie.com", "www.youtube-nocookie.com"}:
+            if parts and parts[0] == "watch":
+                video_id = urllib.parse.parse_qs(parsed.query).get("v", [""])[0]
+            elif len(parts) > 1 and parts[0] in {"embed", "v", "shorts", "live"}:
+                video_id = parts[1]
+        if host in {"youtube.com", "www.youtube.com", "m.youtube.com", "youtube-nocookie.com", "www.youtube-nocookie.com", "youtu.be"}:
+            return resolved if re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id) else ""
+        if host in {"vimeo.com", "www.vimeo.com", "player.vimeo.com"} and parts and parts[-1].isdigit():
+            return resolved
+        return ""
+
+    video_url = ""
+    for candidate in video_candidates:
+        video_url = supported_video(candidate)
+        if video_url:
+            break
+    return {
+        "image_url": first_valid(image_candidates),
+        "video_url": video_url,
+    }
+
+
+def fetch_article_media(url: str, timeout: int = 5) -> dict[str, Any]:
+    """Best-effort parse of a publisher page, bounded to 256 KiB and one request."""
+    try:
+        parsed = urllib.parse.urlsplit(url)
+        if (parsed.scheme not in ("http", "https") or not parsed.hostname
+                or parsed.username or parsed.password):
+            return {"image_url": "", "video_url": "", "checked": False}
+        request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            markup = response.read(262144).decode("utf-8", errors="ignore")
+    except Exception:
+        return {"image_url": "", "video_url": "", "checked": False}
+    media = parse_article_media(markup, response.url)
+    return {**media, "checked": True}
+
+
 # Matches <meta property="og:image" content="..."> and the name= variant some
 # publishers emit. The first plausible absolute http(s) URL wins.
 _OG_IMAGE_RE = re.compile(
@@ -908,23 +1040,23 @@ def fetch_og_image(url: str, timeout: int = 5) -> str:
     return ""
 
 
-def backfill_article_images(limit: int = 10) -> int:
-    """Fill image_url for the newest rows that lack one.
+def backfill_article_media(limit: int = 10) -> int:
+    """Best-effort fill of the publisher poster and playable video metadata.
 
-    Runs after insert, like translation: the collection cycle never waits on it.
-    The resolved publisher URL is preferred (it is the page that carries og:image);
-    the stored link is the fallback. A small thread pool keeps the added latency
-    bounded, and every failure simply leaves the row imageless.
+    Runs after collection, never downloads the video itself, and inspects at most
+    a bounded HTML prefix per article. A successful check with no video is marked
+    complete; failed requests can be retried after a day.
     """
     try:
         cached = original_links()
     except Exception:
         cached = {}
+    retry_before = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
     with DB_LOCK, db_connect() as connection:
         rows = connection.execute(
-            "SELECT link FROM articles WHERE image_url IS NULL "
+            "SELECT link FROM articles WHERE media_checked_at IS NULL OR media_checked_at < ? "
             "ORDER BY collected_at DESC, published_at DESC LIMIT ?",
-            (max(1, int(limit)),),
+            (retry_before, max(1, int(limit))),
         ).fetchall()
     targets = []
     for (link,) in rows:
@@ -936,28 +1068,43 @@ def backfill_article_images(limit: int = 10) -> int:
             resolved = google_news.original_for(link, cached) or ""
         except Exception:
             resolved = ""
-        targets.append((link, resolved if resolved != link else link))
+        targets.append((link, resolved if resolved and resolved != link else link))
     if not targets:
         return 0
 
-    def fetch_one(item: tuple[str, str]) -> tuple[str, str]:
+    def fetch_one(item: tuple[str, str]) -> tuple[str, dict[str, Any]]:
         link, url = item
-        return link, fetch_og_image(url)
+        media = fetch_article_media(url)
+        return link, media
 
-    found: list[tuple[str, str]] = []
+    found: list[tuple[str, dict[str, str]]] = []
     with ThreadPoolExecutor(max_workers=4) as pool:
-        for link, image in pool.map(fetch_one, targets):
-            if image:
-                found.append((image, link))
-    if not found:
-        return 0
+        found.extend(pool.map(fetch_one, targets))
+    checked_at = datetime.now(timezone.utc).isoformat()
     with DB_LOCK, db_connect() as connection:
         before = connection.total_changes
-        connection.executemany(
-            "UPDATE articles SET image_url = ? WHERE link = ? AND image_url IS NULL",
-            found,
-        )
+        for link, media in found:
+            if media.get("checked"):
+                if media.get("image_url"):
+                    connection.execute(
+                        "UPDATE articles SET image_url = ? WHERE link = ? AND image_url IS NULL",
+                        (media["image_url"], link),
+                    )
+                connection.execute(
+                    "UPDATE articles SET video_url = ?, media_checked_at = ? WHERE link = ?",
+                    (media.get("video_url", ""), checked_at, link),
+                )
+            else:
+                connection.execute(
+                    "UPDATE articles SET media_checked_at = ? WHERE link = ?",
+                    (checked_at, link),
+                )
         return connection.total_changes - before
+
+
+def backfill_article_images(limit: int = 10) -> int:
+    """Compatibility wrapper for callers that used the former image-only pass."""
+    return backfill_article_media(limit)
 
 
 def prune_archive(days: int = ARCHIVE_DAYS) -> int:
@@ -1561,14 +1708,14 @@ def collect_news() -> dict[str, Any]:
                 logging.info("Korean translations saved: %d", translated)
         except Exception:
             logging.exception("Korean translation post-processing failed; collection continues")
-    # Article images are the same kind of best-effort: a missing og:image only means the
-    # page falls back to the per-category image, and the next cycle retries pending rows.
+    # Publisher images and video links are best-effort: a missing media hint leaves the
+    # existing card fallback intact, and the next scheduled check can retry failures.
     try:
-        imaged = backfill_article_images(limit=10)
-        if imaged:
-            logging.info("Article images saved: %d", imaged)
+        media_updated = backfill_article_media(limit=10)
+        if media_updated:
+            logging.info("Article media saved: %d", media_updated)
     except Exception:
-        logging.exception("Article image backfill failed; collection continues")
+        logging.exception("Article media backfill failed; collection continues")
     if inserted:
         prune_archive()
     _, window_total, region_counts = query_articles(hours=RETENTION_HOURS, limit=1)

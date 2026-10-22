@@ -80,7 +80,8 @@ const CAL_URL=CFG.calendar;
 const CACHE_KEY='teemo-live-news-cache-v4';
 
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function cleanTitle(value){return String(value||'').replace(/(?:https?:\\/\\/|www[.])\\S+|\\b[a-z0-9.-]+[.](?:com|org|net|rs|co[.]th|go[.]th)\\/\\S+|\\breut[.]rs\\S*/gi,'').replace(/\\s+-\\s+[^-]+$/,'').replace(/\\s+/g,' ').trim()}
+function cleanTitle(value,source){let text=String(value||'').replace(/(?:https?:\\/\\/|www[.])\\S+|\\b[a-z0-9.-]+[.](?:com|org|net|rs|co[.]th|go[.]th)\\/\\S+|\\breut[.]rs\\S*/gi,'').replace(/\\s+/g,' ').trim();
+  if(String(source||'').indexOf('Google News')===0)text=text.replace(/\\s+-\\s+[^-]+$/,'');return text}
 const shown=(s,label)=>{const t=String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   return '실제 <b class="'+label+'">'+t+'</b>'};
 
@@ -197,7 +198,7 @@ function renderBriefing(){
     list.innerHTML='<li class="brief"><span class="bnum">00</span><div><p class="btitle">'+esc(CFG.briefing.briefingEmpty)+'</p></div></li>';
     if(source)source.textContent=CFG.briefing.briefingNoEligible;return}
   list.innerHTML=items.map((a,i)=>{
-    const href=storyHref(a.original_link||a.link),title=esc(cleanTitle(a.title)),summary=esc(a.summary||'');
+    const href=storyHref(a.original_link||a.link),title=esc(cleanTitle(a.title,a.source)),summary=esc(a.summary||'');
     const cats=catList(a).map(catLabel).join(' · ');
     const note=a.picked&&a.pick_note?'<p class="bnote">'+esc(a.pick_note)+'</p>':'';
     return '<li class="brief'+(a.picked?' picked':'')+'"><span class="bnum">'+String(i+1).padStart(2,'0')+'</span><div>'+
@@ -291,7 +292,7 @@ function card(a,th,lead,first,last){
       catList(a).map(v=>{const on=tag.k==='cat'&&tag.v===v;
         return '<button type="button" class="chip tap'+(on?' on':'')+'" data-k="cat" data-v="'+esc(v)+'" aria-pressed="'+(on?'true':'false')+'">'+esc(catLabel(v))+'</button>'}).join('');
   const href=storyHref(a.original_link||a.link);
-  const title=href?'<a href="'+esc(href)+'" target="_blank" rel="noopener nofollow">'+hl(cleanTitle(view.title))+'</a>':hl(cleanTitle(view.title));
+  const title=href?'<a href="'+esc(href)+'" target="_blank" rel="noopener nofollow">'+hl(cleanTitle(view.title,a.source))+'</a>':hl(cleanTitle(view.title,a.source));
   const actions=CFG.admin?cardActs(a):(href?'<div class="acts"><a class="open" href="'+esc(href)+'" target="_blank" rel="noopener nofollow">'+esc(CFG.briefing.openOriginal)+' ↗</a></div>':'');
   return '<article class="card timeline-row'+(th?' th':'')+(a.fresh?' new':'')+(lead?' lead':'')+
       (first?' first-in-day':'')+(last?' last-in-day':'')+'">'+
@@ -389,7 +390,7 @@ function tFold(w){if(!/^[a-z]+$/.test(w)||/(ss|us|is)$/.test(w))return w;
 function trends(){
   const skip=T_SKIP[V.tab]||T_SKIP.global,uni={},bi={},form={};
   trendSource().forEach(a=>{
-    let t=cleanTitle(a.title);
+    let t=cleanTitle(a.title,a.source);
     if((a.source||'').indexOf('Google News')===0)t=t.replace(T_TAIL,'');
     t=t.replace(T_URL,' ');
     const tl=t.normalize('NFC').toLowerCase(),keep=[];

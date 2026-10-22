@@ -19,12 +19,19 @@ const pass = [];
 const check = (n, ok, d) => { pass.push(ok); console.log('  %s %s%s', ok ? 'PASS' : 'FAIL', n, d ? '  (' + d + ')' : ''); };
 
 const NOTE = '직접 확인한 내용';
+const ARTICLES = [
+  { title: 'Picked story', title_ko: '고른 기사', summary: 'Summary', summary_ko: '요약', link: 'https://example.com/picked', source: 'Reuters',
+    source_type: 'rss', region: '글로벌', category: '시장·가격', priority: 3, title_lang: 'ko',
+    published_at: new Date().toISOString(), picked: true, pick_note: NOTE },
+  { title: '일반 기사', summary: '요약 2', link: 'https://example.com/plain', source: 'AP',
+    source_type: 'rss', region: '글로벌', category: '시장·가격', priority: 2, title_lang: 'ko',
+    published_at: new Date().toISOString(), picked: false },
+];
 let writes = [];
 
 function stubFetch(realFetch) {
   return async (u, o) => {
     const url = new URL(String(u), URL_);
-    const method = ((o && o.method) || 'GET').toUpperCase();
     if (/^\/api\/(pick|unpick)$/.test(url.pathname)) {
       writes.push({ path: url.pathname, body: JSON.parse((o && o.body) || '{}') });
       return { ok: true, json: async () => ({ ok: true, picked_total: 1 }) };
@@ -32,27 +39,16 @@ function stubFetch(realFetch) {
     if (url.pathname === '/api/hidden') {
       return { ok: true, json: async () => ({ hidden: [], total: 0 }) };
     }
-    const picked = url.searchParams.get('picked') === '1';
-    // The stub owns the pick state, so it asks the real server for the unfiltered list and applies
-    // the pick itself. Letting the server filter would be asking the real archive about a pick that
-    // only exists here - and the answer would be "none", which is what this check saw once the
-    // server learned the parameter.
-    const ask = new URL(url.href);
-    ask.searchParams.delete('picked');
-    const real = await realFetch(ask.href, { headers: { 'User-Agent': 'Mozilla/5.0 jsdom' }, cache: 'no-store' });
-    if (url.pathname !== '/api/news') return { ok: real.ok, json: async () => real.json() };
-    const payload = await real.json();
-    if (picked) {
-      payload.articles = (payload.articles || []).slice(0, 1);
-      payload.total = payload.articles.length;
+    if (url.pathname === '/api/news') {
+      const picked = url.searchParams.get('picked') === '1';
+      const articles = picked ? ARTICLES.slice(0, 1) : ARTICLES;
+      return { ok: true, json: async () => ({
+        articles, total: articles.length, has_more: false, hours: 24, limit: 25, offset: 0,
+        returned: articles.length, region_counts: { '글로벌': articles.length },
+      }) };
     }
-    // The first story is the picked one in this simulated feed, and it stays marked when the pill
-    // filters down to it - the server marks every row it returns, filtered or not.
-    if (payload.articles && payload.articles.length) {
-      payload.articles = payload.articles.map((a, i) => (i === 0
-        ? Object.assign({}, a, { picked: true, pick_note: NOTE }) : Object.assign({}, a, { picked: false })));
-    }
-    return { ok: real.ok, json: async () => payload };
+    const real = await realFetch(url.href, { headers: { 'User-Agent': 'Mozilla/5.0 jsdom' }, cache: 'no-store' });
+    return { ok: real.ok, json: async () => real.json() };
   };
 }
 
@@ -65,12 +61,12 @@ function stubFetch(realFetch) {
       w.prompt = () => NOTE;   // the phrase prompt, answered here
     },
   });
-  const w = dom.window, d = w.document;
-  await waitFor(() => d.querySelectorAll('#feed .card').length > 0);
-  await sleep(1200);
-
+  const w = dom.window, d = dom.window.document;
   const cards = () => Array.from(d.querySelectorAll('#feed .card'));
   const badges = () => Array.from(d.querySelectorAll('#feed .card .pickbadge'));
+  await waitFor(() => cards().length > 0);
+  await waitFor(() => badges().length === 1);
+
   const pickPill = () => d.querySelector('.pills button[data-pick]');
   const chipTexts = () => Array.from(d.querySelectorAll('#conds [data-cond-off]')).map((b) => b.textContent);
 
@@ -91,7 +87,10 @@ function stubFetch(realFetch) {
 
   // The pill narrows the feed and, like every other selection, turns into a condition with a count.
   pickPill().click();
-  await sleep(2500);
+  await waitFor(() => chipTexts().some((t) => t.indexOf("Teemo's Pick") >= 0)
+    && (d.querySelector('#conds [data-cond-off] .n') || {}).textContent === '1'
+    && cards().length === 1 && badges().length === 1
+    && pickPill().getAttribute('aria-pressed') === 'true');
   check('알약을 누르면 조건 칩이 생김',
     chipTexts().some((t) => t.indexOf("Teemo's Pick") >= 0), chipTexts().join(' / ') || '없음');
   check('칩에 그 조건의 건수가 붙음',
@@ -102,8 +101,11 @@ function stubFetch(realFetch) {
   check('알약이 켜진 상태가 됨', pickPill().getAttribute('aria-pressed') === 'true');
 
   // Releasing the condition puts the list back, from the same row as every other condition.
-  d.querySelector('#conds [data-cond-off]').click();
-  await sleep(2500);
+  const offButton = d.querySelector('#conds [data-cond-off]');
+  if (offButton) offButton.click();
+  await waitFor(() => pickPill().getAttribute('aria-pressed') === 'false'
+    && !chipTexts().some((t) => t.indexOf("Teemo's Pick") >= 0)
+    && cards().length > 1);
   check('칩을 풀면 알약도 꺼짐', pickPill().getAttribute('aria-pressed') === 'false');
   check('칩이 사라짐', !chipTexts().some((t) => t.indexOf("Teemo's Pick") >= 0), chipTexts().join(' / ') || '없음');
   check('목록이 다시 넓어짐', cards().length > 1, cards().length + '장');
@@ -115,7 +117,8 @@ function stubFetch(realFetch) {
   if (btn) {
     check('Pick 버튼의 상태가 꺼짐으로 표시됨', btn.dataset.picked === '0', btn.dataset.picked);
     btn.click();
-    await sleep(1500);
+    await waitFor(() => writes.some((x) => x.path === '/api/pick'
+      && x.body.link === btn.dataset.picklink && x.body.note === NOTE));
     const call = writes.filter((x) => x.path === '/api/pick')[0];
     check('Pick이 링크와 문구를 보냄', !!call && call.body.link === btn.dataset.picklink
       && call.body.note === NOTE, call ? call.body.note : '호출 없음');
@@ -129,7 +132,8 @@ function stubFetch(realFetch) {
     onBtn ? onBtn.textContent.trim() : '없음');
   if (onBtn) {
     onBtn.click();
-    await sleep(1500);
+    await waitFor(() => writes.some((x) => x.path === '/api/unpick'
+      && x.body.link === onBtn.dataset.picklink));
     check('해제가 그 링크를 보냄', writes.some((x) => x.path === '/api/unpick'
       && x.body.link === onBtn.dataset.picklink), writes.length + '회 호출');
   }

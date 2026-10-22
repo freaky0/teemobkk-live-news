@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}내 활동 · TEEMOBKK's POST{% endblock %}
+{% block content %}
+<h1>내 활동</h1><p>본인의 활동과 비공개 스크랩입니다. 숨김·삭제된 글은 표시하지 않습니다.</p>
+<nav class="actions" aria-label="내 활동 유형">
+<a class="btn" href="?kind=posts" {% if kind == 'posts' %}aria-current="page"{% endif %}>내 질문</a>
+<a class="btn" href="?kind=comments" {% if kind == 'comments' %}aria-current="page"{% endif %}>내 답변</a>
+<a class="btn" href="?kind=helpful" {% if kind == 'helpful' %}aria-current="page"{% endif %}>도움 반응</a>
+<a class="btn" href="?kind=bookmarks" {% if kind == 'bookmarks' %}aria-current="page"{% endif %}>비공개 스크랩</a>
+</nav>
+<section class="panel">
+{% for item in page_obj %}
+{% if kind == 'comments' %}<article class="row"><a href="{% url 'post-detail' item.post_id %}">답변을 남긴 질문 보기</a><p>{{ item.body }}</p></article>
+{% else %}{% include 'community/row.html' with post=item %}{% endif %}
+{% empty %}<p>아직 표시할 활동이 없습니다.</p>{% endfor %}
+</section>
+{% if page_obj.has_other_pages %}<nav class="pagination" aria-label="내 활동 페이지">
+{% if page_obj.has_previous %}<a class="btn" href="?kind={{ kind|urlencode }}&page={{ page_obj.previous_page_number }}">이전</a>{% endif %}
+<span>{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+{% if page_obj.has_next %}<a class="btn" href="?kind={{ kind|urlencode }}&page={{ page_obj.next_page_number }}">다음</a>{% endif %}
+</nav>{% endif %}
+{% endblock %}

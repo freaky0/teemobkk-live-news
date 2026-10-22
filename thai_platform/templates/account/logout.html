@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<section class="editor panel"><h1>로그아웃할까요?</h1><p>이 기기의 웹 세션을 종료합니다.</p><form method="post">{% csrf_token %}<button class="btn primary" type="submit">로그아웃</button><a class="btn" href="{% url 'post-list' %}">취소</a></form></section>{% endblock %}

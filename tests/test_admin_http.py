@@ -488,7 +488,7 @@ class Gate(unittest.TestCase):
             self.assertIn('<link rel="alternate" hreflang="%s" href="%s">' %
                           (alternate_lang, alternate), page)
             self.assertIn("Keith S. Jun", page)
-            self.assertIn("freaky0@gmail.com", page)
+            self.assertIn("admin@teemobkk.io", page)
             self.assertIn(title, page)
             self.assertNotIn('name="robots" content="noindex"', page)
             self.assertIn("AdSense", page)

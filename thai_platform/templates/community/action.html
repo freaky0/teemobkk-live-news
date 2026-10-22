@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<section class="editor"><h1>{{ title }}</h1><form class="panel" method="post">{% csrf_token %}{% include 'community/fields.html' %}<div class="actions"><button class="btn primary" type="submit">다시 등록</button><a class="btn" href="{% url 'post-detail' post.pk %}">게시글로 돌아가기</a></div></form></section>{% endblock %}
