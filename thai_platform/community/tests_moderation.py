@@ -77,6 +77,21 @@ class ModeratorRoleTests(TestCase):
         with self.assertRaises(PermissionDenied):
             services.resolve_report(self.staff, report, {"status": Report.Status.DISMISSED})
 
+    def test_report_resolution_only_accepts_open_reports(self):
+        owner = get_user_model().objects.create_user(username="resolution-author")
+        reporter = get_user_model().objects.create_user(username="resolution-reporter")
+        post = Post.objects.create(author=owner, title="Question", body="Question body")
+        report = Report.objects.create(reporter=reporter, post=post, reason="spam")
+
+        services.resolve_report(self.moderator, report, {"status": Report.Status.DISMISSED})
+
+        with self.assertRaises(ValidationError):
+            services.resolve_report(self.moderator, report, {"status": Report.Status.RESOLVED})
+
+        report.refresh_from_db()
+        self.assertEqual(report.status, Report.Status.DISMISSED)
+        self.assertEqual(AuditEvent.objects.filter(action="report.resolve").count(), 1)
+
     def test_report_api_hides_only_reported_content_for_moderators(self):
         owner = get_user_model().objects.create_user(username="api-content-author")
         reporter = get_user_model().objects.create_user(username="api-reporter")
