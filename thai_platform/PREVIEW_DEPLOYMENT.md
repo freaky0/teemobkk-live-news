@@ -35,10 +35,10 @@ Caddy가 `/thai/static/*`을 릴리스의 `staticfiles`에서 제공하고, `/th
 
 ## 배포 전
 
-1. 원격 `main`에서 정확한 커밋 SHA를 확인하고 그 커밋의 `thai_platform/`만으로 격리된 릴리스 아카이브를 만든다. `.env`, `.dev-secret`, `var/`, `.venv/`, 미추적 파일은 포함하지 않는다.
+1. 원격 `main`에서 앱 코드의 정확한 병합 커밋 SHA를 확인하고 `git archive --format=tar <commit> thai_platform` 방식으로 아카이브를 만든다. `--prefix=thai_platform/`와 `thai_platform` 경로 인자를 함께 쓰지 않는다. 그러면 경로가 `thai_platform/thai_platform/...`으로 중복된다. gzip은 고정 timestamp로 만든다. `.env`, `.dev-secret`, `var/`, `.venv/`, 미추적 파일은 포함하지 않는다.
 2. manifest에 아카이브 SHA-256, 모든 파일의 상대 경로·SHA-256·크기·모드를 기록한다. 심볼릭 링크, 중복 경로, `..`, `thai_platform/` 바깥의 항목은 거부한다.
 3. 승인된 배포 인증과 이미 신뢰된 SSH host key를 사용해 아카이브·manifest·검증 스크립트만 전송한다. 비밀값, 인증 파일, 개인키는 저장소나 아카이브에 넣지 않는다.
-4. 호스트에서는 새 커밋 전용 릴리스 디렉터리에 먼저 추출한다. manifest와 모든 파일 메타데이터를 검증하고, 완료 전까지 실행 중인 Caddy·systemd 경로를 바꾸지 않는다.
+4. 호스트에서는 새 커밋 전용 릴리스 디렉터리에 먼저 추출한다. manifest와 모든 파일 메타데이터를 검증하고 `/opt/teemobkk-post-preview/releases/<commit>/thai_platform/manage.py`가 있는지 확인한다. 중복된 `thai_platform/thai_platform/` 구조면 중단한다. 완료 전까지 실행 중인 Caddy·systemd 경로를 바꾸지 않는다.
 5. 전용 커뮤니티 DB가 계속 `/var/lib/teemobkk-post-preview/community.sqlite3`인지 확인한다. 실제 `POST_DB_PATH`가 `/opt/teemo-live-news/news.db`이거나 그 DB와 같으면 즉시 중단한다.
 6. `manage.py showmigrations --plan` 및 `check --deploy`를 운영 서비스와 동일한 비밀 환경을 출력 없이 사용해 실행한다. `--plan`에서 의도된 변경만 확인한다. 환경값을 명령 출력·저장소·로그에 노출하지 않는다.
 7. 사전 DB 보호가 별도 승인된 뒤에만 SQLite online backup API로 커뮤니티 DB를 복사하고, 그 복사본의 `PRAGMA integrity_check`, 테이블·행 수와 애플리케이션 조회를 검증한다. 실행 중인 SQLite DB를 `cp`하지 않는다. 기존 뉴스 DB는 백업하거나 변경하지 않는다.
@@ -62,6 +62,6 @@ Caddy가 `/thai/static/*`을 릴리스의 `staticfiles`에서 제공하고, `/th
 
 ## 현재 호스트 확인 메모
 
-2026-10-22 배포 전 읽기 전용 점검에서 `/thai/`는 `teemobkk-post-preview.service`로 연결되고, 활성 릴리스는 `6cb2195e5e6e713f216edc71217e2014bc03868d`였다. 커뮤니티 DB는 `/var/lib/teemobkk-post-preview/community.sqlite3`이며 뉴스 DB와 분리되어 있다. 배포 대상 `f169dd5c07b9a4c59378cd976b656af10782f8d5`에는 앱 변경 `70d85b8c3fc5d06c8e3937e3726fd3322d717b66`과 이 runbook이 포함된다. 대상 앱은 137개 파일, 활성 릴리스는 125개 파일이며 트리가 일치하지 않아 배포 작업은 필요하다. `thai_platform/static/`은 변경되지 않았고 `/thai/news/*`는 별도 규칙으로 유지된다. 활성 릴리스의 기존 `check --deploy`는 종료 코드 0이었고 `security.W021`(HSTS preload 미사용) 경고가 남았다. 새 릴리스는 배포 전 다시 점검한다. 이 경고를 없애려고 preload를 켜지 않는다.
+2026-10-22 배포 전 읽기 전용 점검에서 `/thai/`는 `teemobkk-post-preview.service`로 연결되고, 활성 릴리스는 `6cb2195e5e6e713f216edc71217e2014bc03868d`였다. 커뮤니티 DB는 `/var/lib/teemobkk-post-preview/community.sqlite3`이며 뉴스 DB와 분리되어 있다. 배포할 앱 코드는 `70d85b8c3fc5d06c8e3937e3726fd3322d717b66`이며 runbook 문서 변경은 `2c4c82ad144e424843b2dcd9bbcc022e62c8b5bc`에 있다. 앱 아카이브는 136개 파일이고 활성 릴리스에는 125개 파일이 있어 트리가 다르므로 배포가 필요하다. `thai_platform/static/`은 변경되지 않았고 `/thai/news/*`는 별도 규칙으로 유지된다. 활성 릴리스의 기존 `check --deploy`는 종료 코드 0이었고 `security.W021`(HSTS preload 미사용) 경고가 남았다. 새 릴리스는 배포 전 다시 점검한다. 이 경고를 없애려고 preload를 켜지 않는다.
 
 현재 호스트 PATH에는 `uv`가 없고 공유 preview 가상환경의 `certifi`는 `uv.lock`보다 오래됐지만, 새 코드에는 직접 의존성 추가가 없으며 호스트 `pip check`는 `No broken requirements found`를 반환했다. 공유 가상환경을 변경하지 않고 기존의 성공한 릴리스 절차를 사용한다. 새 코드 점검이나 import 검사가 실패하면 배포를 중단한다.
