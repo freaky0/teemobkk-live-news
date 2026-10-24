@@ -1,7 +1,30 @@
 import unicodedata
 from django import forms
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+from allauth.account.forms import LoginForm
 from .models import MemberProfile
+
+class MemberPasswordLoginForm(LoginForm):
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+        self.fields['password']=forms.CharField(
+            label='비밀번호',
+            strip=False,
+            widget=forms.PasswordInput(attrs={'autocomplete':'current-password'}),
+        )
+    def clean(self):
+        cleaned_data=super().clean()
+        if self._errors or not getattr(self,'user',None):
+            return cleaned_data
+        allowed=MemberProfile.objects.filter(
+            user=self.user,
+            email_login_enabled=True,
+            email_verified_at__isnull=False,
+        ).exists()
+        if not allowed:
+            raise ValidationError('이메일 또는 비밀번호를 확인해 주세요.')
+        return cleaned_data
 
 class AccountClosureForm(forms.Form):
     confirm = forms.BooleanField(label="계정 비활성화와 질문·답변 보존을 확인했습니다.")

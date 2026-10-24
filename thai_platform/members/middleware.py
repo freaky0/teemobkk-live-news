@@ -8,7 +8,10 @@ import re
 class AuthBoundaryMiddleware(MiddlewareMixin):
     def process_request(self,request):
         path = request.path_info
-        if path.startswith(('/accounts/password/','/accounts/3rdparty/','/accounts/social/')):
+        if (
+            path.startswith('/accounts/password/')
+            and path not in {'/accounts/password/login/', '/accounts/password/set/'}
+        ) or path.startswith(('/accounts/3rdparty/','/accounts/social/')):
             return render(request,'403.html',status=403)
         if request.user.is_authenticated and path.startswith('/accounts/'):
             request._post_private_account_response=True

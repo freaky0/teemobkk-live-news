@@ -9,7 +9,7 @@ from .models import MemberProfile
 
 class RestrictedPreviewMiddleware(MiddlewareMixin):
     public_paths = frozenset({
-        '/accounts/login/', '/accounts/email/', '/accounts/email/sent/',
+        '/accounts/login/', '/accounts/login/options/', '/accounts/password/login/', '/accounts/email/', '/accounts/email/sent/',
         '/accounts/email/confirm/', '/accounts/logout/',
     })
     public_read_paths = frozenset({

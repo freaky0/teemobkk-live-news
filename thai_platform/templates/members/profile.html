@@ -23,6 +23,9 @@
       </form>
     </div>
   {% endif %}
+  {% if profile.email_login_enabled and not user.has_usable_password %}
+    <p class="note"><a href="{% url 'password-set' %}">비밀번호 설정</a><br>이메일 인증 링크로 로그인한 뒤 비밀번호를 설정하면 다음부터 이메일과 비밀번호로 로그인할 수 있습니다.</p>
+  {% endif %}
   <div class="actions">
     <a class="btn primary" href="{% url 'post-create' %}">질문 쓰기</a>
     <a class="btn" href="{% url 'member-deactivate' %}">계정 비활성화·삭제 검토 요청</a>

@@ -34,7 +34,7 @@ class MembershipBrowserTests(StaticLiveServerTestCase):
             page.on('console',lambda msg:errors.append(msg.text) if msg.type=='error' and not (msg.text.startswith('Failed to load resource: the server responded with a status of 404') and msg.location.get('url')==self.live_server_url+'/favicon.ico') else None)
             for width in [320,390,768,1024,1440]:
                 page.set_viewport_size({'width':width,'height':950})
-                for name,path in [('choices','/accounts/login/'),('email','/accounts/email/')]:
+                for name,path in [('choices','/accounts/login/options/'),('password-login','/accounts/login/'),('email','/accounts/email/')]:
                     self.assertEqual(page.goto(self.live_server_url+path,wait_until='networkidle').status,200)
                     self.assertTrue(page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'))
                     if width in [390,1440]:
@@ -70,6 +70,15 @@ class MembershipBrowserTests(StaticLiveServerTestCase):
             page.wait_for_url('**/accounts/profile/')
             self.assertIn('가입검증이웃',page.locator('h1').inner_text())
             self.assertTrue(page.get_by_role('button',name='Google 계정 연결',exact=True).is_visible())
+            page.get_by_role('link',name='비밀번호 설정',exact=True).click()
+            page.wait_for_url('**/accounts/password/set/')
+            page.locator('#id_password1').fill('Browser-test-passphrase-817!')
+            page.locator('#id_password2').fill('Browser-test-passphrase-817!')
+            with page.expect_response(lambda response: response.request.method=='POST' and '/accounts/password/set/' in response.url) as password_submit:
+                page.get_by_role('button',name='비밀번호 저장',exact=True).click()
+            self.assertEqual(password_submit.value.status,302,page.locator('body').inner_text()[:600])
+            page.wait_for_url('**/accounts/profile/')
+            self.assertNotIn('비밀번호 설정',page.locator('body').inner_text())
             page.screenshot(path=str(output/'profile-390.png'),full_page=True)
             response=context.request.get(self.live_server_url+'/api/v1/me/')
             self.assertTrue(response.json()['onboarding_complete'])
@@ -88,6 +97,16 @@ class MembershipBrowserTests(StaticLiveServerTestCase):
             self.assertNotIn('browser-check@example.com',another.locator('body').inner_text())
             self.assertEqual(anonymous.request.get(self.live_server_url+'/api/v1/me/').status,403)
             anonymous.close()
+            page.get_by_role('link',name='로그아웃',exact=True).first.click()
+            page.get_by_role('button',name='로그아웃',exact=True).click()
+            page.wait_for_url(self.live_server_url+'/')
+            self.assertEqual(context.request.get(self.live_server_url+'/api/v1/me/').status,403)
+            page.goto(self.live_server_url+'/accounts/login/',wait_until='networkidle')
+            page.locator('#id_login').fill('browser-check@example.com')
+            page.locator('#id_password').fill('Browser-test-passphrase-817!')
+            page.get_by_role('button',name='로그인',exact=True).click()
+            page.wait_for_url('**/accounts/profile/')
+            self.assertIn('가입검증이웃',page.locator('h1').inner_text())
             page.get_by_role('link',name='로그아웃',exact=True).first.click()
             page.get_by_role('button',name='로그아웃',exact=True).click()
             page.wait_for_url(self.live_server_url+'/')
