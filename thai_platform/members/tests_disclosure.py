@@ -42,6 +42,21 @@ class AuthDisclosureTests(TestCase):
         self.assertContains(response,'개발 검토용 초안')
         self.assertContains(response,'인증 메일 발송과 계정 관리')
 
+    def test_policy_pages_show_confirmed_responsibility_and_request_handling(self):
+        for path in ['/accounts/policy/terms/','/accounts/policy/privacy/']:
+            with self.subTest(path=path):
+                response=self.client.get(path)
+                self.assertEqual(response.status_code,200)
+                self.assertContains(response,'개인정보 처리 책임자: Teemobkk')
+                self.assertContains(response,'문의·삭제 요청은 Teemobkk가 직접 처리')
+                self.assertContains(response,'href="mailto:admin@teemobkk.io"')
+                self.assertContains(response,'개발 검토용 초안')
+        response=self.client.get('/accounts/policy/privacy/')
+        self.assertContains(response,'assets.aseannow.com')
+        self.assertContains(response,'www.matichon.co.th')
+        self.assertContains(response,'mpics2.mgronline.com')
+        self.assertNotContains(response,'책임 주체')
+
 @skipUnless(os.environ.get('POST_RUN_BROWSER_TESTS')=='1','Browser opt-in required')
 @override_settings(POST_RESTRICTED_PREVIEW=True,MIDDLEWARE=PREVIEW_MIDDLEWARE,GOOGLE_CONFIGURED=False)
 class DisclosureBrowserTests(StaticLiveServerTestCase):

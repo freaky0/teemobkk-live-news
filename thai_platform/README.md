@@ -47,7 +47,7 @@ POST_LOCAL_DEVELOPMENT=1 POST_NEWS_DB=/opt/teemo-live-news/news.db uv run python
 - 홈·목록·상세·API는 같은 공개 조건 함수를 사용합니다. 공개 응답에는 내부 상태·운영 메모·인증 설정을 넣지 않습니다.
 - 목록과 검색은 최신 발행순, 페이지당 20개입니다. 뉴스 상세는 링크의 SHA-256 기반 고유 주소입니다. 공개 조건은 상세 재조회 때도 적용합니다.
 - 한국어 제목과 요약을 그대로 재사용합니다. 사실 재검증이나 새 번역을 수행한 결과가 아닙니다. 뉴스 상세에 원문 링크와 요약임을 표시합니다.
-- 이미지 사용권·원격 이미지 추적 문제를 피하기 위해 기사별 외부 이미지는 이 묶음에 포함하지 않았습니다.
+- 기사 대표 이미지는 원 발행사의 HTTPS 이미지 주소를 그대로 사용합니다. 후보 앱은 이미지를 내려받아 자체 저장하지 않으며, 브라우저가 발행사 서버에 직접 요청합니다. 공개 `/thai/`에서 확인한 외부 이미지 호스트는 `assets.aseannow.com`, `www.matichon.co.th`, `mpics2.mgronline.com`입니다. 이미지 표시를 유지하며, 실제 권리·처리 지역은 공개 전 별도 확인이 필요합니다.
 
 웹 경로는 `/newsroom/`, `/newsroom/{id}/`입니다. `/thai/news/`와 `/thai/news/ko/`의 기존 운영 페이지와 겹치지 않도록 분리했습니다. 앱 공통 API는 `GET /api/v1/news/`, `GET /api/v1/news/{id}/`입니다.
 
@@ -63,7 +63,7 @@ DB 권한·접근 방식은 실제 운영 배포 전에 별도로 검토해야 �
 
 이메일 인증 링크 또는 Google 인증을 선택합니다. 이메일 링크는 10분·1회·신청 브라우저 세션에 제한합니다. 인증 뒤 닉네임과 문서 동의를 완료해야 게시할 수 있습니다. 이메일은 본인 계정에서만 표시합니다.
 
-상세 계약·준비 상태·검사와 공식 근거는 [members/AUTH-DESIGN.md](members/AUTH-DESIGN.md)에 있습니다. Google Console 설정은 [docs/GOOGLE-OAUTH-SETUP-KO.md](docs/GOOGLE-OAUTH-SETUP-KO.md)를 참고하세요. 이용약관·개인정보 처리방침은 [docs/policy-draft/](docs/policy-draft/)에 준비했으며, 운영자 정보와 실제 삭제 절차가 확정될 때까지 공개 승인하지 마세요.
+상세 계약·준비 상태·검사와 공식 근거는 [members/AUTH-DESIGN.md](members/AUTH-DESIGN.md)에 있습니다. Google Console 설정은 [docs/GOOGLE-OAUTH-SETUP-KO.md](docs/GOOGLE-OAUTH-SETUP-KO.md)를 참고하세요. 이메일 인증 링크와 Google 로그인 흐름은 코드에 구현되어 있으나, 실제 Google 자격 증명과 SMTP 발송은 아직 연결·검증되지 않았습니다. 이용약관·개인정보 처리방침은 [docs/policy-draft/](docs/policy-draft/)의 검토용 초안입니다. 사용자 확인에 따라 책임자와 문의·삭제 요청 담당은 Teemobkk로 반영했으며, 실제 데이터 삭제·파기 방식과 보유 기간이 확정될 때까지 공개 승인하지 마세요.
 
 실제 Google 로그인은 `POST_GOOGLE_CLIENT_ID`와 `POST_GOOGLE_CLIENT_SECRET`을 안전한 서버 환경에 설정한 뒤 사용할 수 있습니다.
 값을 채팅·소스·일반 로그에 넣지 마세요. Google OAuth 동의 화면과 정확한 리디렉션 URI 설정이 필요합니다.

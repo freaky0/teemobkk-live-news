@@ -7,7 +7,10 @@ from django.views.generic import RedirectView
 urlpatterns = [
     path("health/", lambda request: JsonResponse({"status": "ok", "service": "teemobkk-post"})),
     path("admin/", admin.site.urls),
-    path("accounts/login/", member_views.login_choice, name="member-login"),
+    path("accounts/login/options/", member_views.login_choice, name="login-options"),
+    path("accounts/login/", member_views.MemberPasswordLoginView.as_view(), name="member-login"),
+    path("accounts/password/login/", member_views.MemberPasswordLoginView.as_view(), name="password-login"),
+    path("accounts/password/set/", member_views.MemberPasswordSetView.as_view(), name="password-set"),
     path("accounts/signup/", RedirectView.as_view(pattern_name="email-request", permanent=False)),
     path("accounts/email/", member_views.email_request, name="email-request"),
     path("accounts/email/sent/", member_views.email_sent, name="email-sent"),

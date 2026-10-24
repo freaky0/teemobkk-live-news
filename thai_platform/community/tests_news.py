@@ -67,6 +67,20 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
         payload=self.client.get('/api/v1/news/').json()
         self.assertEqual(payload['results'][0]['image_url'],image)
 
+    def test_known_external_publisher_images_remain_rendered(self):
+        hosts=['assets.aseannow.com','www.matichon.co.th','mpics2.mgronline.com']
+        for index,host in enumerate(hosts):
+            image=f'https://{host}/teemobkk-preview-{index}.jpg'
+            link=self.add('publisher-image-'+str(index),image_url=image)
+            ident=sha256(link.encode()).hexdigest()
+            self.assertEqual(news.get_article(ident)['image_url'],image)
+            for path in ['/', '/newsroom/', '/newsroom/'+ident+'/']:
+                with self.subTest(host=host,path=path):
+                    self.assertContains(self.client.get(path),image)
+        payload=self.client.get('/api/v1/news/').json() or {}
+        image_urls={row['image_url'] for row in payload.get('results',[]) if row.get('image_url')}
+        self.assertTrue(all(any(url.startswith('https://'+host+'/') for url in image_urls) for host in hosts))
+
     def test_video_uses_static_poster_in_list_and_player_in_detail(self):
         poster='https://images.publisher.example/video-poster.jpg'
         video='https://video.publisher.example/story.mp4'

@@ -4,14 +4,20 @@ from django.contrib.auth import login, logout
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, OperationalError
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import redirect, render
+from django.urls import reverse
+from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_http_methods
+from django.views.generic.edit import FormView
+from allauth.account.models import EmailAddress
+from allauth.account.views import PasswordSetView as AllauthPasswordSetView
+from allauth.socialaccount.models import SocialAccount
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .forms import AccountClosureForm, EmailRequestForm, OnboardingForm
+from .forms import AccountClosureForm, EmailRequestForm, MemberPasswordLoginForm, OnboardingForm
 from .models import MemberProfile
 from . import services
 
@@ -20,6 +26,36 @@ from . import services
 def login_choice(request):
     return render(request,'account/login.html')
 
+@method_decorator(sensitive_post_parameters('password'), name='dispatch')
+class MemberPasswordLoginView(FormView):
+    template_name='account/password_login.html'
+    form_class=MemberPasswordLoginForm
+    def get_form_kwargs(self):
+        kwargs=super().get_form_kwargs()
+        kwargs['request']=self.request
+        return kwargs
+    def form_valid(self,form):
+        user=form.user
+        login(self.request,user,backend='allauth.account.auth_backends.AuthenticationBackend')
+        profile=MemberProfile.objects.filter(user=user).first()
+        return redirect('member-profile' if profile and profile.is_complete else 'member-onboarding')
+
+@method_decorator(login_required, name='dispatch')
+class MemberPasswordSetView(AllauthPasswordSetView):
+    template_name='members/password_set.html'
+    def get_default_success_url(self):
+        return reverse('member-profile')
+    def dispatch(self,request,*args,**kwargs):
+        profile=MemberProfile.objects.filter(
+            user=request.user,
+            email_login_enabled=True,
+            email_verified_at__isnull=False,
+        ).first()
+        if not profile:
+            return HttpResponseForbidden('이메일 인증 계정만 비밀번호를 설정할 수 있습니다.')
+        if request.user.has_usable_password():
+            return redirect('member-profile')
+        return super().dispatch(request,*args,**kwargs)
 
 @never_cache
 @require_http_methods(['GET','POST'])
@@ -96,7 +132,12 @@ def profile(request):
     member=MemberProfile.objects.filter(user=request.user).first()
     if member and not member.is_complete:
         return redirect('member-onboarding')
-    return render(request,'members/profile.html',{'profile':member})
+    google_connected=SocialAccount.objects.filter(user=request.user,provider='google').exists()
+    google_email_verified=bool(member and member.email_login_enabled and member.email_verified_at
+        and request.user.email.strip().casefold()==member.email_key.strip().casefold()
+        and EmailAddress.objects.filter(user=request.user,email__iexact=member.email_key,verified=True).exists())
+    google_link_available=bool(google_email_verified and settings.GOOGLE_CONFIGURED and not google_connected)
+    return render(request,'members/profile.html',{'profile':member,'google_connected':google_connected,'google_link_available':google_link_available})
 
 @never_cache
 @login_required
