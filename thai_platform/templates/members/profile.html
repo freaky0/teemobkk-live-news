@@ -1,1 +1,32 @@
-{% extends 'base.html' %}{% block title %}내 계정 · TEEMOBKK's POST{% endblock %}{% block content %}<section class="editor panel auth-card"><p class="hero-label">MY ACCOUNT</p><h1>{{ user.username }}님,<br>반갑습니다.</h1><dl class="auth-details"><dt>닉네임</dt><dd>{{ user.username }}</dd><dt>이메일 · 비공개</dt><dd>{{ user.email }}</dd><dt>가입 방식</dt><dd>{% if profile.email_login_enabled %}이메일 인증 링크{% elif profile %}Google 인증{% else %}관리 계정{% endif %}</dd>{% if profile %}<dt>동의한 문서 버전</dt><dd>약관 {{ profile.terms_version }} · 개인정보 {{ profile.privacy_version }}</dd>{% endif %}</dl><div class="actions"><a class="btn primary" href="{% url 'post-create' %}">질문 쓰기</a><a class="btn" href="{% url 'member-deactivate' %}">계정 비활성화·삭제 검토 요청</a></div><p class="meta">요청하면 로그인은 즉시 중단됩니다. 질문·답변은 유지되며, 계정 삭제는 운영자가 검토합니다. 이메일·Google 계정 복구는 해당 제공자 절차를 이용해 주세요.</p></section>{% endblock %}
+{% extends 'base.html' %}
+{% load socialaccount %}
+{% block title %}내 계정 · TEEMOBKK's POST{% endblock %}
+{% block content %}
+<section class="editor panel auth-card">
+  <p class="hero-label">MY ACCOUNT</p>
+  <h1>{{ user.username }}님,<br>반갑습니다.</h1>
+  <dl class="auth-details">
+    <dt>닉네임</dt><dd>{{ user.username }}</dd>
+    <dt>이메일 · 비공개</dt><dd>{{ user.email }}</dd>
+    <dt>가입 방식</dt><dd>{% if profile.email_login_enabled %}이메일 인증 링크{% elif profile %}Google 인증{% else %}관리 계정{% endif %}</dd>
+    {% if profile %}<dt>동의한 문서 버전</dt><dd>약관 {{ profile.terms_version }} · 개인정보 {{ profile.privacy_version }}</dd>{% endif %}
+  </dl>
+  {% if google_connected %}
+    <p class="note">Google 계정이 연결되어 있습니다.</p>
+  {% elif google_link_available %}
+    <div class="note">
+      <strong>Google 로그인 연결</strong>
+      <p>이메일과 같은 주소이며 Google이 인증한 계정만 연결됩니다. 계속하면 Google에서 다시 인증을 요청합니다.</p>
+      <form method="post" action="{% provider_login_url 'google' process='connect' action='reauthenticate' %}">
+        {% csrf_token %}
+        <button class="btn" type="submit">Google 계정 연결</button>
+      </form>
+    </div>
+  {% endif %}
+  <div class="actions">
+    <a class="btn primary" href="{% url 'post-create' %}">질문 쓰기</a>
+    <a class="btn" href="{% url 'member-deactivate' %}">계정 비활성화·삭제 검토 요청</a>
+  </div>
+  <p class="meta">요청하면 로그인은 즉시 중단됩니다. 질문·답변은 유지되며, 계정 삭제는 운영자가 검토합니다. 이메일·Google 계정 복구는 해당 제공자 절차를 이용해 주세요.</p>
+</section>
+{% endblock %}

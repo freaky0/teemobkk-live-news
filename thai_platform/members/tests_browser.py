@@ -9,10 +9,12 @@ from django.core.cache import cache
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.test import override_settings
 from playwright.sync_api import sync_playwright
+from members.tests_google_preview import GOOGLE_FIXTURE
 
 @skipUnless(os.environ.get('POST_RUN_BROWSER_TESTS')=='1','Browser opt-in required')
 @override_settings(POST_AUTH_EMAIL_ENABLED=True,POST_SIGNUP_ENABLED=True,EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',DEFAULT_FROM_EMAIL='auth@example.com',POST_PUBLIC_ORIGIN='https://preview.example.com')
 class MembershipBrowserTests(StaticLiveServerTestCase):
+    @override_settings(GOOGLE_CONFIGURED=True,SOCIALACCOUNT_PROVIDERS=GOOGLE_FIXTURE)
     def test_passwordless_signup_consent_profile_and_write(self):
         cache.clear()
         mail.outbox=[]
@@ -67,6 +69,7 @@ class MembershipBrowserTests(StaticLiveServerTestCase):
             page.get_by_role('button',name='가입 마치기').click()
             page.wait_for_url('**/accounts/profile/')
             self.assertIn('가입검증이웃',page.locator('h1').inner_text())
+            self.assertTrue(page.get_by_role('button',name='Google 계정 연결',exact=True).is_visible())
             page.screenshot(path=str(output/'profile-390.png'),full_page=True)
             response=context.request.get(self.live_server_url+'/api/v1/me/')
             self.assertTrue(response.json()['onboarding_complete'])

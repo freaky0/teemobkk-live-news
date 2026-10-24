@@ -12,42 +12,36 @@ Google 인증 시작 및 callback의 정확한 두 경로만 검토 환경 게�
 현재 검증은 개발 테스트 DB 및 가상 OAuth 자격 증명으로 수행했다.
 실계정 로그인이나 배포 완료를 의미하지 않는다.
 
-## 필요한 Google Cloud 설정
+## Google Cloud 설정
 
-1. Google Auth Platform의 Clients에서 **Web application** 유형 클라이언트를 만든다.
-   기존 Workspace용 Desktop 클라이언트나 토큰은 재사용하지 않는다.
-2. 애플리케이션 이름과 지원 이메일을 설정한다. 외부 테스트 모드라면 허용할 테스트 사용자를 Audience에 추가한다.
-3. 아래 값을 정확히 등록한다.
+이 안내는 현재 제한된 미리보기 경로 `https://teemobkk.io/thai/` 전용입니다. 운영 승격이나 공개 배포 승인이 아닙니다.
+
+1. Google Auth Platform의 Clients에서 **Web application** 유형 클라이언트를 만듭니다. 기존 Workspace Desktop 클라이언트나 개인 API 토큰은 재사용하지 않습니다.
+2. Audience를 테스트용으로 유지하고, 로그인할 Google 계정을 Test users에 추가합니다. 공개 프로덕션 앱으로 게시하지 않습니다.
+3. 다음 주소를 정확히 등록합니다.
 
 | 항목 | 값 |
 |---|---|
-| JavaScript origin | `https://post-dev.teemobkk.io` |
-| Redirect URI | `https://post-dev.teemobkk.io/accounts/google/login/callback/` |
+| Authorized JavaScript origin | `https://teemobkk.io` |
+| Authorized redirect URI | `https://teemobkk.io/thai/accounts/google/login/callback/` |
 
-Redirect URI의 마지막 `/`를 포함한다. 실제 인증 토큰이나 query/fragment를 붙이지 않는다.
-이 값은 검토 환경용이며, 운영 도메인의 callback을 임의로 등록하거나 배포하지 않는다.
+앱은 `/thai` prefix로 마운트됩니다. callback URI 끝의 `/`를 포함하고, query/fragment는 붙이지 않습니다. 저장소의 `POST_SCRIPT_PREFIX=/thai`로 Django URL reversing을 확인하면 경로는 `/thai/accounts/google/login/callback/`입니다.
 
-Google Cloud에서 내려받은 웹용 클라이언트 JSON은 비공개 저장소에만 보관한다.
-Client secret, access token, refresh token을 채팅·Git·스크린샷·일반 로그에 넣지 않는다.
-설정 도구에는 JSON 파일 경로만 전달한다. OAuth client JSON을 일반 read_file로 출력하지 않는다.
-웹 클라이언트 형식과 등록 callback을 값 비노출 방식으로 검사한 뒤, 승인된 검토 서버 환경에만 반영한다.
-앱 환경변수는 `POST_GOOGLE_CLIENT_ID`와 `POST_GOOGLE_CLIENT_SECRET`이며 둘 다 필요하다.
-현재는 실서비스에 설정하지 않았다.
+Google 동의 화면에 서비스 표시명과 연락 이메일을 설정하고, 테스트 모드의 Test users에 승인된 검토 계정을 추가합니다. 현재 코드가 요청하는 scope는 `openid`와 `email`뿐입니다. 이 로그인 기능에는 Drive, Gmail 등 다른 API scope가 필요하지 않습니다.
+
+## 비밀 설정
+
+Google Cloud에서 만든 **Web application Client ID**와 **Client secret**은 제한된 미리보기 서버의 보호된 비밀 설정에 각각 `POST_GOOGLE_CLIENT_ID`, `POST_GOOGLE_CLIENT_SECRET`으로 등록합니다. 이 저장소, 채팅, 티켓, 스크린샷, 일반 로그에는 넣지 않습니다. 값은 둘 다 있어야 Google 버튼이 활성화됩니다. 같은 제공자를 Django 관리자 `SocialApp`에도 중복 등록하지 않습니다.
+
+운영자 보고에 따라 Google Client ID와 Client secret은 미리보기 전용 보호 환경에 설정됐고, 별도 승인된 서비스 재시작이 완료됐습니다. 로그인 요청은 앱의 계정 방식 확인 화면까지 도달했지만 Google 로그인 성공은 확인되지 않았습니다. 비밀값은 이 저장소에 두지 않습니다. 추가 설정은 검증된 미리보기 비밀 관리 절차로만 변경하고, 운영 설정·배포는 별도 승인 없이는 변경하지 않습니다.
 
 ## 기존 이메일 계정 정책
 
-같은 이메일이라는 이유만으로 Google 계정을 기존 계정에 자동 연결하지 않는다.
-이메일로 이미 가입한 계정에서 Google 신규 가입을 시도하면 현재 정책은 충돌로 거부한다.
-이메일 로그인 후 별도 확인과 동의를 거치는 **명시적 Google 연결** 기능은 아직 구현 범위 밖이다.
-같은 계정으로 두 로그인 방식을 사용하려면 이 절차를 별도로 승인·구현·검증해야 한다.
-테스트 목적으로 실회원이나 기존 가입 데이터를 삭제하지 않는다.
+같은 이메일이라는 이유만으로 Google 계정을 기존 계정에 자동 연결하지 않습니다. 이메일로 이미 가입한 계정은 먼저 이메일 링크로 로그인한 뒤 내 계정의 **Google 계정 연결** 버튼을 사용해야 합니다. 연결은 Google 재인증을 거치고, Google이 검증한 주소가 기존 계정의 검증 이메일과 일치해야 합니다. 이 기능의 코드는 로컬 후보 브랜치에만 있으며 현재 공개 미리보기에는 아직 반영되지 않았습니다. 미리보기 반영 및 실계정 연결은 별도 검증이 필요합니다. 테스트 목적으로 실회원이나 기존 가입 데이터를 삭제하지 않습니다.
 
 ## 외부 검증 전 조건
 
-Chrome 피싱 경고를 우회하지 않는다. Google의 경고 검토와 OAuth 연결은 별개다.
-웹용 자격 증명 준비, 기존 계정 연결 정책 결정, 검토 서버 적용 승인 후 실계정 callback을 검증한다.
-초대되지 않은 계정 차단, 신규 Google 가입의 닉네임·동의, 기존 Google 계정 재로그인까지 확인한다.
-main 병합과 운영 배포는 별도 승인 대상이다.
+Chrome 피싱 경고를 우회하지 않습니다. Google의 경고 검토와 OAuth 연결은 별개입니다. 제한 미리보기 실계정 callback 검증과 운영 승격은 별개의 절차이며, main 병합 및 운영 배포는 별도 승인이 필요합니다.
 
 ## 공식 근거
 

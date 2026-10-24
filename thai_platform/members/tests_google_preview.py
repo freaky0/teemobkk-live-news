@@ -2,7 +2,12 @@
 from urllib.parse import parse_qs, urlsplit
 from unittest.mock import patch
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
+from django.utils import timezone
+from allauth.account.models import EmailAddress
+from allauth.socialaccount.models import SocialAccount,SocialLogin
+from members.models import MemberProfile
 
 GOOGLE_FIXTURE={
     'google': {
@@ -119,8 +124,194 @@ class GooglePreviewFlowTests(TestCase):
         with self.assertRaises(ImmediateHttpResponse) as error:
             GoogleOnlyAdapter().pre_social_login(request,social)
         self.assertEqual(error.exception.response.status_code,409)
+        self.assertIn('Google 로그인을 완료하지 못했습니다.',error.exception.response.content.decode())
+        self.assertIn('이메일 링크로 로그인한 뒤 내 계정에서',error.exception.response.content.decode())
         self.assertEqual(SocialAccount.objects.count(),0)
         self.assertEqual(get_user_model().objects.get().pk,user.pk)
+
+    def email_member(self,email='invited@example.invalid',email_login_enabled=True):
+        user=get_user_model().objects.create_user(username='email-member',email=email)
+        MemberProfile.objects.create(user=user,email_key=email,email_login_enabled=email_login_enabled,email_verified_at=timezone.now())
+        EmailAddress.objects.create(user=user,email=email,verified=True,primary=True)
+        self.client.force_login(user,backend='sesame.backends.ModelBackend')
+        return user
+
+    def test_explicit_connect_accepts_authenticated_matching_verified_email_member(self):
+        from config.adapters import GoogleOnlyAdapter
+        from members.models import MemberProfile
+        user=self.email_member()
+        social=self.social(user=user)
+        social.state['process']='connect'
+        request=self.client.get('/accounts/profile/').wsgi_request
+        GoogleOnlyAdapter().pre_social_login(request,social)
+        self.assertEqual(MemberProfile.objects.get(user=user).email_key,'invited@example.invalid')
+
+    def test_explicit_connect_rejects_unverified_google_email(self):
+        from config.adapters import GoogleOnlyAdapter
+        from allauth.core.exceptions import ImmediateHttpResponse
+        user=self.email_member()
+        social=self.social(user=user,verified=False)
+        social.state['process']='connect'
+        request=self.client.get('/accounts/profile/').wsgi_request
+        with self.assertRaises(ImmediateHttpResponse) as error:
+            GoogleOnlyAdapter().pre_social_login(request,social)
+        self.assertEqual(error.exception.response.status_code,403)
+
+    def test_explicit_connect_requires_a_current_verified_email_record(self):
+        from config.adapters import GoogleOnlyAdapter
+        from allauth.core.exceptions import ImmediateHttpResponse
+        user=self.email_member()
+        EmailAddress.objects.filter(user=user).delete()
+        social=self.social(user=user)
+        social.state['process']='connect'
+        request=self.client.get('/accounts/profile/').wsgi_request
+        with self.assertRaises(ImmediateHttpResponse):
+            GoogleOnlyAdapter().pre_social_login(request,social)
+
+    def test_explicit_connect_rejects_mismatching_google_email(self):
+        from config.adapters import GoogleOnlyAdapter
+        from allauth.core.exceptions import ImmediateHttpResponse
+        user=self.email_member()
+        social=self.social('different@example.invalid',user=user)
+        social.state['process']='connect'
+        request=self.client.get('/accounts/profile/').wsgi_request
+        with self.assertRaises(ImmediateHttpResponse) as error:
+            GoogleOnlyAdapter().pre_social_login(request,social)
+        self.assertEqual(error.exception.response.status_code,403)
+        self.assertIn('Google 계정을 연결하지 못했습니다.',error.exception.response.content.decode())
+
+    def test_explicit_connect_rejects_anonymous_and_google_only_accounts(self):
+        from config.adapters import GoogleOnlyAdapter
+        from allauth.core.exceptions import ImmediateHttpResponse
+        adapter=GoogleOnlyAdapter()
+        anonymous_social=self.social()
+        anonymous_social.state['process']='connect'
+        anonymous_request=self.client.get('/accounts/login/').wsgi_request
+        with self.assertRaises(ImmediateHttpResponse):
+            adapter.pre_social_login(anonymous_request,anonymous_social)
+
+        user=self.email_member(email_login_enabled=False)
+        social=self.social(user=user)
+        social.state['process']='connect'
+        request=self.client.get('/accounts/profile/').wsgi_request
+        with self.assertRaises(ImmediateHttpResponse):
+            adapter.pre_social_login(request,social)
+
+    def test_explicit_connect_never_moves_google_identity_from_another_user(self):
+        from config.adapters import GoogleOnlyAdapter
+        from allauth.core.exceptions import ImmediateHttpResponse
+        from django.contrib.auth import get_user_model
+        target=self.email_member()
+        other=get_user_model().objects.create_user(username='other-google-owner',email='invited@example.invalid')
+        account=SocialAccount.objects.create(user=other,provider='google',uid='fixture-google-sub')
+        social=self.social(user=other,account=account)
+        social.state['process']='connect'
+        request=self.client.get('/accounts/profile/').wsgi_request
+        with self.assertRaises(ImmediateHttpResponse):
+            GoogleOnlyAdapter().pre_social_login(request,social)
+        account.refresh_from_db()
+        self.assertEqual(account.user_id,other.pk)
+        self.assertNotEqual(account.user_id,target.pk)
+
+    def test_allauth_sociallogin_connect_attaches_google_identity_to_signed_in_user(self):
+        from config.adapters import GoogleOnlyAdapter
+        user=self.email_member()
+        social=self.social(user=user)
+        social.state['process']='connect'
+        request=self.client.get('/accounts/profile/').wsgi_request
+        GoogleOnlyAdapter().pre_social_login(request,social)
+        social.connect(request,user)
+        account=SocialAccount.objects.get(provider='google',uid='fixture-google-sub')
+        self.assertEqual(account.user_id,user.pk)
+        self.assertEqual(user.email,'invited@example.invalid')
+        self.assertEqual(GoogleOnlyAdapter().get_connect_redirect_url(request,account),'/accounts/profile/')
+
+    def test_connected_google_identity_is_shown_instead_of_a_second_connect_button(self):
+        from config.adapters import GoogleOnlyAdapter
+        user=self.email_member()
+        MemberProfile.objects.filter(user=user).update(nickname_key='email-member',accepted_at=timezone.now())
+        social=self.social(user=user)
+        social.state['process']='connect'
+        request=self.client.get('/accounts/profile/').wsgi_request
+        GoogleOnlyAdapter().pre_social_login(request,social)
+        social.connect(request,user)
+        response=self.client.get('/accounts/profile/')
+        self.assertContains(response,'Google 계정이 연결되어 있습니다.')
+        self.assertNotContains(response,'Google 계정 연결</button>')
+
+    def test_google_disconnect_is_rejected(self):
+        from config.adapters import GoogleOnlyAdapter
+        from django.core.exceptions import ValidationError
+        account=SocialAccount(provider='google',uid='fixture-google-sub')
+        with self.assertRaises(ValidationError):
+            GoogleOnlyAdapter().validate_disconnect(account,[])
+
+    def test_profile_offers_only_post_reauthenticated_google_connect_for_email_member(self):
+        user=self.email_member()
+        MemberProfile.objects.filter(user=user).update(nickname_key='email-member',accepted_at=timezone.now())
+        response=self.client.get('/accounts/profile/')
+        self.assertEqual(response.status_code,200)
+        self.assertContains(response,'Google 계정 연결')
+        self.assertContains(response,'process=connect')
+        self.assertContains(response,'action=reauthenticate')
+        self.assertContains(response,'csrfmiddlewaretoken')
+
+    def test_profile_hides_google_connect_when_local_verified_email_record_is_missing(self):
+        user=self.email_member()
+        MemberProfile.objects.filter(user=user).update(nickname_key='email-member',accepted_at=timezone.now())
+        EmailAddress.objects.filter(user=user).delete()
+        response=self.client.get('/accounts/profile/')
+        self.assertEqual(response.status_code,200)
+        self.assertNotContains(response,'Google 계정 연결')
+
+    def test_profile_google_connect_post_starts_reauthenticated_oauth(self):
+        import html
+        import re
+        client=Client(enforce_csrf_checks=True)
+        user=get_user_model().objects.create_user(username='email-member',email='invited@example.invalid')
+        MemberProfile.objects.create(user=user,email_key=user.email,email_login_enabled=True,email_verified_at=timezone.now(),nickname_key='email-member',accepted_at=timezone.now())
+        EmailAddress.objects.create(user=user,email=user.email,verified=True,primary=True)
+        client.force_login(user,backend='sesame.backends.ModelBackend')
+        profile_response=client.get('/accounts/profile/')
+        self.assertIn('csrftoken',client.cookies)
+        match=re.search(r'<form method="post" action="([^"]+)">',profile_response.content.decode())
+        self.assertIsNotNone(match)
+        action_url=html.unescape(match.group(1))
+        action=urlsplit(action_url)
+        self.assertEqual(action.path,'/accounts/google/login/')
+        self.assertEqual(parse_qs(action.query),{'process':['connect'],'action':['reauthenticate']})
+        response=client.post(action_url,HTTP_X_CSRFTOKEN=client.cookies['csrftoken'].value)
+        self.assertEqual(response.status_code,302)
+        target=urlsplit(response['Location'])
+        self.assertEqual(target.hostname,'accounts.google.com')
+        params=parse_qs(target.query)
+        self.assertEqual(urlsplit(params['redirect_uri'][0]).path,'/accounts/google/login/callback/')
+        self.assertEqual(set(params['scope'][0].split()),{'openid','email'})
+        self.assertEqual(params['prompt'],['select_account consent'])
+
+    def test_profile_google_connect_preserves_thai_mount_prefix(self):
+        import html
+        import re
+        from django.urls import set_script_prefix
+        set_script_prefix('/thai/')
+        self.addCleanup(set_script_prefix,'/')
+        user=get_user_model().objects.create_user(username='email-member',email='invited@example.invalid')
+        MemberProfile.objects.create(user=user,email_key=user.email,email_login_enabled=True,email_verified_at=timezone.now(),nickname_key='email-member',accepted_at=timezone.now())
+        EmailAddress.objects.create(user=user,email=user.email,verified=True,primary=True)
+        client=Client(enforce_csrf_checks=True)
+        client.force_login(user,backend='sesame.backends.ModelBackend')
+        response=client.get('/accounts/profile/',SCRIPT_NAME='/thai')
+        self.assertEqual(response.status_code,200)
+        match=re.search(r'<form method="post" action="([^"]+)">',response.content.decode())
+        self.assertIsNotNone(match)
+        action_url=html.unescape(match.group(1))
+        self.assertTrue(action_url.startswith('/thai/accounts/google/login/'))
+        start=client.post('/accounts/google/login/',{'csrfmiddlewaretoken':client.cookies['csrftoken'].value},SCRIPT_NAME='/thai',HTTP_X_CSRFTOKEN=client.cookies['csrftoken'].value)
+        self.assertEqual(start.status_code,302)
+        params=parse_qs(urlsplit(start['Location']).query)
+        self.assertEqual(urlsplit(params['redirect_uri'][0]).path,'/thai/accounts/google/login/callback/')
+        from config.adapters import GoogleOnlyAdapter
+        self.assertEqual(GoogleOnlyAdapter().get_connect_redirect_url(start.wsgi_request,None),'/thai/accounts/profile/')
 
     def test_only_exact_oauth_endpoints_are_open(self):
         response=self.client.get('/accounts/google/login/callback/extra/')

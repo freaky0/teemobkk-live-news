@@ -9,6 +9,8 @@ from django.shortcuts import redirect, render
 from django.views.decorators.cache import never_cache
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_http_methods
+from allauth.account.models import EmailAddress
+from allauth.socialaccount.models import SocialAccount
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .forms import AccountClosureForm, EmailRequestForm, OnboardingForm
@@ -96,7 +98,12 @@ def profile(request):
     member=MemberProfile.objects.filter(user=request.user).first()
     if member and not member.is_complete:
         return redirect('member-onboarding')
-    return render(request,'members/profile.html',{'profile':member})
+    google_connected=SocialAccount.objects.filter(user=request.user,provider='google').exists()
+    google_email_verified=bool(member and member.email_login_enabled and member.email_verified_at
+        and request.user.email.strip().casefold()==member.email_key.strip().casefold()
+        and EmailAddress.objects.filter(user=request.user,email__iexact=member.email_key,verified=True).exists())
+    google_link_available=bool(google_email_verified and settings.GOOGLE_CONFIGURED and not google_connected)
+    return render(request,'members/profile.html',{'profile':member,'google_connected':google_connected,'google_link_available':google_link_available})
 
 @never_cache
 @login_required
