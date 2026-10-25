@@ -25,6 +25,8 @@
   --color-text-note:#4f462c;
   --color-border-empty-state:#92a7b5;
   --color-surface-backdrop:#122b42aa;
+  --color-bg-feedback-success:#e4f1e8;
+  --color-border-feedback-success:#8aaa94;
   --color-text-divider:#536c83;
   --color-bg-verified:#eaf5fb;
   --color-bg-media-placeholder:#233247;
@@ -55,6 +57,8 @@
     --color-bg-note:#393321;
     --color-text-note:#f4e8c5;
     --color-text-divider:var(--color-text-muted);
+    --color-bg-feedback-success:#203b4d;
+    --color-border-feedback-success:var(--color-border-default);
     --color-bg-verified:#203b4d;
   }
 }
@@ -79,6 +83,8 @@ html[data-theme="dark"]{
     --color-bg-note:#393321;
     --color-text-note:#f4e8c5;
     --color-text-divider:var(--color-text-muted);
+    --color-bg-feedback-success:#203b4d;
+    --color-border-feedback-success:var(--color-border-default);
     --color-bg-verified:#203b4d;
 }
 html[data-theme="light"]{color-scheme:light}
