@@ -1,7 +1,55 @@
-:root{color-scheme:light;--toggle-border:#718695}
-@media(prefers-color-scheme:dark){:root:not([data-theme]){color-scheme:dark;--bg:#101b27;--paper:#182a3a;--ink:#e5eef7;--muted:#b8c9d8;--line:#395064;--navy:#24527a;--soft:#21394d;--danger:#ff958c;--toggle-border:#5c7a93}}
-html[data-theme="dark"]{color-scheme:dark;--bg:#101b27;--paper:#182a3a;--ink:#e5eef7;--muted:#b8c9d8;--line:#395064;--navy:#24527a;--soft:#21394d;--danger:#ff958c;--toggle-border:#5c7a93}
-html[data-theme="light"]{color-scheme:light;--bg:#f5f9fc;--paper:#fff;--ink:#14304d;--muted:#53677a;--line:#d0dde6;--navy:#14395b;--soft:#eaf4fa;--danger:#a52e26;--toggle-border:#718695}
+:root{
+  color-scheme:light;
+  --color-bg-canvas:#f5f9fc;
+  --color-bg-surface:#fff;
+  --color-bg-subtle:#eaf4fa;
+  --color-text-primary:#14304d;
+  --color-text-muted:#53677a;
+  --color-border-default:#d0dde6;
+  --color-border-control:#718695;
+  --color-action-primary:#14395b;
+  --color-text-on-primary:#fff;
+  --color-accent-warm:#ffc347;
+  --color-danger:#a52e26;
+  /* Compatibility aliases for stylesheets migrated in later batches. */
+  --bg:var(--color-bg-canvas);
+  --paper:var(--color-bg-surface);
+  --ink:var(--color-text-primary);
+  --muted:var(--color-text-muted);
+  --line:var(--color-border-default);
+  --navy:var(--color-action-primary);
+  --gold:var(--color-accent-warm);
+  --soft:var(--color-bg-subtle);
+  --danger:var(--color-danger);
+  --toggle-border:var(--color-border-control);
+}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme]){
+    color-scheme:dark;
+    --color-bg-canvas:#101b27;
+    --color-bg-surface:#182a3a;
+    --color-bg-subtle:#21394d;
+    --color-text-primary:#e5eef7;
+    --color-text-muted:#b8c9d8;
+    --color-border-default:#395064;
+    --color-border-control:#5c7a93;
+    --color-action-primary:#24527a;
+    --color-danger:#ff958c;
+  }
+}
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --color-bg-canvas:#101b27;
+  --color-bg-surface:#182a3a;
+  --color-bg-subtle:#21394d;
+  --color-text-primary:#e5eef7;
+  --color-text-muted:#b8c9d8;
+  --color-border-default:#395064;
+  --color-border-control:#5c7a93;
+  --color-action-primary:#24527a;
+  --color-danger:#ff958c;
+}
+html[data-theme="light"]{color-scheme:light}
 .theme-toggle{width:44px;height:44px;flex:none;display:grid;place-items:center;border:1px solid var(--toggle-border);border-radius:10px;background:var(--paper);color:var(--ink);padding:0}
 .theme-toggle:hover{background:var(--soft)}
 .theme-toggle svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
