@@ -141,6 +141,23 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.assertEqual(response.json()['resolution'], 'unresolved')
         self.assertEqual(self.errors, [])
 
+    def test_desktop_and_mobile_share_primary_navigation(self):
+        p = self.page
+        self.go("/")
+        selectors = ('nav[aria-label="주 메뉴"] a', 'nav[aria-label="모바일 메뉴"] a')
+        for width in [390, 1440]:
+            p.set_viewport_size({"width": width, "height": 844 if width < 768 else 1000})
+            desktop = p.locator(selectors[0]).evaluate_all("links => links.map(a => [a.getAttribute('href'), Array.from(a.childNodes).filter(n => !(n.nodeType === 1 && n.getAttribute('aria-hidden') === 'true')).map(n => n.textContent).join('').trim()])")
+            mobile = p.locator(selectors[1]).evaluate_all("links => links.map(a => [a.getAttribute('href'), Array.from(a.childNodes).filter(n => !(n.nodeType === 1 && n.getAttribute('aria-hidden') === 'true')).map(n => n.textContent).join('').trim()])")
+            self.assertEqual(mobile[:4], desktop)
+            self.assertEqual(mobile[-1][1], "내 계정")
+            nav = selectors[1] if width == 390 else selectors[0]
+            expected_next = mobile[1][0] if width == 390 else desktop[1][0]
+            p.locator(nav).first.focus()
+            p.keyboard.press("Tab")
+            self.assertEqual(p.evaluate("document.activeElement.getAttribute('href')"), expected_next)
+            self.assertTrue(p.evaluate("document.activeElement.matches(':focus-visible')"))
+
     def test_mobile_nav_does_not_cover_focused_post_body(self):
         p = self.page
         for width in [320, 390]:
@@ -152,6 +169,8 @@ class BrowserFlowTests(StaticLiveServerTestCase):
             self.assertIsNotNone(nav)
             self.assertIsNotNone(body)
             self.assertLessEqual(body["y"] + body["height"], nav["y"] + 1, width)
+            if width == 320:
+                p.screenshot(path=str(self.output / "mobile-nav-clearance-320.png"))
             if width == 390:
                 p.screenshot(path=str(self.output / "mobile-nav-clearance-390.png"))
 
