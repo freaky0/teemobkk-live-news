@@ -2,13 +2,11 @@
 import os
 from pathlib import Path
 from unittest import skipUnless
-from django.conf import settings
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.test import TestCase, override_settings
 
-PREVIEW_MIDDLEWARE=[*settings.MIDDLEWARE,'members.preview.RestrictedPreviewMiddleware']
-
-@override_settings(POST_RESTRICTED_PREVIEW=True,MIDDLEWARE=PREVIEW_MIDDLEWARE,GOOGLE_CONFIGURED=False)
+# Simulate the stale preview flag; public auth screens must ignore it.
+@override_settings(POST_RESTRICTED_PREVIEW=True,POST_SIGNUP_ENABLED=True,GOOGLE_CONFIGURED=False)
 class AuthDisclosureTests(TestCase):
     def test_identity_and_policy_links_precede_authentication_controls(self):
         for path,control in [('/accounts/login/','class="auth-methods"'),('/accounts/email/','<form')]:
@@ -26,7 +24,8 @@ class AuthDisclosureTests(TestCase):
         response=self.client.get('/accounts/login/')
         self.assertContains(response,'뉴스와 공개 질문은 가입 없이 읽을 수 있습니다')
         self.assertContains(response,'질문·답변·도움 반응·스크랩은 로그인 후 이용할 수 있습니다')
-        self.assertContains(response,'현재 회원 등록은 초대 전용입니다')
+        self.assertContains(response,'공개 오픈 테스트')
+        self.assertNotContains(response,'초대 전용')
 
     def test_email_requirements_do_not_conflict_with_sensitive_data_warning(self):
         for path in ['/accounts/login/','/accounts/email/','/accounts/email/confirm/','/accounts/policy/privacy/']:
@@ -58,7 +57,8 @@ class AuthDisclosureTests(TestCase):
         self.assertNotContains(response,'책임 주체')
 
 @skipUnless(os.environ.get('POST_RUN_BROWSER_TESTS')=='1','Browser opt-in required')
-@override_settings(POST_RESTRICTED_PREVIEW=True,MIDDLEWARE=PREVIEW_MIDDLEWARE,GOOGLE_CONFIGURED=False)
+# Simulate the stale preview flag; public auth screens must ignore it.
+@override_settings(POST_RESTRICTED_PREVIEW=True,POST_SIGNUP_ENABLED=True,GOOGLE_CONFIGURED=False)
 class DisclosureBrowserTests(StaticLiveServerTestCase):
     def test_anonymous_can_read_notices_and_return_to_email_form(self):
         from playwright.sync_api import sync_playwright
@@ -80,6 +80,9 @@ class DisclosureBrowserTests(StaticLiveServerTestCase):
                 for name,path in [('login','/accounts/login/'),('email','/accounts/email/')]:
                     self.assertEqual(page.goto(self.live_server_url+path,wait_until='networkidle').status,200)
                     self.assertTrue(page.locator('main .auth-disclosure').is_visible())
+                    if name=='login':
+                        self.assertTrue(page.get_by_text('공개 오픈 테스트',exact=True).is_visible())
+                        self.assertFalse(page.get_by_text('초대 전용').count())
                     self.assertTrue(page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'))
                     if width in [390,1440]:page.screenshot(path=str(output/f'{name}-{width}.png'),full_page=True)
                 for label,heading in [('이용약관','이용약관'),('개인정보 수집·이용 안내','개인정보 수집·이용 안내')]:

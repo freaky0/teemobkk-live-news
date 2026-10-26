@@ -9,6 +9,7 @@ from allauth.account.models import EmailAddress
 from allauth.socialaccount.models import SocialAccount,SocialLogin
 from members.models import MemberProfile
 
+# Simulate stale server environment flags; they must not restore invite-only access.
 GOOGLE_FIXTURE={
     'google': {
         **settings.SOCIALACCOUNT_PROVIDERS['google'],
@@ -21,7 +22,6 @@ GOOGLE_FIXTURE={
     POST_RESTRICTED_PREVIEW=True,
     POST_PREVIEW_ALLOWED_EMAILS=frozenset({'invited@example.invalid'}),
     POST_SIGNUP_ENABLED=True,
-    MIDDLEWARE=[*settings.MIDDLEWARE,'members.preview.RestrictedPreviewMiddleware'],
     SOCIALACCOUNT_PROVIDERS=GOOGLE_FIXTURE,
 )
 class GooglePreviewFlowTests(TestCase):
@@ -57,20 +57,17 @@ class GooglePreviewFlowTests(TestCase):
         account=account or SocialAccount(provider='google',uid='fixture-google-sub',user=user)
         return SocialLogin(user=user,account=account,email_addresses=[EmailAddress(email=email,verified=verified,primary=True)])
 
-    def test_uninvited_google_identity_cannot_sign_up(self):
+    def test_public_verified_google_identity_can_sign_up_without_invitation(self):
         from config.adapters import GoogleOnlyAdapter
-        from allauth.core.exceptions import ImmediateHttpResponse
-        from django.contrib.auth import get_user_model
-        social=self.social('uninvited@example.invalid')
+        social=self.social('public@example.invalid')
         adapter=GoogleOnlyAdapter()
         request=self.client.get('/accounts/login/').wsgi_request
-        self.assertFalse(adapter.is_open_for_signup(request,social))
-        with self.assertRaises(ImmediateHttpResponse) as error:
-            adapter.pre_social_login(request,social)
-        self.assertEqual(error.exception.response.status_code,403)
-        self.assertEqual(get_user_model().objects.count(),0)
+        self.assertTrue(adapter.is_open_for_signup(request,social))
+        adapter.pre_social_login(request,social)
+        user=adapter.save_user(request,social)
+        self.assertEqual(user.membership.email_key,'public@example.invalid')
 
-    def test_invited_verified_google_signup_creates_incomplete_private_profile(self):
+    def test_verified_google_signup_creates_incomplete_private_profile(self):
         from config.adapters import GoogleOnlyAdapter
         adapter=GoogleOnlyAdapter()
         social=self.social()
@@ -83,7 +80,7 @@ class GooglePreviewFlowTests(TestCase):
         self.assertFalse(user.membership.email_login_enabled)
         self.assertFalse(user.membership.is_complete)
 
-    def test_unverified_invited_google_email_is_not_allowed(self):
+    def test_unverified_google_email_is_not_allowed(self):
         from config.adapters import GoogleOnlyAdapter
         from allauth.core.exceptions import ImmediateHttpResponse
         adapter=GoogleOnlyAdapter()
@@ -94,9 +91,15 @@ class GooglePreviewFlowTests(TestCase):
             adapter.pre_social_login(request,social)
         self.assertEqual(error.exception.response.status_code,403)
 
-    def test_existing_google_accounts_still_require_invitation(self):
+    @override_settings(POST_SIGNUP_ENABLED=False)
+    def test_google_signup_stays_closed_until_policy_approval(self):
         from config.adapters import GoogleOnlyAdapter
-        from allauth.core.exceptions import ImmediateHttpResponse
+        social=self.social('policy-pending@example.invalid')
+        request=self.client.get('/accounts/login/').wsgi_request
+        self.assertFalse(GoogleOnlyAdapter().is_open_for_signup(request,social))
+
+    def test_existing_google_accounts_sign_in_without_invitation(self):
+        from config.adapters import GoogleOnlyAdapter
         from django.contrib.auth import get_user_model
         from allauth.socialaccount.models import SocialAccount
         adapter=GoogleOnlyAdapter()
@@ -106,12 +109,7 @@ class GooglePreviewFlowTests(TestCase):
             account=SocialAccount.objects.create(user=user,provider='google',uid='fixture-sub-'+str(index))
             social=self.social(email,user=user,account=account)
             self.assertTrue(social.is_existing)
-            if index==0:
-                adapter.pre_social_login(request,social)
-            else:
-                with self.assertRaises(ImmediateHttpResponse) as error:
-                    adapter.pre_social_login(request,social)
-                self.assertEqual(error.exception.response.status_code,403)
+            adapter.pre_social_login(request,social)
 
     def test_existing_email_account_is_never_automatically_linked(self):
         from config.adapters import GoogleOnlyAdapter
@@ -125,6 +123,7 @@ class GooglePreviewFlowTests(TestCase):
             GoogleOnlyAdapter().pre_social_login(request,social)
         self.assertEqual(error.exception.response.status_code,409)
         self.assertIn('Google 로그인을 완료하지 못했습니다.',error.exception.response.content.decode())
+        self.assertNotIn('초대 이메일',error.exception.response.content.decode())
         self.assertIn('이메일 링크로 로그인한 뒤 내 계정에서',error.exception.response.content.decode())
         self.assertEqual(SocialAccount.objects.count(),0)
         self.assertEqual(get_user_model().objects.get().pk,user.pk)
@@ -315,7 +314,7 @@ class GooglePreviewFlowTests(TestCase):
 
     def test_only_exact_oauth_endpoints_are_open(self):
         response=self.client.get('/accounts/google/login/callback/extra/')
-        self.assertRedirects(response,'/accounts/login/',fetch_redirect_response=False)
+        self.assertEqual(response.status_code,404)
         self.assertEqual(self.client.get('/api/v1/posts/').status_code,200)
 
     def test_get_google_start_does_not_redirect_without_confirmation(self):

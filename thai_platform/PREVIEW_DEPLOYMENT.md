@@ -1,8 +1,8 @@
-# 태국 커뮤니티 preview 배포 절차
+# 태국 커뮤니티 공개 오픈 테스트 배포 절차
 
 ## 범위
 
-이 절차는 병합된 `thai_platform`을 기존 개발용 미리보기에만 배포한다.
+이 절차는 병합된 `thai_platform`을 공개 오픈 테스트 경로에만 배포한다.
 
 - 공개 경로: `https://teemobkk.io/thai/`
 - 서비스: `teemobkk-post-preview.service` (`teemo-post-preview` 사용자)
@@ -10,7 +10,7 @@
 - 별도 커뮤니티 DB: `/var/lib/teemobkk-post-preview/community.sqlite3`
 - 뉴스 데이터는 별도 읽기 전용 연결이다. 커뮤니티 DB·마이그레이션 대상으로 사용하지 않는다.
 
-이 앱은 현재 개발용 preview로 표시되며 Google 로그인이 연결되지 않았다. 사용자는 이 `/thai/` 서비스를 계속 사용할 대상으로 지정했다. 이 절차는 이 preview만 대상으로 하며 다른 운영 서비스로 전환하거나 Google OAuth·메일·정책 환경값을 바꾸지 않는다. `POST_RESTRICTED_PREVIEW`와 허용 목록은 유지한다.
+사용자는 `/thai/` 서비스를 초대형 베타가 아닌 누구나 가입할 수 있는 공개 오픈 테스트로 운영하기로 했다. 초대 허용 목록과 `POST_RESTRICTED_PREVIEW` 차단은 사용하지 않는다. 가입은 승인된 약관·개인정보 안내가 설정된 경우에만 열린다(`POST_POLICY_APPROVED=1`, 승인된 문서 경로와 버전 필요). Google 및 이메일 로그인 버튼은 각 인증 제공자 설정이 준비된 경우에만 사용할 수 있다. 이 문서는 배포 절차일 뿐 배포 승인이 아니며, 실제 배포와 운영 환경 변경은 별도 승인을 받아야 한다.
 
 `/opt/teemo-live-news`, 해당 체크아웃, 그 안의 DB와 파일은 배포 대상이 아니다. `deploy/scripts/vps_update.sh`는 실행하지 않는다. `community/management/commands/apply_report_retention`도 배포 중 실행하지 않는다.
 
