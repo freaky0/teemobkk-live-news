@@ -3,13 +3,21 @@ ValidationError (400), or NotFound (404). Inputs are mappings, never trusted
 model kwargs. Mutations return model instances; delete_post returns the deleted
 Post. Requests are not idempotency-key protected; do not blindly retry creates.
 """
+import logging
+from django.conf import settings
+from django.core.mail import send_mail
 from django.db import transaction
+from django.urls import reverse
 from django.utils import timezone
+from allauth.account.models import EmailAddress
+from members.models import MemberProfile
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from .models import AuditEvent, Bookmark, Comment, Helpful, ModerationAppeal, NewsComment, Notification, Post, Report
 from django.db.models import Count, Exists, OuterRef
 from .serializers import (CommentInputSerializer, PostInputSerializer, PostResolutionSerializer, EngagementInputSerializer,
                           ReportInputSerializer, ReportResolutionSerializer, AppealInputSerializer)
+
+logger = logging.getLogger(__name__)
 
 
 def require_active(user):
@@ -167,8 +175,43 @@ def create_comment(user, post, data):
     comment = Comment.objects.create(author=user, post=post, **_validate(CommentInputSerializer, data))
     if post.author_id != user.pk and post.author.is_active:
         Notification.objects.create(recipient=post.author, kind=Notification.Kind.REPLY, post=post, comment=comment)
+        transaction.on_commit(
+            lambda user_id=post.author_id, post_id=post.pk: _send_answer_notification_email(user_id, post_id)
+        )
     _audit(user, 'comment.create', comment)
     return comment
+
+
+def _send_answer_notification_email(user_id, post_id):
+    if not settings.POST_MAIL_ENABLED or not settings.DEFAULT_FROM_EMAIL or not settings.POST_PUBLIC_ORIGIN:
+        return
+    try:
+        profile = MemberProfile.objects.select_related('user').filter(
+            user_id=user_id,
+            email_answer_notifications=True,
+            email_verified_at__isnull=False,
+            user__is_active=True,
+        ).first()
+        if profile is None:
+            return
+        email = profile.email_key.strip().casefold()
+        if not email or profile.user.email.strip().casefold() != email:
+            return
+        if not EmailAddress.objects.filter(user_id=user_id, email__iexact=email, verified=True).exists():
+            return
+        post = Post.objects.filter(pk=post_id, author_id=user_id, status=Post.Status.PUBLISHED).first()
+        if post is None:
+            return
+        link = settings.POST_PUBLIC_ORIGIN + reverse('post-detail', kwargs={'pk': post.pk})
+        send_mail(
+            '새 답변이 등록되었습니다',
+            f'작성하신 질문에 새 답변이 등록되었습니다.\n\n아래 링크에서 확인할 수 있습니다.\n{link}\n',
+            settings.DEFAULT_FROM_EMAIL,
+            [email],
+            fail_silently=False,
+        )
+    except Exception:
+        logger.error('Could not send an opted-in answer notification email.')
 
 
 @transaction.atomic

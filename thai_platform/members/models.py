@@ -7,6 +7,7 @@ class MemberProfile(models.Model):
     email_key = models.EmailField(unique=True)
     email_login_enabled = models.BooleanField(default=False)
     email_verified_at = models.DateTimeField(null=True, blank=True)
+    email_answer_notifications = models.BooleanField(default=False)
     nickname_key = models.CharField(max_length=40, unique=True, null=True, blank=True)
     terms_version = models.CharField(max_length=40, blank=True)
     privacy_version = models.CharField(max_length=40, blank=True)

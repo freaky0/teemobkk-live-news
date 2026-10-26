@@ -17,7 +17,7 @@ from allauth.account.views import PasswordSetView as AllauthPasswordSetView
 from allauth.socialaccount.models import SocialAccount
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .forms import AccountClosureForm, EmailRequestForm, MemberPasswordLoginForm, OnboardingForm
+from .forms import AnswerEmailNotificationForm, AccountClosureForm, EmailRequestForm, MemberPasswordLoginForm, OnboardingForm
 from .models import MemberProfile
 from . import services
 
@@ -128,16 +128,39 @@ def onboarding(request):
 
 @never_cache
 @login_required
+@require_http_methods(['GET', 'POST'])
 def profile(request):
     member=MemberProfile.objects.filter(user=request.user).first()
     if member and not member.is_complete:
         return redirect('member-onboarding')
+    answer_email_form = None
+    if member:
+        answer_email_form = AnswerEmailNotificationForm(
+            request.POST if request.method == 'POST' else None,
+            initial={'email_answer_notifications': member.email_answer_notifications},
+        )
+        if request.method == 'POST' and answer_email_form.is_valid():
+            enabled = answer_email_form.cleaned_data['email_answer_notifications']
+            email = member.email_key.strip().casefold()
+            verified = bool(
+                member.email_verified_at
+                and email
+                and request.user.email.strip().casefold() == email
+                and EmailAddress.objects.filter(user=request.user, email__iexact=email, verified=True).exists()
+            )
+            if enabled and not verified:
+                answer_email_form.add_error('email_answer_notifications', '인증된 이메일 주소를 확인한 뒤 다시 설정해 주세요.')
+            else:
+                member.email_answer_notifications = enabled
+                member.save(update_fields=['email_answer_notifications'])
+                messages.success(request, '답변 알림 설정을 저장했습니다.')
+                return redirect('member-profile')
     google_connected=SocialAccount.objects.filter(user=request.user,provider='google').exists()
     google_email_verified=bool(member and member.email_login_enabled and member.email_verified_at
         and request.user.email.strip().casefold()==member.email_key.strip().casefold()
         and EmailAddress.objects.filter(user=request.user,email__iexact=member.email_key,verified=True).exists())
     google_link_available=bool(google_email_verified and settings.GOOGLE_CONFIGURED and not google_connected)
-    return render(request,'members/profile.html',{'profile':member,'google_connected':google_connected,'google_link_available':google_link_available})
+    return render(request,'members/profile.html',{'profile':member,'google_connected':google_connected,'google_link_available':google_link_available,'answer_email_form':answer_email_form})
 
 @never_cache
 @login_required

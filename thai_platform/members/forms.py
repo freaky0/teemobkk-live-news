@@ -30,6 +30,13 @@ class AccountClosureForm(forms.Form):
     confirm = forms.BooleanField(label="계정 비활성화와 질문·답변 보존을 확인했습니다.")
 
 
+class AnswerEmailNotificationForm(forms.Form):
+    email_answer_notifications = forms.BooleanField(
+        required=False,
+        label="답변 알림 이메일 받기",
+    )
+
+
 class EmailRequestForm(forms.Form):
     email = forms.EmailField(label="이메일 주소", max_length=254, widget=forms.EmailInput(attrs={"autocomplete":"email", "placeholder":"name@example.com"}))
     def clean_email(self):

@@ -26,6 +26,24 @@
   {% if profile.email_login_enabled and not user.has_usable_password %}
     <p class="note"><a href="{% url 'password-set' %}">비밀번호 설정</a><br>이메일 인증 링크로 로그인한 뒤 비밀번호를 설정하면 다음부터 이메일과 비밀번호로 로그인할 수 있습니다.</p>
   {% endif %}
+  {% if answer_email_form %}
+    <section class="note" aria-labelledby="answer-email-heading">
+      <h2 id="answer-email-heading">질문 답변 알림</h2>
+      <p>새 답변이 등록되면 이메일로 알려드립니다. 답변 내용은 이메일에 포함하지 않습니다. 알림은 언제든 끌 수 있습니다.</p>
+      <form method="post" action="{% url 'member-profile' %}">
+        {% csrf_token %}
+        {{ answer_email_form.non_field_errors }}
+        <label for="{{ answer_email_form.email_answer_notifications.id_for_label }}">
+          {{ answer_email_form.email_answer_notifications }}
+          {{ answer_email_form.email_answer_notifications.label }}
+        </label>
+        {% for error in answer_email_form.email_answer_notifications.errors %}
+          <p class="error" role="alert">{{ error }}</p>
+        {% endfor %}
+        <button class="btn" type="submit">알림 설정 저장</button>
+      </form>
+    </section>
+  {% endif %}
   <div class="actions">
     <a class="btn primary" href="{% url 'post-create' %}">질문 쓰기</a>
     <a class="btn" href="{% url 'member-deactivate' %}">계정 비활성화·삭제 검토 요청</a>
