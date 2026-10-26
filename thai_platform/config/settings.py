@@ -120,5 +120,5 @@ EMAIL_HOST_PASSWORD = os.environ.get("POST_EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.environ.get("POST_EMAIL_USE_TLS", "1") == "1"
 EMAIL_TIMEOUT = 10
 DEFAULT_FROM_EMAIL = os.environ.get("POST_DEFAULT_FROM_EMAIL", "")
-POST_AUTH_EMAIL_ENABLED = bool(POST_MAIL_ENABLED and EMAIL_HOST and DEFAULT_FROM_EMAIL and POST_PUBLIC_ORIGIN and POST_SIGNUP_ENABLED)
+POST_AUTH_EMAIL_ENABLED = bool(POST_MAIL_ENABLED and EMAIL_HOST and DEFAULT_FROM_EMAIL and POST_PUBLIC_ORIGIN)
 LOGGING = {"version": 1, "disable_existing_loggers": False, "filters": {"redact_auth": {"()": "members.middleware.AuthLogFilter"}}, "handlers": {"safe_server": {"class": "logging.StreamHandler", "filters": ["redact_auth"]}}, "loggers": {"django.server": {"handlers": ["safe_server"], "level": "INFO", "propagate": False}}}
