@@ -19,6 +19,17 @@ class PublicSignupTests(TestCase):
                     response=getattr(self.client, method)('/accounts/policy/'+kind+'/')
                     self.assertEqual(response.status_code,200)
 
+    def test_short_public_policy_urls_render_the_matching_documents(self):
+        for path, marker in [
+            ('/terms', '서비스 이용약관'),
+            ('/privacy', '개인정보처리방침'),
+        ]:
+            with self.subTest(path=path):
+                response=self.client.get(path)
+                self.assertEqual(response.status_code,200)
+                self.assertContains(response, marker)
+                self.assertNotContains(response, '[실제 사업장 또는 법령상 적절한 연락 주소 기재]')
+
 
     def test_public_content_is_readable_without_joining(self):
         for path in ['/', '/community/']:

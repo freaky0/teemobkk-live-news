@@ -27,6 +27,7 @@ class AuthDisclosureTests(TestCase):
         self.assertContains(response,'공개 오픈 테스트')
         self.assertNotContains(response,'초대 전용')
 
+    @override_settings(POST_POLICY_APPROVED=False,POST_SIGNUP_ENABLED=False)
     def test_email_requirements_do_not_conflict_with_sensitive_data_warning(self):
         for path in ['/accounts/login/','/accounts/email/','/accounts/email/confirm/','/accounts/policy/privacy/']:
             with self.subTest(path=path):
@@ -37,10 +38,11 @@ class AuthDisclosureTests(TestCase):
                 self.assertContains(response,'신분증 번호')
                 self.assertContains(response,'금융정보')
         response=self.client.get('/accounts/policy/privacy/')
-        self.assertContains(response,'테마 선택은 브라우저 안에 저장됩니다.')
+        self.assertContains(response,'서비스는 이용자 편의와 안정적인 운영을 위해 쿠키 또는 브라우저 저장 기술을 사용할 수 있습니다.')
         self.assertContains(response,'개발 검토용 초안')
-        self.assertContains(response,'가입, 로그인, 계정 관리와 보안에 사용합니다.')
+        self.assertContains(response,'회원가입, 로그인 및 계정 관리')
 
+    @override_settings(POST_POLICY_APPROVED=False,POST_SIGNUP_ENABLED=False)
     def test_policy_pages_show_confirmed_responsibility_and_request_handling(self):
         for path in ['/accounts/policy/terms/','/accounts/policy/privacy/']:
             with self.subTest(path=path):
@@ -51,10 +53,20 @@ class AuthDisclosureTests(TestCase):
                 self.assertContains(response,'href="mailto:admin@teemobkk.io"')
                 self.assertContains(response,'개발 검토용 초안')
         response=self.client.get('/accounts/policy/privacy/')
-        self.assertContains(response,'assets.aseannow.com')
-        self.assertContains(response,'www.matichon.co.th')
-        self.assertContains(response,'mpics2.mgronline.com')
+        self.assertContains(response,'Google 등 외부 계정 인증 서비스')
+        self.assertContains(response,'웹사이트 호스팅 및 클라우드 서비스')
+        self.assertContains(response,'외부 사이트에서 이루어지는 개인정보 처리는 해당 사이트의 개인정보처리방침에 따릅니다.')
         self.assertNotContains(response,'책임 주체')
+
+    @override_settings(POST_POLICY_APPROVED=True,POST_SIGNUP_ENABLED=True)
+    def test_approved_policy_pages_hide_draft_notice_and_use_public_documents(self):
+        for path,text in [('/terms','뉴스 및 정보의 정확성'),('/privacy','태국 개인정보보호법')]:
+            with self.subTest(path=path):
+                response=self.client.get(path)
+                self.assertEqual(response.status_code,200)
+                self.assertContains(response,text)
+                self.assertNotContains(response,'개발 검토용 초안')
+                self.assertNotContains(response,'[실제 사업장 또는 법령상 적절한 연락 주소 기재]')
 
     @override_settings(POST_POLICY_APPROVED=False,POST_SIGNUP_ENABLED=False)
     def test_unapproved_policy_pages_render_the_bundled_documents_without_opening_signup(self):
@@ -62,13 +74,14 @@ class AuthDisclosureTests(TestCase):
         privacy=self.client.get('/accounts/policy/privacy/')
         self.assertEqual(terms.status_code,200)
         self.assertEqual(privacy.status_code,200)
-        self.assertContains(terms,'TEEMOBKK POST 이용약관')
-        self.assertContains(terms,'[검토용 초안 — 공개·시행 금지')
-        self.assertContains(terms,'콘텐츠를 서비스 밖의 광고·상품화에 이용하거나 AI 학습용으로 허락')
-        self.assertContains(privacy,'TEEMOBKK POST 개인정보 처리방침')
-        self.assertContains(privacy,'[검토용 초안 — 공개·시행 금지')
-        self.assertContains(privacy,'메일·호스팅 업체와 처리 국가')
-        self.assertContains(privacy,'탈퇴 요청 처리 뒤 7일 이내 삭제가 승인된 정책 목표')
+        self.assertContains(terms,'서비스 이용약관')
+        self.assertContains(terms,"TEEMOBKK's POST")
+        self.assertContains(terms,'뉴스 및 정보의 정확성')
+        self.assertContains(privacy,'개인정보처리방침')
+        self.assertContains(privacy,'태국 개인정보보호법')
+        self.assertContains(privacy,'개인정보의 국외 이전')
+        self.assertContains(privacy,'Keith S. Jun (TeemoBKK)')
+        self.assertNotContains(privacy,'[실제 사업장 또는 법령상 적절한 연락 주소 기재]')
         self.assertContains(terms,'개발 검토용 초안입니다')
         self.assertContains(privacy,'개발 검토용 초안입니다')
 

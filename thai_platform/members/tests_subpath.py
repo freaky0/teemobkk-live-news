@@ -77,3 +77,10 @@ class EmailLinkSubpathTests(TestCase):
 
         write = self.client.post("/api/v1/posts/", {"title": "guest"}, SCRIPT_NAME="/thai")
         self.assertEqual(write.status_code, 403)
+
+    def test_short_policy_urls_render_under_mount_prefix(self):
+        for path, marker in [("/terms", "서비스 이용약관"), ("/privacy", "개인정보처리방침")]:
+            with self.subTest(path=path):
+                response = self.client.get(path, SCRIPT_NAME="/thai")
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, marker)

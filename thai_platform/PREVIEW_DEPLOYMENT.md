@@ -55,7 +55,7 @@ Caddy가 `/thai/static/*`을 릴리스의 `staticfiles`에서 제공하고, `/th
 ## 확인과 롤백
 
 - 서비스가 `active`이고 새 `WorkingDirectory`를 사용하는지 확인한다. 새 프로세스가 응답할 때까지 대기한 뒤 loopback health와 공개 HTTPS를 각각 검사한다.
-- `https://teemobkk.io/thai/`, `/thai/community/`, `/thai/newsroom/`, `/thai/static/...`를 확인한다. HTML 링크·폼·정적 자산이 `/thai/` 접두사를 유지하는지 확인한다.
+- `https://teemobkk.io/thai/`, `/thai/community/`, `/thai/newsroom/`, `/thai/terms`, `/thai/privacy` 및 `/thai/static/...`를 확인한다. 이전 `/thai/accounts/policy/terms/`·`/thai/accounts/policy/privacy/` 경로도 계속 응답하는지 확인한다. HTML 링크·폼·정적 자산이 `/thai/` 접두사를 유지하는지 확인한다.
 - 기존 `/thai/news/*`, `/thai/news/`, 루트 뉴스 페이지를 독립적으로 검사한다. 해당 응답·정적 root가 달라졌으면 실패로 처리한다.
 - 릴리스 디렉터리의 manifest를 다시 읽고 파일 수·경로·SHA-256·모드·소유자를 확인한다. 현재 서비스와 Caddy가 실제로 새 릴리스를 가리키는지 확인한다.
 - 검증 실패 시 승인된 사전 백업과 기록된 이전 값만 사용해 Caddyfile과 systemd drop-in을 복원하고, Caddy validate/reload 및 서비스 복구를 확인한다. 코드 롤백 뒤에도 additive `closed_at` 열은 남겨 둔다. 마이그레이션 역적용이나 DB 복원은 별도 검토 없이 하지 않는다.

@@ -19,6 +19,8 @@ urlpatterns = [
     path("accounts/profile/", member_views.profile, name="member-profile"),
     path("accounts/deactivate/", member_views.deactivate, name="member-deactivate"),
     path("accounts/policy/<str:kind>/", member_views.policy, name="member-policy"),
+    path("terms", member_views.policy, {"kind": "terms"}, name="public-terms"),
+    path("privacy", member_views.policy, {"kind": "privacy"}, name="public-privacy"),
     path("api/v1/me/", member_views.me, name="member-me"),
     path("accounts/", include("allauth.urls")),
     path("api/v1/news/", news_views.api_list, name="news-api-list"),
