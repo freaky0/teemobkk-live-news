@@ -67,6 +67,19 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
         payload=self.client.get('/api/v1/news/').json()
         self.assertEqual(payload['results'][0]['image_url'],image)
 
+    def test_homepage_featured_story_is_the_newest_visible_article(self):
+        from datetime import timedelta
+        from django.utils import timezone
+
+        now = timezone.now()
+        self.add('older-home-story', published_at=(now - timedelta(hours=1)).isoformat())
+        self.add('newest-home-story', published_at=now.isoformat())
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertEqual(html.count('home-news-card is-featured'), 1)
+        self.assertLess(html.index('newest-home-story'), html.index('older-home-story'))
+
     def test_known_external_publisher_images_remain_rendered(self):
         hosts=['assets.aseannow.com','www.matichon.co.th','mpics2.mgronline.com']
         for index,host in enumerate(hosts):

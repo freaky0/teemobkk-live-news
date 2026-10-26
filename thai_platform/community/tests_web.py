@@ -71,6 +71,28 @@ class WebTests(TestCase):
         self.assertContains(Client().get(reverse("post-detail", args=[self.post.pk])), "도움이 되는 답변")
         self.assertNotContains(self.client.get("/community/?region=phuket"), self.post.title)
         self.assertContains(self.client.get("/community/?q=방콕"), self.post.title)
+    def test_homepage_keeps_hero_actions_and_latest_news_hierarchy_explicit(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        for markup in [
+            '<section class="hero home-hero" aria-labelledby="home-title">',
+            '<h1 id="home-title" class="home-title">',
+            '<div class="actions home-actions">',
+            'class="btn primary home-primary-action"',
+            'class="btn home-secondary-action"',
+            '<section class="section home-news" aria-labelledby="home-news-title">',
+            '<h2 id="home-news-title">태국 주요 소식</h2>',
+            '<div class="news-list home-news-list">',
+            'class="btn home-news-more"',
+        ]:
+            with self.subTest(markup=markup):
+                self.assertContains(response, markup)
+
+    def test_homepage_hero_copy_wraps_without_forced_line_breaks(self):
+        response = self.client.get("/")
+        self.assertContains(response, '<h1 id="home-title" class="home-title">')
+        self.assertNotRegex(response.content.decode(), r'<h1 id="home-title"[^>]*>[^<]*<br')
+
     def test_community_filter_controls_remain_named_and_grouped_for_compact_layout(self):
         response = self.client.get("/community/")
         self.assertContains(response, '<form class="filters" method="get" aria-label="질문 검색과 필터">')

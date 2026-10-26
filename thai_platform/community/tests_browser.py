@@ -40,6 +40,26 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.pw.stop()
     def go(self, path):
         return self.page.goto(self.live_server_url + path, wait_until="networkidle")
+    def test_homepage_handles_expanded_localized_copy_without_horizontal_scroll(self):
+        p = self.page
+        for width in [320, 390, 768, 1440]:
+            p.set_viewport_size({"width": width, "height": 900})
+            self.go("/")
+            for title, news_label, community_label, news_heading, news_more in [
+                ("ข่าวประเทศไทยและชีวิตประจำวันสำหรับผู้พำนักและนักเดินทาง", "อ่านข่าวประเทศไทยเพิ่มเติม", "แบ่งปันคำถามและประสบการณ์", "ข่าวประเทศไทยล่าสุด", "อ่านข่าวทั้งหมด"),
+                ("Thai news and everyday life for residents and travelers", "Read the latest Thailand news", "Share questions and local experience", "Latest news from Thailand", "See all news"),
+            ]:
+                p.locator("#home-title").evaluate("(node, text) => node.textContent = text", title)
+                p.locator(".home-primary-action").evaluate("(node, text) => node.textContent = text", news_label)
+                p.locator(".home-secondary-action").evaluate("(node, text) => node.textContent = text", community_label)
+                p.locator("#home-news-title").evaluate("(node, text) => node.textContent = text", news_heading)
+                p.locator(".home-news-more").evaluate("(node, text) => node.textContent = text", news_more)
+                for selector in ["#home-title", ".home-primary-action", ".home-secondary-action", "#home-news-title", ".home-news-more"]:
+                    overflow = p.locator(selector).evaluate("node => node.scrollWidth > node.clientWidth + 1 || node.getBoundingClientRect().left < -1 || node.getBoundingClientRect().right > innerWidth + 1")
+                    self.assertFalse(overflow, (width, selector, title))
+                self.assertTrue(p.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), (width, title))
+            self.assertEqual(self.errors, [])
+
     def test_real_db_shared_api_and_web(self):
         p = self.page
         self.go("/community/new/")
