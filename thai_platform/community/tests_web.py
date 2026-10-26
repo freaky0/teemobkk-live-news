@@ -71,6 +71,22 @@ class WebTests(TestCase):
         self.assertContains(Client().get(reverse("post-detail", args=[self.post.pk])), "도움이 되는 답변")
         self.assertNotContains(self.client.get("/community/?region=phuket"), self.post.title)
         self.assertContains(self.client.get("/community/?q=방콕"), self.post.title)
+    def test_community_filter_controls_remain_named_and_grouped_for_compact_layout(self):
+        response = self.client.get("/community/")
+        self.assertContains(response, '<form class="filters" method="get" aria-label="질문 검색과 필터">')
+        self.assertContains(response, 'class="field filter-status"')
+        for control in ['id="q"', 'id="region"', 'id="category"', 'id="resolution"']:
+            with self.subTest(control=control):
+                self.assertContains(response, control)
+        for label in [
+            '<label for="q">제목·내용 검색</label>',
+            '<label for="region">지역</label>',
+            '<label for="category">주제</label>',
+            '<label for="resolution">해결 상태</label>',
+        ]:
+            with self.subTest(label=label):
+                self.assertContains(response, label)
+        self.assertContains(response, 'href="/community/">초기화</a>')
     @override_settings(GOOGLE_CONFIGURED=True)
     def test_google_login_page_has_real_provider_form(self):
         # Only template wiring is exercised. This does not prove external OAuth.
