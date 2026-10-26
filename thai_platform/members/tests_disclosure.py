@@ -37,9 +37,9 @@ class AuthDisclosureTests(TestCase):
                 self.assertContains(response,'신분증 번호')
                 self.assertContains(response,'금융정보')
         response=self.client.get('/accounts/policy/privacy/')
-        self.assertContains(response,'화면 테마 선택은 브라우저 저장소에 저장됩니다.')
+        self.assertContains(response,'테마 선택은 브라우저 안에 저장됩니다.')
         self.assertContains(response,'개발 검토용 초안')
-        self.assertContains(response,'인증 메일 발송과 계정 관리')
+        self.assertContains(response,'가입, 로그인, 계정 관리와 보안에 사용합니다.')
 
     def test_policy_pages_show_confirmed_responsibility_and_request_handling(self):
         for path in ['/accounts/policy/terms/','/accounts/policy/privacy/']:
@@ -55,6 +55,22 @@ class AuthDisclosureTests(TestCase):
         self.assertContains(response,'www.matichon.co.th')
         self.assertContains(response,'mpics2.mgronline.com')
         self.assertNotContains(response,'책임 주체')
+
+    @override_settings(POST_POLICY_APPROVED=False,POST_SIGNUP_ENABLED=False)
+    def test_unapproved_policy_pages_render_the_bundled_documents_without_opening_signup(self):
+        terms=self.client.get('/accounts/policy/terms/')
+        privacy=self.client.get('/accounts/policy/privacy/')
+        self.assertEqual(terms.status_code,200)
+        self.assertEqual(privacy.status_code,200)
+        self.assertContains(terms,'TEEMOBKK POST 이용약관')
+        self.assertContains(terms,'[검토용 초안 — 공개·시행 금지')
+        self.assertContains(terms,'콘텐츠를 서비스 밖의 광고·상품화에 이용하거나 AI 학습용으로 허락')
+        self.assertContains(privacy,'TEEMOBKK POST 개인정보 처리방침')
+        self.assertContains(privacy,'[검토용 초안 — 공개·시행 금지')
+        self.assertContains(privacy,'메일·호스팅 업체와 처리 국가')
+        self.assertContains(privacy,'탈퇴 요청 처리 뒤 7일 이내 삭제가 승인된 정책 목표')
+        self.assertContains(terms,'개발 검토용 초안입니다')
+        self.assertContains(privacy,'개발 검토용 초안입니다')
 
 @skipUnless(os.environ.get('POST_RUN_BROWSER_TESTS')=='1','Browser opt-in required')
 # Simulate the stale preview flag; public auth screens must ignore it.
@@ -85,7 +101,7 @@ class DisclosureBrowserTests(StaticLiveServerTestCase):
                         self.assertFalse(page.get_by_text('초대 전용').count())
                     self.assertTrue(page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'))
                     if width in [390,1440]:page.screenshot(path=str(output/f'{name}-{width}.png'),full_page=True)
-                for label,heading in [('이용약관','이용약관'),('개인정보 수집·이용 안내','개인정보 수집·이용 안내')]:
+                for label,heading in [('이용약관','이용약관'),('개인정보 처리방침','개인정보 처리방침')]:
                     page.locator('main .auth-disclosure').get_by_role('link',name=label,exact=True).click()
                     self.assertEqual(page.locator('h1').inner_text(),heading)
                     self.assertTrue(page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'))

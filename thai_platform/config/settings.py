@@ -96,6 +96,15 @@ if POST_POLICY_APPROVED:
         POST_POLICY_TEXTS[_kind] = _file.read_text()
     if POST_TERMS_VERSION.startswith("draft") or POST_PRIVACY_VERSION.startswith("draft"):
         raise ImproperlyConfigured("Approved policies need non-draft version identifiers.")
+else:
+    # Show the approved draft documents for review, but never treat them as
+    # accepted policies or use them to enable public signup.
+    _draft_policy_dir = BASE_DIR / "docs" / "policy-draft"
+    for _kind in ("terms", "privacy"):
+        _file = _draft_policy_dir / (_kind + ".txt")
+        if not _file.is_file() or not _file.read_text().strip():
+            raise ImproperlyConfigured("Bundled policy draft files are required.")
+        POST_POLICY_TEXTS[_kind] = _file.read_text()
 # Signup is public once the approved policy text is configured; invitation
 # allowlists are not part of the open-beta account flow.
 POST_SIGNUP_ENABLED = LOCAL_DEVELOPMENT or POST_POLICY_APPROVED
