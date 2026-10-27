@@ -41,6 +41,39 @@ class PrivateMessageTests(TestCase):
         from .models import PrivateMessage
         self.assertIsNotNone(PrivateMessage.objects.get(pk=1).read_at)
 
+    def test_header_badge_counts_only_my_unread_messages_and_is_private(self):
+        from .models import PrivateMessage
+        unread = PrivateMessage.objects.create(sender=self.alice, recipient=self.bob, body='unread')
+        PrivateMessage.objects.create(sender=self.alice, recipient=self.bob, body='already read', read_at=timezone.now())
+        PrivateMessage.objects.create(sender=self.bob, recipient=self.eve, body='other recipient')
+        self.assertNotContains(self.client.get('/'), 'message-unread-badge')
+        self.client.force_login(self.alice)
+        self.assertNotContains(self.client.get('/'), 'message-unread-badge')
+        self.client.force_login(self.bob)
+        response = self.client.get('/')
+        self.assertContains(response, '쪽지, 읽지 않은 쪽지 1개')
+        self.assertIn('private', response['Cache-Control'])
+        self.assertIn('no-store', response['Cache-Control'])
+        self.assertEqual(self.client.post(f'/community/messages/{unread.pk}/read/').status_code, 302)
+        self.assertNotContains(self.client.get('/'), 'message-unread-badge')
+        self.client.force_login(self.eve)
+        self.assertContains(self.client.get('/'), '쪽지, 읽지 않은 쪽지 1개')
+
+    def test_unread_badge_uses_one_count_query_regardless_of_message_count(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        from .models import PrivateMessage
+        self.client.force_login(self.bob)
+        PrivateMessage.objects.bulk_create([
+            PrivateMessage(sender=self.alice, recipient=self.bob, body='message') for _ in range(15)
+        ])
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get('/')
+        self.assertContains(response, '쪽지, 읽지 않은 쪽지 15개')
+        count_queries = [q['sql'] for q in queries if 'community_privatemessage' in q['sql'].lower()]
+        self.assertEqual(len(count_queries), 1)
+        self.assertIn('COUNT(', count_queries[0].upper())
+
     def test_message_views_display_nicknames_not_login_identifiers(self):
         self.alice.username = 'alice-login@example.test'
         self.alice.save(update_fields=['username'])
