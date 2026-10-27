@@ -11,6 +11,7 @@ class MemberProfile(models.Model):
     nickname_key = models.CharField(max_length=40, unique=True, null=True, blank=True)
     nickname_changed_at = models.DateTimeField(null=True, blank=True)
     avatar = models.CharField(max_length=12, default='person')
+    avatar_image = models.BinaryField(null=True, blank=True, editable=False)
     terms_version = models.CharField(max_length=40, blank=True)
     privacy_version = models.CharField(max_length=40, blank=True)
     accepted_at = models.DateTimeField(null=True, blank=True)

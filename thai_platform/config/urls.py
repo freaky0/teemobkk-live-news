@@ -19,6 +19,7 @@ urlpatterns = [
     path("accounts/profile/", member_views.profile, name="member-profile"),
     path("accounts/profile/edit/", member_views.edit_nickname, name="member-profile-edit"),
     path("accounts/profile/avatar/", member_views.edit_avatar, name="member-profile-avatar"),
+    path("accounts/profile/image/", member_views.profile_image, name="member-profile-image"),
     path("accounts/deactivate/", member_views.deactivate, name="member-deactivate"),
     path("accounts/policy/<str:kind>/", member_views.policy, name="member-policy"),
     path("terms", member_views.policy, {"kind": "terms"}, name="public-terms"),

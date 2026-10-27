@@ -5,7 +5,7 @@ from django.test import TransactionTestCase
 class ProfileMigrationTests(TransactionTestCase):
     def test_existing_member_survives_additive_migration(self):
         old = [('members', '0004_memberprofile_email_answer_notifications')]
-        new = [('members', '0005_memberprofile_avatar_and_more')]
+        new = [('members', '0006_memberprofile_avatar_image')]
         executor = MigrationExecutor(connection)
         try:
             executor.migrate(old)
@@ -21,6 +21,7 @@ class ProfileMigrationTests(TransactionTestCase):
             self.assertEqual((saved.user_id, saved.email_key, saved.nickname_key, saved.terms_version), (user.pk, user.email, 'preserved', 'v1'))
             self.assertEqual(saved.avatar, 'person')
             self.assertIsNone(saved.nickname_changed_at)
+            self.assertIsNone(saved.avatar_image)
         finally:
             executor = MigrationExecutor(connection)
             executor.migrate(executor.loader.graph.leaf_nodes())

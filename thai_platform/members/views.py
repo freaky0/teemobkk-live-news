@@ -1,4 +1,7 @@
 import secrets
+import io
+import warnings
+from PIL import Image, ImageOps, UnidentifiedImageError
 from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth import login, logout, get_user_model
@@ -215,10 +218,54 @@ def edit_avatar(request):
         return HttpResponseForbidden()
     form = AvatarForm(request.POST)
     if form.is_valid():
-        MemberProfile.objects.filter(pk=member.pk).update(avatar=form.cleaned_data['avatar'])
+        MemberProfile.objects.filter(pk=member.pk).update(avatar=form.cleaned_data['avatar'], avatar_image=None)
         messages.success(request, '프로필 아이콘을 변경했습니다.')
     else:
         messages.error(request, '프로필 아이콘을 확인해 주세요.')
+    return redirect('member-profile')
+
+@never_cache
+@login_required
+@require_http_methods(['GET', 'POST'])
+def profile_image(request):
+    member = MemberProfile.objects.filter(user=request.user).first()
+    if not member or not member.is_complete:
+        return HttpResponseForbidden()
+    if request.method == 'GET':
+        if not member.avatar_image:
+            return HttpResponse(status=404)
+        response = HttpResponse(bytes(member.avatar_image), content_type='image/png')
+        response['X-Content-Type-Options'] = 'nosniff'
+        response['Content-Security-Policy'] = "default-src 'none'; sandbox"
+        return response
+    if request.POST.get('remove') == '1':
+        MemberProfile.objects.filter(pk=member.pk).update(avatar_image=None)
+        messages.success(request, '프로필 사진을 삭제했습니다.')
+        return redirect('member-profile')
+    uploaded = request.FILES.get('image')
+    try:
+        if not uploaded or uploaded.size > 1024 * 1024:
+            raise ValueError('size')
+        with warnings.catch_warnings():
+            warnings.simplefilter('error', Image.DecompressionBombWarning)
+            with Image.open(uploaded) as source:
+                if source.format not in ('PNG', 'JPEG') or getattr(source, 'n_frames', 1) != 1:
+                    raise ValueError('format')
+                width, height = source.size
+                if width < 1 or height < 1 or width > 4096 or height > 4096 or width * height > 4_000_000:
+                    raise ValueError('dimensions')
+                source.load()
+                image = ImageOps.exif_transpose(source).convert('RGB')
+                image.thumbnail((256, 256))
+                # A fresh image strips EXIF, comments, and other source metadata.
+                clean = Image.new('RGB', image.size)
+                clean.paste(image)
+                output = io.BytesIO()
+                clean.save(output, format='PNG')
+        MemberProfile.objects.filter(pk=member.pk).update(avatar_image=output.getvalue())
+        messages.success(request, '프로필 사진을 변경했습니다.')
+    except (ValueError, OSError, SyntaxError, Image.DecompressionBombError, Image.DecompressionBombWarning, UnidentifiedImageError):
+        messages.error(request, 'PNG 또는 JPEG 사진을 확인해 주세요 (최대 1MB, 400만 픽셀).')
     return redirect('member-profile')
 
 @never_cache
