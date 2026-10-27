@@ -88,8 +88,10 @@ def service_error(form, exc):
 
 @login_required
 def post_create(request):
+    if request.method == 'POST' and 'is_pinned' in request.POST and not request.user.is_staff:
+        raise PermissionDenied
     category = request.GET.get('category', '')
-    form = PostForm(request.POST or None, initial={'category': category} if category in dict(CATEGORIES) else None)
+    form = PostForm(request.POST or None, initial={'category': category} if category in dict(CATEGORIES) else None, staff=request.user.is_staff)
     if request.method == "POST" and form.is_valid():
         try:
             data = {k: v for k, v in form.cleaned_data.items() if k != "privacy"}
@@ -102,12 +104,14 @@ def post_create(request):
 
 @login_required
 def post_edit(request, pk):
+    if request.method == 'POST' and 'is_pinned' in request.POST and not request.user.is_staff:
+        raise PermissionDenied
     post = get_object_or_404(published(), pk=pk)
     if not (post.category == Post.Category.NOTICE and request.user.is_staff) and request.user.pk != post.author_id:
         raise PermissionDenied
     if post.category == Post.Category.NOTICE and not request.user.is_staff:
         raise PermissionDenied
-    form = PostForm(request.POST or None, initial={"title": post.title, "body": post.body, "region": post.region, "category": post.category})
+    form = PostForm(request.POST or None, initial={"title": post.title, "body": post.body, "region": post.region, "category": post.category, "is_pinned": post.is_pinned}, staff=request.user.is_staff)
     if request.method == "POST" and form.is_valid():
         try:
             call_service("update_post", request.user, post, {k: v for k, v in form.cleaned_data.items() if k != "privacy"})

@@ -7,6 +7,11 @@ class PostForm(forms.Form):
     category = forms.ChoiceField(label="주제", choices=CATEGORIES)
     body = forms.CharField(label="상황과 질문", min_length=20, max_length=6000, widget=forms.Textarea(attrs={"rows": 10}))
     privacy = forms.BooleanField(label="개인정보와 타인의 비공개 정보를 넣지 않았습니다.")
+
+    def __init__(self, *args, staff=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        if staff:
+            self.fields['is_pinned'] = forms.BooleanField(label='공지 상단 고정 (공지 글만 가능)', required=False)
 class CommentForm(forms.Form):
     body = forms.CharField(label="답변 내용", min_length=5, max_length=3000, widget=forms.Textarea(attrs={"rows": 5}))
 
