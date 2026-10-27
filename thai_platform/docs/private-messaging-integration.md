@@ -1,0 +1,9 @@
+# Private messaging integration notes
+
+This candidate adds session-authenticated, one-to-one plaintext messages. Only completed, active members can access the inbox or send, and a recipient is addressed by their existing nickname. Message and generic in-app notification are committed together. The notification does not contain message text. Message read state and notification read state are separate.
+
+The inbox and sent page display the latest 100 records; older records remain stored but are not accessible through the current UI. Sending is limited to 10 attempts per member per minute using the existing Django cache helper. The default process-local cache is not an effective cross-worker production limit: configure a shared atomic cache and appropriate edge abuse controls before enabling the feature. There is no member blocking, reporting, pagination, deletion, attachment, push, or email delivery for messages.
+
+Messages are stored in plaintext in the application database and backups; they are not end-to-end encrypted. Both user foreign keys use PROTECT: deactivation retains messages, and direct user deletion is blocked until an explicit, reviewed retention/deletion process is implemented. No retention duration or erasure promise has been established. The privacy notice, terms, abuse handling, operator access, backup retention and account-closure procedures require legal/operational review before launch. Do not interpret this implementation as an approved policy or deployment.
+
+Migration 0015 is additive to existing user and content data; it creates the message table and adds a notification choice. Apply and verify in the integration environment using its normal backup/migration process, after resolving migration numbering if other branches add migrations. No live system was modified.

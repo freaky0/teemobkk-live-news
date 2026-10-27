@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}쪽지 · TEEMOBKK's POST{% endblock %}
+{% block content %}
+<section class="editor">
+  <h1>쪽지</h1>
+  <nav aria-label="쪽지함"><a href="{% url 'private-messages' %}">받은 쪽지</a> · <a href="{% url 'private-messages-sent' %}">보낸 쪽지</a> · <a href="{% url 'notifications' %}">알림</a></nav>
+  <p>최근 100개를 표시합니다. 회원 닉네임으로 쪽지를 보낼 수 있습니다.</p>
+  <h2>쪽지 보내기</h2>
+  <form method="post" action="{% url 'private-message-send' %}">{% csrf_token %}{{ form.as_p }}<button class="btn" type="submit">보내기</button></form>
+  <h2>{% if sent %}보낸 쪽지{% else %}받은 쪽지{% endif %}</h2>
+  <ul class="activity-list">{% for item in items %}<li class="panel">
+    <p>{% if sent %}받는 사람: {{ item.recipient.username }}{% else %}보낸 사람: {{ item.sender.username }}{% endif %}</p>
+    <p class="private-message-body">{{ item.body }}</p>
+    <time datetime="{{ item.created_at|date:'c' }}">{{ item.created_at|date:'Y-m-d H:i' }}</time>
+    {% if not sent %}{% if item.read_at %}<span>읽음</span>{% else %}<form method="post" action="{% url 'private-message-read' item.pk %}">{% csrf_token %}<button class="btn" type="submit">읽음 처리</button></form>{% endif %}{% endif %}
+  </li>{% empty %}<li>쪽지가 없습니다.</li>{% endfor %}</ul>
+</section>
+{% endblock %}

@@ -11,6 +11,7 @@
     <dt>가입 방식</dt><dd>{% if profile.email_login_enabled %}이메일 인증 링크{% elif profile %}Google 인증{% else %}관리 계정{% endif %}</dd>
     {% if profile %}<dt>동의한 문서 버전</dt><dd>약관 {{ profile.terms_version }} · 개인정보 {{ profile.privacy_version }}</dd>{% endif %}
   </dl>
+  {% if profile.is_complete %}<p><a class="btn" href="{% url 'private-messages' %}">쪽지함</a></p>{% endif %}
   {% if google_connected %}
     <p class="note">Google 계정이 연결되어 있습니다.</p>
   {% elif google_link_available %}

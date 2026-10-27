@@ -15,6 +15,13 @@ from .models import Comment, Notification, Post
 class BrowserFlowTests(StaticLiveServerTestCase):
     def setUp(self):
         self.member = get_user_model().objects.create_user(username="브라우저검증")
+        if self._testMethodName == 'test_private_messages_mobile_send':
+            from members.models import MemberProfile
+            from django.utils import timezone
+            now = timezone.now()
+            MemberProfile.objects.create(user=self.member, email_key='browser-sender@example.test', nickname_key='브라우저검증', accepted_at=now, email_verified_at=now)
+            recipient = get_user_model().objects.create_user(username='쪽지수신자')
+            MemberProfile.objects.create(user=recipient, email_key='browser-recipient@example.test', nickname_key='쪽지수신자', accepted_at=now, email_verified_at=now)
         self.post = Post.objects.create(author=self.member, title="브라우저 검증용 첫 생활 질문", body="실제 개인정보를 포함하지 않은 브라우저 검증용 게시글입니다. 목록 이동과 서버 저장을 확인합니다.", region="bangkok", category="housing")
         if self._testMethodName == 'test_reply_mobile_keyboard_and_submission':
             Comment.objects.create(post=self.post, author=self.member, body='기존 답변 내용입니다.')
@@ -42,6 +49,21 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.pw.stop()
     def go(self, path):
         return self.page.goto(self.live_server_url + path, wait_until="networkidle")
+
+    def test_private_messages_mobile_send(self):
+        for width in (320, 390, 768, 1440):
+            self.page.set_viewport_size({'width': width, 'height': 900})
+            self.go('/community/messages/')
+            self.assertTrue(self.page.get_by_label('받는 회원 닉네임').is_visible())
+            self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), width)
+        self.page.set_viewport_size({'width': 390, 'height': 900})
+        self.page.get_by_label('받는 회원 닉네임').fill('쪽지수신자')
+        self.page.get_by_label('쪽지 내용').fill('브라우저 쪽지 테스트')
+        self.page.get_by_role('button', name='보내기', exact=True).click()
+        self.page.wait_for_url('**/community/messages/sent/')
+        self.assertTrue(self.page.get_by_text('브라우저 쪽지 테스트').is_visible())
+
+        self.assertEqual(self.errors, [])
 
     def test_reply_mobile_keyboard_and_submission(self):
         for width in (320, 390, 768, 1440):
