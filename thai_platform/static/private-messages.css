@@ -1,3 +1,10 @@
 .private-message-body { white-space: pre-wrap; overflow-wrap: anywhere; }
 .message-icon { position: relative; }
 .message-unread-badge { position: absolute; top: -4px; right: -5px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: #a62027; color: #fff; font-size: 12px; font-weight: 700; line-height: 1; }
+.member-menu { display: inline-block; position: relative; vertical-align: top; }
+.member-menu summary { cursor: pointer; text-decoration: underline; overflow-wrap: anywhere; }
+.member-menu-actions { position: relative; z-index: 5; width: min(17rem, 70vw); max-width: 100%; padding: .7rem; background: var(--surface, #fff); color: var(--text, #222); border: 1px solid #888; border-radius: .5rem; box-shadow: 0 .25rem .8rem #0003; }
+.member-menu-actions a, .member-menu-actions button { display: block; width: 100%; padding: .55rem; text-align: left; }
+.member-menu-actions p { margin: .5rem; line-height: 1.5; }
+.member-menu-actions button { cursor: pointer; }
+.member-menu summary:focus-visible, .member-menu-actions a:focus-visible, .member-menu-actions button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }

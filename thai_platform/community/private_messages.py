@@ -1,5 +1,7 @@
 from django import forms
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import get_user_model
+from django.db.models import F, Q
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.http import HttpResponse
@@ -10,7 +12,7 @@ from django.views.decorators.http import require_POST, require_GET
 
 from members.models import MemberProfile
 from members.services import rate_limited
-from .models import Notification, PrivateMessage
+from .models import MemberBlock, Notification, PrivateMessage
 
 
 class MessageForm(forms.Form):
@@ -28,13 +30,57 @@ def private_response(response):
     return response
 
 
+def lock_pair(a, b):
+    # Write locks on both users, in a stable order, serialize block/send on
+    # SQLite as well as databases supporting row-level locks.
+    for pk in sorted((a, b)):
+        get_user_model().objects.filter(pk=pk).update(last_login=F('last_login'))
+
+
+@login_required
+@never_cache
+@require_POST
+def block_member(request, pk):
+    require_member(request.user)
+    target = get_object_or_404(MemberProfile, user_id=pk, user__is_active=True, accepted_at__isnull=False, email_verified_at__isnull=False, nickname_key__isnull=False)
+    if pk == request.user.pk or not target.nickname_key:
+        raise PermissionDenied
+    with transaction.atomic():
+        lock_pair(request.user.pk, pk)
+        MemberBlock.objects.get_or_create(blocker=request.user, blocked_id=pk)
+    return private_response(redirect('member-block-list'))
+
+
+@login_required
+@never_cache
+@require_POST
+def unblock_member(request, pk):
+    require_member(request.user)
+    with transaction.atomic():
+        lock_pair(request.user.pk, pk)
+        MemberBlock.objects.filter(blocker=request.user, blocked_id=pk).delete()
+    return private_response(redirect('member-block-list'))
+
+
+@login_required
+@never_cache
+@require_GET
+def block_list(request):
+    require_member(request.user)
+    blocks = MemberBlock.objects.filter(blocker=request.user).select_related('blocked__membership')
+    return private_response(render(request, 'community/block_list.html', {'blocks': blocks}))
+
+
 @login_required
 @never_cache
 @require_GET
 def inbox(request, sent=False):
     require_member(request.user)
     items = PrivateMessage.objects.filter(**({'sender': request.user} if sent else {'recipient': request.user})).select_related('sender', 'recipient', 'sender__membership', 'recipient__membership')[:100]
-    return private_response(render(request, 'community/private_messages.html', {'items': items, 'sent': sent, 'form': MessageForm()}))
+    recipient_id = request.GET.get('to', '')
+    recipient = MemberProfile.objects.filter(user_id=int(recipient_id), user__is_active=True, accepted_at__isnull=False, email_verified_at__isnull=False).first() if recipient_id.isdecimal() and len(recipient_id) < 19 else None
+    initial = {'recipient': recipient.nickname_key} if recipient and recipient.nickname_key else {}
+    return private_response(render(request, 'community/private_messages.html', {'items': items, 'sent': sent, 'form': MessageForm(initial=initial)}))
 
 
 @login_required
@@ -51,9 +97,14 @@ def send(request):
             form.add_error('recipient', '받는 회원을 확인해 주세요.')
         else:
             with transaction.atomic():
-                PrivateMessage.objects.create(sender=request.user, recipient=recipient.user, body=form.cleaned_data['body'])
-                Notification.objects.create(recipient=recipient.user, kind=Notification.Kind.PRIVATE_MESSAGE)
-            return private_response(redirect('private-messages-sent'))
+                lock_pair(request.user.pk, recipient.user_id)
+                blocked = MemberBlock.objects.filter(Q(blocker=request.user, blocked=recipient.user) | Q(blocker=recipient.user, blocked=request.user)).exists()
+                if blocked:
+                    form.add_error('recipient', '이 회원에게 쪽지를 보낼 수 없습니다.')
+                else:
+                    PrivateMessage.objects.create(sender=request.user, recipient=recipient.user, body=form.cleaned_data['body'])
+                    Notification.objects.create(recipient=recipient.user, kind=Notification.Kind.PRIVATE_MESSAGE)
+                    return private_response(redirect('private-messages-sent'))
     return private_response(render(request, 'community/private_messages.html', {'items': [], 'form': form}, status=400))
 
 

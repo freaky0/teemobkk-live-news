@@ -14,9 +14,10 @@ class PinMigrationTests(TransactionTestCase):
         post = Post.objects.create(author_id=user.pk, title='Legacy title', body='Legacy body', category='notice')
         executor = MigrationExecutor(connection)
         try:
-            executor.migrate([('community', '0018_post_is_pinned')])
-            apps = executor.loader.project_state([('community', '0018_post_is_pinned')]).apps
+            executor.migrate([('community', '0019_merge_pin_memberblock')])
+            apps = executor.loader.project_state([('community', '0019_merge_pin_memberblock')]).apps
             migrated = apps.get_model('community', 'Post').objects.get(pk=post.pk)
             self.assertEqual((migrated.title, migrated.body, migrated.category, migrated.is_pinned), ('Legacy title', 'Legacy body', 'notice', False))
+            self.assertEqual(apps.get_model('community', 'MemberBlock').objects.count(), 0)
         finally:
             MigrationExecutor(connection).migrate(MigrationExecutor(connection).loader.graph.leaf_nodes())

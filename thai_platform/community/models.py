@@ -182,6 +182,15 @@ class Notification(Timestamped):
         ordering = ['-created_at', '-pk']
 
 
+class MemberBlock(models.Model):
+    blocker = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='member_blocks')
+    blocked = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='blocked_by_members')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['blocker', 'blocked'], name='unique_member_block'), models.CheckConstraint(condition=~models.Q(blocker=models.F('blocked')), name='member_block_not_self')]
+
+
 class PrivateMessage(models.Model):
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='sent_private_messages')
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='received_private_messages')

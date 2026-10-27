@@ -59,6 +59,16 @@ def post_list(request):
     keep.pop("page", None)
     return render(request, "community/list.html", {"resolution": resolution, "resolutions": Post.Resolution.choices, "page_obj": pagination, "q": q, "region": region, "category": category, "regions": REGIONS, "categories": CATEGORIES, "list_query": "?" + request.GET.urlencode(), "filter_query": keep.urlencode()})
 
+@require_GET
+def public_member(request, pk):
+    from members.models import MemberProfile
+    member = get_object_or_404(MemberProfile, user_id=pk, user__is_active=True, accepted_at__isnull=False, email_verified_at__isnull=False, nickname_key__isnull=False)
+    if not member.nickname_key:
+        raise Http404
+    posts = Paginator(published().filter(author_id=pk), 20).get_page(request.GET.get('page'))
+    return render(request, 'community/public_member.html', {'member': member, 'page_obj': posts})
+
+
 @never_cache
 def my_activity(request):
     kind = request.GET.get('kind', 'posts')
