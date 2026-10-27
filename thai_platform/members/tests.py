@@ -52,6 +52,38 @@ class MemberTests(TestCase):
         self.assertContains(options,'이메일 인증 링크로 가입·로그인')
         self.assertContains(options,'Google로 계속하기')
         self.assertEqual(self.client.get('/accounts/password/reset/').status_code,403)
+    def test_password_login_returns_complete_member_to_safe_next(self):
+        _, user = self.verify()
+        self.onboard()
+        user.set_password('Fixture-passphrase-742!')
+        user.save(update_fields=['password'])
+        self.client.logout()
+        response = self.client.post('/accounts/login/?next=/community/new/', {'login': 'member@example.com', 'password': 'Fixture-passphrase-742!'})
+        self.assertRedirects(response, '/community/new/', fetch_redirect_response=False)
+        self.client.logout()
+        response = self.client.post('/accounts/login/?next=/thai/community/new/%3Fcategory%3Dhousing', {'login': 'member@example.com', 'password': 'Fixture-passphrase-742!'})
+        self.assertRedirects(response, '/thai/community/new/?category=housing', fetch_redirect_response=False)
+
+    def test_password_login_rejects_external_next(self):
+        _, user = self.verify()
+        self.onboard()
+        user.set_password('Fixture-passphrase-742!')
+        user.save(update_fields=['password'])
+        self.client.logout()
+        for target in ('//evil.example/path', 'https://evil.example/path', '/\\\\evil.example/path', '///evil.example/path'):
+            with self.subTest(target=target):
+                response = self.client.post('/accounts/login/', {'login': 'member@example.com', 'password': 'Fixture-passphrase-742!'}, QUERY_STRING='next=' + target)
+                self.assertRedirects(response, '/accounts/profile/', fetch_redirect_response=False)
+                self.client.logout()
+
+    def test_incomplete_member_must_onboard_before_next(self):
+        _, user = self.verify()
+        user.set_password('Fixture-passphrase-742!')
+        user.save(update_fields=['password'])
+        self.client.logout()
+        response = self.client.post('/accounts/login/?next=/community/new/', {'login': 'member@example.com', 'password': 'Fixture-passphrase-742!'})
+        self.assertRedirects(response, '/accounts/onboarding/', fetch_redirect_response=False)
+
     def test_email_member_can_set_password_after_magic_link_then_login(self):
         _,user=self.verify()
         self.onboard()

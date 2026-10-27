@@ -8,6 +8,7 @@ from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.decorators import method_decorator
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.cache import never_cache
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_http_methods
@@ -38,7 +39,12 @@ class MemberPasswordLoginView(FormView):
         user=form.user
         login(self.request,user,backend='allauth.account.auth_backends.AuthenticationBackend')
         profile=MemberProfile.objects.filter(user=user).first()
-        return redirect('member-profile' if profile and profile.is_complete else 'member-onboarding')
+        if not profile or not profile.is_complete:
+            return redirect('member-onboarding')
+        next_url = self.request.GET.get('next', '')
+        if next_url.startswith('/') and url_has_allowed_host_and_scheme(next_url, allowed_hosts={self.request.get_host()}, require_https=self.request.is_secure()):
+            return redirect(next_url)
+        return redirect('member-profile')
 
 @method_decorator(login_required, name='dispatch')
 class MemberPasswordSetView(AllauthPasswordSetView):
