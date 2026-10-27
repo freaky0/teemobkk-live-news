@@ -89,7 +89,7 @@ class Bookmark(Timestamped):
 class Comment(Timestamped):
     Status = ContentStatus
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
-    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='replies')
+    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.RESTRICT, related_name='replies')
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='community_comments')
     body = models.TextField(validators=[MaxLengthValidator(3000)])
     status = models.CharField(max_length=10, choices=ContentStatus.choices, default=ContentStatus.PUBLISHED, db_index=True)

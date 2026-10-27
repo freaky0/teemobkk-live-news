@@ -48,6 +48,11 @@ class AnswerEmailNotificationTests(TransactionTestCase):
             primary=True,
         )
 
+    def test_reply_to_answer_does_not_send_answer_notification_email(self):
+        answer = services.create_comment(self.author, self.post, {"body": "Existing answer"})
+        services.create_comment(self.answerer, self.post, {"body": "Reply to answer", "parent": answer.pk})
+        self.assertEqual(mail.outbox, [])
+
     def test_opted_in_author_gets_private_minimal_email_after_outer_commit(self):
         with transaction.atomic():
             comment = services.create_comment(

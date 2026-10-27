@@ -182,9 +182,10 @@ def create_comment(user, post, data):
     comment = Comment.objects.create(author=user, post=post, **values)
     if post.author_id != user.pk and post.author.is_active:
         Notification.objects.create(recipient=post.author, kind=Notification.Kind.REPLY, post=post, comment=comment)
-        transaction.on_commit(
-            lambda user_id=post.author_id, post_id=post.pk: _send_answer_notification_email(user_id, post_id)
-        )
+        if parent_id is None:
+            transaction.on_commit(
+                lambda user_id=post.author_id, post_id=post.pk: _send_answer_notification_email(user_id, post_id)
+            )
     _audit(user, 'comment.create', comment)
     return comment
 

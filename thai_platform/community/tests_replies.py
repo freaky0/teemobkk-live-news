@@ -14,6 +14,14 @@ class ReplyTests(TestCase):
         self.api = APIClient()
         self.api.force_authenticate(self.user)
 
+    def test_deleting_answer_cannot_delete_another_members_reply(self):
+        from django.db.models import RestrictedError
+        other = get_user_model().objects.create_user(username='other-reply-author')
+        reply = Comment.objects.create(post=self.post, author=other, parent=self.answer, body='Preserve my reply')
+        with self.assertRaises(RestrictedError):
+            self.answer.delete()
+        self.assertTrue(Comment.objects.filter(pk=reply.pk).exists())
+
     def test_create_reply_to_existing_answer(self):
         response = self.api.post(f'/api/v1/posts/{self.post.pk}/comments/', {'body': 'Reply to answer', 'parent': self.answer.pk}, format='json')
         self.assertEqual(response.status_code, 201)
