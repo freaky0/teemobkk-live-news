@@ -68,7 +68,9 @@ def _audit(user, action, obj, metadata=None):
 
 def require_post_operator(user):
     require_active(user)
-    if not user.is_superuser or not user.is_staff:
+    # Post operators are active staff, as for notice management; report
+    # moderation remains a separate group-based permission.
+    if not user.is_staff:
         raise PermissionDenied('Operator access required.')
 
 

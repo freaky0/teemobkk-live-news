@@ -13,7 +13,7 @@ class OperatorMobileTests(StaticLiveServerTestCase):
     def test_mobile_hide_restore_and_confirmation(self):
         User = get_user_model()
         author = User.objects.create_user(username='legacy-author')
-        operator = User.objects.create_superuser(username='operator', email='op@example.test', password='test-only')
+        operator = User.objects.create_user(username='operator', is_staff=True, password='test-only')
         post = Post.objects.create(author=author, title='기존 게시글 확인', body='기존 데이터 보존 테스트입니다.')
         self.client.force_login(operator)
         with sync_playwright() as pw:
