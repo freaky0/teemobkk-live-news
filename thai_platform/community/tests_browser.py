@@ -86,6 +86,21 @@ class BrowserFlowTests(StaticLiveServerTestCase):
             self.assertIn(self.post.title, self.page.locator('main').inner_text())
         self.assertEqual(self.errors, [])
 
+    def test_home_helpful_question_link_across_widths(self):
+        self.go(f'/community/{self.post.pk}/')
+        self.page.get_by_role('button', name='도움됐어요 0', exact=True).click()
+        self.page.get_by_role('button', name='도움됐어요 취소 1', exact=True).wait_for()
+        for width in (320, 390, 768, 1440):
+            self.page.set_viewport_size({'width': width, 'height': 900})
+            self.go('/')
+            section = self.page.locator('section[aria-labelledby="helpful-questions-title"]')
+            self.assertTrue(section.is_visible())
+            self.assertIn('도움 반응 1개', section.inner_text())
+            self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'))
+            section.get_by_role('link', name=self.post.title).click()
+            self.assertIn(f'/community/{self.post.pk}/', self.page.url)
+        self.assertEqual(self.errors, [])
+
     def test_real_db_shared_api_and_web(self):
         p = self.page
         self.go("/community/new/")

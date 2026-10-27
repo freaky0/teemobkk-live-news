@@ -34,7 +34,7 @@ def back_url(request):
 
 def home(request):
     from . import news
-    context = {"posts": published()[:4]}
+    context = {"posts": published()[:4], "helpful_posts": published().filter(helpful_count__gt=0).order_by('-helpful_count', '-created_at', '-pk')[:4]}
     try:
         context["news_page"] = news.list_articles(page_size=5)
     except news.NewsUnavailable:

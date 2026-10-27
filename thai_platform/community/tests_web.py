@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
-from .models import Post, Comment, Report
+from .models import Post, Comment, Report, Helpful
 
 class WebTests(TestCase):
     def setUp(self):
@@ -29,6 +29,17 @@ class WebTests(TestCase):
         activity = self.client.get('/community/activity/')
         self.assertEqual(activity.status_code, 200)
         self.assertContains(activity, self.post.title)
+
+    def test_home_helpful_questions_use_public_real_votes_only(self):
+        self.assertNotContains(self.client.get('/'), '도움을 받은 질문')
+        Helpful.objects.create(user=self.other, post=self.post)
+        hidden = Post.objects.create(author=self.owner, title='숨겨진 질문입니다', body='숨겨진 게시글입니다.', region='bangkok', category='living', status=Post.Status.HIDDEN)
+        Helpful.objects.create(user=self.other, post=hidden)
+        response = self.client.get('/')
+        self.assertContains(response, '도움을 받은 질문')
+        self.assertContains(response, self.post.title)
+        self.assertNotContains(response, hidden.title)
+        self.assertEqual(list(response.context['helpful_posts']), [self.post])
 
     def test_anonymous_cannot_write(self):
         before = Post.objects.count()
