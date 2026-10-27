@@ -29,6 +29,7 @@ class Post(Timestamped):
         COMMON = 'common', 'Common'
 
     class Category(models.TextChoices):
+        NOTICE = 'notice', '공지'
         LIVING = 'living', 'Living'
         HOUSING = 'housing', 'Housing'
         VISA = 'visa', 'Visa'

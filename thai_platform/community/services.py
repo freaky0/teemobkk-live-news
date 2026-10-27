@@ -43,7 +43,10 @@ def require_report_moderator(user):
 
 def require_owner(user, post):
     require_active(user)
-    if post.author_id != user.pk:
+    if post.category == Post.Category.NOTICE:
+        if not user.is_staff:
+            raise PermissionDenied('Staff access required for notices.')
+    elif post.author_id != user.pk:
         raise PermissionDenied('Only the author may change this post.')
 
 
@@ -66,7 +69,10 @@ def _audit(user, action, obj, metadata=None):
 @transaction.atomic
 def create_post(user, data):
     require_active(user)
-    post = Post.objects.create(author=user, **_validate(PostInputSerializer, data))
+    values = _validate(PostInputSerializer, data)
+    if values.get('category') == Post.Category.NOTICE and not user.is_staff:
+        raise PermissionDenied('Staff access required for notices.')
+    post = Post.objects.create(author=user, **values)
     _audit(user, 'post.create', post)
     return post
 
@@ -78,7 +84,10 @@ def update_post(user, post, data):
     require_owner(user, post)
     if post.status == Post.Status.DELETED:
         raise NotFound('Post not found.')
-    for key, value in _validate(PostInputSerializer, data, partial=True).items():
+    values = _validate(PostInputSerializer, data, partial=True)
+    if values.get('category') == Post.Category.NOTICE and not user.is_staff:
+        raise PermissionDenied('Staff access required for notices.')
+    for key, value in values.items():
         setattr(post, key, value)
     post.save()
     _audit(user, 'post.update', post)

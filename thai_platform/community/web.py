@@ -102,7 +102,9 @@ def post_create(request):
 @login_required
 def post_edit(request, pk):
     post = get_object_or_404(published(), pk=pk)
-    if request.user.pk != post.author_id:
+    if not (post.category == Post.Category.NOTICE and request.user.is_staff) and request.user.pk != post.author_id:
+        raise PermissionDenied
+    if post.category == Post.Category.NOTICE and not request.user.is_staff:
         raise PermissionDenied
     form = PostForm(request.POST or None, initial={"title": post.title, "body": post.body, "region": post.region, "category": post.category})
     if request.method == "POST" and form.is_valid():
