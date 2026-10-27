@@ -2,10 +2,35 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 from members.models import MemberProfile
-from .models import Post
+from .models import Comment, Post
 
 
 class MemberMenuTests(TestCase):
+    def test_detail_author_comment_and_reply_have_public_member_menus(self):
+        user = get_user_model().objects.create_user(username='private-login@example.test')
+        MemberProfile.objects.create(user=user, email_key='private@example.test', nickname_key='publicname', accepted_at=timezone.now(), email_verified_at=timezone.now())
+        post = Post.objects.create(author=user, title='Public title', body='public')
+        comment = Comment.objects.create(post=post, author=user, body='Public answer')
+        Comment.objects.create(post=post, author=user, parent=comment, body='Public reply')
+        response = self.client.get(f'/community/{post.pk}/')
+        self.assertContains(response, 'class="member-menu"', count=3)
+        self.assertContains(response, f'/community/members/{user.pk}/', count=6)
+        self.assertNotContains(response, 'private-login@example.test')
+
+    def test_inactive_and_incomplete_authors_never_expose_identifiers(self):
+        for index, state in enumerate(('inactive', 'unverified', 'missing')):
+            user = get_user_model().objects.create_user(username=f'private-{state}@example.test', is_active=state != 'inactive')
+            if state != 'missing':
+                MemberProfile.objects.create(user=user, email_key=f'private-{state}@example.test', nickname_key=f'nick-{state}', accepted_at=timezone.now(), email_verified_at=None if state == 'unverified' else timezone.now())
+            post = Post.objects.create(author=user, title=f'Public title {index}', body='public')
+            Comment.objects.create(post=post, author=user, body='Public answer')
+            self.client.force_login(get_user_model().objects.create_user(username=f'viewer-{index}'))
+            for path in ('/community/', f'/community/{post.pk}/'):
+                response = self.client.get(path)
+                self.assertNotContains(response, f'private-{state}@example.test')
+                self.assertNotContains(response, f'nick-{state}')
+                self.assertNotContains(response, f'/community/members/{user.pk}/')
+
     def test_public_profile_only_published_posts_and_nickname(self):
         user = get_user_model().objects.create_user(username='private-login@example.test', email='private@example.test')
         MemberProfile.objects.create(user=user, email_key='private@example.test', nickname_key='publicname', accepted_at=timezone.now(), email_verified_at=timezone.now())
