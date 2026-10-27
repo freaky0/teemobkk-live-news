@@ -51,6 +51,16 @@ POST_LOCAL_DEVELOPMENT=1 POST_NEWS_DB=/opt/teemo-live-news/news.db uv run python
 
 웹 경로는 `/newsroom/`, `/newsroom/{id}/`입니다. `/thai/news/`와 `/thai/news/ko/`의 기존 운영 페이지와 겹치지 않도록 분리했습니다. 앱 공통 API는 `GET /api/v1/news/`, `GET /api/v1/news/{id}/`입니다.
 
+## 링크 공유 미리보기
+
+메신저·SNS 미리보기 메타데이터는 `base.html`의 `social_meta` 블록에서 한 번만 출력합니다.
+
+- 홈·목록·커뮤니티·로그인 등 일반 페이지: 항상 같은 대표 이미지 `https://teemobkk.io/thai/static/assets/share-home-v1.jpg` (1200×630 JPEG). 첫 기사 썸네일이 대표 이미지로 쓰이지 않습니다.
+- 뉴스 상세 `/newsroom/{id}/`: `og:type=article`과 기사 제목·요약, 기사 대표 이미지(발행사 HTTPS URL)를 사용합니다. 기사 이미지가 없으면 같은 대표 이미지로 대체합니다.
+- `canonical`·`og:url`은 쿼리 없는 절대 HTTPS 주소(`config/context.py`의 `PUBLIC_ORIGIN`+`/thai`+path)입니다. `POST_SCRIPT_PREFIX`와 무관하게 `/thai/` 접두사를 유지합니다.
+- 대표 이미지는 자체 보유 자산(`static/assets/cat-hero.webp`)으로 생성합니다. `uv run python scripts/generate_share_image.py`. 내용이 바뀌면 파일명 접미사(`v1`)와 `config/context.py`의 경로를 함께 올려 캐시를 우회합니다.
+- 정적 파일이므로 배포 시 `collectstatic` 결과를 `/thai/static/` 경로에서 제공해야 합니다. Caddy 정적 root를 바꾸지 않으면 새 이미지가 404가 되므로 `PREVIEW_DEPLOYMENT.md`의 정적 자산 절차를 함께 확인합니다.
+
 경로 접두사 아래에 배포할 때는 `POST_SCRIPT_PREFIX=/thai`를 서버 환경에 설정합니다. 프록시는 접두사만 제거한 요청 경로를 Django로 전달하고, Django의 `FORCE_SCRIPT_NAME`과 상대 `STATIC_URL`이 브라우저 경로를 다시 `/thai/` 아래로 만듭니다. 운영 프록시 설정은 별도 검증 후 적용해야 하며, 이 문서는 현재 라이브 설정이 변경됐다는 뜻이 아닙니다.
 목록 매개변수는 `q`(최대 200자)와 `page`(1~10000)입니다. 응답은 `count`, `page`, `page_size`, `has_next`, `results`입니다.
 각 기사는 `id`, `title`, `summary`, `source`, `category`, `published_at`, `source_url`을 제공합니다. POST·PATCH·DELETE는 허용하지 않습니다.
