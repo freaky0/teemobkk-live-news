@@ -47,7 +47,7 @@ class Post(Timestamped):
     body = models.TextField(validators=[MaxLengthValidator(6000)])
     region = models.CharField(max_length=10, choices=Region.choices, default=Region.COMMON)
     category = models.CharField(max_length=10, choices=Category.choices, default=Category.LIVING)
-    is_pinned = models.BooleanField(default=False)
+    is_pinned = models.BooleanField(default=False, db_default=False)
     resolution = models.CharField(max_length=10, choices=Resolution.choices, default=Resolution.UNRESOLVED, db_index=True)
     status = models.CharField(max_length=10, choices=ContentStatus.choices, default=ContentStatus.PUBLISHED, db_index=True)
 

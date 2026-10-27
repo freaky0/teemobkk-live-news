@@ -4,6 +4,16 @@ from django.test import TransactionTestCase
 
 
 class PinMigrationTests(TransactionTestCase):
+    def test_old_model_can_insert_after_latest_migrations(self):
+        executor = MigrationExecutor(connection)
+        old_apps = executor.loader.project_state([('community', '0017_alter_post_category')]).apps
+        OldPost = old_apps.get_model('community', 'Post')
+        User = old_apps.get_model('auth', 'User')
+        user = User.objects.create(username='rollback-user')
+        post = OldPost.objects.create(author_id=user.pk, title='Rollback', body='Old release', category='notice')
+        from community.models import Post
+        self.assertFalse(Post.objects.get(pk=post.pk).is_pinned)
+
     def test_existing_posts_preserved_and_unpinned(self):
         executor = MigrationExecutor(connection)
         executor.migrate([('community', '0017_alter_post_category')])
