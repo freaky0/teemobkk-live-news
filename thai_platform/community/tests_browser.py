@@ -74,6 +74,18 @@ class BrowserFlowTests(StaticLiveServerTestCase):
                     self.page.screenshot(path=str(self.output / 'home-dark-800.png'))
         self.assertEqual(self.errors, [])
 
+    def test_home_my_activity_link_opens_private_activity(self):
+        for width in (320, 390, 768, 1440):
+            self.page.set_viewport_size({'width': width, 'height': 900})
+            self.go('/')
+            link = self.page.locator('.home-my-activity')
+            self.assertTrue(link.is_visible())
+            self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'))
+            link.click()
+            self.assertIn('/community/activity/', self.page.url)
+            self.assertIn(self.post.title, self.page.locator('main').inner_text())
+        self.assertEqual(self.errors, [])
+
     def test_real_db_shared_api_and_web(self):
         p = self.page
         self.go("/community/new/")

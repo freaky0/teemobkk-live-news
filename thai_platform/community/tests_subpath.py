@@ -24,6 +24,13 @@ class SubpathMountTests(TestCase):
         self.assertContains(response, 'href="/thai/community/"')
         self.assertContains(response, 'href="/thai/accounts/login/"')
 
+    def test_authenticated_home_activity_link_keeps_mount_prefix(self):
+        from django.contrib.auth import get_user_model
+        member = get_user_model().objects.create_user(username='mount-activity-member')
+        self.client.force_login(member)
+        response = self.client.get('/', SCRIPT_NAME='/thai')
+        self.assertContains(response, 'class="home-my-activity" href="/thai/community/activity/"')
+
     def test_newsroom_route_resolves_below_mount_prefix(self):
         response = self.client.get("/newsroom/", SCRIPT_NAME="/thai")
         self.assertEqual(response.status_code, 503)

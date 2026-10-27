@@ -21,6 +21,15 @@ class WebTests(TestCase):
         self.assertContains(self.client.get("/accounts/login/"), "Google 인증 설정 전")
         self.assertContains(self.client.get("/accounts/login/options/"), "이메일 인증 링크로 가입·로그인")
         self.assertEqual(self.client.post("/accounts/google/login/").status_code, 503)
+    def test_home_activity_link_only_for_signed_in_member(self):
+        self.assertNotContains(self.client.get('/'), 'class="home-my-activity"')
+        self.client.force_login(self.owner)
+        response = self.client.get('/')
+        self.assertContains(response, 'class="home-my-activity" href="/community/activity/"')
+        activity = self.client.get('/community/activity/')
+        self.assertEqual(activity.status_code, 200)
+        self.assertContains(activity, self.post.title)
+
     def test_anonymous_cannot_write(self):
         before = Post.objects.count()
         self.assertEqual(self.client.post("/community/new/", {"title": "몰래 등록 시도"}).status_code, 302)
