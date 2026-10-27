@@ -96,7 +96,7 @@ class PostViewSet(viewsets.ModelViewSet):
         if request.method == 'POST':
             comment = services.create_comment(request.user, post, request.data)
             return Response(CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
-        qs = post.comments.filter(status='published')
+        qs = post.comments.filter(status='published').filter(Q(parent__isnull=True) | Q(parent__status='published'))
         page = self.paginate_queryset(qs)
         return self.get_paginated_response(CommentSerializer(page, many=True).data)
 

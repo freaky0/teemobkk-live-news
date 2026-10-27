@@ -172,12 +172,20 @@ def create_comment(user, post, data):
     require_active(user)
     post = Post.objects.select_for_update().get(pk=post.pk)
     _published(post)
-    comment = Comment.objects.create(author=user, post=post, **_validate(CommentInputSerializer, data))
+    values = _validate(CommentInputSerializer, data)
+    parent_id = values.pop('parent', None)
+    if parent_id is not None:
+        parent = Comment.objects.select_for_update().filter(pk=parent_id, post=post, parent__isnull=True, status=Comment.Status.PUBLISHED).first()
+        if parent is None:
+            raise ValidationError({'parent': 'Invalid answer.'})
+        values['parent'] = parent
+    comment = Comment.objects.create(author=user, post=post, **values)
     if post.author_id != user.pk and post.author.is_active:
         Notification.objects.create(recipient=post.author, kind=Notification.Kind.REPLY, post=post, comment=comment)
-        transaction.on_commit(
-            lambda user_id=post.author_id, post_id=post.pk: _send_answer_notification_email(user_id, post_id)
-        )
+        if parent_id is None:
+            transaction.on_commit(
+                lambda user_id=post.author_id, post_id=post.pk: _send_answer_notification_email(user_id, post_id)
+            )
     _audit(user, 'comment.create', comment)
     return comment
 

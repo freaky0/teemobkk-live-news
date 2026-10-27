@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import Http404
 from rest_framework.exceptions import PermissionDenied as APIPermissionDenied, NotFound as APINotFound
@@ -73,7 +73,9 @@ def my_activity(request):
 @never_cache
 def post_detail(request, pk):
     post = get_object_or_404(services.public_posts(request.user), pk=pk)
-    return render(request, "community/detail.html", {"post": post, "comments": post.comments.filter(status="published").select_related("author").order_by("created_at"), "comment_form": CommentForm(), "report_form": ReportForm(), "back_url": back_url(request)})
+    replies = Comment.objects.filter(status=Comment.Status.PUBLISHED, post=post).select_related('author').order_by('created_at', 'pk')
+    comments = post.comments.filter(status=Comment.Status.PUBLISHED, parent__isnull=True).select_related('author').prefetch_related(Prefetch('replies', queryset=replies)).order_by('created_at', 'pk')
+    return render(request, "community/detail.html", {"post": post, "comments": comments, "comment_form": CommentForm(), "report_form": ReportForm(), "back_url": back_url(request)})
 
 def service_error(form, exc):
     errors = getattr(exc, "message_dict", None) or getattr(exc, "detail", None)
@@ -183,7 +185,10 @@ def comment_create(request, pk):
     form = CommentForm(request.POST)
     if form.is_valid():
         try:
-            call_service("create_comment", request.user, post, form.cleaned_data)
+            data = dict(form.cleaned_data)
+            if 'parent' in request.POST:
+                data['parent'] = request.POST['parent']
+            call_service("create_comment", request.user, post, data)
             messages.success(request, "답변을 서버에 저장했습니다.")
             return redirect("post-detail", pk=pk)
         except (ValidationError, APIValidationError) as exc:
