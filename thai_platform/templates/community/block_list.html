@@ -1,0 +1,2 @@
+{% extends 'base.html' %}{% block title %}차단 회원{% endblock %}{% block content %}
+<section class="editor"><h1>차단 회원 관리</h1><p>차단하면 서로 쪽지를 보낼 수 없습니다. 기존 글과 쪽지는 삭제되거나 숨겨지지 않습니다. 차단을 해제할 수 있습니다.</p><ul>{% for block in blocks %}<li>{{ block.blocked.membership.nickname_key|default:'회원' }} <form method="post" action="{% url 'member-unblock' block.blocked_id %}">{% csrf_token %}<button class="btn" type="submit">차단 해제</button></form></li>{% empty %}<li>차단한 회원이 없습니다.</li>{% endfor %}</ul></section>{% endblock %}

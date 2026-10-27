@@ -107,7 +107,7 @@ def delete_post(user, post):
 
 
 def public_posts(user=None):
-    qs = Post.objects.filter(status=Post.Status.PUBLISHED).select_related('author').annotate(helpful_count=Count('helpful_votes', distinct=True)).order_by('-created_at', '-pk')
+    qs = Post.objects.filter(status=Post.Status.PUBLISHED).select_related('author', 'author__membership').annotate(helpful_count=Count('helpful_votes', distinct=True)).order_by('-created_at', '-pk')
     if user and user.is_authenticated:
         qs = qs.annotate(
             helpful_active=Exists(Helpful.objects.filter(user=user, post_id=OuterRef('pk'))),

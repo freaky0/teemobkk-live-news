@@ -15,12 +15,14 @@ from .models import Comment, Notification, Post
 class BrowserFlowTests(StaticLiveServerTestCase):
     def setUp(self):
         self.member = get_user_model().objects.create_user(username="브라우저검증")
-        if self._testMethodName == 'test_private_messages_mobile_send':
+        if self._testMethodName in ('test_private_messages_mobile_send', 'test_member_menu_mobile_keyboard_and_block'):
             from members.models import MemberProfile
             from django.utils import timezone
             now = timezone.now()
             MemberProfile.objects.create(user=self.member, email_key='browser-sender@example.test', nickname_key='브라우저검증', accepted_at=now, email_verified_at=now)
             recipient = get_user_model().objects.create_user(username='쪽지수신자')
+            if self._testMethodName == 'test_member_menu_mobile_keyboard_and_block':
+                Post.objects.create(author=recipient, title='회원 메뉴 테스트', body='browser fixture')
             MemberProfile.objects.create(user=recipient, email_key='browser-recipient@example.test', nickname_key='쪽지수신자', accepted_at=now, email_verified_at=now)
             from django.test import Client
             recipient_client = Client()
@@ -53,6 +55,27 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.pw.stop()
     def go(self, path):
         return self.page.goto(self.live_server_url + path, wait_until="networkidle")
+
+    def test_member_menu_mobile_keyboard_and_block(self):
+        for width in (320, 390, 768, 1440):
+            self.page.set_viewport_size({'width': width, 'height': 900})
+            self.go('/community/')
+            row = self.page.locator('article.row').filter(has_text='회원 메뉴 테스트')
+            summary = row.locator('summary')
+            summary.focus()
+            self.page.keyboard.press('Enter')
+            self.assertTrue(row.get_by_role('link', name='회원 정보').is_visible())
+            self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), width)
+        row.get_by_role('link', name='쪽지 보내기').click()
+        self.assertEqual(self.page.get_by_label('받는 회원 닉네임').input_value(), '쪽지수신자')
+        self.go('/community/')
+        row = self.page.locator('article.row').filter(has_text='회원 메뉴 테스트')
+        row.locator('summary').click()
+        row.get_by_role('button', name='회원 차단').click()
+        self.assertTrue(self.page.get_by_role('button', name='차단 해제').is_visible())
+        self.page.get_by_role('button', name='차단 해제').click()
+        self.assertTrue(self.page.get_by_text('차단한 회원이 없습니다.').is_visible())
+        self.assertEqual(self.errors, [])
 
     def test_private_messages_mobile_send(self):
         for width in (320, 390, 768, 1440):
