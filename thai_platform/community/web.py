@@ -177,7 +177,7 @@ def post_edit(request, pk):
         raise PermissionDenied
     if post.category == Post.Category.NOTICE and not request.user.is_staff:
         raise PermissionDenied
-    form = PostForm(request.POST or None, initial={"title": post.title, "body": post.body, "region": post.region, "category": post.category, "is_pinned": post.is_pinned}, staff=request.user.is_staff)
+    form = PostForm(request.POST or None, initial={"title": post.title, "body": post.body, "region": post.region, "category": post.category, "is_pinned": post.is_pinned, "market_kind": post.market_kind, "market_price": post.market_price, "market_region": post.market_region, "market_status": post.market_status}, staff=request.user.is_staff)
     if request.method == "POST" and form.is_valid():
         try:
             call_service("update_post", request.user, post, {k: v for k, v in form.cleaned_data.items() if k != "privacy"})

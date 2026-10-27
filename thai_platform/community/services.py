@@ -100,6 +100,9 @@ def operator_post_action(user, post, action):
 def create_post(user, data):
     require_active(user)
     values = _validate(PostInputSerializer, data)
+    if values.get('category') != Post.Category.MARKET:
+        for key in ('market_kind', 'market_price', 'market_region', 'market_status'):
+            values.pop(key, None)
     if values.get('category') == Post.Category.NOTICE and not user.is_staff:
         raise PermissionDenied('Staff access required for notices.')
     if 'is_pinned' in data and not user.is_staff:
@@ -119,6 +122,11 @@ def update_post(user, post, data):
     if post.status == Post.Status.DELETED:
         raise NotFound('Post not found.')
     values = _validate(PostInputSerializer, data, partial=True)
+    if values.get('category', post.category) != Post.Category.MARKET:
+        for key in ('market_kind', 'market_price', 'market_region', 'market_status'):
+            values.pop(key, None)
+        if post.category == Post.Category.MARKET:
+            values.update(market_kind='', market_price=None, market_region='', market_status='')
     if values.get('category') == Post.Category.NOTICE and not user.is_staff:
         raise PermissionDenied('Staff access required for notices.')
     if 'is_pinned' in data and not user.is_staff:

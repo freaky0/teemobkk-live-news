@@ -68,6 +68,39 @@ class BrowserFlowTests(StaticLiveServerTestCase):
     def go(self, path):
         return self.page.goto(self.live_server_url + path, wait_until="networkidle")
 
+    def test_market_create_edit_list_detail_responsive(self):
+        self.go('/community/new/?category=market')
+        self.page.get_by_label('제목').fill('브라우저 중고 자전거 판매')
+        self.page.get_by_label('주제').select_option('market')
+        self.page.get_by_label('상황과 질문').fill('방콕에서 사용한 자전거를 판매하며 상태가 좋습니다.')
+        self.page.get_by_label('글 종류').select_option('sell')
+        self.page.get_by_label('가격 (THB)').fill('1250.50')
+        self.page.get_by_label('거래 지역').select_option('bangkok')
+        self.page.get_by_label('거래 상태').select_option('reserved')
+        self.page.get_by_label('개인정보와 타인의 비공개 정보를 넣지 않았습니다.').check()
+        self.page.get_by_role('button', name='질문 등록').click()
+        self.page.wait_for_url('**/community/*/')
+        self.assertIn('1,250.50 THB', self.page.locator('.market-details').inner_text())
+        self.assertIn('예약', self.page.locator('.market-details').inner_text())
+        self.page.get_by_role('link', name='수정', exact=True).click()
+        self.assertEqual(self.page.get_by_label('가격 (THB)').input_value(), '1250.50')
+        self.page.get_by_label('거래 상태').select_option('active')
+        self.page.get_by_label('개인정보와 타인의 비공개 정보를 넣지 않았습니다.').check()
+        self.page.get_by_role('button', name='수정 저장').click()
+        self.page.wait_for_load_state('networkidle')
+        self.assertIn('거래 중', self.page.locator('.market-details').inner_text())
+        self.go('/community/?category=market')
+        self.assertIn('1,250.50 THB', self.page.locator('.market-details').inner_text())
+        for width in (320, 390, 1440):
+            self.page.set_viewport_size({'width': width, 'height': 900})
+            self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), width)
+            self.page.locator('a.title', has_text='브라우저 중고 자전거 판매').click()
+            self.assertIn('거래 중', self.page.locator('.market-details').inner_text())
+            self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), width)
+            self.page.screenshot(path=str(self.output / f'market-detail-{width}.png'), full_page=True)
+            self.go('/community/?category=market')
+        self.assertEqual(self.errors, [])
+
     def test_comment_like_reply_responsive(self):
         for width in (320, 390, 768, 1440):
             self.page.set_viewport_size({'width': width, 'height': 900})

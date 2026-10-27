@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.core.validators import MaxLengthValidator
+from django.core.validators import MaxLengthValidator, MinValueValidator
 from django.db import models
 
 
@@ -41,6 +41,15 @@ class Post(Timestamped):
         TRAVEL = 'travel', 'Travel'
         BANKING = 'banking', 'Banking'
 
+    class MarketKind(models.TextChoices):
+        SELL = 'sell', '판매'
+        BUY = 'buy', '구매'
+
+    class MarketStatus(models.TextChoices):
+        ACTIVE = 'active', '거래 중'
+        RESERVED = 'reserved', '예약'
+        COMPLETED = 'completed', '완료'
+
     Status = ContentStatus
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='community_posts')
     title = models.CharField(max_length=100)
@@ -50,6 +59,10 @@ class Post(Timestamped):
     is_pinned = models.BooleanField(default=False, db_default=False)
     resolution = models.CharField(max_length=10, choices=Resolution.choices, default=Resolution.UNRESOLVED, db_index=True)
     status = models.CharField(max_length=10, choices=ContentStatus.choices, default=ContentStatus.PUBLISHED, db_index=True)
+    market_kind = models.CharField(max_length=4, choices=MarketKind.choices, blank=True, default='')
+    market_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
+    market_region = models.CharField(max_length=10, choices=Region.choices, blank=True, default='')
+    market_status = models.CharField(max_length=10, choices=MarketStatus.choices, blank=True, default='')
 
     class Meta:
         ordering = ['-created_at', '-pk']
