@@ -88,7 +88,8 @@ def service_error(form, exc):
 
 @login_required
 def post_create(request):
-    form = PostForm(request.POST or None)
+    category = request.GET.get('category', '')
+    form = PostForm(request.POST or None, initial={'category': category} if category in dict(CATEGORIES) else None)
     if request.method == "POST" and form.is_valid():
         try:
             data = {k: v for k, v in form.cleaned_data.items() if k != "privacy"}

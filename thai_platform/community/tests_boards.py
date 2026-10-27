@@ -6,6 +6,34 @@ from .models import Post
 
 
 class BoardTests(TestCase):
+    def test_each_new_board_can_create_filter_and_edit(self):
+        user = get_user_model().objects.create_user(username='writer')
+        self.client.force_login(user)
+        for category in ('free', 'questions', 'market', 'jobs', 'foodtravel'):
+            with self.subTest(category=category):
+                form = self.client.get(f'/community/new/?category={category}')
+                self.assertEqual(form.context['form']['category'].value(), category)
+                payload = {'title': f'Test {category} post', 'body': 'This is a sufficiently long community post.', 'region': 'common', 'category': category, 'privacy': 'on'}
+                response = self.client.post('/community/new/', payload)
+                self.assertEqual(response.status_code, 302)
+                post = Post.objects.get(title=payload['title'])
+                self.assertEqual(post.category, category)
+                self.assertContains(self.client.get(f'/community/?category={category}'), payload['title'])
+                payload['title'] = f'Edited {category} post'
+                self.assertEqual(self.client.post(f'/community/{post.pk}/edit/', payload).status_code, 302)
+                post.refresh_from_db()
+                self.assertEqual(post.category, category)
+                self.assertEqual(post.title, payload['title'])
+
+    def test_board_links_and_legacy_posts_remain_accessible(self):
+        user = get_user_model().objects.create_user(username='writer')
+        legacy = Post.objects.create(author=user, title='Legacy question', body='Old content', category='visa')
+        response = self.client.get('/community/')
+        for category in ('notice', 'free', 'questions', 'market', 'jobs', 'foodtravel', 'housing', 'visa'):
+            self.assertContains(response, f'category={category}')
+        self.assertContains(self.client.get('/community/?category=visa'), legacy.title)
+        self.assertEqual(Post.objects.get(pk=legacy.pk).category, 'visa')
+
     def test_notice_write_requires_moderator_and_prevents_category_bypass(self):
         User = get_user_model()
         member = User.objects.create_user(username='member')

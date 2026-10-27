@@ -30,6 +30,11 @@ class Post(Timestamped):
 
     class Category(models.TextChoices):
         NOTICE = 'notice', '공지'
+        FREE = 'free', '자유게시판'
+        QUESTIONS = 'questions', '질문/답변'
+        MARKET = 'market', '중고게시판'
+        JOBS = 'jobs', '구인구직'
+        FOODTRAVEL = 'foodtravel', '맛집/여행지'
         LIVING = 'living', 'Living'
         HOUSING = 'housing', 'Housing'
         VISA = 'visa', 'Visa'

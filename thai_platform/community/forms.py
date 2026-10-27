@@ -1,6 +1,6 @@
 from django import forms
 REGIONS = [("bangkok", "방콕"), ("chiangmai", "치앙마이"), ("phuket", "푸껫"), ("common", "지역 공통")]
-CATEGORIES = [("notice", "공지"), ("living", "생활 질문"), ("housing", "주거"), ("visa", "비자·체류"), ("travel", "교통·여행"), ("banking", "은행·생활")]
+CATEGORIES = [("notice", "공지"), ("free", "자유게시판"), ("questions", "질문/답변"), ("market", "중고게시판"), ("jobs", "구인구직"), ("foodtravel", "맛집/여행지"), ("living", "생활 질문"), ("housing", "주거"), ("visa", "비자·체류"), ("travel", "교통·여행"), ("banking", "은행·생활")]
 class PostForm(forms.Form):
     title = forms.CharField(label="제목", min_length=5, max_length=100, widget=forms.TextInput(attrs={"placeholder": "어떤 점이 궁금한가요?", "autocomplete": "off"}))
     region = forms.ChoiceField(label="지역", choices=REGIONS)
