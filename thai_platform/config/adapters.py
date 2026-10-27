@@ -12,6 +12,7 @@ from allauth.account.models import EmailAddress
 from allauth.core.exceptions import ImmediateHttpResponse
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from members.models import MemberProfile
+from members.return_to import finish_login
 
 class ClosedAccountAdapter(DefaultAccountAdapter):
     def is_open_for_signup(self,request):
@@ -19,7 +20,9 @@ class ClosedAccountAdapter(DefaultAccountAdapter):
         return False
     def get_login_redirect_url(self,request):
         profile=MemberProfile.objects.filter(user=request.user).first()
-        return reverse('member-profile') if profile and profile.is_complete else reverse('member-onboarding')
+        return finish_login(request, bool(profile and profile.is_complete))
+    def get_signup_redirect_url(self,request):
+        return self.get_login_redirect_url(request)
 
 class GoogleOnlyAdapter(DefaultSocialAccountAdapter):
     def get_connect_redirect_url(self,request,socialaccount):

@@ -8,7 +8,7 @@ from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.decorators import method_decorator
-from django.utils.http import url_has_allowed_host_and_scheme
+
 from django.views.decorators.cache import never_cache
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_http_methods
@@ -21,16 +21,21 @@ from rest_framework.response import Response
 from .forms import AnswerEmailNotificationForm, AccountClosureForm, EmailRequestForm, MemberPasswordLoginForm, OnboardingForm
 from .models import MemberProfile
 from . import services
+from .return_to import remember_return, finish_login
 
 @never_cache
 @require_http_methods(['GET'])
 def login_choice(request):
+    remember_return(request)
     return render(request,'account/login.html')
 
 @method_decorator(sensitive_post_parameters('password'), name='dispatch')
 class MemberPasswordLoginView(FormView):
     template_name='account/password_login.html'
     form_class=MemberPasswordLoginForm
+    def dispatch(self, request, *args, **kwargs):
+        remember_return(request)
+        return super().dispatch(request, *args, **kwargs)
     def get_form_kwargs(self):
         kwargs=super().get_form_kwargs()
         kwargs['request']=self.request
@@ -39,12 +44,7 @@ class MemberPasswordLoginView(FormView):
         user=form.user
         login(self.request,user,backend='allauth.account.auth_backends.AuthenticationBackend')
         profile=MemberProfile.objects.filter(user=user).first()
-        if not profile or not profile.is_complete:
-            return redirect('member-onboarding')
-        next_url = self.request.GET.get('next', '')
-        if next_url.startswith('/') and url_has_allowed_host_and_scheme(next_url, allowed_hosts={self.request.get_host()}, require_https=self.request.is_secure()):
-            return redirect(next_url)
-        return redirect('member-profile')
+        return redirect(finish_login(self.request, bool(profile and profile.is_complete)))
 
 @method_decorator(login_required, name='dispatch')
 class MemberPasswordSetView(AllauthPasswordSetView):
@@ -67,6 +67,7 @@ class MemberPasswordSetView(AllauthPasswordSetView):
 @require_http_methods(['GET','POST'])
 @sensitive_post_parameters('email')
 def email_request(request):
+    remember_return(request)
     if request.user.is_authenticated:
         return redirect('member-profile')
     form=EmailRequestForm(request.POST or None)
@@ -107,7 +108,7 @@ def email_confirm(request):
         return render(request,'members/email_invalid.html',status=400)
     login(request,user,backend='sesame.backends.ModelBackend')
     request.session.pop('post_email_nonce',None)
-    return redirect('member-profile' if user.membership.is_complete else 'member-onboarding')
+    return redirect(finish_login(request, user.membership.is_complete))
 
 @never_cache
 @login_required
@@ -127,7 +128,7 @@ def onboarding(request):
         else:
             try:
                 services.complete_profile(request.user,form.cleaned_data['nickname'])
-                return redirect('member-profile')
+                return redirect(finish_login(request, True))
             except (IntegrityError,ValueError):
                 form.add_error('nickname','닉네임을 확인하고 다시 입력해 주세요.')
     return render(request,'members/onboarding.html',{'form':form,'profile':profile})

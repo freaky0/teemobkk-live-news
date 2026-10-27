@@ -73,7 +73,7 @@ class MemberTests(TestCase):
         for target in ('//evil.example/path', 'https://evil.example/path', '/\\\\evil.example/path', '///evil.example/path'):
             with self.subTest(target=target):
                 response = self.client.post('/accounts/login/', {'login': 'member@example.com', 'password': 'Fixture-passphrase-742!'}, QUERY_STRING='next=' + target)
-                self.assertRedirects(response, '/accounts/profile/', fetch_redirect_response=False)
+                self.assertRedirects(response, '/', fetch_redirect_response=False)
                 self.client.logout()
 
     def test_incomplete_member_must_onboard_before_next(self):
@@ -83,6 +83,32 @@ class MemberTests(TestCase):
         self.client.logout()
         response = self.client.post('/accounts/login/?next=/community/new/', {'login': 'member@example.com', 'password': 'Fixture-passphrase-742!'})
         self.assertRedirects(response, '/accounts/onboarding/', fetch_redirect_response=False)
+
+    def test_onboarding_completes_return_to_original_page(self):
+        _, user = self.verify()
+        user.set_password('Fixture-passphrase-742!')
+        user.save(update_fields=['password'])
+        self.client.logout()
+        response = self.client.post('/accounts/login/?next=/community/new/%3Fcategory%3Dhousing', {'login': 'member@example.com', 'password': 'Fixture-passphrase-742!'})
+        self.assertRedirects(response, '/accounts/onboarding/', fetch_redirect_response=False)
+        self.assertRedirects(self.onboard(), '/community/new/?category=housing', fetch_redirect_response=False)
+
+    def test_google_adapter_keeps_next_until_onboarding(self):
+        from django.test import RequestFactory
+        from config.adapters import ClosedAccountAdapter
+        _, user = self.verify()
+        request = RequestFactory().get('/')
+        request.user = user
+        request.session = {'post_login_return': '/community/new/'}
+        adapter = ClosedAccountAdapter()
+        self.assertEqual(adapter.get_signup_redirect_url(request), '/accounts/onboarding/')
+        self.assertEqual(request.session['post_login_return'], '/community/new/')
+
+    def test_email_link_preserves_return_through_onboarding(self):
+        self.client.get('/accounts/login/?next=/community/new/')
+        payload = self.issue()
+        self.assertRedirects(self.client.post('/accounts/email/confirm/', payload), '/accounts/onboarding/', fetch_redirect_response=False)
+        self.assertRedirects(self.onboard(), '/community/new/', fetch_redirect_response=False)
 
     def test_email_member_can_set_password_after_magic_link_then_login(self):
         _,user=self.verify()
@@ -99,7 +125,7 @@ class MemberTests(TestCase):
         self.client.logout()
         response=self.client.post('/accounts/login/',{'login':'member@example.com','password':'Valid-new-passphrase-742!'})
         self.assertEqual(response.status_code,302)
-        self.assertEqual(response.url,'/accounts/profile/')
+        self.assertEqual(response.url,'/')
         self.assertIn('_auth_user_id',self.client.session)
     def test_email_verify_onboard_real_write_logout_login(self):
         payload,user=self.verify()
