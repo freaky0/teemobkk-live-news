@@ -9,13 +9,15 @@ from django.contrib.auth import get_user_model
 from django.test import override_settings
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from playwright.sync_api import sync_playwright
-from .models import Notification, Post
+from .models import Comment, Notification, Post
 
 @skipUnless(os.environ.get("POST_RUN_BROWSER_TESTS") == "1", "Explicit browser test opt-in required")
 class BrowserFlowTests(StaticLiveServerTestCase):
     def setUp(self):
         self.member = get_user_model().objects.create_user(username="브라우저검증")
         self.post = Post.objects.create(author=self.member, title="브라우저 검증용 첫 생활 질문", body="실제 개인정보를 포함하지 않은 브라우저 검증용 게시글입니다. 목록 이동과 서버 저장을 확인합니다.", region="bangkok", category="housing")
+        if self._testMethodName == 'test_reply_mobile_keyboard_and_submission':
+            Comment.objects.create(post=self.post, author=self.member, body='기존 답변 내용입니다.')
         self.client.force_login(self.member)
         if self._testMethodName == "test_hidden_content_notification_leads_to_appeal_submission":
             self.post.status = Post.Status.HIDDEN
@@ -40,6 +42,22 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.pw.stop()
     def go(self, path):
         return self.page.goto(self.live_server_url + path, wait_until="networkidle")
+
+    def test_reply_mobile_keyboard_and_submission(self):
+        for width in (320, 390, 768, 1440):
+            self.page.set_viewport_size({'width': width, 'height': 900})
+            self.go(f'/community/{self.post.pk}/')
+            summary = self.page.get_by_text('대댓글 작성', exact=True)
+            summary.focus()
+            self.page.keyboard.press('Enter')
+            field = self.page.get_by_label('브라우저검증님의 답변에 대댓글')
+            self.assertTrue(field.is_visible())
+            self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), width)
+        field.fill('모바일 브라우저에서 작성한 대댓글입니다.')
+        self.page.get_by_role('button', name='대댓글 등록').click()
+        self.page.wait_for_load_state('networkidle')
+        self.assertIn('모바일 브라우저에서 작성한 대댓글입니다.', self.page.locator('.reply').inner_text())
+        self.assertEqual(self.errors, [])
     def test_homepage_handles_expanded_localized_copy_without_horizontal_scroll(self):
         p = self.page
         for width in [320, 390, 768, 1440]:

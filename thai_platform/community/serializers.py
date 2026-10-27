@@ -43,6 +43,7 @@ class PostResolutionSerializer(StrictInputMixin, serializers.Serializer):
 
 class CommentInputSerializer(StrictInputMixin, serializers.Serializer):
     body = serializers.CharField(max_length=3000)
+    parent = serializers.IntegerField(min_value=1, required=False, allow_null=True)
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -50,7 +51,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ['id', 'post', 'author', 'body', 'created_at', 'updated_at']
+        fields = ['id', 'post', 'parent', 'author', 'body', 'created_at', 'updated_at']
         read_only_fields = fields
 
 
