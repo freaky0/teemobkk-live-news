@@ -33,7 +33,7 @@ def private_response(response):
 @require_GET
 def inbox(request, sent=False):
     require_member(request.user)
-    items = PrivateMessage.objects.filter(**({'sender': request.user} if sent else {'recipient': request.user})).select_related('sender', 'recipient')[:100]
+    items = PrivateMessage.objects.filter(**({'sender': request.user} if sent else {'recipient': request.user})).select_related('sender', 'recipient', 'sender__membership', 'recipient__membership')[:100]
     return private_response(render(request, 'community/private_messages.html', {'items': items, 'sent': sent, 'form': MessageForm()}))
 
 

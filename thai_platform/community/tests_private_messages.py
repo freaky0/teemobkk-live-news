@@ -41,6 +41,21 @@ class PrivateMessageTests(TestCase):
         from .models import PrivateMessage
         self.assertIsNotNone(PrivateMessage.objects.get(pk=1).read_at)
 
+    def test_message_views_display_nicknames_not_login_identifiers(self):
+        self.alice.username = 'alice-login@example.test'
+        self.alice.save(update_fields=['username'])
+        self.bob.username = 'bob-login@example.test'
+        self.bob.save(update_fields=['username'])
+        self.client.force_login(self.alice)
+        self.assertEqual(self.send('hello', 'BOB').status_code, 302)
+        sent = self.client.get('/community/messages/sent/')
+        self.assertContains(sent, '받는 사람: bob')
+        self.assertNotContains(sent, 'bob-login@example.test')
+        self.client.force_login(self.bob)
+        inbox = self.client.get('/community/messages/')
+        self.assertContains(inbox, '보낸 사람: alice')
+        self.assertNotContains(inbox, 'alice-login@example.test')
+
     def test_auth_csrf_validation_and_limits(self):
         self.assertEqual(self.send().status_code, 302)
         self.client.force_login(self.alice)

@@ -9,7 +9,7 @@
   <form method="post" action="{% url 'private-message-send' %}">{% csrf_token %}{{ form.as_p }}<button class="btn" type="submit">보내기</button></form>
   <h2>{% if sent %}보낸 쪽지{% else %}받은 쪽지{% endif %}</h2>
   <ul class="activity-list">{% for item in items %}<li class="panel">
-    <p>{% if sent %}받는 사람: {{ item.recipient.username }}{% else %}보낸 사람: {{ item.sender.username }}{% endif %}</p>
+    <p>{% if sent %}받는 사람: {{ item.recipient.membership.nickname_key|default:'회원' }}{% else %}보낸 사람: {{ item.sender.membership.nickname_key|default:'회원' }}{% endif %}</p>
     <p class="private-message-body">{{ item.body }}</p>
     <time datetime="{{ item.created_at|date:'c' }}">{{ item.created_at|date:'Y-m-d H:i' }}</time>
     {% if not sent %}{% if item.read_at %}<span>읽음</span>{% else %}<form method="post" action="{% url 'private-message-read' item.pk %}">{% csrf_token %}<button class="btn" type="submit">읽음 처리</button></form>{% endif %}{% endif %}
