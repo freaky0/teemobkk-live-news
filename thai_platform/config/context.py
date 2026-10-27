@@ -13,7 +13,12 @@ def _canonical_path(path):
 
 def runtime(request):
     path = request.path or "/"
+    unread_message_count = 0
+    if request.user.is_authenticated:
+        from community.models import PrivateMessage
+        unread_message_count = PrivateMessage.objects.filter(recipient_id=request.user.pk, read_at__isnull=True).count()
     return {
+        "unread_message_count": unread_message_count,
         "signup_enabled": settings.POST_SIGNUP_ENABLED,
         "google_configured": settings.GOOGLE_CONFIGURED,
         "local_development": settings.LOCAL_DEVELOPMENT,

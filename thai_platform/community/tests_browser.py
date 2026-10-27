@@ -94,12 +94,23 @@ class BrowserFlowTests(StaticLiveServerTestCase):
 
         self.context.clear_cookies()
         self.context.add_cookies([{'name': settings.SESSION_COOKIE_NAME, 'value': self.recipient_session, 'url': self.live_server_url}])
+        for width in (320, 390, 768, 1440):
+            self.page.set_viewport_size({'width': width, 'height': 900})
+            self.go('/')
+            badge = self.page.locator('.message-unread-badge')
+            self.assertTrue(badge.is_visible())
+            self.assertEqual(badge.inner_text(), '1')
+            self.assertTrue(self.page.get_by_role('link', name='쪽지, 읽지 않은 쪽지 1개').is_visible())
+            self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), width)
         self.go('/community/notifications/')
         self.assertTrue(self.page.get_by_text('새 쪽지가 도착했습니다.').is_visible())
         self.assertFalse(self.page.get_by_text('브라우저 쪽지 테스트').is_visible())
         self.page.get_by_role('link', name='쪽지함', exact=True).click()
         self.page.wait_for_url('**/community/messages/')
         self.assertTrue(self.page.get_by_text('브라우저 쪽지 테스트').is_visible())
+        self.page.get_by_role('button', name='읽음 처리').click()
+        self.assertEqual(self.page.locator('.message-unread-badge').count(), 0)
+        self.assertTrue(self.page.get_by_role('link', name='쪽지', exact=True).is_visible())
 
         self.assertEqual(self.errors, [])
 

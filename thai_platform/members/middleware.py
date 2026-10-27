@@ -16,6 +16,8 @@ class AuthBoundaryMiddleware(MiddlewareMixin):
         if request.user.is_authenticated and path.startswith('/accounts/'):
             request._post_private_account_response=True
     def process_response(self,request,response):
+        if request.user.is_authenticated and response.get('Content-Type', '').startswith('text/html'):
+            response['Cache-Control'] = 'no-store, private'
         if request.path_info.startswith(('/accounts/','/api/v1/me/')):
             response['Cache-Control']='no-store, private'
             # Django's HTTPS CSRF checks require a same-origin Referer when
