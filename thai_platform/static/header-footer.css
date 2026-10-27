@@ -1,6 +1,7 @@
 .header { gap: 16px; }
 .header-icon, .account-menu summary { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 1px solid var(--color-border-default); border-radius: 50%; background: var(--color-bg-surface); color: var(--color-text-primary); }
 .header-icon svg, .account-menu svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.header-avatar { position: absolute; width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
 .account-menu { position: relative; flex: none; }
 .account-menu summary { cursor: pointer; list-style: none; }
 .account-menu summary::-webkit-details-marker { display: none; }

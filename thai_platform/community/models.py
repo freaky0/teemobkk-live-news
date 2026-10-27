@@ -157,6 +157,7 @@ class ModerationAppeal(Timestamped):
 class Notification(Timestamped):
     class Kind(models.TextChoices):
         REPLY = 'reply', 'Reply'
+        PRIVATE_MESSAGE = 'private_message', 'Private message'
         MODERATION_REPORT = 'moderation_report', 'New report'
         REPORT_UPDATE = 'report_update', 'Report update'
         CONTENT_HIDDEN = 'content_hidden', 'Content hidden'
@@ -172,6 +173,18 @@ class Notification(Timestamped):
 
     class Meta:
         ordering = ['-created_at', '-pk']
+
+
+class PrivateMessage(models.Model):
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='sent_private_messages')
+    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='received_private_messages')
+    body = models.TextField(validators=[MaxLengthValidator(3000)])
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at', '-pk']
+        indexes = [models.Index(fields=['recipient', '-created_at']), models.Index(fields=['sender', '-created_at'])]
 
 
 class AuditEvent(models.Model):

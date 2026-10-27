@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
 from community import web, news_views
+from community import private_messages
 from members import views as member_views
 from django.views.generic import RedirectView
 urlpatterns = [
@@ -39,6 +40,10 @@ urlpatterns = [
     path("community/activity/", web.my_activity, name="my-activity"),
     path("community/notifications/", web.notifications_page, name="notifications"),
     path("community/notifications/<int:pk>/read/", web.notification_read, name="notification-read"),
+    path("community/messages/", private_messages.inbox, name="private-messages"),
+    path("community/messages/sent/", private_messages.inbox, {"sent": True}, name="private-messages-sent"),
+    path("community/messages/send/", private_messages.send, name="private-message-send"),
+    path("community/messages/<int:pk>/read/", private_messages.read, name="private-message-read"),
     path("community/<int:pk>/appeal/", web.appeal_create, name="appeal-create"),
     path("community/<int:pk>/", web.post_detail, name="post-detail"),
     path("community/<int:pk>/edit/", web.post_edit, name="post-edit"),
