@@ -121,7 +121,7 @@ def my_activity(request):
 def post_detail(request, pk):
     post = get_object_or_404(services.public_posts(request.user), pk=pk)
     viewer = Exists(CommentLike.objects.filter(comment_id=OuterRef('pk'), user=request.user)) if request.user.is_authenticated else Value(False, output_field=BooleanField())
-    visible = Comment.objects.filter(status=Comment.Status.PUBLISHED, post=post).select_related('author').annotate(like_count=Count('likes'), viewer_likes=viewer).order_by('created_at', 'pk')
+    visible = Comment.objects.filter(status=Comment.Status.PUBLISHED, post=post).select_related('author', 'author__membership').annotate(like_count=Count('likes'), viewer_likes=viewer).order_by('created_at', 'pk')
     replies = visible.filter(parent__isnull=False)
     comments = visible.filter(parent__isnull=True).prefetch_related(Prefetch('replies', queryset=replies))
     return render(request, "community/detail.html", {"post": post, "comments": comments, "comment_form": CommentForm(), "report_form": ReportForm(), "back_url": back_url(request)})
