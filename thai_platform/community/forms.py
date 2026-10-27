@@ -10,12 +10,10 @@ class PostForm(forms.Form):
 
     def __init__(self, *args, staff=False, **kwargs):
         super().__init__(*args, **kwargs)
-        category = self.data.get('category') or self.initial.get('category')
-        if category == 'market':
-            self.fields['market_kind'] = forms.ChoiceField(label='글 종류', choices=[('', '선택'), ('sell', '판매'), ('buy', '구매')], required=False)
-            self.fields['market_price'] = forms.DecimalField(label='가격 (THB)', max_digits=12, decimal_places=2, min_value=0, required=False)
-            self.fields['market_region'] = forms.ChoiceField(label='거래 지역', choices=[('', '선택'), *REGIONS], required=False)
-            self.fields['market_status'] = forms.ChoiceField(label='거래 상태', choices=[('', '선택'), ('active', '거래 중'), ('reserved', '예약'), ('completed', '완료')], required=False)
+        self.fields['market_kind'] = forms.ChoiceField(label='글 종류', choices=[('', '선택'), ('sell', '판매'), ('buy', '구매')], required=False)
+        self.fields['market_price'] = forms.DecimalField(label='가격 (THB)', max_digits=12, decimal_places=2, min_value=0, required=False)
+        self.fields['market_region'] = forms.ChoiceField(label='거래 지역', choices=[('', '선택'), *REGIONS], required=False)
+        self.fields['market_status'] = forms.ChoiceField(label='거래 상태', choices=[('', '선택'), ('active', '거래 중'), ('reserved', '예약'), ('completed', '완료')], required=False)
         if staff:
             self.fields['is_pinned'] = forms.BooleanField(label='공지 상단 고정 (공지 글만 가능)', required=False)
 class CommentForm(forms.Form):

@@ -101,6 +101,43 @@ class BrowserFlowTests(StaticLiveServerTestCase):
             self.go('/community/?category=market')
         self.assertEqual(self.errors, [])
 
+    def test_category_change_reveals_market_fields_on_create_and_edit(self):
+        paths = ('/community/new/', f'/community/{self.post.pk}/edit/')
+        for path in paths:
+            with self.subTest(path=path):
+                self.page.set_viewport_size({'width': 1440, 'height': 900})
+                self.go(path)
+                market_fields = self.page.locator('[data-market-fields]')
+                self.assertEqual(market_fields.count(), 1)
+                price = self.page.get_by_label('가격 (THB)')
+                self.assertFalse(market_fields.evaluate('(element) => element.open'))
+                self.assertTrue(price.is_disabled())
+                self.page.get_by_label('주제').select_option('market')
+                self.assertEqual(self.page.get_by_label('주제').input_value(), 'market')
+                self.assertTrue(market_fields.evaluate('(element) => element.open'))
+                self.assertTrue(price.is_visible())
+                self.assertFalse(price.is_disabled())
+                if path == '/community/new/':
+                    self.page.set_viewport_size({'width': 320, 'height': 900})
+                    self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'))
+                    self.page.screenshot(path=str(self.output / 'market-form-open-320.png'), full_page=True)
+                self.page.get_by_label('주제').select_option('free')
+                self.assertFalse(market_fields.evaluate('(element) => element.open'))
+                self.assertTrue(price.is_disabled())
+        self.assertEqual(self.errors, [])
+
+    def test_market_draft_restores_market_fields(self):
+        key = f'post-draft:{self.member.pk}:new'
+        self.context.add_init_script(
+            f"localStorage.setItem('{key}', JSON.stringify({{title:'Saved market draft', "
+            "body:'Long enough draft body for a market post.', region:'common', category:'market'}));"
+        )
+        self.go('/community/new/')
+        self.assertEqual(self.page.get_by_label('주제').input_value(), 'market')
+        market_fields = self.page.locator('[data-market-fields]')
+        self.assertTrue(market_fields.evaluate('(element) => element.open'))
+        self.assertFalse(self.page.get_by_label('가격 (THB)').is_disabled())
+
     def test_comment_like_reply_responsive(self):
         for width in (320, 390, 768, 1440):
             self.page.set_viewport_size({'width': width, 'height': 900})

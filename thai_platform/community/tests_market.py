@@ -13,6 +13,23 @@ class MarketBoardTests(TestCase):
         self.user = get_user_model().objects.create_user(username='market-writer')
         self.client.force_login(self.user)
 
+    def test_market_fields_are_available_when_category_changes(self):
+        from .forms import PostForm
+
+        form = PostForm(initial={'category': 'free'})
+        for field_name in ('market_kind', 'market_price', 'market_region', 'market_status'):
+            with self.subTest(field=field_name):
+                self.assertIn(field_name, form.fields)
+
+    def test_irrelevant_market_field_error_remains_visible_on_non_market_form(self):
+        response = self.client.post('/community/new/', {
+            'title': 'An ordinary post', 'body': 'A sufficiently long ordinary post body.',
+            'region': 'common', 'category': 'living', 'privacy': 'on', 'market_price': 'invalid',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<details class="field market-fields" data-market-fields open>')
+        self.assertContains(response, '가격 (THB)')
+
     def test_market_fields_save_and_render(self):
         payload = {
             'title': 'Used bicycle for sale',

@@ -29,6 +29,7 @@ const key=keyPrefix+form.dataset.draftKey,status=document.querySelector('#draft-
 function read(){try{return JSON.parse(localStorage.getItem(key)||'null');}catch{return null;}}
 function save(){const data={};for(const name of ['title','body','region','category'])data[name]=form.elements[name].value;try{localStorage.setItem(key,JSON.stringify(data));status.textContent='텍스트 초안을 이 브라우저에 자동 저장했습니다.';return true;}catch{status.textContent='초안 자동 저장 실패. 내용을 복사한 뒤 브라우저 저장소 설정을 확인하세요.';return false;}}
 const stored=read();if(stored&&!form.hasAttribute('data-bound')){for(const name of ['title','body','region','category'])if(typeof stored[name]==='string')form.elements[name].value=stored[name];status.textContent='저장한 초안을 불러왔습니다. 서버에 등록하려면 아래 등록 버튼을 누르세요.';}
+const categoryField=form.elements.category,marketFields=form.querySelector('[data-market-fields]');if(categoryField&&marketFields){const syncMarketFields=()=>{const isMarket=categoryField.value==='market';marketFields.open=isMarket||marketFields.querySelector('[aria-invalid="true"]')!==null;marketFields.querySelectorAll('input,select,textarea').forEach(control=>{control.disabled=!isMarket;});};syncMarketFields();categoryField.addEventListener('change',syncMarketFields);}
 form.addEventListener('input',()=>{dirty=true;clearTimeout(timer);timer=setTimeout(save,300);});
 form.addEventListener('change',()=>{dirty=true;save();});
 form.addEventListener('submit',()=>{clearTimeout(timer);save();submitting=true;try{sessionStorage.setItem('post-submitted:'+user,key);}catch{}});
