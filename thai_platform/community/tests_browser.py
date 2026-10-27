@@ -18,7 +18,7 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         if self._testMethodName == 'test_staff_notice_pin_and_unpin':
             self.member.is_staff = True
             self.member.save(update_fields=['is_staff'])
-        if self._testMethodName in ('test_private_messages_mobile_send', 'test_member_menu_mobile_keyboard_and_block'):
+        if self._testMethodName in ('test_private_messages_mobile_send', 'test_member_menu_mobile_keyboard_and_block', 'test_detail_member_menus_in_both_themes'):
             from members.models import MemberProfile
             from django.utils import timezone
             now = timezone.now()
@@ -32,7 +32,13 @@ class BrowserFlowTests(StaticLiveServerTestCase):
             recipient_client.force_login(recipient)
             self.recipient_session = recipient_client.cookies[settings.SESSION_COOKIE_NAME].value
         self.post = Post.objects.create(author=self.member, title="브라우저 검증용 첫 생활 질문", body="실제 개인정보를 포함하지 않은 브라우저 검증용 게시글입니다. 목록 이동과 서버 저장을 확인합니다.", region="bangkok", category="housing")
+        if self._testMethodName == 'test_detail_member_menus_in_both_themes':
+            comment = Comment.objects.create(post=self.post, author=recipient, body='메뉴 답변')
+            Comment.objects.create(post=self.post, author=recipient, parent=comment, body='메뉴 대댓글')
         if self._testMethodName == 'test_reply_mobile_keyboard_and_submission':
+            from members.models import MemberProfile
+            from django.utils import timezone
+            MemberProfile.objects.create(user=self.member, email_key='browser-reply@example.test', nickname_key='브라우저검증', accepted_at=timezone.now(), email_verified_at=timezone.now())
             Comment.objects.create(post=self.post, author=self.member, body='기존 답변 내용입니다.')
         self.client.force_login(self.member)
         if self._testMethodName == "test_hidden_content_notification_leads_to_appeal_submission":
@@ -87,9 +93,22 @@ class BrowserFlowTests(StaticLiveServerTestCase):
             self.go('/community/')
             row = self.page.locator('article.row').filter(has_text='회원 메뉴 테스트')
             summary = row.locator('summary')
+            before = row.bounding_box()
             summary.focus()
             self.page.keyboard.press('Enter')
+            menu = row.locator('.member-menu-actions')
             self.assertTrue(row.get_by_role('link', name='회원 정보').is_visible())
+            self.assertAlmostEqual(row.bounding_box()['height'], before['height'], delta=1)
+            box = menu.bounding_box()
+            self.assertGreaterEqual(box['x'], 0)
+            self.assertLessEqual(box['x'] + box['width'], width)
+            self.page.keyboard.press('Escape')
+            self.assertFalse(menu.is_visible())
+            self.assertTrue(summary.evaluate('(e) => document.activeElement === e'))
+            summary.click()
+            self.page.locator('h1').first.click()
+            self.assertFalse(menu.is_visible())
+            summary.click()
             self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), width)
         row.get_by_role('link', name='쪽지 보내기').click()
         self.assertEqual(self.page.get_by_label('받는 회원 닉네임').input_value(), '쪽지수신자')
@@ -100,6 +119,40 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.assertTrue(self.page.get_by_role('button', name='차단 해제').is_visible())
         self.page.get_by_role('button', name='차단 해제').click()
         self.assertTrue(self.page.get_by_text('차단한 회원이 없습니다.').is_visible())
+        self.assertEqual(self.errors, [])
+
+    def test_detail_member_menus_in_both_themes(self):
+        for width in (320, 390, 768, 1440):
+            self.page.set_viewport_size({'width': width, 'height': 900})
+            self.go(f'/community/{self.post.pk}/')
+            for theme in ('light', 'dark'):
+                if (self.page.locator('html').get_attribute('data-theme') or 'light') != theme:
+                    self.page.locator('[data-theme-toggle]').click()
+                menus = self.page.locator('.member-menu')
+                self.assertEqual(menus.count(), 3)
+                for i in range(3):
+                    menu = menus.nth(i)
+                    menu.locator('summary').click()
+                    panel = menu.locator('.member-menu-actions')
+                    self.assertTrue(panel.is_visible())
+                    self.assertEqual(panel.evaluate("e => getComputedStyle(e).backgroundColor"), panel.evaluate("e => getComputedStyle(document.documentElement).getPropertyValue('--color-bg-surface').trim()").replace('#fff', 'rgb(255, 255, 255)') if theme == 'light' else 'rgb(24, 42, 58)')
+                    box = panel.bounding_box()
+                    self.assertGreaterEqual(box['x'], 0)
+                    self.assertLessEqual(box['x'] + box['width'], width)
+                    if i == 2:
+                        self.page.screenshot(path=str(self.output / f'member-menu-{theme}-{width}.png'))
+                    self.page.keyboard.press('Escape')
+                    self.assertFalse(panel.is_visible())
+        self.go(f'/community/{self.post.pk}/')
+        self.page.locator('.answer .member-menu summary').first.click()
+        self.page.locator('.answer .member-menu').first.get_by_role('link', name='회원 정보').click()
+        self.assertIn('/community/members/', self.page.url)
+        self.assertTrue(self.page.locator('#member-posts').is_visible())
+        self.go(f'/community/{self.post.pk}/')
+        self.page.locator('.reply .member-menu summary').click()
+        self.page.locator('.reply .member-menu').get_by_role('link', name='작성글 보기').click()
+        self.assertTrue(self.page.url.endswith('#member-posts'))
+        self.assertTrue(self.page.locator('#member-posts').is_visible())
         self.assertEqual(self.errors, [])
 
     def test_private_messages_mobile_send(self):
