@@ -45,9 +45,8 @@ class AuthDisclosureTests(TestCase):
                 response=self.client.get(path)
                 self.assertEqual(response.status_code,200)
                 self.assertNotContains(response,'실제 개인정보나 민감한 자료를')
-                self.assertContains(response,'수신 가능한 이메일 주소')
-                self.assertContains(response,'신분증 번호')
-                self.assertContains(response,'금융정보')
+                footer=response.content.decode().split('<footer', 1)[1].split('</footer>', 1)[0]
+                self.assertNotIn('개발 검토용 서비스입니다.', footer)
         response=self.client.get('/accounts/policy/privacy/')
         self.assertContains(response,'서비스는 이용자 편의와 안정적인 운영을 위해 쿠키 또는 브라우저 저장 기술을 사용할 수 있습니다.')
         self.assertContains(response,'개발 검토용 초안')

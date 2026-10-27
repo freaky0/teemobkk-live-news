@@ -1,0 +1,12 @@
+.header { gap: 16px; }
+.header-icon, .account-menu summary { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 1px solid var(--color-border-default); border-radius: 50%; background: var(--color-bg-surface); color: var(--color-text-primary); }
+.header-icon svg, .account-menu svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.account-menu { position: relative; flex: none; }
+.account-menu summary { cursor: pointer; list-style: none; }
+.account-menu summary::-webkit-details-marker { display: none; }
+.account-menu summary:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 3px; }
+.account-menu-panel { position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; width: 180px; padding: 6px; border: 1px solid var(--color-border-default); border-radius: 9px; background: var(--color-bg-surface); box-shadow: 0 8px 24px #0002; }
+.account-menu-panel a { display: flex; align-items: center; min-height: 44px; padding: 8px 12px; border-radius: 5px; }
+.account-menu-panel a:hover, .account-menu-panel a:focus-visible { background: var(--color-bg-subtle); }
+.footer p { margin-bottom: 4px; }
+@media (max-width: 600px) { .header { gap: 8px; } .header .account-profile { display: flex; } }

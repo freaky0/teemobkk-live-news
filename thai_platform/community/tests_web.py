@@ -42,9 +42,9 @@ class WebTests(TestCase):
         self.assertEqual(list(response.context['helpful_posts']), [self.post])
 
     def test_desktop_header_links_to_profile_only_when_signed_in(self):
-        self.assertNotContains(self.client.get('/'), 'class="btn account-profile"')
+        self.assertNotContains(self.client.get('/'), 'class="account-profile"')
         self.client.force_login(self.owner)
-        self.assertContains(self.client.get('/'), 'class="btn account-profile" href="/accounts/profile/"')
+        self.assertContains(self.client.get('/'), 'class="account-profile" href="/accounts/profile/"')
 
     def test_question_login_links_preserve_query(self):
         url = reverse('post-detail', args=[self.post.pk])
