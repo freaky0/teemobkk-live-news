@@ -9,6 +9,8 @@ class MemberProfile(models.Model):
     email_verified_at = models.DateTimeField(null=True, blank=True)
     email_answer_notifications = models.BooleanField(default=False)
     nickname_key = models.CharField(max_length=40, unique=True, null=True, blank=True)
+    nickname_changed_at = models.DateTimeField(null=True, blank=True)
+    avatar = models.CharField(max_length=12, default='person')
     terms_version = models.CharField(max_length=40, blank=True)
     privacy_version = models.CharField(max_length=40, blank=True)
     accepted_at = models.DateTimeField(null=True, blank=True)

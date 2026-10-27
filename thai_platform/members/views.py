@@ -1,9 +1,12 @@
 import secrets
+from datetime import timedelta
 from django.conf import settings
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, get_user_model
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db import IntegrityError, OperationalError
+from django.db import IntegrityError, OperationalError, transaction
+from django.db.models import Q
+from django.utils import timezone
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -18,7 +21,7 @@ from allauth.account.views import PasswordSetView as AllauthPasswordSetView
 from allauth.socialaccount.models import SocialAccount
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .forms import AnswerEmailNotificationForm, AccountClosureForm, EmailRequestForm, MemberPasswordLoginForm, OnboardingForm
+from .forms import AnswerEmailNotificationForm, AccountClosureForm, EmailRequestForm, MemberPasswordLoginForm, OnboardingForm, ProfileNicknameForm, AvatarForm
 from .models import MemberProfile
 from . import services
 from .return_to import remember_return, finish_login
@@ -167,7 +170,50 @@ def profile(request):
         and request.user.email.strip().casefold()==member.email_key.strip().casefold()
         and EmailAddress.objects.filter(user=request.user,email__iexact=member.email_key,verified=True).exists())
     google_link_available=bool(google_email_verified and settings.GOOGLE_CONFIGURED and not google_connected)
-    return render(request,'members/profile.html',{'profile':member,'google_connected':google_connected,'google_link_available':google_link_available,'answer_email_form':answer_email_form})
+    return render(request,'members/profile.html',{'profile':member,'google_connected':google_connected,'google_link_available':google_link_available,'answer_email_form':answer_email_form, 'nickname_form':ProfileNicknameForm(user=request.user, initial={'nickname':request.user.username}), 'avatar_form':AvatarForm(initial={'avatar':member.avatar}) if member else None})
+
+@never_cache
+@login_required
+@require_http_methods(['POST'])
+def edit_nickname(request):
+    member = MemberProfile.objects.filter(user=request.user).first()
+    if not member or not member.is_complete:
+        return HttpResponseForbidden()
+    form = ProfileNicknameForm(request.POST, user=request.user)
+    if form.is_valid():
+        nickname = form.cleaned_data['nickname']
+        if nickname == request.user.username:
+            return redirect('member-profile')
+        now = timezone.now()
+        try:
+            with transaction.atomic():
+                updated = MemberProfile.objects.filter(pk=member.pk).filter(Q(nickname_changed_at__isnull=True) | Q(nickname_changed_at__lte=now-timedelta(days=30))).update(nickname_key=nickname.casefold(), nickname_changed_at=now)
+                if updated:
+                    get_user_model().objects.filter(pk=request.user.pk).update(username=nickname)
+        except (IntegrityError, OperationalError):
+            updated = 0
+        if updated:
+            messages.success(request, '닉네임을 변경했습니다.')
+        else:
+            messages.error(request, '닉네임은 30일마다 변경할 수 있습니다. 중복 여부도 확인해 주세요.')
+    else:
+        messages.error(request, '닉네임을 확인하고 다시 입력해 주세요.')
+    return redirect('member-profile')
+
+@never_cache
+@login_required
+@require_http_methods(['POST'])
+def edit_avatar(request):
+    member = MemberProfile.objects.filter(user=request.user).first()
+    if not member or not member.is_complete:
+        return HttpResponseForbidden()
+    form = AvatarForm(request.POST)
+    if form.is_valid():
+        MemberProfile.objects.filter(pk=member.pk).update(avatar=form.cleaned_data['avatar'])
+        messages.success(request, '프로필 아이콘을 변경했습니다.')
+    else:
+        messages.error(request, '프로필 아이콘을 확인해 주세요.')
+    return redirect('member-profile')
 
 @never_cache
 @login_required
