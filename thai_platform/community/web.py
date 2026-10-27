@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Q, Prefetch
+from django.db.models import Q, Prefetch, Count, Exists, OuterRef, Value, BooleanField
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import Http404
 from rest_framework.exceptions import PermissionDenied as APIPermissionDenied, NotFound as APINotFound
@@ -12,7 +12,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.cache import never_cache
 from rest_framework.exceptions import ValidationError as APIValidationError
 from .forms import CATEGORIES, REGIONS, AppealForm, CommentForm, PostForm, ReportForm
-from .models import Comment, Notification, Post
+from .models import Comment, CommentLike, Notification, Post
 from . import services
 
 def call_service(name, *args):
@@ -120,9 +120,28 @@ def my_activity(request):
 @never_cache
 def post_detail(request, pk):
     post = get_object_or_404(services.public_posts(request.user), pk=pk)
-    replies = Comment.objects.filter(status=Comment.Status.PUBLISHED, post=post).select_related('author').order_by('created_at', 'pk')
-    comments = post.comments.filter(status=Comment.Status.PUBLISHED, parent__isnull=True).select_related('author').prefetch_related(Prefetch('replies', queryset=replies)).order_by('created_at', 'pk')
+    viewer = Exists(CommentLike.objects.filter(comment_id=OuterRef('pk'), user=request.user)) if request.user.is_authenticated else Value(False, output_field=BooleanField())
+    visible = Comment.objects.filter(status=Comment.Status.PUBLISHED, post=post).select_related('author').annotate(like_count=Count('likes'), viewer_likes=viewer).order_by('created_at', 'pk')
+    replies = visible.filter(parent__isnull=False)
+    comments = visible.filter(parent__isnull=True).prefetch_related(Prefetch('replies', queryset=replies))
     return render(request, "community/detail.html", {"post": post, "comments": comments, "comment_form": CommentForm(), "report_form": ReportForm(), "back_url": back_url(request)})
+
+
+@never_cache
+@require_POST
+def comment_like(request, pk, comment_pk):
+    call_service('require_active', request.user)
+    post = get_object_or_404(published(), pk=pk)
+    comment = get_object_or_404(Comment.objects.filter(Q(parent__isnull=True) | Q(parent__status=Comment.Status.PUBLISHED)), pk=comment_pk, post=post, status=Comment.Status.PUBLISHED)
+    active = request.POST.get('active')
+    if active not in ('true', 'false') or set(request.POST) - {'active', 'csrfmiddlewaretoken'}:
+        from django.http import HttpResponseBadRequest
+        return HttpResponseBadRequest('Invalid request.')
+    if active == 'true':
+        CommentLike.objects.get_or_create(user=request.user, comment=comment)
+    else:
+        CommentLike.objects.filter(user=request.user, comment=comment).delete()
+    return redirect('post-detail', pk=pk)
 
 def service_error(form, exc):
     errors = getattr(exc, "message_dict", None) or getattr(exc, "detail", None)
