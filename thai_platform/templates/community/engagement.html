@@ -12,5 +12,5 @@
 </form>
 <a class="btn" href="{% url 'my-activity' %}">내 활동</a>
 </div><p class="meta">스크랩 목록은 본인만 볼 수 있습니다.</p>
-{% else %}<a class="btn" href="{% url 'account_login' %}">로그인하고 반응·스크랩하기</a>{% endif %}
+{% else %}<a class="btn" href="{% url 'account_login' %}?next={{ request.get_full_path|urlencode }}">로그인하고 반응·스크랩하기</a>{% endif %}
 </section>

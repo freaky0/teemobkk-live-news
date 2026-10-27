@@ -46,6 +46,13 @@ class WebTests(TestCase):
         self.client.force_login(self.owner)
         self.assertContains(self.client.get('/'), 'class="btn account-profile" href="/accounts/profile/"')
 
+    def test_question_login_links_preserve_query(self):
+        url = reverse('post-detail', args=[self.post.pk])
+        response = self.client.get(url + '?page=2')
+        target = f'/accounts/login/?next={url}%3Fpage%3D2'
+        self.assertContains(response, f'href="{target}">로그인하고 답변하기')
+        self.assertContains(response, f'href="{target}">로그인하고 반응·스크랩하기')
+
     def test_anonymous_cannot_write(self):
         before = Post.objects.count()
         self.assertEqual(self.client.post("/community/new/", {"title": "몰래 등록 시도"}).status_code, 302)

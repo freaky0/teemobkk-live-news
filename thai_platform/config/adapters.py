@@ -12,12 +12,26 @@ from allauth.account.models import EmailAddress
 from allauth.core.exceptions import ImmediateHttpResponse
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from members.models import MemberProfile
-from members.return_to import finish_login
+from members.return_to import finish_login, safe_return, SESSION_KEY
 
 class ClosedAccountAdapter(DefaultAccountAdapter):
     def is_open_for_signup(self,request):
         # Email signup is handled only by the explicit passwordless flow.
         return False
+    def post_login(self, request, user, *, email_verification, signal_kwargs, email, signup, redirect_url):
+        # allauth otherwise gives its explicit OAuth state next precedence over
+        # the account adapter, allowing incomplete profiles to skip onboarding.
+        if redirect_url is not None:
+            target = safe_return(request, redirect_url)
+            if target:
+                request.session[SESSION_KEY] = target
+            else:
+                request.session.pop(SESSION_KEY, None)
+        profile = MemberProfile.objects.filter(user=user).first()
+        destination = finish_login(request, bool(profile and profile.is_complete))
+        return super().post_login(request, user, email_verification=email_verification,
+                                  signal_kwargs=signal_kwargs, email=email, signup=signup,
+                                  redirect_url=destination)
     def get_login_redirect_url(self,request):
         profile=MemberProfile.objects.filter(user=request.user).first()
         return finish_login(request, bool(profile and profile.is_complete))

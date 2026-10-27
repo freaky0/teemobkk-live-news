@@ -52,6 +52,33 @@ class MemberTests(TestCase):
         self.assertContains(options,'이메일 인증 링크로 가입·로그인')
         self.assertContains(options,'Google로 계속하기')
         self.assertEqual(self.client.get('/accounts/password/reset/').status_code,403)
+    def test_header_login_returns_to_current_page_with_query(self):
+        from html.parser import HTMLParser
+        class LoginLink(HTMLParser):
+            href = None
+            def handle_starttag(self, tag, attrs):
+                attrs = dict(attrs)
+                if tag == 'a' and attrs.get('class') == 'btn' and attrs.get('href', '').startswith('/accounts/login/'):
+                    self.href = attrs['href']
+        _, user = self.verify()
+        self.onboard()
+        user.set_password('Fixture-passphrase-742!')
+        user.save(update_fields=['password'])
+        self.client.logout()
+        page = self.client.get('/community/?category=housing')
+        parser = LoginLink()
+        parser.feed(page.content.decode())
+        self.assertIsNotNone(parser.href)
+        self.assertEqual(parse_qs(urlsplit(parser.href).query).get('next'), ['/community/?category=housing'])
+        self.client.get(parser.href)
+        response = self.client.post(parser.href, {'login': 'member@example.com', 'password': 'Fixture-passphrase-742!'})
+        self.assertRedirects(response, '/community/?category=housing', fetch_redirect_response=False)
+
+    def test_mobile_account_link_preserves_current_page(self):
+        response = self.client.get('/community/?category=housing')
+        self.assertContains(response, '/accounts/login/?next=/community/%3Fcategory%3Dhousing')
+        self.assertContains(response, '<a href="/accounts/login/?next=/community/%3Fcategory%3Dhousing"><span class="nav-icon"', html=False)
+
     def test_password_login_returns_complete_member_to_safe_next(self):
         _, user = self.verify()
         self.onboard()
@@ -92,6 +119,28 @@ class MemberTests(TestCase):
         response = self.client.post('/accounts/login/?next=/community/new/%3Fcategory%3Dhousing', {'login': 'member@example.com', 'password': 'Fixture-passphrase-742!'})
         self.assertRedirects(response, '/accounts/onboarding/', fetch_redirect_response=False)
         self.assertRedirects(self.onboard(), '/community/new/?category=housing', fetch_redirect_response=False)
+
+    def test_google_allauth_explicit_next_cannot_bypass_onboarding(self):
+        from config.adapters import ClosedAccountAdapter
+        _, user = self.verify()
+        request = self.client.get('/accounts/login/?next=/community/new/').wsgi_request
+        request.user = user
+        response = ClosedAccountAdapter().post_login(request, user, email_verification='none', signal_kwargs={}, email=None, signup=True, redirect_url='/community/new/')
+        self.assertEqual(response['Location'], '/accounts/onboarding/')
+        self.assertEqual(request.session['post_login_return'], '/community/new/')
+
+    def test_google_allauth_rejects_unsafe_state_next(self):
+        from config.adapters import ClosedAccountAdapter
+        _, user = self.verify()
+        self.onboard()
+        request = self.client.get('/accounts/login/').wsgi_request
+        request.user = user
+        for target in ('https://evil.example/', '//evil.example/', '/\\\\evil.example/'):
+            with self.subTest(target=target):
+                request.session['post_login_return'] = '/community/'
+                response = ClosedAccountAdapter().post_login(request, user, email_verification='none', signal_kwargs={}, email=None, signup=False, redirect_url=target)
+                self.assertEqual(response['Location'], '/')
+                self.assertNotIn('post_login_return', request.session)
 
     def test_google_adapter_keeps_next_until_onboarding(self):
         from django.test import RequestFactory
