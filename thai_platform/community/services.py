@@ -72,6 +72,10 @@ def create_post(user, data):
     values = _validate(PostInputSerializer, data)
     if values.get('category') == Post.Category.NOTICE and not user.is_staff:
         raise PermissionDenied('Staff access required for notices.')
+    if 'is_pinned' in values and not user.is_staff:
+        raise PermissionDenied('Staff access required for pinning.')
+    if values.get('is_pinned') and values.get('category') != Post.Category.NOTICE:
+        raise ValidationError({'is_pinned': 'Only notices can be pinned.'})
     post = Post.objects.create(author=user, **values)
     _audit(user, 'post.create', post)
     return post
@@ -87,6 +91,10 @@ def update_post(user, post, data):
     values = _validate(PostInputSerializer, data, partial=True)
     if values.get('category') == Post.Category.NOTICE and not user.is_staff:
         raise PermissionDenied('Staff access required for notices.')
+    if 'is_pinned' in values and not user.is_staff:
+        raise PermissionDenied('Staff access required for pinning.')
+    if values.get('is_pinned', post.is_pinned) and values.get('category', post.category) != Post.Category.NOTICE:
+        raise ValidationError({'is_pinned': 'Only notices can be pinned.'})
     for key, value in values.items():
         setattr(post, key, value)
     post.save()
@@ -107,7 +115,7 @@ def delete_post(user, post):
 
 
 def public_posts(user=None):
-    qs = Post.objects.filter(status=Post.Status.PUBLISHED).select_related('author').annotate(helpful_count=Count('helpful_votes', distinct=True)).order_by('-created_at', '-pk')
+    qs = Post.objects.filter(status=Post.Status.PUBLISHED).select_related('author').annotate(helpful_count=Count('helpful_votes', distinct=True)).order_by('-is_pinned', '-created_at', '-pk')
     if user and user.is_authenticated:
         qs = qs.annotate(
             helpful_active=Exists(Helpful.objects.filter(user=user, post_id=OuterRef('pk'))),

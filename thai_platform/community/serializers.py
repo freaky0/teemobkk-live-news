@@ -18,7 +18,7 @@ class PostInputSerializer(StrictInputMixin, serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = ['title', 'body', 'region', 'category']
+        fields = ['title', 'body', 'region', 'category', 'is_pinned']
 
 
 class PostSerializer(serializers.ModelSerializer):
@@ -29,7 +29,7 @@ class PostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = ['id', 'author', 'title', 'body', 'region', 'category', 'status', 'resolution', 'helpful_count', 'helpful_active', 'bookmarked', 'created_at', 'updated_at']
+        fields = ['id', 'author', 'title', 'body', 'region', 'category', 'is_pinned', 'status', 'resolution', 'helpful_count', 'helpful_active', 'bookmarked', 'created_at', 'updated_at']
         read_only_fields = fields
 
 
