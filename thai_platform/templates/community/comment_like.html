@@ -1,0 +1,8 @@
+{% if user.is_authenticated and user.is_active %}
+<form method="post" action="{% url 'comment-like' post.pk item.pk %}">{% csrf_token %}
+  <input type="hidden" name="active" value="{% if item.viewer_likes %}false{% else %}true{% endif %}">
+  <button class="btn" type="submit" aria-pressed="{% if item.viewer_likes %}true{% else %}false{% endif %}">♥ 좋아요 {{ item.like_count }}</button>
+</form>
+{% else %}
+<a class="btn" href="{% url 'account_login' %}?next={{ request.get_full_path|urlencode }}" aria-label="로그인하고 좋아요 누르기">♡ 좋아요 {{ item.like_count }}</a>
+{% endif %}

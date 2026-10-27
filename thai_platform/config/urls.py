@@ -59,5 +59,6 @@ urlpatterns = [
     path("community/<int:pk>/helpful/", web.post_helpful, name="post-helpful"),
     path("community/<int:pk>/bookmark/", web.post_bookmark, name="post-bookmark"),
     path("community/<int:pk>/comments/", web.comment_create, name="comment-create"),
+    path("community/<int:pk>/comments/<int:comment_pk>/like/", web.comment_like, name="comment-like"),
     path("community/<int:pk>/report/", web.report_create, name="report-create"),
 ]

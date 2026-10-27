@@ -105,6 +105,14 @@ class Comment(Timestamped):
         ordering = ['created_at', 'pk']
 
 
+class CommentLike(Timestamped):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='comment_likes')
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name='likes')
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['user', 'comment'], name='unique_comment_like_user_comment')]
+
+
 class Report(Timestamped):
     class Reason(models.TextChoices):
         OUTDATED = 'outdated', 'Outdated'

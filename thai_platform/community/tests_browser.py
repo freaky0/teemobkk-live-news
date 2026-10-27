@@ -40,6 +40,9 @@ class BrowserFlowTests(StaticLiveServerTestCase):
             from django.utils import timezone
             MemberProfile.objects.create(user=self.member, email_key='browser-reply@example.test', nickname_key='브라우저검증', accepted_at=timezone.now(), email_verified_at=timezone.now())
             Comment.objects.create(post=self.post, author=self.member, body='기존 답변 내용입니다.')
+        if self._testMethodName == 'test_comment_like_reply_responsive':
+            answer = Comment.objects.create(post=self.post, author=self.member, body='Browser answer')
+            Comment.objects.create(post=self.post, author=self.member, parent=answer, body='Browser reply')
         self.client.force_login(self.member)
         if self._testMethodName == "test_hidden_content_notification_leads_to_appeal_submission":
             self.post.status = Post.Status.HIDDEN
@@ -64,6 +67,28 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.pw.stop()
     def go(self, path):
         return self.page.goto(self.live_server_url + path, wait_until="networkidle")
+
+    def test_comment_like_reply_responsive(self):
+        for width in (320, 390, 768, 1440):
+            self.page.set_viewport_size({'width': width, 'height': 900})
+            self.go(f'/community/{self.post.pk}/')
+            self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), width)
+            self.assertEqual(self.page.locator('.answer button[aria-pressed]').count(), 2)
+        self.page.set_viewport_size({'width': 390, 'height': 900})
+        answer_button = self.page.locator('.answer').first.locator('button[aria-pressed]').first
+        answer_button.focus()
+        with self.page.expect_navigation(wait_until='networkidle'):
+            self.page.keyboard.press('Enter')
+        self.assertEqual(self.page.locator('.answer').first.locator('button[aria-pressed]').first.get_attribute('aria-pressed'), 'true')
+        reply_button = self.page.locator('.reply button[aria-pressed]')
+        reply_button.click()
+        self.assertEqual(self.page.locator('.reply button[aria-pressed]').get_attribute('aria-pressed'), 'true')
+        self.page.reload(wait_until='networkidle')
+        self.assertEqual(self.page.locator('.reply button[aria-pressed]').inner_text(), '♥ 좋아요 1')
+        self.page.locator('.reply button[aria-pressed]').click()
+        self.assertEqual(self.page.locator('.reply button[aria-pressed]').get_attribute('aria-pressed'), 'false')
+        self.page.screenshot(path=str(self.output / 'comment-likes-mobile.png'), full_page=True)
+        self.assertEqual(self.errors, [])
 
     def test_staff_notice_pin_and_unpin(self):
         self.go('/community/new/')
