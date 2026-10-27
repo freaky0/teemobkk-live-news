@@ -66,6 +66,34 @@ def _audit(user, action, obj, metadata=None):
                               target_id=str(obj.pk), metadata=metadata or {})
 
 
+def require_post_operator(user):
+    require_active(user)
+    if not user.is_superuser or not user.is_staff:
+        raise PermissionDenied('Operator access required.')
+
+
+@transaction.atomic
+def operator_post_action(user, post, action):
+    require_post_operator(user)
+    if action not in ('hide', 'restore', 'delete'):
+        raise ValidationError({'action': 'Invalid action.'})
+    post = Post.objects.select_for_update().select_related('author').get(pk=post.pk)
+    if post.status == Post.Status.DELETED:
+        raise NotFound('Post not found.')
+    previous = post.status
+    if action == 'hide' and previous != Post.Status.PUBLISHED:
+        raise ValidationError({'action': 'Only published posts can be hidden.'})
+    if action == 'restore' and previous != Post.Status.HIDDEN:
+        raise ValidationError({'action': 'Only hidden posts can be restored.'})
+    post.status = {'hide': Post.Status.HIDDEN, 'restore': Post.Status.PUBLISHED, 'delete': Post.Status.DELETED}[action]
+    post.save(update_fields=['status', 'updated_at'])
+    _audit(user, {'hide': 'content.hide', 'restore': 'content.restore', 'delete': 'post.delete'}[action], post,
+           {'previous_status': previous, 'status': post.status, 'source': 'operator'})
+    if action == 'hide' and post.author.is_active:
+        Notification.objects.create(recipient=post.author, kind=Notification.Kind.CONTENT_HIDDEN, post=post)
+    return post
+
+
 @transaction.atomic
 def create_post(user, data):
     require_active(user)

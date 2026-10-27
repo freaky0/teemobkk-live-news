@@ -59,6 +59,43 @@ def post_list(request):
     keep.pop("page", None)
     return render(request, "community/list.html", {"resolution": resolution, "resolutions": Post.Resolution.choices, "page_obj": pagination, "q": q, "region": region, "category": category, "regions": REGIONS, "categories": CATEGORIES, "list_query": "?" + request.GET.urlencode(), "filter_query": keep.urlencode()})
 
+
+@never_cache
+@require_GET
+def operator_hidden_posts(request):
+    call_service('require_post_operator', request.user)
+    posts = Post.objects.filter(status=Post.Status.HIDDEN).select_related('author')
+    return render(request, 'community/operator_hidden.html', {'page_obj': Paginator(posts, 20).get_page(request.GET.get('page'))})
+
+
+@never_cache
+def operator_delete_confirm(request, pk):
+    call_service('require_post_operator', request.user)
+    if request.method != 'GET':
+        from django.http import HttpResponseNotAllowed
+        return HttpResponseNotAllowed(['GET'])
+    post = get_object_or_404(Post.objects.exclude(status=Post.Status.DELETED), pk=pk)
+    return render(request, 'community/operator_delete.html', {'post': post})
+
+
+@never_cache
+@require_POST
+def operator_post_action(request, pk):
+    call_service('require_post_operator', request.user)
+    post = get_object_or_404(Post.objects.exclude(status=Post.Status.DELETED), pk=pk)
+    action = request.POST.get('action')
+    if action == 'delete' and request.POST.get('confirm') != 'yes':
+        from django.http import HttpResponseBadRequest
+        return HttpResponseBadRequest('Confirmation required.')
+    try:
+        call_service('operator_post_action', request.user, post, action)
+    except APIValidationError:
+        from django.http import HttpResponseBadRequest
+        return HttpResponseBadRequest('Invalid action or post status.')
+    if action == 'restore':
+        return redirect('post-detail', pk=pk)
+    return redirect('operator-hidden-posts' if action == 'hide' else 'post-list')
+
 @require_GET
 def public_member(request, pk):
     from members.models import MemberProfile
