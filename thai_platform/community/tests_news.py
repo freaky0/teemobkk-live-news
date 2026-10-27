@@ -67,6 +67,45 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
         payload=self.client.get('/api/v1/news/').json()
         self.assertEqual(payload['results'][0]['image_url'],image)
 
+    def test_social_previews_are_stable_on_home_and_article_specific(self):
+        from html.parser import HTMLParser
+        class Meta(HTMLParser):
+            def __init__(self):
+                super().__init__(); self.tags = []
+            def handle_starttag(self, tag, attrs):
+                attrs = dict(attrs)
+                if tag == 'meta': self.tags.append((attrs.get('property', attrs.get('name')), attrs.get('content')))
+        def metadata(response):
+            parser = Meta(); parser.feed(response.content.decode()); return parser.tags
+        image = 'https://images.publisher.example/story.jpg'
+        link = self.add('social-story', image_url=image)
+        ident = sha256(link.encode()).hexdigest()
+        home = metadata(self.client.get('/?utm_source=test'))
+        branded = 'https://teemobkk.io/thai/static/assets/share-home-v1.jpg'
+        self.assertEqual([v for k, v in home if k == 'og:image'], [branded])
+        self.assertIn(('twitter:image', branded), home)
+        self.assertIn(('og:url', 'https://teemobkk.io/thai/'), home)
+        self.assertIn(('og:image:type', 'image/jpeg'), home)
+        self.assertIn(('og:image:width', '1200'), home)
+        self.assertIn(('og:image:height', '630'), home)
+        detail = metadata(self.client.get('/newsroom/'+ident+'/'))
+        self.assertEqual([v for k, v in detail if k == 'og:image'], [image])
+        self.assertIn(('twitter:image', image), detail)
+        self.assertIn(('og:title', '검증용 태국 뉴스 social-story'), detail)
+        self.assertIn(('og:url', 'https://teemobkk.io/thai/newsroom/'+ident+'/'), detail)
+        no_image = self.add('social-no-image')
+        missing = metadata(self.client.get('/newsroom/'+sha256(no_image.encode()).hexdigest()+'/'))
+        self.assertEqual([v for k, v in missing if k == 'og:image'], [branded])
+        self.assertIn(('twitter:image', branded), missing)
+        self.assertIn(('og:title', '검증용 태국 뉴스 social-no-image'), missing)
+        from PIL import Image
+        from django.contrib.staticfiles import finders
+        asset = Path(__file__).resolve().parent.parent / 'static/assets/share-home-v1.jpg'
+        self.assertEqual(Path(finders.find('assets/share-home-v1.jpg')).resolve(), asset.resolve())
+        with Image.open(asset) as graphic:
+            self.assertEqual((graphic.format, graphic.size), ('JPEG', (1200, 630)))
+            graphic.verify()
+
     def test_homepage_featured_story_is_the_newest_visible_article(self):
         from datetime import timedelta
         from django.utils import timezone

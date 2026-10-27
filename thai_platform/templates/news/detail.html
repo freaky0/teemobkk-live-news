@@ -1,5 +1,20 @@
 {% extends 'base.html' %}
 {% block title %}{{ article.title }} · TEEMOBKK's POST{% endblock %}
+{% block social_meta %}
+<link rel="canonical" href="{{ canonical_url }}">
+<meta name="description" content="{{ article.summary|striptags|truncatechars:200 }}">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="TEEMOBKK's POST">
+<meta property="og:title" content="{{ article.title }}">
+<meta property="og:description" content="{{ article.summary|striptags|truncatechars:200 }}">
+<meta property="og:url" content="{{ canonical_url }}">
+<meta property="og:image" content="{% if article.image_url %}{{ article.image_url }}{% else %}{{ share_image_url }}{% endif %}">
+<meta property="og:image:alt" content="{% if article.image_url %}{{ article.title }}{% else %}방콕을 여행하는 TEEMOBKK 고양이와 태국 소식{% endif %}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ article.title }}">
+<meta name="twitter:description" content="{{ article.summary|striptags|truncatechars:200 }}">
+<meta name="twitter:image" content="{% if article.image_url %}{{ article.image_url }}{% else %}{{ share_image_url }}{% endif %}">
+{% endblock %}
 {% block content %}
 <div class="crumb"><a href="{% url 'home' %}">홈</a> › <a href="{% url 'news-list' %}">태국 뉴스</a></div>
 <article class="news-detail panel">

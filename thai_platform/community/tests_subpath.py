@@ -43,6 +43,13 @@ class SubpathMountTests(TestCase):
         google = self.client.post("/accounts/google/login/", SCRIPT_NAME="/thai")
         self.assertEqual(google.status_code, 503)
 
+    def test_home_social_metadata_is_absolute_under_mount_prefix(self):
+        response = self.client.get("/", SCRIPT_NAME="/thai")
+        self.assertContains(response, '<link rel="canonical" href="https://teemobkk.io/thai/">')
+        self.assertContains(response, '<meta property="og:url" content="https://teemobkk.io/thai/">')
+        self.assertContains(response, '<meta property="og:image" content="https://teemobkk.io/thai/static/assets/share-home-v1.jpg">')
+        self.assertContains(response, '<meta name="twitter:image" content="https://teemobkk.io/thai/static/assets/share-home-v1.jpg">')
+
     def test_private_auth_response_is_not_cacheable_under_prefix(self):
         response = self.client.get("/accounts/login/", SCRIPT_NAME="/thai")
         self.assertIn("no-store", response.get("Cache-Control", ""))
