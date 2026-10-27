@@ -60,6 +60,20 @@ class BrowserFlowTests(StaticLiveServerTestCase):
                 self.assertTrue(p.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), (width, title))
             self.assertEqual(self.errors, [])
 
+    def test_dark_home_uses_vertical_overlay_on_mobile_and_tablet(self):
+        self.go('/')
+        self.page.locator('[data-theme-toggle]').click()
+        self.assertEqual(self.page.locator('html').get_attribute('data-theme'), 'dark')
+        for width in (320, 390, 768, 800):
+            with self.subTest(width=width):
+                self.page.set_viewport_size({'width': width, 'height': 900})
+                gradient = self.page.locator('.home-hero').evaluate("e => getComputedStyle(e, '::after').backgroundImage")
+                self.assertTrue(gradient.startswith('linear-gradient(0deg,'), gradient)
+                self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'))
+                if width == 800:
+                    self.page.screenshot(path=str(self.output / 'home-dark-800.png'))
+        self.assertEqual(self.errors, [])
+
     def test_real_db_shared_api_and_web(self):
         p = self.page
         self.go("/community/new/")
