@@ -176,6 +176,12 @@ def profile(request):
 @login_required
 @require_http_methods(['POST'])
 def edit_nickname(request):
+    try:
+        return _edit_nickname(request)
+    except OperationalError:
+        return HttpResponse('일시적인 오류입니다. 잠시 후 다시 시도해 주세요.', status=503)
+
+def _edit_nickname(request):
     member = MemberProfile.objects.filter(user=request.user).first()
     if not member or not member.is_complete:
         return HttpResponseForbidden()

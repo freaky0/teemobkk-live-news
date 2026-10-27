@@ -1,3 +1,5 @@
+from unittest.mock import patch
+from django.db import OperationalError
 from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
@@ -9,6 +11,13 @@ class ProfileEditTests(TestCase):
         self.user = get_user_model().objects.create_user(username='original', email='person@example.com')
         self.profile = MemberProfile.objects.create(user=self.user, email_key=self.user.email, email_verified_at=timezone.now(), accepted_at=timezone.now(), nickname_key='original')
         self.client.force_login(self.user)
+
+    def test_profile_lookup_lock_returns_retryable_response(self):
+        with patch('members.views.MemberProfile.objects.filter', side_effect=OperationalError('locked')):
+            response = self.client.post('/accounts/profile/edit/', {'nickname': 'newname'})
+        self.assertEqual(response.status_code, 503)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, 'original')
 
     def test_change_nickname_and_enforce_thirty_day_cooldown(self):
         response = self.client.post('/accounts/profile/edit/', {'nickname': 'newname'})
