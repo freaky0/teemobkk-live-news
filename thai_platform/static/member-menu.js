@@ -34,7 +34,10 @@
     if (active && !active.contains(event.target)) close();
   });
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && active) { event.preventDefault(); close(true); }
+    if (event.key === 'Escape') {
+      if (!active) active = menus.find(menu => menu.open) || null;
+      if (active) { event.preventDefault(); close(true); }
+    }
   });
   window.addEventListener('resize', position);
   window.addEventListener('scroll', position, true);

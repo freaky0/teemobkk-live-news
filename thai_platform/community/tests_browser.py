@@ -18,7 +18,7 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         if self._testMethodName == 'test_staff_notice_pin_and_unpin':
             self.member.is_staff = True
             self.member.save(update_fields=['is_staff'])
-        if self._testMethodName in ('test_private_messages_mobile_send', 'test_member_menu_mobile_keyboard_and_block', 'test_detail_member_menus_in_both_themes'):
+        if self._testMethodName in ('test_private_messages_mobile_send', 'test_member_menu_mobile_keyboard_and_block', 'test_detail_member_menus_in_both_themes', 'test_combined_member_menu_and_comment_likes'):
             from members.models import MemberProfile
             from django.utils import timezone
             now = timezone.now()
@@ -32,7 +32,7 @@ class BrowserFlowTests(StaticLiveServerTestCase):
             recipient_client.force_login(recipient)
             self.recipient_session = recipient_client.cookies[settings.SESSION_COOKIE_NAME].value
         self.post = Post.objects.create(author=self.member, title="브라우저 검증용 첫 생활 질문", body="실제 개인정보를 포함하지 않은 브라우저 검증용 게시글입니다. 목록 이동과 서버 저장을 확인합니다.", region="bangkok", category="housing")
-        if self._testMethodName == 'test_detail_member_menus_in_both_themes':
+        if self._testMethodName in ('test_detail_member_menus_in_both_themes', 'test_combined_member_menu_and_comment_likes'):
             comment = Comment.objects.create(post=self.post, author=recipient, body='메뉴 답변')
             Comment.objects.create(post=self.post, author=recipient, parent=comment, body='메뉴 대댓글')
         if self._testMethodName == 'test_reply_mobile_keyboard_and_submission':
@@ -88,6 +88,35 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.page.locator('.reply button[aria-pressed]').click()
         self.assertEqual(self.page.locator('.reply button[aria-pressed]').get_attribute('aria-pressed'), 'false')
         self.page.screenshot(path=str(self.output / 'comment-likes-mobile.png'), full_page=True)
+        self.assertEqual(self.errors, [])
+
+    def test_combined_member_menu_and_comment_likes(self):
+        for width in (320, 390, 1440):
+            self.page.set_viewport_size({'width': width, 'height': 900})
+            self.go(f'/community/{self.post.pk}/')
+            for theme in ('light', 'dark'):
+                if (self.page.locator('html').get_attribute('data-theme') or 'light') != theme:
+                    self.page.locator('[data-theme-toggle]').click()
+                self.assertEqual(self.page.locator('.member-menu').count(), 3)
+                for menu in self.page.locator('.member-menu').all():
+                    summary = menu.locator('summary')
+                    summary.focus()
+                    self.page.keyboard.press('Enter')
+                    self.assertTrue(menu.locator('.member-menu-actions').is_visible())
+                    self.page.keyboard.press('Escape')
+                    self.assertFalse(menu.locator('.member-menu-actions').is_visible())
+                    self.assertTrue(summary.evaluate('(e) => document.activeElement === e'))
+                self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'))
+            for selector in ('.answer button[aria-pressed]', '.reply button[aria-pressed]'):
+                button = self.page.locator(selector).first
+                initial = button.get_attribute('aria-pressed')
+                button.click()
+                button = self.page.locator(selector).first
+                self.assertNotEqual(button.get_attribute('aria-pressed'), initial)
+                self.assertIn('1', button.inner_text())
+                button.click()
+                self.assertEqual(self.page.locator(selector).first.get_attribute('aria-pressed'), initial)
+                self.assertIn('0', self.page.locator(selector).first.inner_text())
         self.assertEqual(self.errors, [])
 
     def test_staff_notice_pin_and_unpin(self):
