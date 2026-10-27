@@ -4,7 +4,7 @@
 {% block content %}
 <section class="editor panel auth-card">
   <p class="hero-label">MY ACCOUNT</p>
-  <h1>{{ user.username }}님,<br>반갑습니다.</h1>
+  <h1>{% if profile %}{% if profile.avatar_image %}<img src="{% url 'member-profile-image' %}" alt="내 프로필 사진" width="64" height="64" class="profile-image">{% else %}<span aria-label="프로필 아이콘">{% if profile.avatar == 'cat' %}🐱{% elif profile.avatar == 'dog' %}🐶{% elif profile.avatar == 'star' %}⭐{% elif profile.avatar == 'flower' %}🌸{% else %}🙂{% endif %}</span>{% endif %} {% endif %}{{ user.username }}님,<br>반갑습니다.</h1>
   <dl class="auth-details">
     <dt>닉네임</dt><dd>{{ user.username }}</dd>
     <dt>이메일 · 비공개</dt><dd>{{ user.email }}</dd>
@@ -22,6 +22,28 @@
         <button class="btn" type="submit">Google 계정 연결</button>
       </form>
     </div>
+  {% endif %}
+  {% if profile %}
+  <section class="note" aria-labelledby="profile-edit-heading">
+    <h2 id="profile-edit-heading">프로필 수정</h2>
+    <p>닉네임은 변경 후 30일이 지나야 다시 변경할 수 있습니다.</p>
+    <form method="post" action="{% url 'member-profile-edit' %}">
+      {% csrf_token %} {{ nickname_form.as_p }}
+      <button class="btn" type="submit">닉네임 저장</button>
+    </form>
+    <p>사진은 본인 계정에서만 보입니다. PNG 또는 JPEG, 최대 1MB.</p>
+    <form method="post" enctype="multipart/form-data" action="{% url 'member-profile-image' %}">
+      {% csrf_token %}
+      <label for="profile-image">프로필 사진</label>
+      <input id="profile-image" name="image" type="file" accept="image/png,image/jpeg" required>
+      <button class="btn" type="submit">사진 저장</button>
+    </form>
+    {% if profile.avatar_image %}<form method="post" action="{% url 'member-profile-image' %}">{% csrf_token %}<button class="btn" name="remove" value="1" type="submit">사진 삭제</button></form>{% endif %}
+    <form method="post" action="{% url 'member-profile-avatar' %}">
+      {% csrf_token %} {{ avatar_form.as_p }}
+      <button class="btn" type="submit">아이콘 저장</button>
+    </form>
+  </section>
   {% endif %}
   {% if profile.email_login_enabled and not user.has_usable_password %}
     <p class="note"><a href="{% url 'password-set' %}">비밀번호 설정</a><br>이메일 인증 링크로 로그인한 뒤 비밀번호를 설정하면 다음부터 이메일과 비밀번호로 로그인할 수 있습니다.</p>

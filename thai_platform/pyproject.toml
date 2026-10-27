@@ -9,6 +9,7 @@ dependencies = [
     "django-allauth[socialaccount]>=65,<66",
     "django-sesame>=3.2.4,<4",
     "gunicorn>=23,<26",
+    "pillow==13.0.0",
 ]
 
 [tool.uv]

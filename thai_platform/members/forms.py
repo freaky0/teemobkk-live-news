@@ -55,3 +55,10 @@ class OnboardingForm(forms.Form):
         if MemberProfile.objects.filter(nickname_key=key).exclude(user=self.user).exists() or get_user_model().objects.filter(username__iexact=nickname).exclude(pk=self.user.pk).exists():
             raise forms.ValidationError("다른 닉네임을 입력해 주세요.")
         return nickname
+
+class ProfileNicknameForm(OnboardingForm):
+    terms = None
+    privacy = None
+
+class AvatarForm(forms.Form):
+    avatar = forms.ChoiceField(label='프로필 아이콘', choices=[('person', '🙂'), ('cat', '🐱'), ('dog', '🐶'), ('star', '⭐'), ('flower', '🌸')])
