@@ -27,6 +27,17 @@ class AuthDisclosureTests(TestCase):
         self.assertContains(response,'공개 오픈 테스트')
         self.assertNotContains(response,'초대 전용')
 
+    def test_auth_disclosure_reflects_policy_approval(self):
+        for approved in (True, False):
+            with self.subTest(approved=approved), self.settings(POST_POLICY_APPROVED=approved):
+                for path in ('/accounts/login/', '/accounts/email/'):
+                    response = self.client.get(path)
+                    self.assertContains(response, '개인정보 처리방침')
+                    if approved:
+                        self.assertNotContains(response, '문서는 개발 검토용 초안입니다')
+                    else:
+                        self.assertContains(response, '문서는 개발 검토용 초안입니다')
+
     @override_settings(POST_POLICY_APPROVED=False,POST_SIGNUP_ENABLED=False)
     def test_email_requirements_do_not_conflict_with_sensitive_data_warning(self):
         for path in ['/accounts/login/','/accounts/email/','/accounts/email/confirm/','/accounts/policy/privacy/']:
