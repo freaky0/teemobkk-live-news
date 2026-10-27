@@ -41,6 +41,11 @@ class WebTests(TestCase):
         self.assertNotContains(response, hidden.title)
         self.assertEqual(list(response.context['helpful_posts']), [self.post])
 
+    def test_desktop_header_links_to_profile_only_when_signed_in(self):
+        self.assertNotContains(self.client.get('/'), 'class="btn account-profile"')
+        self.client.force_login(self.owner)
+        self.assertContains(self.client.get('/'), 'class="btn account-profile" href="/accounts/profile/"')
+
     def test_anonymous_cannot_write(self):
         before = Post.objects.count()
         self.assertEqual(self.client.post("/community/new/", {"title": "몰래 등록 시도"}).status_code, 302)

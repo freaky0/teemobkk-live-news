@@ -101,6 +101,16 @@ class BrowserFlowTests(StaticLiveServerTestCase):
             self.assertIn(f'/community/{self.post.pk}/', self.page.url)
         self.assertEqual(self.errors, [])
 
+    def test_account_navigation_visible_on_desktop_and_mobile(self):
+        for width in (320, 390, 768, 1440):
+            self.page.set_viewport_size({'width': width, 'height': 900})
+            self.go('/')
+            link = self.page.locator('nav.bottom a').last if width < 768 else self.page.locator('header .account-profile')
+            self.assertTrue(link.is_visible(), width)
+            self.assertEqual(link.get_attribute('href'), '/accounts/profile/')
+            self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), width)
+        self.assertEqual(self.errors, [])
+
     def test_real_db_shared_api_and_web(self):
         p = self.page
         self.go("/community/new/")
