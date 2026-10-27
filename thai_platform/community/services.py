@@ -72,7 +72,7 @@ def create_post(user, data):
     values = _validate(PostInputSerializer, data)
     if values.get('category') == Post.Category.NOTICE and not user.is_staff:
         raise PermissionDenied('Staff access required for notices.')
-    if 'is_pinned' in values and not user.is_staff:
+    if 'is_pinned' in data and not user.is_staff:
         raise PermissionDenied('Staff access required for pinning.')
     if values.get('is_pinned') and values.get('category') != Post.Category.NOTICE:
         raise ValidationError({'is_pinned': 'Only notices can be pinned.'})
@@ -91,7 +91,7 @@ def update_post(user, post, data):
     values = _validate(PostInputSerializer, data, partial=True)
     if values.get('category') == Post.Category.NOTICE and not user.is_staff:
         raise PermissionDenied('Staff access required for notices.')
-    if 'is_pinned' in values and not user.is_staff:
+    if 'is_pinned' in data and not user.is_staff:
         raise PermissionDenied('Staff access required for pinning.')
     if values.get('is_pinned', post.is_pinned) and values.get('category', post.category) != Post.Category.NOTICE:
         raise ValidationError({'is_pinned': 'Only notices can be pinned.'})

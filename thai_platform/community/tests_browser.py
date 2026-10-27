@@ -15,6 +15,9 @@ from .models import Comment, Notification, Post
 class BrowserFlowTests(StaticLiveServerTestCase):
     def setUp(self):
         self.member = get_user_model().objects.create_user(username="브라우저검증")
+        if self._testMethodName == 'test_staff_notice_pin_and_unpin':
+            self.member.is_staff = True
+            self.member.save(update_fields=['is_staff'])
         if self._testMethodName == 'test_private_messages_mobile_send':
             from members.models import MemberProfile
             from django.utils import timezone
@@ -53,6 +56,28 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.pw.stop()
     def go(self, path):
         return self.page.goto(self.live_server_url + path, wait_until="networkidle")
+
+    def test_staff_notice_pin_and_unpin(self):
+        self.go('/community/new/')
+        self.page.get_by_label('제목').fill('브라우저 공지 고정 테스트')
+        self.page.get_by_label('주제').select_option('notice')
+        self.page.get_by_label('상황과 질문').fill('브라우저에서 공지 고정과 해제를 확인하는 테스트입니다.')
+        self.page.get_by_label('개인정보와 타인의 비공개 정보를 넣지 않았습니다.').check()
+        self.page.get_by_label('공지 상단 고정 (공지 글만 가능)').check()
+        self.page.get_by_role('button', name='질문 등록').click()
+        self.page.wait_for_url('**/community/*/')
+        self.assertTrue(self.page.get_by_text('상단 고정', exact=True).is_visible())
+        self.go('/community/')
+        self.assertIn('브라우저 공지 고정 테스트', self.page.locator('.row').first.inner_text())
+        self.page.get_by_role('link', name='브라우저 공지 고정 테스트').click()
+        self.page.get_by_role('link', name='수정', exact=True).click()
+        self.page.get_by_label('공지 상단 고정 (공지 글만 가능)').uncheck()
+        self.page.get_by_label('개인정보와 타인의 비공개 정보를 넣지 않았습니다.').check()
+        self.page.get_by_role('button', name='수정 저장').click()
+        self.assertEqual(self.page.get_by_text('상단 고정', exact=True).count(), 0)
+        response = self.page.request.get(self.live_server_url + '/api/v1/posts/?category=notice')
+        self.assertFalse(response.json()['results'][0]['is_pinned'])
+        self.assertEqual(self.errors, [])
 
     def test_private_messages_mobile_send(self):
         for width in (320, 390, 768, 1440):
