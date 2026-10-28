@@ -125,7 +125,7 @@ class FoodTravelTests(TestCase):
 
         parser = AnchorCollector()
         parser.feed(response.content.decode())
-        expected_map = build_google_maps_search_url("카페 & ร้านกาแฟ?", "Bangkok")
+        expected_map = build_google_maps_search_url("카페 & ร้านกาแฟ?", "방콕")
         external_links = [anchor for anchor in parser.anchors if anchor.get("href") in {expected_map, place.place_url}]
         self.assertEqual({anchor.get("href") for anchor in external_links}, {expected_map, place.place_url})
         for anchor in external_links:
