@@ -189,7 +189,11 @@ def update_post(user, post, data):
     values = _validate(PostInputSerializer, data, partial=True)
     confirmed = values.pop('confirm_board_data_removal', False)
     version = values.pop('board_data_version', None)
-    if version and version != board_data_version(post):
+    if values.get('category') == Post.Category.NOTICE and not user.is_staff:
+        raise PermissionDenied('Staff access required for notices.')
+    if 'is_pinned' in data and not user.is_staff:
+        raise PermissionDenied('Staff access required for pinning.')
+    if 'board_data_version' in data and (not version or version != board_data_version(post)):
         raise ValidationError({'board_data_version': '게시글이 변경되었습니다. 최신 정보를 확인해 주세요.'})
     if 'category' in values:
         values['category'] = canonical_life_category(values['category'])
@@ -218,10 +222,6 @@ def update_post(user, post, data):
             values.pop(key, None)
         if post.category == Post.Category.FOODTRAVEL:
             values.update(place_name='', place_region='', place_note='', place_url='')
-    if values.get('category') == Post.Category.NOTICE and not user.is_staff:
-        raise PermissionDenied('Staff access required for notices.')
-    if 'is_pinned' in data and not user.is_staff:
-        raise PermissionDenied('Staff access required for pinning.')
     if values.get('is_pinned', post.is_pinned) and values.get('category', post.category) != Post.Category.NOTICE:
         raise ValidationError({'is_pinned': 'Only notices can be pinned.'})
     for key, value in values.items():

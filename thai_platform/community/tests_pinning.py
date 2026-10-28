@@ -27,6 +27,7 @@ class PinningTests(TestCase):
         self.assertContains(self.client.get('/community/'), '상단 고정')
         self.assertContains(self.client.get(f'/community/{post.pk}/'), '상단 고정')
         data.pop('is_pinned')
+        data['board_data_version'] = self.client.get(f'/community/{post.pk}/edit/').context['form']['board_data_version'].value()
         self.assertEqual(self.client.post(f'/community/{post.pk}/edit/', data).status_code, 302)
         post.refresh_from_db()
         self.assertFalse(post.is_pinned)

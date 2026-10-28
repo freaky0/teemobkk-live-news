@@ -42,10 +42,39 @@ class JobBoardTests(TestCase):
             with self.subTest(field=field_name):
                 self.assertIn(field_name, form.fields)
 
+    def test_omitted_version_keeps_ordinary_api_updates_compatible(self):
+        post = services.create_post(self.user, {'title': 'Original title', 'body': 'A sufficiently long job post description.', 'category': 'jobs'})
+        response = self.client.patch(f'/api/v1/posts/{post.pk}/', {'title': 'Updated without token'}, content_type='application/json')
+        self.assertEqual(response.status_code, 200, response.content)
+        post.refresh_from_db()
+        self.assertEqual(post.display_title, 'Updated without token')
+
+    def test_blank_or_stale_version_cannot_overwrite_api_or_web_edits(self):
+        post = services.create_post(self.user, {'title': 'Original title', 'body': 'A sufficiently long job post description.', 'category': 'jobs'})
+        url = f'/api/v1/posts/{post.pk}/'
+        token = self.client.get(url).json()['board_data_version']
+        updated = self.client.patch(url, {'title': 'New title', 'board_data_version': token}, content_type='application/json')
+        self.assertEqual(updated.status_code, 200, updated.content)
+        for value in ('', ' '):
+            payload = {'title': 'Old title', 'board_data_version': value}
+            response = self.client.patch(url, payload, content_type='application/json')
+            self.assertEqual(response.status_code, 400)
+            self.assertIn('board_data_version', response.json())
+        stale = self.client.patch(url, {'title': 'Old title', 'board_data_version': token}, content_type='application/json')
+        self.assertEqual(stale.status_code, 400)
+        web_payload = self.job_payload('Old title')
+        for _ in range(2):
+            response = self.client.post(f'/community/{post.pk}/edit/', web_payload)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('board_data_version', response.context['form'].errors)
+            web_payload['board_data_version'] = response.context['form']['board_data_version'].value() or ''
+        post.refresh_from_db()
+        self.assertEqual(post.display_title, 'New title')
+
     def test_stale_same_category_api_and_web_edits_are_rejected(self):
         post = fixture_post(author=self.user, title='Concurrent edit', body='A sufficiently long job post description.', category='jobs', job_compensation='Original')
         version = self.client.get(f'/community/{post.pk}/edit/').context['form']['board_data_version'].value()
-        updated = self.client.patch(f'/api/v1/posts/{post.pk}/', {'job_compensation': 'New salary'}, content_type='application/json')
+        updated = self.client.patch(f'/api/v1/posts/{post.pk}/', {'job_compensation': 'New salary', 'board_data_version': version}, content_type='application/json')
         self.assertEqual(updated.status_code, 200)
         stale = self.client.patch(f'/api/v1/posts/{post.pk}/', {'job_compensation': 'Old salary', 'board_data_version': version}, content_type='application/json')
         self.assertEqual(stale.status_code, 400)
@@ -85,7 +114,8 @@ class JobBoardTests(TestCase):
     def test_stale_api_confirmation_cannot_delete_new_details(self):
         post = fixture_post(author=self.user, title='Concurrent job', body='A sufficiently long job post description.', category='jobs', job_compensation='Original')
         snapshot = self.client.get(f'/api/v1/posts/{post.pk}/').json()['board_data_version']
-        self.client.patch(f'/api/v1/posts/{post.pk}/', {'job_compensation': 'Updated by another session'}, content_type='application/json')
+        updated = self.client.patch(f'/api/v1/posts/{post.pk}/', {'job_compensation': 'Updated by another session', 'board_data_version': snapshot}, content_type='application/json')
+        self.assertEqual(updated.status_code, 200)
         response = self.client.patch(f'/api/v1/posts/{post.pk}/', {'category': 'free', 'confirm_board_data_removal': True, 'board_data_version': snapshot}, content_type='application/json')
         self.assertEqual(response.status_code, 400)
         post.refresh_from_db()
@@ -98,7 +128,7 @@ class JobBoardTests(TestCase):
         first.force_login(self.user)
         second.force_login(self.user)
         original = first.get(f'/community/{post.pk}/edit/').context['form']['board_data_version'].value()
-        updated = second.patch(f'/api/v1/posts/{post.pk}/', {'job_compensation': 'New salary'}, content_type='application/json')
+        updated = second.patch(f'/api/v1/posts/{post.pk}/', {'job_compensation': 'New salary', 'board_data_version': original}, content_type='application/json')
         self.assertEqual(updated.status_code, 200)
         payload = self.job_payload('Concurrent job web', category='free', board_data_version=original, confirm_board_data_removal='on')
         for name in ('job_kind', 'job_region', 'job_compensation', 'job_status'):
@@ -124,6 +154,7 @@ class JobBoardTests(TestCase):
         services.update_post(self.user, post, {
             'title': 'New saved title',
             'body': 'New saved content long enough for validation.',
+            'board_data_version': old,
         })
         payload = self.job_payload('Old draft title', body='Old draft content long enough for validation.', category='questions', board_data_version=old)
         for _ in range(2):
@@ -135,6 +166,33 @@ class JobBoardTests(TestCase):
         self.assertEqual(post.category, 'free')
         self.assertEqual(post.freepost.title, 'New saved title')
         self.assertEqual(post.freepost.body, 'New saved content long enough for validation.')
+
+    def test_api_transitions_without_data_allow_omitted_token(self):
+        post = fixture_post(author=self.user, title='Empty job', body='A sufficiently long job post description.', category='jobs')
+        response = self.client.patch(f'/api/v1/posts/{post.pk}/', {'category': 'free'}, content_type='application/json')
+        self.assertEqual(response.status_code, 200, response.content)
+        post.refresh_from_db()
+        self.assertEqual(post.category, 'free')
+
+    def test_destructive_transfer_requires_both_current_version_and_consent(self):
+        post = fixture_post(author=self.user, title='Job with data', body='A sufficiently long job post description.', category='jobs', job_compensation='Keep me')
+        url = f'/api/v1/posts/{post.pk}/'
+        token = self.client.get(url).json()['board_data_version']
+        for payload in (
+            {'category': 'free'},
+            {'category': 'free', 'confirm_board_data_removal': True},
+            {'category': 'free', 'board_data_version': token},
+            {'category': 'free', 'confirm_board_data_removal': True, 'board_data_version': ''},
+            {'category': 'free', 'confirm_board_data_removal': True, 'board_data_version': 'stale'},
+        ):
+            with self.subTest(payload=payload):
+                self.assertEqual(self.client.patch(url, payload, content_type='application/json').status_code, 400)
+                post.refresh_from_db()
+                self.assertEqual((post.category, post.job_compensation), ('jobs', 'Keep me'))
+        response = self.client.patch(url, {'category': 'free', 'confirm_board_data_removal': True, 'board_data_version': token}, content_type='application/json')
+        self.assertEqual(response.status_code, 200, response.content)
+        post.refresh_from_db()
+        self.assertEqual((post.category, post.job_compensation), ('free', ''))
 
     def test_boolean_confirmation_without_version_is_rejected(self):
         post = fixture_post(author=self.user, title='No snapshot job', body='A sufficiently long job post description.', category='jobs', job_compensation='Keep me')

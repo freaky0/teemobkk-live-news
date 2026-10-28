@@ -23,6 +23,7 @@ class WebBoardCategoryTests(TestCase):
                 self.assertEqual(post.board_category_id, subcategory.pk)
                 response = self.client.get(f'/community/{post.pk}/edit/')
                 self.assertEqual(str(response.context['form']['board_category'].value()), str(subcategory.pk))
+                payload['board_data_version'] = response.context['form']['board_data_version'].value()
                 payload['title'] = f'Edited title for {board}'
                 response = self.client.post(f'/community/{post.pk}/edit/', payload)
                 self.assertEqual(response.status_code, 302, response.content)

@@ -204,7 +204,7 @@ def post_edit(request, pk):
     if request.method == 'POST':
         post.refresh_from_db()
         data = form.data.copy()
-        stale = bool(data.get('board_data_version')) and data.get('board_data_version') != board_data_version(post)
+        stale = data.get('board_data_version') != board_data_version(post)
         for prefix, category in (('market_', 'market'), ('job_', 'jobs'), ('place_', 'foodtravel')):
             for name in form.fields:
                 if name.startswith(prefix) and data.get('category') != category and (name not in data or (post.category == category and data.get('board_fields_snapshot') != '1' and not data.get(name))):

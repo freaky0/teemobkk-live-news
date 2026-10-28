@@ -72,6 +72,7 @@ class WebTests(TestCase):
         self.assertEqual(self.client.post(reverse("post-delete", args=[post.pk])).status_code, 403)
         self.client.force_login(self.owner)
         payload["title"] = "정상 작성자 수정 질문입니다"
+        payload['board_data_version'] = self.client.get(reverse('post-edit', args=[post.pk])).context['form']['board_data_version'].value()
         self.assertEqual(self.client.post(reverse("post-edit", args=[post.pk]), payload).status_code, 302)
         post.refresh_from_db()
         self.assertEqual(post.livingpost.title, payload["title"])
