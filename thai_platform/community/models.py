@@ -110,11 +110,7 @@ class Post(Timestamped):
 
 
 class BoardPostContent(models.Model):
-    """Staging schema for the independent-board storage migration.
-
-    These tables are deliberately not populated until reads and writes can be
-    cut over atomically; the existing Post table remains authoritative for now.
-    """
+    """Transitional copies; legacy Post fields remain authoritative for now."""
     post = models.OneToOneField(Post, primary_key=True, on_delete=models.CASCADE)
     title = models.CharField(max_length=100)
     body = models.TextField(validators=[MaxLengthValidator(6000)])

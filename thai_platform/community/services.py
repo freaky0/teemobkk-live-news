@@ -12,7 +12,9 @@ from django.utils import timezone
 from allauth.account.models import EmailAddress
 from members.models import MemberProfile
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
-from .models import AuditEvent, Bookmark, Comment, Helpful, MemberBlock, ModerationAppeal, NewsComment, Notification, Post, Report
+from .models import (AuditEvent, Bookmark, Comment, FreePost, Helpful, JobsPost, LivingPost,
+                     MarketPost, MemberBlock, ModerationAppeal, NewsComment, NoticePost,
+                     Notification, Post, Report)
 from .board_versions import board_data_version
 from django.db.models import Count, Exists, OuterRef, Q
 from .serializers import (CommentInputSerializer, PostInputSerializer, PostResolutionSerializer, EngagementInputSerializer,
@@ -33,6 +35,27 @@ def canonical_life_category(category):
 
 def category_filter_values(category):
     return LIFE_BOARD_CATEGORIES if category in LIFE_BOARD_CATEGORIES else (category,)
+
+
+BOARD_CONTENT_MODELS = {
+    Post.Category.NOTICE: NoticePost,
+    Post.Category.FREE: FreePost,
+    Post.Category.MARKET: MarketPost,
+    Post.Category.JOBS: JobsPost,
+    Post.Category.LIVING: LivingPost,
+}
+
+
+def _sync_board_content(post, old_category=None):
+    """Maintain non-authoritative board copies while legacy reads use Post."""
+    old_model = BOARD_CONTENT_MODELS.get(canonical_life_category(old_category))
+    new_model = BOARD_CONTENT_MODELS.get(canonical_life_category(post.category))
+    if old_model is not None and old_model is not new_model:
+        old_model.objects.filter(post_id=post.pk).delete()
+    if new_model is not None:
+        new_model.objects.update_or_create(
+            post_id=post.pk, defaults={'title': post.title, 'body': post.body},
+        )
 
 
 def validate_board_category(category, board_category):
@@ -141,6 +164,7 @@ def create_post(user, data):
     if values.get('is_pinned') and values.get('category') != Post.Category.NOTICE:
         raise ValidationError({'is_pinned': 'Only notices can be pinned.'})
     post = Post.objects.create(author=user, **values)
+    _sync_board_content(post)
     _audit(user, 'post.create', post)
     return post
 
@@ -150,6 +174,7 @@ def update_post(user, post, data):
     require_owner(user, post)
     post = Post.objects.select_for_update().get(pk=post.pk)
     require_owner(user, post)
+    old_category = post.category
     if post.status == Post.Status.DELETED:
         raise NotFound('Post not found.')
     values = _validate(PostInputSerializer, data, partial=True)
@@ -193,6 +218,7 @@ def update_post(user, post, data):
     for key, value in values.items():
         setattr(post, key, value)
     post.save()
+    _sync_board_content(post, old_category)
     _audit(user, 'post.update', post)
     return post
 
@@ -217,7 +243,9 @@ def blocked_member_ids(user):
 
 def visible_posts(user=None):
     blocked_ids = blocked_member_ids(user)
-    qs = Post.objects.filter(status=Post.Status.PUBLISHED).exclude(freepost__isnull=False)
+    # Keep the disconnected prototype's blank-identity rows isolated for now.
+    qs = Post.objects.filter(status=Post.Status.PUBLISHED).exclude(
+        freepost__isnull=False, title='', body='')
     if blocked_ids is not None:
         qs = qs.exclude(author_id__in=blocked_ids)
     qs = qs.select_related('author', 'author__membership').annotate(
