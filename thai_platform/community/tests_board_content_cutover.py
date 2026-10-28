@@ -39,11 +39,11 @@ class BoardContentCutoverTests(TestCase):
                 row = MODELS[target].objects.get(pk=post.pk)
                 self.assertEqual((row.title, row.body), ('Board title', 'Changed body'))
 
-    def test_transfer_preserves_identity_and_comment_and_removes_old_content(self):
+    def test_transfer_preserves_identity_comment_and_old_content(self):
         post = services.create_post(self.user, {'category': 'free', 'title': 'Original title', 'body': 'Original content'})
         comment = Comment.objects.create(post=post, author=self.user, body='Existing comment')
         services.update_post(self.user, post, {'category': 'jobs', 'title': 'New title'})
-        self.assertFalse(FreePost.objects.filter(pk=post.pk).exists())
+        self.assertTrue(FreePost.objects.filter(pk=post.pk).exists())
         self.assertEqual(JobsPost.objects.get(pk=post.pk).title, 'New title')
         self.assertEqual(Comment.objects.get(pk=comment.pk).post_id, post.pk)
 

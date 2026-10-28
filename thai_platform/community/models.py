@@ -107,12 +107,12 @@ class Post(Timestamped):
     @property
     def display_title(self):
         content = self.board_content
-        return content.title if content is not None else self.title
+        return content.title if content is not None else ('' if self.category in ('notice', 'free', 'market', 'jobs', 'living', 'housing', 'banking') else self.title)
 
     @property
     def display_body(self):
         content = self.board_content
-        return content.body if content is not None else self.body
+        return content.body if content is not None else ('' if self.category in ('notice', 'free', 'market', 'jobs', 'living', 'housing', 'banking') else self.body)
 
     @property
     def google_maps_search_url(self):
@@ -125,11 +125,11 @@ class Post(Timestamped):
         ordering = ['-created_at', '-pk']
 
     def __str__(self):
-        return self.title
+        return self.display_title
 
 
 class BoardPostContent(models.Model):
-    """Transitional copies; legacy Post fields remain authoritative for now."""
+    """Authoritative title and body for the associated board post."""
     post = models.OneToOneField(Post, primary_key=True, on_delete=models.CASCADE)
     title = models.CharField(max_length=100)
     body = models.TextField(validators=[MaxLengthValidator(6000)])

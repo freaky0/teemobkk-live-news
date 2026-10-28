@@ -46,16 +46,14 @@ BOARD_CONTENT_MODELS = {
 }
 
 
-def _sync_board_content(post, old_category=None):
-    """Maintain non-authoritative board copies while legacy reads use Post."""
-    old_model = BOARD_CONTENT_MODELS.get(canonical_life_category(old_category))
+def _sync_board_content(post, title, body):
+    """Write the current board row without deleting historical board rows."""
     new_model = BOARD_CONTENT_MODELS.get(canonical_life_category(post.category))
-    if old_model is not None and old_model is not new_model:
-        old_model.objects.filter(post_id=post.pk).delete()
     if new_model is not None:
-        new_model.objects.update_or_create(
-            post_id=post.pk, defaults={'title': post.title, 'body': post.body},
+        content, _ = new_model.objects.update_or_create(
+            post_id=post.pk, defaults={'title': title, 'body': body},
         )
+        new_model._meta.get_field('post').remote_field.set_cached_value(post, content)
 
 
 def validate_board_category(category, board_category):
@@ -163,8 +161,11 @@ def create_post(user, data):
         raise PermissionDenied('Staff access required for pinning.')
     if values.get('is_pinned') and values.get('category') != Post.Category.NOTICE:
         raise ValidationError({'is_pinned': 'Only notices can be pinned.'})
+    title, body = values['title'], values['body']
+    if BOARD_CONTENT_MODELS.get(canonical_life_category(values.get('category', Post.Category.LIVING))):
+        values.update(title='', body='')
     post = Post.objects.create(author=user, **values)
-    _sync_board_content(post)
+    _sync_board_content(post, title, body)
     _audit(user, 'post.create', post)
     return post
 
@@ -175,9 +176,12 @@ def update_post(user, post, data):
     post = Post.objects.select_for_update().get(pk=post.pk)
     require_owner(user, post)
     old_category = post.category
+    legacy_title, legacy_body = post.title, post.body
     # Partial edits and board transfers must start from the board row, not
     # potentially stale legacy fields on the shared identity record.
     content = post.board_content
+    if BOARD_CONTENT_MODELS.get(canonical_life_category(old_category)) and content is None:
+        raise ValidationError({'detail': 'Board content is missing; restore it before editing.'})
     if content is not None:
         post.title, post.body = content.title, content.body
     if post.status == Post.Status.DELETED:
@@ -222,8 +226,11 @@ def update_post(user, post, data):
         raise ValidationError({'is_pinned': 'Only notices can be pinned.'})
     for key, value in values.items():
         setattr(post, key, value)
+    title, body = post.title, post.body
+    if BOARD_CONTENT_MODELS.get(canonical_life_category(post.category)):
+        post.title, post.body = legacy_title, legacy_body
     post.save()
-    _sync_board_content(post, old_category)
+    _sync_board_content(post, title, body)
     _audit(user, 'post.update', post)
     return post
 
@@ -265,12 +272,12 @@ def visible_posts(user=None):
 
 def search_posts(qs, query):
     from django.db.models import Case, CharField, F, When
-    from django.db.models.functions import Coalesce
+
     boards = [('notice', 'noticepost'), ('free', 'freepost'), ('market', 'marketpost'),
               ('jobs', 'jobspost'), ('living', 'livingpost'), ('housing', 'livingpost'),
               ('banking', 'livingpost')]
     def content(field):
-        return Case(*(When(category=category, then=Coalesce(F(f'{relation}__{field}'), F(field)))
+        return Case(*(When(category=category, then=F(f'{relation}__{field}'))
                       for category, relation in boards), default=F(field), output_field=CharField())
     return qs.alias(search_title=content('title'), search_body=content('body')).filter(
         Q(search_title__icontains=query) | Q(search_body__icontains=query))

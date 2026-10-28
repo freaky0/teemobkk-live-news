@@ -8,6 +8,7 @@ from django.db import connection
 from django.test import TestCase
 
 from .models import Post, Comment, Bookmark
+from . import services
 
 
 BOARDS = ('notice', 'free', 'market', 'jobs', 'living')
@@ -86,7 +87,7 @@ class IndependentBoardAcceptanceTests(TestCase):
                            'category': board, 'region': 'common', 'privacy': 'on'}
                 response = self.client.post('/community/new/', payload)
                 self.assertEqual(response.status_code, 302, response.content)
-                post = Post.objects.get(title=title)
+                post = services.search_posts(Post.objects.all(), title).get(category=board)
                 updated = f'Lifecycle updated {board}'
                 response = self.client.patch(f'/api/v1/posts/{post.pk}/', {'title': updated}, content_type='application/json')
                 self.assertEqual(response.status_code, 200, response.content)
