@@ -3,7 +3,8 @@ from django.test import TestCase
 from rest_framework.exceptions import PermissionDenied
 from . import services
 from .forms import PostForm
-from .models import Post
+from .models import Post, LivingPost, NoticePost
+from .board_versions import board_data_version
 
 
 class BoardTests(TestCase):
@@ -17,14 +18,15 @@ class BoardTests(TestCase):
                 payload = {'title': f'Test {category} post', 'body': 'This is a sufficiently long community post.', 'region': 'common', 'category': category, 'privacy': 'on'}
                 response = self.client.post('/community/new/', payload)
                 self.assertEqual(response.status_code, 302)
-                post = Post.objects.get(title=payload['title'])
+                post = Post.objects.get(pk=int(response.url.rstrip('/').split('/')[-1]))
                 self.assertEqual(post.category, category)
                 self.assertContains(self.client.get(f'/community/?category={category}'), payload['title'])
                 payload['title'] = f'Edited {category} post'
+                payload['board_data_version'] = board_data_version(post)
                 self.assertEqual(self.client.post(f'/community/{post.pk}/edit/', payload).status_code, 302)
                 post.refresh_from_db()
                 self.assertEqual(post.category, category)
-                self.assertEqual(post.title, payload['title'])
+                self.assertEqual(post.display_title, payload['title'])
 
     def test_board_links_and_legacy_posts_remain_accessible(self):
         user = get_user_model().objects.create_user(username='writer')
@@ -45,6 +47,7 @@ class BoardTests(TestCase):
                 body='Existing community content stays unchanged.',
                 category=category,
             )
+            LivingPost.objects.create(post=posts[category], title=posts[category].title, body=posts[category].body)
 
         board = self.client.get('/community/?category=living')
         self.assertEqual(board.status_code, 200)
@@ -91,6 +94,7 @@ class BoardTests(TestCase):
             body='Existing housing content remains unchanged until saved.',
             category='housing',
         )
+        LivingPost.objects.create(post=post, title=post.title, body=post.body)
 
         edit = self.client.get(f'/community/{post.pk}/edit/')
         self.assertEqual(edit.context['form']['category'].value(), 'living')
@@ -103,10 +107,11 @@ class BoardTests(TestCase):
             'region': 'common',
             'category': 'living',
             'privacy': 'on',
+            'board_data_version': board_data_version(post),
         })
         self.assertEqual(response.status_code, 302)
         post.refresh_from_db()
-        self.assertEqual((post.title, post.category), ('Updated housing post', 'living'))
+        self.assertEqual((post.display_title, post.category), ('Updated housing post', 'living'))
 
     def test_notice_write_requires_moderator_and_prevents_category_bypass(self):
         User = get_user_model()
@@ -116,7 +121,7 @@ class BoardTests(TestCase):
         with self.assertRaises(PermissionDenied):
             services.create_post(member, data)
         notice = services.create_post(staff, data)
-        self.assertContains(self.client.get('/community/?category=notice'), notice.title)
+        self.assertContains(self.client.get('/community/?category=notice'), notice.display_title)
         with self.assertRaises(PermissionDenied):
             services.update_post(member, notice, {'category': 'living'})
         with self.assertRaises(PermissionDenied):
@@ -131,12 +136,15 @@ class BoardTests(TestCase):
         staff = User.objects.create_user(username='staff', is_staff=True)
         notice = Post.objects.create(author=staff, title='Public notice', body='Public notice content', category='notice')
         ordinary = Post.objects.create(author=member, title='Ordinary post', body='Ordinary content', category='living')
+        NoticePost.objects.create(post=notice, title=notice.title, body=notice.body)
+        LivingPost.objects.create(post=ordinary, title=ordinary.title, body=ordinary.body)
         self.client.force_login(member)
         payload = {'title': 'Forged notice', 'body': 'This content is long enough for the form.', 'region': 'common', 'category': 'notice', 'privacy': 'on'}
+        payload['board_data_version'] = board_data_version(ordinary)
         self.assertEqual(self.client.post('/community/new/', payload).status_code, 403)
         self.assertEqual(self.client.post(f'/community/{notice.pk}/delete/').status_code, 403)
         self.assertEqual(self.client.post(f'/community/{ordinary.pk}/edit/', payload).status_code, 403)
-        self.assertEqual(self.client.patch(f'/api/v1/posts/{ordinary.pk}/', data='{"category":"notice"}', content_type='application/json').status_code, 403)
+        self.assertEqual(self.client.patch(f'/api/v1/posts/{ordinary.pk}/', data={'category': 'notice', 'board_data_version': board_data_version(ordinary)}, content_type='application/json').status_code, 403)
         self.assertEqual(self.client.delete(f'/api/v1/posts/{notice.pk}/').status_code, 403)
         ordinary.refresh_from_db(); notice.refresh_from_db()
         self.assertEqual(ordinary.category, 'living')
