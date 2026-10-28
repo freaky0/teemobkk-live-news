@@ -158,7 +158,8 @@ class CommunityAPITests(TestCase):
         self.assertEqual(event.metadata, {'previous_status': 'open', 'status': 'resolved'})
 
     def test_filters_include_common_and_search(self):
-        Post.objects.create(author=self.owner, title='Common guide', body='Useful', region='common', category='living')
+        common = Post.objects.create(author=self.owner, title='Common guide', body='Useful', region='common', category='living')
+        LivingPost.objects.create(post=common, title=common.title, body=common.body)
         Post.objects.create(author=self.owner, title='Phuket', body='Useful', region='phuket', category='travel')
         data = self.client.get('/api/v1/posts/?region=bangkok&category=living&q=guide').data
         self.assertEqual(data['count'], 2)
@@ -169,12 +170,13 @@ class CommunityAPITests(TestCase):
         for category in ('living', 'housing', 'banking'):
             title = f'API legacy {category} topic'
             titles.add(title)
-            Post.objects.create(
+            post = Post.objects.create(
                 author=self.owner,
                 title=title,
                 body='Existing API content stays available.',
                 category=category,
             )
+            LivingPost.objects.create(post=post, title=post.title, body=post.body)
 
         for category in ('living', 'housing', 'banking'):
             with self.subTest(category=category):
@@ -202,7 +204,7 @@ class CommunityAPITests(TestCase):
             }, format='json')
             self.assertEqual(response.status_code, 201)
             self.assertEqual(response.data['category'], 'living')
-            self.assertEqual(Post.objects.get(title=title).category, 'living')
+            self.assertEqual(Post.objects.get(livingpost__title=title).category, 'living')
 
         legacy_post = Post.objects.create(
             author=self.owner,
@@ -210,6 +212,7 @@ class CommunityAPITests(TestCase):
             body='This existing post should retain its category until edited.',
             category='housing',
         )
+        LivingPost.objects.create(post=legacy_post, title=legacy_post.title, body=legacy_post.body)
         response = self.client.patch(
             f'/api/v1/posts/{legacy_post.pk}/',
             {'category': 'banking'},
