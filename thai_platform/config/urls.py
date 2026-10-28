@@ -46,6 +46,7 @@ urlpatterns = [
     path("community/notifications/", web.notifications_page, name="notifications"),
     path("community/notifications/<int:pk>/read/", web.notification_read, name="notification-read"),
     path("community/messages/", private_messages.inbox, name="private-messages"),
+    path("community/messages/unread-count/", private_messages.unread_count, name="community-unread-count"),
     path("community/messages/sent/", private_messages.inbox, {"sent": True}, name="private-messages-sent"),
     path("community/messages/send/", private_messages.send, name="private-message-send"),
     path("community/messages/<int:pk>/read/", private_messages.read, name="private-message-read"),

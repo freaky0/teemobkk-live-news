@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import F, Q
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
@@ -117,3 +117,12 @@ def read(request, pk):
     if item.read_at is None:
         PrivateMessage.objects.filter(pk=item.pk, recipient=request.user, read_at__isnull=True).update(read_at=timezone.now())
     return private_response(redirect('private-messages'))
+
+
+@login_required
+@never_cache
+@require_GET
+def unread_count(request):
+    require_member(request.user)
+    count = PrivateMessage.objects.filter(recipient=request.user, read_at__isnull=True).count()
+    return private_response(JsonResponse({'count': count}))

@@ -4,6 +4,7 @@ import sqlite3
 from tempfile import TemporaryDirectory
 from pathlib import Path
 from unittest import skipUnless
+from unittest.mock import patch
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import override_settings
@@ -18,12 +19,13 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         if self._testMethodName == 'test_staff_notice_pin_and_unpin':
             self.member.is_staff = True
             self.member.save(update_fields=['is_staff'])
-        if self._testMethodName in ('test_private_messages_mobile_send', 'test_member_menu_mobile_keyboard_and_block', 'test_detail_member_menus_in_both_themes', 'test_combined_member_menu_and_comment_likes'):
+        if self._testMethodName in ('test_private_messages_mobile_send', 'test_unread_badge_refreshes_and_pauses_in_hidden_tab', 'test_member_menu_mobile_keyboard_and_block', 'test_detail_member_menus_in_both_themes', 'test_combined_member_menu_and_comment_likes'):
             from members.models import MemberProfile
             from django.utils import timezone
             now = timezone.now()
             MemberProfile.objects.create(user=self.member, email_key='browser-sender@example.test', nickname_key='브라우저검증', accepted_at=now, email_verified_at=now)
             recipient = get_user_model().objects.create_user(username='쪽지수신자')
+            self.recipient = recipient
             if self._testMethodName == 'test_member_menu_mobile_keyboard_and_block':
                 Post.objects.create(author=recipient, title='회원 메뉴 테스트', body='browser fixture')
             MemberProfile.objects.create(user=recipient, email_key='browser-recipient@example.test', nickname_key='쪽지수신자', accepted_at=now, email_verified_at=now)
@@ -277,6 +279,87 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.page.locator('.reply .member-menu').get_by_role('link', name='작성글 보기').click()
         self.assertTrue(self.page.url.endswith('#member-posts'))
         self.assertTrue(self.page.locator('#member-posts').is_visible())
+        self.assertEqual(self.errors, [])
+
+    @patch.dict(os.environ, {'DJANGO_ALLOW_ASYNC_UNSAFE': 'true'})
+    def test_unread_badge_refreshes_and_pauses_in_hidden_tab(self):
+        from .models import PrivateMessage
+
+        message = PrivateMessage.objects.create(
+            sender=self.recipient, recipient=self.member, body='browser polling fixture'
+        )
+        self.page.add_init_script('''
+            (() => {
+                window.__testVisibility = 'visible';
+                window.__unreadPollRequests = 0;
+                window.__maxUnreadTimers = 0;
+                const pending = new Set();
+                const nativeSetTimeout = window.setTimeout.bind(window);
+                const nativeClearTimeout = window.clearTimeout.bind(window);
+                Object.defineProperty(document, 'visibilityState', {
+                    configurable: true,
+                    get: () => window.__testVisibility,
+                });
+                window.__setUnreadVisibility = (value) => {
+                    window.__testVisibility = value;
+                    document.dispatchEvent(new Event('visibilitychange'));
+                };
+                window.setTimeout = (callback, delay, ...args) => {
+                    const isUnreadPoll = Number(delay) === 30000;
+                    let timerId;
+                    timerId = nativeSetTimeout(() => {
+                        if (isUnreadPoll) pending.delete(timerId);
+                        callback();
+                    }, isUnreadPoll ? 40 : delay, ...args);
+                    if (isUnreadPoll) {
+                        pending.add(timerId);
+                        window.__maxUnreadTimers = Math.max(window.__maxUnreadTimers, pending.size);
+                    }
+                    return timerId;
+                };
+                window.clearTimeout = (timerId) => {
+                    pending.delete(timerId);
+                    return nativeClearTimeout(timerId);
+                };
+                const nativeFetch = window.fetch.bind(window);
+                window.fetch = (input, init) => {
+                    const url = typeof input === 'string' ? input : input.url;
+                    if (url.includes('/community/messages/unread-count/')) {
+                        window.__unreadPollRequests += 1;
+                    }
+                    return nativeFetch(input, init);
+                };
+            })();
+        ''')
+        self.page.goto(self.live_server_url + '/', wait_until='domcontentloaded')
+        link = self.page.locator('[data-message-unread-link]')
+        self.assertTrue(link.is_visible())
+        self.assertEqual(link.get_attribute('aria-label'), '쪽지, 읽지 않은 쪽지 1개')
+        self.assertEqual(link.get_attribute('data-count-url'), '/community/messages/unread-count/')
+        self.page.wait_for_timeout(120)
+        self.assertGreaterEqual(self.page.evaluate('window.__unreadPollRequests'), 1)
+        for width in (320, 390, 768, 1440):
+            self.page.set_viewport_size({'width': width, 'height': 900})
+            self.assertTrue(link.is_visible(), width)
+            self.assertTrue(
+                self.page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'),
+                width,
+            )
+
+        self.assertEqual(self.client.post(f'/community/messages/{message.pk}/read/').status_code, 302)
+        self.page.wait_for_selector('.message-unread-badge', state='detached')
+        self.assertEqual(link.get_attribute('aria-label'), '쪽지')
+        self.assertEqual(self.page.locator('[data-message-unread-status]').inner_text(), '읽지 않은 쪽지가 없습니다.')
+
+        self.page.evaluate("window.__setUnreadVisibility('hidden')")
+        requests_while_hidden = self.page.evaluate('window.__unreadPollRequests')
+        self.page.wait_for_timeout(120)
+        self.assertEqual(self.page.evaluate('window.__unreadPollRequests'), requests_while_hidden)
+        self.page.evaluate("window.__setUnreadVisibility('visible')")
+        self.page.wait_for_timeout(120)
+        self.assertGreater(self.page.evaluate('window.__unreadPollRequests'), requests_while_hidden)
+        self.page.wait_for_timeout(120)
+        self.assertLessEqual(self.page.evaluate('window.__maxUnreadTimers'), 1)
         self.assertEqual(self.errors, [])
 
     def test_private_messages_mobile_send(self):
