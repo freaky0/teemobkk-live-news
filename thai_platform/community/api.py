@@ -81,7 +81,7 @@ class PostViewSet(viewsets.ModelViewSet):
                 raise ValidationError({'board_category': 'Invalid category.'})
             qs = qs.filter(board_category_id=int(board_category))
         if query:
-            qs = qs.filter(Q(title__icontains=query) | Q(body__icontains=query))
+            qs = services.search_posts(qs, query)
         return qs
 
     def create(self, request, *args, **kwargs):

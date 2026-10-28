@@ -96,6 +96,25 @@ class Post(Timestamped):
     place_url = models.CharField(max_length=500, blank=True, db_default='', default='')
 
     @property
+    def board_content(self):
+        relation = {
+            'notice': 'noticepost', 'free': 'freepost', 'market': 'marketpost',
+            'jobs': 'jobspost', 'living': 'livingpost', 'housing': 'livingpost',
+            'banking': 'livingpost',
+        }.get(self.category)
+        return getattr(self, relation, None) if relation else None
+
+    @property
+    def display_title(self):
+        content = self.board_content
+        return content.title if content is not None else self.title
+
+    @property
+    def display_body(self):
+        content = self.board_content
+        return content.body if content is not None else self.body
+
+    @property
     def google_maps_search_url(self):
         if self.category != self.Category.FOODTRAVEL or not self.place_name:
             return ''

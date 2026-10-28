@@ -50,7 +50,7 @@ def post_list(request):
     q = request.GET.get("q", "").strip()[:200]
     region, category = request.GET.get("region", ""), request.GET.get("category", "")
     if q:
-        qs = qs.filter(Q(title__icontains=q) | Q(body__icontains=q))
+        qs = services.search_posts(qs, q)
     if region in dict(REGIONS):
         qs = qs.filter(region__in=[region, "common"])
     if category in services.LIFE_BOARD_CATEGORIES:
@@ -186,7 +186,7 @@ def post_edit(request, pk):
         raise PermissionDenied
     if post.category == Post.Category.NOTICE and not request.user.is_staff:
         raise PermissionDenied
-    form = PostForm(request.POST or None, initial={"board_data_version": board_data_version(post), "title": post.title, "body": post.body, "region": post.region, "category": services.canonical_life_category(post.category), "is_pinned": post.is_pinned, "market_kind": post.market_kind, "market_price": post.market_price, "market_region": post.market_region, "market_status": post.market_status, "job_kind": post.job_kind, "job_region": post.job_region, "job_compensation": post.job_compensation, "job_status": post.job_status, "place_name": post.place_name, "place_region": post.place_region, "place_note": post.place_note, "place_url": post.place_url}, staff=request.user.is_staff, editing=True)
+    form = PostForm(request.POST or None, initial={"board_data_version": board_data_version(post), "title": post.display_title, "body": post.display_body, "region": post.region, "category": services.canonical_life_category(post.category), "is_pinned": post.is_pinned, "market_kind": post.market_kind, "market_price": post.market_price, "market_region": post.market_region, "market_status": post.market_status, "job_kind": post.job_kind, "job_region": post.job_region, "job_compensation": post.job_compensation, "job_status": post.job_status, "place_name": post.place_name, "place_region": post.place_region, "place_note": post.place_note, "place_url": post.place_url}, staff=request.user.is_staff, editing=True)
     if request.method == "POST" and form.is_valid():
         try:
             call_service("update_post", request.user, post, {k: v for k, v in form.cleaned_data.items() if k != "privacy"})

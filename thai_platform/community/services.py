@@ -243,9 +243,8 @@ def blocked_member_ids(user):
 
 def visible_posts(user=None):
     blocked_ids = blocked_member_ids(user)
-    # Keep the disconnected prototype's blank-identity rows isolated for now.
-    qs = Post.objects.filter(status=Post.Status.PUBLISHED).exclude(
-        freepost__isnull=False, title='', body='')
+    qs = Post.objects.filter(status=Post.Status.PUBLISHED)
+    qs = qs.select_related('noticepost', 'freepost', 'marketpost', 'jobspost', 'livingpost')
     if blocked_ids is not None:
         qs = qs.exclude(author_id__in=blocked_ids)
     qs = qs.select_related('author', 'author__membership').annotate(
@@ -257,6 +256,19 @@ def visible_posts(user=None):
             bookmarked=Exists(Bookmark.objects.filter(user=user, post_id=OuterRef('pk'))),
         )
     return qs
+
+
+def search_posts(qs, query):
+    from django.db.models import Case, CharField, F, When
+    from django.db.models.functions import Coalesce
+    boards = [('notice', 'noticepost'), ('free', 'freepost'), ('market', 'marketpost'),
+              ('jobs', 'jobspost'), ('living', 'livingpost'), ('housing', 'livingpost'),
+              ('banking', 'livingpost')]
+    def content(field):
+        return Case(*(When(category=category, then=Coalesce(F(f'{relation}__{field}'), F(field)))
+                      for category, relation in boards), default=F(field), output_field=CharField())
+    return qs.alias(search_title=content('title'), search_body=content('body')).filter(
+        Q(search_title__icontains=query) | Q(search_body__icontains=query))
 
 
 def public_posts(user=None):

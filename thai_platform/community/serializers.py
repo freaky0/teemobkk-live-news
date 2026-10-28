@@ -37,6 +37,8 @@ class PostInputSerializer(StrictInputMixin, serializers.ModelSerializer):
 
 
 class PostSerializer(serializers.ModelSerializer):
+    title = serializers.CharField(source='display_title', read_only=True)
+    body = serializers.CharField(source='display_body', read_only=True)
     board_data_version = serializers.SerializerMethodField()
 
     def get_board_data_version(self, obj):

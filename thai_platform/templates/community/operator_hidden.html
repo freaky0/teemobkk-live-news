@@ -3,7 +3,7 @@
 {% block content %}
 <h1>숨긴 게시글 관리</h1><p><a href="{% url 'post-list' %}">커뮤니티로 돌아가기</a></p>
 {% for post in page_obj %}
-<article class="panel"><h2>{{ post.title }}</h2><p>{{ post.author.username }} · {{ post.created_at|date:'Y.m.d H:i' }}</p><p class="body">{{ post.body }}</p>
+<article class="panel"><h2>{{ post.display_title }}</h2><p>{{ post.author.username }} · {{ post.created_at|date:'Y.m.d H:i' }}</p><p class="body">{{ post.display_body }}</p>
 <div class="actions"><form method="post" action="{% url 'operator-post-action' post.pk %}">{% csrf_token %}<input type="hidden" name="action" value="restore"><button class="btn" type="submit">게시글 복원</button></form><a class="btn danger" href="{% url 'operator-delete-confirm' post.pk %}">운영자 삭제</a></div></article>
 {% empty %}<p>숨긴 게시글이 없습니다.</p>{% endfor %}
 <nav aria-label="페이지">{% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}">이전</a>{% endif %} {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}">다음</a>{% endif %}</nav>
