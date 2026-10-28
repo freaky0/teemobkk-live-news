@@ -5,7 +5,7 @@ from django.test import RequestFactory, TestCase, override_settings
 from django.middleware.csrf import _get_new_csrf_string
 from rest_framework.test import APIClient
 
-from .models import AuditEvent, Comment, Post, Report
+from .models import AuditEvent, Comment, LivingPost, Post, Report
 from .admin import CommentAdmin
 from . import services
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -22,6 +22,7 @@ class CommunityAPITests(TestCase):
         cls.staff.groups.add(Group.objects.get_or_create(name='Report moderators')[0])
         cls.inactive = User.objects.create_user(username='inactive', is_active=False)
         cls.post = Post.objects.create(author=cls.owner, title='Bangkok guide', body='Useful content', region='bangkok', category='living')
+        LivingPost.objects.create(post=cls.post, title=cls.post.title, body=cls.post.body)
 
     def setUp(self):
         self.client = APIClient()
