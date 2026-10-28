@@ -12,7 +12,8 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.cache import never_cache
 from rest_framework.exceptions import ValidationError as APIValidationError
 from .forms import CATEGORIES, REGIONS, AppealForm, CommentForm, PostForm, ReportForm
-from .models import Comment, CommentLike, Notification, Post
+from .models import Comment, CommentLike, Post
+from .board_versions import board_data_version
 from . import services
 
 def call_service(name, *args):
@@ -23,8 +24,8 @@ def call_service(name, *args):
     except APINotFound as exc:
         raise Http404 from exc
 
-def published():
-    return services.public_posts()
+def published(user=None):
+    return services.public_posts(user)
 
 def back_url(request):
     query = request.GET.get("from", "")
@@ -34,7 +35,7 @@ def back_url(request):
 
 def home(request):
     from . import news
-    context = {"posts": published()[:4], "helpful_posts": published().filter(helpful_count__gt=0).order_by('-helpful_count', '-created_at', '-pk')[:4]}
+    context = {"posts": published(request.user)[:4], "helpful_posts": published(request.user).filter(helpful_count__gt=0).order_by('-helpful_count', '-created_at', '-pk')[:4]}
     try:
         context["news_page"] = news.list_articles(page_size=5)
     except news.NewsUnavailable:
@@ -42,7 +43,7 @@ def home(request):
     return render(request, "community/home.html", context)
 
 def post_list(request):
-    qs = published()
+    qs = published(request.user)
     resolution = request.GET.get('resolution', '')
     if resolution in Post.Resolution.values:
         qs = qs.filter(resolution=resolution)
@@ -52,7 +53,10 @@ def post_list(request):
         qs = qs.filter(Q(title__icontains=q) | Q(body__icontains=q))
     if region in dict(REGIONS):
         qs = qs.filter(region__in=[region, "common"])
-    if category in dict(CATEGORIES):
+    if category in services.LIFE_BOARD_CATEGORIES:
+        qs = qs.filter(category__in=services.LIFE_BOARD_CATEGORIES)
+        category = Post.Category.LIVING
+    elif category in dict(CATEGORIES):
         qs = qs.filter(category=category)
     pagination = Paginator(qs, 20).get_page(request.GET.get("page"))
     keep = request.GET.copy()
@@ -99,10 +103,14 @@ def operator_post_action(request, pk):
 @require_GET
 def public_member(request, pk):
     from members.models import MemberProfile
-    member = get_object_or_404(MemberProfile, user_id=pk, user__is_active=True, accepted_at__isnull=False, email_verified_at__isnull=False, nickname_key__isnull=False)
+    members = MemberProfile.objects.filter(user__is_active=True, accepted_at__isnull=False, email_verified_at__isnull=False, nickname_key__isnull=False)
+    blocked_ids = services.blocked_member_ids(request.user)
+    if blocked_ids is not None:
+        members = members.exclude(user_id__in=blocked_ids)
+    member = get_object_or_404(members, user_id=pk)
     if not member.nickname_key:
         raise Http404
-    posts = Paginator(published().filter(author_id=pk), 20).get_page(request.GET.get('page'))
+    posts = Paginator(published(request.user).filter(author_id=pk), 20).get_page(request.GET.get('page'))
     return render(request, 'community/public_member.html', {'member': member, 'page_obj': posts})
 
 
@@ -121,7 +129,7 @@ def my_activity(request):
 def post_detail(request, pk):
     post = get_object_or_404(services.public_posts(request.user), pk=pk)
     viewer = Exists(CommentLike.objects.filter(comment_id=OuterRef('pk'), user=request.user)) if request.user.is_authenticated else Value(False, output_field=BooleanField())
-    visible = Comment.objects.filter(status=Comment.Status.PUBLISHED, post=post).select_related('author', 'author__membership').annotate(like_count=Count('likes'), viewer_likes=viewer).order_by('created_at', 'pk')
+    visible = services.visible_comments(request.user, post).select_related('author', 'author__membership').annotate(like_count=Count('likes'), viewer_likes=viewer).order_by('created_at', 'pk')
     replies = visible.filter(parent__isnull=False)
     comments = visible.filter(parent__isnull=True).prefetch_related(Prefetch('replies', queryset=replies))
     return render(request, "community/detail.html", {"post": post, "comments": comments, "comment_form": CommentForm(), "report_form": ReportForm(), "back_url": back_url(request)})
@@ -131,8 +139,8 @@ def post_detail(request, pk):
 @require_POST
 def comment_like(request, pk, comment_pk):
     call_service('require_active', request.user)
-    post = get_object_or_404(published(), pk=pk)
-    comment = get_object_or_404(Comment.objects.filter(Q(parent__isnull=True) | Q(parent__status=Comment.Status.PUBLISHED)), pk=comment_pk, post=post, status=Comment.Status.PUBLISHED)
+    post = get_object_or_404(published(request.user), pk=pk)
+    comment = get_object_or_404(services.visible_comments(request.user, post), pk=comment_pk)
     active = request.POST.get('active')
     if active not in ('true', 'false') or set(request.POST) - {'active', 'csrfmiddlewaretoken'}:
         from django.http import HttpResponseBadRequest
@@ -169,15 +177,16 @@ def post_create(request):
     return render(request, "community/write.html", {"form": form, "editing": False})
 
 @login_required
+@never_cache
 def post_edit(request, pk):
     if request.method == 'POST' and 'is_pinned' in request.POST and not request.user.is_staff:
         raise PermissionDenied
-    post = get_object_or_404(published(), pk=pk)
+    post = get_object_or_404(published(request.user), pk=pk)
     if not (post.category == Post.Category.NOTICE and request.user.is_staff) and request.user.pk != post.author_id:
         raise PermissionDenied
     if post.category == Post.Category.NOTICE and not request.user.is_staff:
         raise PermissionDenied
-    form = PostForm(request.POST or None, initial={"title": post.title, "body": post.body, "region": post.region, "category": post.category, "is_pinned": post.is_pinned, "market_kind": post.market_kind, "market_price": post.market_price, "market_region": post.market_region, "market_status": post.market_status}, staff=request.user.is_staff)
+    form = PostForm(request.POST or None, initial={"board_data_version": board_data_version(post), "title": post.title, "body": post.body, "region": post.region, "category": services.canonical_life_category(post.category), "is_pinned": post.is_pinned, "market_kind": post.market_kind, "market_price": post.market_price, "market_region": post.market_region, "market_status": post.market_status, "job_kind": post.job_kind, "job_region": post.job_region, "job_compensation": post.job_compensation, "job_status": post.job_status, "place_name": post.place_name, "place_region": post.place_region, "place_note": post.place_note, "place_url": post.place_url}, staff=request.user.is_staff, editing=True)
     if request.method == "POST" and form.is_valid():
         try:
             call_service("update_post", request.user, post, {k: v for k, v in form.cleaned_data.items() if k != "privacy"})
@@ -185,6 +194,17 @@ def post_edit(request, pk):
             return redirect("post-detail", pk=post.pk)
         except (ValidationError, APIValidationError) as exc:
             service_error(form, exc)
+    if request.method == 'POST':
+        post.refresh_from_db()
+        data = form.data.copy()
+        stale = bool(data.get('board_data_version')) and data.get('board_data_version') != board_data_version(post)
+        for prefix, category in (('market_', 'market'), ('job_', 'jobs'), ('place_', 'foodtravel')):
+            for name in form.fields:
+                if name.startswith(prefix) and data.get('category') != category and (name not in data or (post.category == category and data.get('board_fields_snapshot') != '1' and not data.get(name))):
+                    data[name] = getattr(post, name) if getattr(post, name) is not None else ''
+        data['board_data_version'] = data.get('board_data_version') if stale else board_data_version(post)
+        data.pop('confirm_board_data_removal', None)
+        form.data = data
     return render(request, "community/write.html", {"form": form, "editing": True, "post": post})
 
 @require_POST
@@ -200,7 +220,7 @@ def post_bookmark(request, pk):
 def engagement_action(request, pk, service):
     if not request.user.is_authenticated or not request.user.is_active:
         raise PermissionDenied
-    post = get_object_or_404(published(), pk=pk)
+    post = get_object_or_404(published(request.user), pk=pk)
     try:
         call_service(service, request.user, post, {k: v for k, v in request.POST.items() if k != 'csrfmiddlewaretoken'})
     except APIValidationError:
@@ -212,7 +232,7 @@ def engagement_action(request, pk, service):
 def post_resolution(request, pk):
     if not request.user.is_authenticated or not request.user.is_active:
         raise PermissionDenied
-    post = get_object_or_404(published(), pk=pk)
+    post = get_object_or_404(published(request.user), pk=pk)
     try:
         call_service('set_resolution', request.user, post, {k: v for k, v in request.POST.items() if k != 'csrfmiddlewaretoken'})
     except APIValidationError:
@@ -223,7 +243,7 @@ def post_resolution(request, pk):
 @login_required
 @require_POST
 def post_delete(request, pk):
-    post = get_object_or_404(published(), pk=pk)
+    post = get_object_or_404(published(request.user), pk=pk)
     call_service("delete_post", request.user, post)
     messages.success(request, "질문을 삭제했습니다.")
     return redirect("post-list")
@@ -233,7 +253,7 @@ def post_delete(request, pk):
 def notifications_page(request):
     if not request.user.is_active:
         raise PermissionDenied
-    items = Notification.objects.filter(recipient=request.user).select_related('post', 'appeal').order_by('-created_at', '-pk')
+    items = services.visible_notifications(request.user).select_related('post', 'appeal').order_by('-created_at', '-pk')
     response = render(request, 'community/notifications.html', {'notifications': items[:50]})
     response['Cache-Control'] = 'no-store, private'
     return response
@@ -244,7 +264,7 @@ def notifications_page(request):
 def notification_read(request, pk):
     if not request.user.is_active:
         raise PermissionDenied
-    item = get_object_or_404(Notification, pk=pk, recipient=request.user)
+    item = get_object_or_404(services.visible_notifications(request.user), pk=pk)
     if not item.is_read:
         item.is_read = True
         item.save(update_fields=['is_read', 'updated_at'])
@@ -254,7 +274,7 @@ def notification_read(request, pk):
 @login_required
 @require_POST
 def comment_create(request, pk):
-    post = get_object_or_404(published(), pk=pk)
+    post = get_object_or_404(published(request.user), pk=pk)
     form = CommentForm(request.POST)
     if form.is_valid():
         try:
@@ -271,7 +291,7 @@ def comment_create(request, pk):
 @login_required
 @require_POST
 def report_create(request, pk):
-    post = get_object_or_404(published(), pk=pk)
+    post = get_object_or_404(published(request.user), pk=pk)
     form = ReportForm(request.POST)
     if form.is_valid():
         try:

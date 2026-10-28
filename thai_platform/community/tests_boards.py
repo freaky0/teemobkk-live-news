@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework.exceptions import PermissionDenied
 from . import services
+from .forms import PostForm
 from .models import Post
 
 
@@ -29,10 +30,83 @@ class BoardTests(TestCase):
         user = get_user_model().objects.create_user(username='writer')
         legacy = Post.objects.create(author=user, title='Legacy question', body='Old content', category='visa')
         response = self.client.get('/community/')
-        for category in ('notice', 'free', 'questions', 'market', 'jobs', 'foodtravel', 'housing', 'visa'):
+        for category in ('notice', 'free', 'questions', 'market', 'jobs', 'foodtravel', 'living', 'visa'):
             self.assertContains(response, f'category={category}')
         self.assertContains(self.client.get('/community/?category=visa'), legacy.title)
         self.assertEqual(Post.objects.get(pk=legacy.pk).category, 'visa')
+
+    def test_life_categories_share_one_board_without_rewriting_legacy_rows(self):
+        user = get_user_model().objects.create_user(username='life-board-writer')
+        posts = {}
+        for category in ('living', 'housing', 'banking'):
+            posts[category] = Post.objects.create(
+                author=user,
+                title=f'Legacy {category} topic',
+                body='Existing community content stays unchanged.',
+                category=category,
+            )
+
+        board = self.client.get('/community/?category=living')
+        self.assertEqual(board.status_code, 200)
+        self.assertEqual(board.context['category'], 'living')
+        for post in posts.values():
+            self.assertContains(board, post.title)
+            self.assertContains(board, '생활 질문')
+        self.assertContains(board, '?category=living')
+        self.assertNotContains(board, '?category=housing')
+        self.assertNotContains(board, '?category=banking')
+
+        for legacy_category in ('housing', 'banking'):
+            legacy_link = self.client.get(f'/community/?category={legacy_category}')
+            self.assertEqual(legacy_link.context['category'], 'living')
+            for post in posts.values():
+                self.assertContains(legacy_link, post.title)
+
+        self.assertEqual(
+            {post.pk: Post.objects.get(pk=post.pk).category for post in posts.values()},
+            {post.pk: category for category, post in posts.items()},
+        )
+
+    def test_new_life_posts_use_only_the_canonical_category(self):
+        self.assertIn(('living', '생활 질문'), list(PostForm().fields['category'].choices))
+        self.assertNotIn('housing', dict(PostForm().fields['category'].choices))
+        self.assertNotIn('banking', dict(PostForm().fields['category'].choices))
+
+        user = get_user_model().objects.create_user(username='canonical-life-writer')
+        for legacy_category in ('housing', 'banking'):
+            with self.subTest(category=legacy_category):
+                post = services.create_post(user, {
+                    'title': f'New post via {legacy_category}',
+                    'body': 'This new post should use the unified life board.',
+                    'category': legacy_category,
+                })
+                self.assertEqual(post.category, 'living')
+
+    def test_editing_legacy_life_post_opens_on_unified_category(self):
+        user = get_user_model().objects.create_user(username='legacy-life-editor')
+        self.client.force_login(user)
+        post = Post.objects.create(
+            author=user,
+            title='Existing housing post',
+            body='Existing housing content remains unchanged until saved.',
+            category='housing',
+        )
+
+        edit = self.client.get(f'/community/{post.pk}/edit/')
+        self.assertEqual(edit.context['form']['category'].value(), 'living')
+        post.refresh_from_db()
+        self.assertEqual(post.category, 'housing')
+
+        response = self.client.post(f'/community/{post.pk}/edit/', {
+            'title': 'Updated housing post',
+            'body': 'Existing housing content remains available after editing.',
+            'region': 'common',
+            'category': 'living',
+            'privacy': 'on',
+        })
+        self.assertEqual(response.status_code, 302)
+        post.refresh_from_db()
+        self.assertEqual((post.title, post.category), ('Updated housing post', 'living'))
 
     def test_notice_write_requires_moderator_and_prevents_category_bypass(self):
         User = get_user_model()

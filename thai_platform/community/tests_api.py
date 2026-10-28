@@ -163,6 +163,61 @@ class CommunityAPITests(TestCase):
         self.assertEqual(data['count'], 2)
         self.assertEqual(self.client.get('/api/v1/posts/?region=invalid').status_code, 400)
 
+    def test_legacy_life_category_api_filters_return_the_unified_board(self):
+        titles = set()
+        for category in ('living', 'housing', 'banking'):
+            title = f'API legacy {category} topic'
+            titles.add(title)
+            Post.objects.create(
+                author=self.owner,
+                title=title,
+                body='Existing API content stays available.',
+                category=category,
+            )
+
+        for category in ('living', 'housing', 'banking'):
+            with self.subTest(category=category):
+                response = self.client.get(f'/api/v1/posts/?category={category}')
+                self.assertEqual(response.status_code, 200)
+                result_titles = {post['title'] for post in response.data['results']}
+                self.assertTrue(titles.issubset(result_titles))
+        self.assertEqual(
+            {title: Post.objects.get(title=title).category for title in titles},
+            {
+                'API legacy living topic': 'living',
+                'API legacy housing topic': 'housing',
+                'API legacy banking topic': 'banking',
+            },
+        )
+
+    def test_api_writes_legacy_life_values_as_the_canonical_category(self):
+        self.client.force_authenticate(self.owner)
+        for legacy_category in ('housing', 'banking'):
+            title = f'New unified topic from {legacy_category}'
+            response = self.client.post('/api/v1/posts/', {
+                'title': title,
+                'body': 'New posts from legacy aliases use the unified board.',
+                'category': legacy_category,
+            }, format='json')
+            self.assertEqual(response.status_code, 201)
+            self.assertEqual(response.data['category'], 'living')
+            self.assertEqual(Post.objects.get(title=title).category, 'living')
+
+        legacy_post = Post.objects.create(
+            author=self.owner,
+            title='Existing housing post',
+            body='This existing post should retain its category until edited.',
+            category='housing',
+        )
+        response = self.client.patch(
+            f'/api/v1/posts/{legacy_post.pk}/',
+            {'category': 'banking'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200)
+        legacy_post.refresh_from_db()
+        self.assertEqual(legacy_post.category, 'living')
+
     def test_service_permissions_and_validation(self):
         for user in [None, self.inactive]:
             with self.assertRaises(PermissionDenied):

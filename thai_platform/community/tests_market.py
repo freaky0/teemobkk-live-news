@@ -21,14 +21,13 @@ class MarketBoardTests(TestCase):
             with self.subTest(field=field_name):
                 self.assertIn(field_name, form.fields)
 
-    def test_irrelevant_market_field_error_remains_visible_on_non_market_form(self):
+    def test_irrelevant_market_field_does_not_block_non_market_form(self):
         response = self.client.post('/community/new/', {
             'title': 'An ordinary post', 'body': 'A sufficiently long ordinary post body.',
             'region': 'common', 'category': 'living', 'privacy': 'on', 'market_price': 'invalid',
         })
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, '<details class="field market-fields" data-market-fields open>')
-        self.assertContains(response, '가격 (THB)')
+        self.assertEqual(response.status_code, 302)
+        self.assertIsNone(Post.objects.get(title='An ordinary post').market_price)
 
     def test_market_fields_save_and_render(self):
         payload = {

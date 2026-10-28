@@ -60,7 +60,7 @@ class PostViewSet(viewsets.ModelViewSet):
         if category:
             if category not in Post.Category.values:
                 raise ValidationError({'category': 'Invalid category.'})
-            qs = qs.filter(category=category)
+            qs = qs.filter(category__in=services.category_filter_values(category))
         if query:
             qs = qs.filter(Q(title__icontains=query) | Q(body__icontains=query))
         return qs
@@ -96,7 +96,7 @@ class PostViewSet(viewsets.ModelViewSet):
         if request.method == 'POST':
             comment = services.create_comment(request.user, post, request.data)
             return Response(CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
-        qs = post.comments.filter(status='published').filter(Q(parent__isnull=True) | Q(parent__status='published'))
+        qs = services.visible_comments(request.user, post)
         page = self.paginate_queryset(qs)
         return self.get_paginated_response(CommentSerializer(page, many=True).data)
 
@@ -165,7 +165,7 @@ class NotificationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     def get_queryset(self):
         if not self.request.user.is_authenticated:
             return Notification.objects.none()
-        return Notification.objects.filter(recipient=self.request.user).select_related('post', 'comment', 'report', 'appeal')
+        return services.visible_notifications(self.request.user).select_related('post', 'comment', 'report', 'appeal')
 
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)

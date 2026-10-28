@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core.validators import MaxLengthValidator, MinValueValidator
 from django.db import models
+from .places import build_google_maps_search_url
 
 
 class ContentStatus(models.TextChoices):
@@ -35,11 +36,11 @@ class Post(Timestamped):
         MARKET = 'market', '중고게시판'
         JOBS = 'jobs', '구인구직'
         FOODTRAVEL = 'foodtravel', '맛집/여행지'
-        LIVING = 'living', 'Living'
-        HOUSING = 'housing', 'Housing'
+        LIVING = 'living', '생활 질문'
+        HOUSING = 'housing', '생활 질문'
         VISA = 'visa', 'Visa'
         TRAVEL = 'travel', 'Travel'
-        BANKING = 'banking', 'Banking'
+        BANKING = 'banking', '생활 질문'
 
     class MarketKind(models.TextChoices):
         SELL = 'sell', '판매'
@@ -50,6 +51,14 @@ class Post(Timestamped):
         RESERVED = 'reserved', '예약'
         COMPLETED = 'completed', '완료'
 
+    class JobKind(models.TextChoices):
+        HIRING = 'hiring', '구인'
+        SEEKING = 'seeking', '구직'
+
+    class JobStatus(models.TextChoices):
+        OPEN = 'open', '모집 중'
+        CLOSED = 'closed', '마감'
+
     Status = ContentStatus
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='community_posts')
     title = models.CharField(max_length=100)
@@ -59,10 +68,25 @@ class Post(Timestamped):
     is_pinned = models.BooleanField(default=False, db_default=False)
     resolution = models.CharField(max_length=10, choices=Resolution.choices, default=Resolution.UNRESOLVED, db_index=True)
     status = models.CharField(max_length=10, choices=ContentStatus.choices, default=ContentStatus.PUBLISHED, db_index=True)
-    market_kind = models.CharField(max_length=4, choices=MarketKind.choices, blank=True, default='')
+    market_kind = models.CharField(max_length=4, choices=MarketKind.choices, blank=True, db_default='', default='')
     market_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
-    market_region = models.CharField(max_length=10, choices=Region.choices, blank=True, default='')
-    market_status = models.CharField(max_length=10, choices=MarketStatus.choices, blank=True, default='')
+    market_region = models.CharField(max_length=10, choices=Region.choices, blank=True, db_default='', default='')
+    market_status = models.CharField(max_length=10, choices=MarketStatus.choices, blank=True, db_default='', default='')
+    job_kind = models.CharField(max_length=7, choices=JobKind.choices, blank=True, db_default='', default='')
+    job_region = models.CharField(max_length=10, choices=Region.choices, blank=True, db_default='', default='')
+    job_compensation = models.CharField(max_length=200, blank=True, db_default='', default='')
+    job_status = models.CharField(max_length=6, choices=JobStatus.choices, blank=True, db_default='', default='')
+    place_name = models.CharField(max_length=160, blank=True, db_default='', default='')
+    place_region = models.CharField(max_length=10, choices=Region.choices, blank=True, db_default='', default='')
+    place_note = models.CharField(max_length=500, blank=True, db_default='', default='')
+    place_url = models.CharField(max_length=500, blank=True, db_default='', default='')
+
+    @property
+    def google_maps_search_url(self):
+        if self.category != self.Category.FOODTRAVEL or not self.place_name:
+            return ''
+        region = self.get_place_region_display() if self.place_region else ''
+        return build_google_maps_search_url(self.place_name, region)
 
     class Meta:
         ordering = ['-created_at', '-pk']

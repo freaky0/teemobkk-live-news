@@ -1,5 +1,7 @@
 from rest_framework import serializers
 from .models import Comment, ModerationAppeal, Notification, Post, Report
+from .places import validate_external_place_url
+from .board_versions import board_data_version
 
 
 class StrictInputMixin:
@@ -15,13 +17,23 @@ class StrictInputMixin:
 
 class PostInputSerializer(StrictInputMixin, serializers.ModelSerializer):
     body = serializers.CharField(max_length=6000)
+    confirm_board_data_removal = serializers.BooleanField(required=False, write_only=True)
+    board_data_version = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    place_url = serializers.CharField(max_length=500, allow_blank=True, required=False)
 
     class Meta:
         model = Post
-        fields = ['title', 'body', 'region', 'category', 'is_pinned', 'market_kind', 'market_price', 'market_region', 'market_status']
+        fields = ['title', 'body', 'region', 'category', 'is_pinned', 'market_kind', 'market_price', 'market_region', 'market_status', 'job_kind', 'job_region', 'job_compensation', 'job_status', 'place_name', 'place_region', 'place_note', 'place_url', 'confirm_board_data_removal', 'board_data_version']
+
+    def validate_place_url(self, value):
+        return validate_external_place_url(value)
 
 
 class PostSerializer(serializers.ModelSerializer):
+    board_data_version = serializers.SerializerMethodField()
+
+    def get_board_data_version(self, obj):
+        return board_data_version(obj)
     author = serializers.IntegerField(source='author_id', read_only=True)
     helpful_count = serializers.IntegerField(read_only=True, default=0)
     helpful_active = serializers.BooleanField(read_only=True, default=False)
@@ -29,7 +41,7 @@ class PostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = ['id', 'author', 'title', 'body', 'region', 'category', 'is_pinned', 'market_kind', 'market_price', 'market_region', 'market_status', 'status', 'resolution', 'helpful_count', 'helpful_active', 'bookmarked', 'created_at', 'updated_at']
+        fields = ['id', 'author', 'title', 'body', 'region', 'category', 'is_pinned', 'market_kind', 'market_price', 'market_region', 'market_status', 'job_kind', 'job_region', 'job_compensation', 'job_status', 'place_name', 'place_region', 'place_note', 'place_url', 'status', 'resolution', 'helpful_count', 'helpful_active', 'bookmarked', 'created_at', 'updated_at', 'board_data_version']
         read_only_fields = fields
 
 

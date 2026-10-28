@@ -12,12 +12,27 @@ from django.utils import timezone
 from allauth.account.models import EmailAddress
 from members.models import MemberProfile
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
-from .models import AuditEvent, Bookmark, Comment, Helpful, ModerationAppeal, NewsComment, Notification, Post, Report
-from django.db.models import Count, Exists, OuterRef
+from .models import AuditEvent, Bookmark, Comment, Helpful, MemberBlock, ModerationAppeal, NewsComment, Notification, Post, Report
+from .board_versions import board_data_version
+from django.db.models import Count, Exists, OuterRef, Q
 from .serializers import (CommentInputSerializer, PostInputSerializer, PostResolutionSerializer, EngagementInputSerializer,
                           ReportInputSerializer, ReportResolutionSerializer, AppealInputSerializer)
 
 logger = logging.getLogger(__name__)
+
+LIFE_BOARD_CATEGORIES = (
+    Post.Category.LIVING,
+    Post.Category.HOUSING,
+    Post.Category.BANKING,
+)
+
+
+def canonical_life_category(category):
+    return Post.Category.LIVING if category in LIFE_BOARD_CATEGORIES else category
+
+
+def category_filter_values(category):
+    return LIFE_BOARD_CATEGORIES if category in LIFE_BOARD_CATEGORIES else (category,)
 
 
 def require_active(user):
@@ -100,8 +115,18 @@ def operator_post_action(user, post, action):
 def create_post(user, data):
     require_active(user)
     values = _validate(PostInputSerializer, data)
+    values.pop('confirm_board_data_removal', None)
+    values.pop('board_data_version', None)
+    if 'category' in values:
+        values['category'] = canonical_life_category(values['category'])
     if values.get('category') != Post.Category.MARKET:
         for key in ('market_kind', 'market_price', 'market_region', 'market_status'):
+            values.pop(key, None)
+    if values.get('category') != Post.Category.JOBS:
+        for key in ('job_kind', 'job_region', 'job_compensation', 'job_status'):
+            values.pop(key, None)
+    if values.get('category') != Post.Category.FOODTRAVEL:
+        for key in ('place_name', 'place_region', 'place_note', 'place_url'):
             values.pop(key, None)
     if values.get('category') == Post.Category.NOTICE and not user.is_staff:
         raise PermissionDenied('Staff access required for notices.')
@@ -122,11 +147,36 @@ def update_post(user, post, data):
     if post.status == Post.Status.DELETED:
         raise NotFound('Post not found.')
     values = _validate(PostInputSerializer, data, partial=True)
+    confirmed = values.pop('confirm_board_data_removal', False)
+    version = values.pop('board_data_version', None)
+    if version and version != board_data_version(post):
+        raise ValidationError({'board_data_version': '게시글이 변경되었습니다. 최신 정보를 확인해 주세요.'})
+    if 'category' in values:
+        values['category'] = canonical_life_category(values['category'])
+    board_fields = {
+        Post.Category.MARKET: ('market_kind', 'market_price', 'market_region', 'market_status'),
+        Post.Category.JOBS: ('job_kind', 'job_region', 'job_compensation', 'job_status'),
+        Post.Category.FOODTRAVEL: ('place_name', 'place_region', 'place_note', 'place_url'),
+    }
+    if (values.get('category', post.category) != post.category and
+            any(getattr(post, field) is not None and getattr(post, field) != '' for field in board_fields.get(post.category, ())) and
+            (not confirmed or version != board_data_version(post))):
+        raise ValidationError({'confirm_board_data_removal': '게시판 정보가 변경되었거나 삭제 동의가 없습니다. 최신 정보를 확인하고 다시 동의해 주세요.'})
     if values.get('category', post.category) != Post.Category.MARKET:
         for key in ('market_kind', 'market_price', 'market_region', 'market_status'):
             values.pop(key, None)
         if post.category == Post.Category.MARKET:
             values.update(market_kind='', market_price=None, market_region='', market_status='')
+    if values.get('category', post.category) != Post.Category.JOBS:
+        for key in ('job_kind', 'job_region', 'job_compensation', 'job_status'):
+            values.pop(key, None)
+        if post.category == Post.Category.JOBS:
+            values.update(job_kind='', job_region='', job_compensation='', job_status='')
+    if values.get('category', post.category) != Post.Category.FOODTRAVEL:
+        for key in ('place_name', 'place_region', 'place_note', 'place_url'):
+            values.pop(key, None)
+        if post.category == Post.Category.FOODTRAVEL:
+            values.update(place_name='', place_region='', place_note='', place_url='')
     if values.get('category') == Post.Category.NOTICE and not user.is_staff:
         raise PermissionDenied('Staff access required for notices.')
     if 'is_pinned' in data and not user.is_staff:
@@ -152,12 +202,64 @@ def delete_post(user, post):
     return post
 
 
-def public_posts(user=None):
-    qs = Post.objects.filter(status=Post.Status.PUBLISHED).select_related('author', 'author__membership').annotate(helpful_count=Count('helpful_votes', distinct=True)).order_by('-is_pinned', '-created_at', '-pk')
-    if user and user.is_authenticated:
+def blocked_member_ids(user):
+    if not user or not getattr(user, 'is_authenticated', False):
+        return None
+    return MemberBlock.objects.filter(blocker_id=user.pk).values_list('blocked_id', flat=True)
+
+
+def visible_posts(user=None):
+    blocked_ids = blocked_member_ids(user)
+    qs = Post.objects.filter(status=Post.Status.PUBLISHED)
+    if blocked_ids is not None:
+        qs = qs.exclude(author_id__in=blocked_ids)
+    qs = qs.select_related('author', 'author__membership').annotate(
+        helpful_count=Count('helpful_votes', distinct=True),
+    ).order_by('-is_pinned', '-created_at', '-pk')
+    if user and getattr(user, 'is_authenticated', False):
         qs = qs.annotate(
             helpful_active=Exists(Helpful.objects.filter(user=user, post_id=OuterRef('pk'))),
             bookmarked=Exists(Bookmark.objects.filter(user=user, post_id=OuterRef('pk'))),
+        )
+    return qs
+
+
+def public_posts(user=None):
+    return visible_posts(user)
+
+
+def visible_comments(user=None, post=None):
+    qs = Comment.objects.filter(
+        status=Comment.Status.PUBLISHED,
+        post__status=Post.Status.PUBLISHED,
+    ).filter(Q(parent__isnull=True) | Q(parent__status=Comment.Status.PUBLISHED))
+    if post is not None:
+        qs = qs.filter(post_id=post.pk)
+    blocked_ids = blocked_member_ids(user)
+    if blocked_ids is not None:
+        qs = qs.exclude(author_id__in=blocked_ids).exclude(post__author_id__in=blocked_ids)
+        qs = qs.filter(Q(parent__isnull=True) | ~Q(parent__author_id__in=blocked_ids))
+    return qs
+
+
+def visible_notifications(user):
+    qs = Notification.objects.filter(recipient=user)
+    invalid_reply = Q(kind=Notification.Kind.REPLY, comment__isnull=False) & (
+        ~Q(comment__status=Comment.Status.PUBLISHED)
+        | Q(post__isnull=True)
+        | ~Q(post__status=Post.Status.PUBLISHED)
+        | Q(comment__post__isnull=True)
+        | ~Q(comment__post__status=Post.Status.PUBLISHED)
+        | (Q(comment__parent__isnull=False) & ~Q(comment__parent__status=Comment.Status.PUBLISHED))
+    )
+    qs = qs.exclude(invalid_reply)
+    blocked_ids = blocked_member_ids(user)
+    if blocked_ids is not None:
+        qs = qs.exclude(
+            Q(kind=Notification.Kind.REPLY, comment__author_id__in=blocked_ids)
+            | Q(kind=Notification.Kind.REPLY, post__author_id__in=blocked_ids)
+            | Q(kind=Notification.Kind.REPLY, comment__post__author_id__in=blocked_ids)
+            | Q(kind=Notification.Kind.REPLY, comment__parent__author_id__in=blocked_ids)
         )
     return qs
 
@@ -168,7 +270,7 @@ def activity(user, kind):
     if kind == 'posts':
         return qs.filter(author=user)
     if kind == 'comments':
-        return Comment.objects.filter(author=user, status=Post.Status.PUBLISHED, post__status=Post.Status.PUBLISHED).order_by('-created_at', '-pk')
+        return visible_comments(user).filter(author=user).order_by('-created_at', '-pk')
     if kind == 'helpful':
         return qs.filter(helpful_votes__user=user)
     if kind == 'bookmarks':
@@ -230,7 +332,7 @@ def create_comment(user, post, data):
     values = _validate(CommentInputSerializer, data)
     parent_id = values.pop('parent', None)
     if parent_id is not None:
-        parent = Comment.objects.select_for_update().filter(pk=parent_id, post=post, parent__isnull=True, status=Comment.Status.PUBLISHED).first()
+        parent = visible_comments(user, post).select_for_update().filter(pk=parent_id, parent__isnull=True).first()
         if parent is None:
             raise ValidationError({'parent': 'Invalid answer.'})
         values['parent'] = parent

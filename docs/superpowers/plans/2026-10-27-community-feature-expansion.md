@@ -119,18 +119,18 @@ Expected: all pass; malformed schemes and cross-category payloads never persist.
 ### Task 4: 차단 회원 게시글·댓글 개인별 숨김
 
 **Files:**
-- Modify: `thai_platform/community/services.py` (shared viewer-aware visible-post and visible-comment query helpers)
-- Modify: `thai_platform/community/web.py` (home/list/detail/search query paths)
-- Modify: `thai_platform/community/api.py` (list/detail/comments querysets)
-- Modify: `thai_platform/templates/community/row.html`, `detail.html` (content-free placeholder)
+- Modify: `thai_platform/community/services.py` (viewer-aware post/comment/notification query helpers and reply validation)
+- Modify: `thai_platform/community/web.py` (home/list/detail/search, public-member, activity, and notification views)
+- Modify: `thai_platform/community/api.py` (post list/detail/comments and notification querysets)
+- Modify: `thai_platform/templates/community/block_list.html`, `member_menu.html` (describe viewer-specific post/comment hiding)
 - Create: `thai_platform/community/tests_blocked_visibility.py`
 - Browser test: `thai_platform/community/tests_browser.py`
 
 **Interfaces:**
-- Consumes: existing `MemberBlock(blocker, blocked)`, `public_posts(user=None)`, published status constraints, nested reply visibility, and existing public web/API endpoints.
-- Produces: `visible_posts(user)` and `visible_comments(user, post)` queryset helpers. For authenticated viewers, exclude authors in that viewer’s block list; for anonymous viewers or other members, preserve current public visibility. Do not reveal the blocked member’s name or body in the placeholder. Existing operator-hidden state remains globally authoritative.
+- Consumes: existing `MemberBlock(blocker, blocked)`, published status constraints, and existing public web/API endpoints.
+- Produces: `blocked_member_ids(user)`, `visible_posts(user)`, `visible_comments(user, post)`, and `visible_notifications(user)` query helpers. For authenticated viewers, exclude blocked members’ posts, comments, replies, profile, and related reply notifications; anonymous and unrelated viewers keep current visibility. Omit blocked records entirely without placeholders or existence hints. Existing operator-hidden state remains globally authoritative.
 
-- [ ] **Step 1: Write failing tests** `BlockedContentVisibilityTests.test_block_hides_target_posts_only_for_blocker`, `test_block_hides_comments_and_replies_in_detail_and_api`, `test_direct_post_and_comment_routes_do_not_leak_blocked_content`, `test_unblock_restores_unchanged_content`, and `test_operator_hidden_content_remains_hidden_for_every_viewer`. Assert blocker sees neither body nor author identity, an anonymous/unrelated viewer still sees unchanged content, nested replies by the blocked author are excluded, and unblocking restores the same primary keys and text.
+- [ ] **Step 1: Write failing tests** `BlockedContentVisibilityTests.test_block_hides_target_posts_only_for_blocker`, `test_block_hides_comments_and_replies_in_detail_and_api`, `test_block_hides_profile_activity_and_notification_hints`, `test_direct_post_and_comment_routes_do_not_leak_blocked_content`, `test_unblock_restores_unchanged_content`, and `test_operator_hidden_content_remains_hidden_for_every_viewer`. Assert blocker sees neither body nor author identity or notification hint; anonymous/unrelated viewers retain visibility; nested replies to hidden comments are omitted; unblocking restores the same rows.
 - [ ] **Step 2: Verify RED**
 
 Run: `POST_LOCAL_DEVELOPMENT=1 uv run python manage.py test community.tests_blocked_visibility --noinput`
@@ -139,7 +139,7 @@ Expected: visibility assertions fail only for the blocker; baseline visibility f
 - [ ] **Step 3: Route all relevant web/API query paths through shared viewer-aware query helpers**. Preserve original database rows and ensure queryset filtering occurs before pagination/counts.
 - [ ] **Step 4: Verify GREEN and regressions**
 
-Run: `POST_LOCAL_DEVELOPMENT=1 uv run python manage.py test community.tests_blocked_visibility community.tests_member_menu community.tests_private_messages community.tests_comment_likes community.tests_operator_posts community.tests_replies community.tests_api --noinput`
+Run: `POST_LOCAL_DEVELOPMENT=1 uv run python manage.py test community.tests_blocked_visibility community.tests_member_menu community.tests_private_messages community.tests_comment_likes community.tests_notifications community.tests_operator_posts community.tests_replies community.tests_api --noinput`
 Expected: all pass, with no effect on other viewers or historical rows.
 
 - [ ] **Step 5: Browser verify** block/unblock and verify own, anonymous, unrelated, and blocker views on list/detail/comments at 320, 390 and 1440px. Commit `feat: hide blocked members content per viewer`.
