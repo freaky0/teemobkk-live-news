@@ -9,6 +9,8 @@ from members.models import MemberProfile
 from .models import Comment, MemberBlock, Notification, Post
 
 
+from .test_board_fixtures import fixture_post
+
 class BlockedContentVisibilityTests(TestCase):
     def setUp(self):
         user_model = get_user_model()
@@ -29,13 +31,13 @@ class BlockedContentVisibilityTests(TestCase):
                 email_verified_at=now,
             )
 
-        self.visible_post = Post.objects.create(
+        self.visible_post = fixture_post(
             author=self.other,
             title="Visible community question",
             body="Visible post body",
             category=Post.Category.LIVING,
         )
-        self.blocked_post = Post.objects.create(
+        self.blocked_post = fixture_post(
             author=self.blocked,
             title="Secret blocked post title",
             body="Secret blocked post body",
@@ -284,7 +286,7 @@ class BlockedContentVisibilityTests(TestCase):
         self.assertEqual(self.blocked_reply.body, "Secret blocked reply body")
 
     def test_operator_hidden_content_remains_hidden_for_every_viewer(self):
-        hidden_post = Post.objects.create(
+        hidden_post = fixture_post(
             author=self.blocked,
             title="Operator hidden post secret",
             body="Operator hidden post body",

@@ -4,6 +4,8 @@ from django.test import Client, TestCase
 from .models import AuditEvent, Comment, Post
 
 
+from .test_board_fixtures import fixture_post
+
 class OperatorPostTests(TestCase):
     def setUp(self):
         User = get_user_model()
@@ -14,7 +16,7 @@ class OperatorPostTests(TestCase):
         self.moderator.groups.add(Group.objects.get_or_create(name='Report moderators')[0])
         self.inactive = User.objects.create_user(username='inactive', is_staff=True, is_active=False)
         self.operator = User.objects.create_superuser(username='operator', email='op@example.test', password='test-only')
-        self.post = Post.objects.create(author=self.author, title='Old unique post', body='legacy body')
+        self.post = fixture_post(author=self.author, title='Old unique post', body='legacy body')
         self.comment = Comment.objects.create(author=self.other, post=self.post, body='preserved answer')
         self.url = f'/community/{self.post.pk}/operator/'
 
