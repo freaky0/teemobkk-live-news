@@ -1,4 +1,5 @@
 from django import forms
+from .models import BoardCategory
 from .places import validate_external_place_url
 REGIONS = [("bangkok", "방콕"), ("chiangmai", "치앙마이"), ("phuket", "푸껫"), ("common", "지역 공통")]
 CATEGORIES = [("notice", "공지"), ("free", "자유게시판"), ("questions", "질문/답변"), ("market", "중고게시판"), ("jobs", "구인구직"), ("foodtravel", "맛집/여행지"), ("living", "생활 질문"), ("visa", "비자·체류"), ("travel", "교통·여행")]
@@ -6,11 +7,18 @@ class PostForm(forms.Form):
     title = forms.CharField(label="제목", min_length=5, max_length=100, widget=forms.TextInput(attrs={"placeholder": "어떤 점이 궁금한가요?", "autocomplete": "off"}))
     region = forms.ChoiceField(label="지역", choices=REGIONS)
     category = forms.ChoiceField(label="주제", choices=CATEGORIES)
+    board_category = forms.ChoiceField(label="세부 분류 (선택)", required=False)
     body = forms.CharField(label="상황과 질문", min_length=20, max_length=6000, widget=forms.Textarea(attrs={"rows": 10}))
     privacy = forms.BooleanField(label="개인정보와 타인의 비공개 정보를 넣지 않았습니다.")
 
     def __init__(self, *args, staff=False, editing=False, **kwargs):
         super().__init__(*args, **kwargs)
+        categories = list(BoardCategory.objects.all())
+        self.fields['board_category'].choices = [('', '선택 안 함')] + [
+            (board, [(str(item.pk), item.name) for item in categories if item.board == board])
+            for board, _ in BoardCategory._meta.get_field('board').choices
+            if any(item.board == board for item in categories)
+        ]
         self.fields['market_kind'] = forms.ChoiceField(label='글 종류', choices=[('', '선택'), ('sell', '판매'), ('buy', '구매')], required=False)
         self.fields['market_price'] = forms.DecimalField(label='가격 (THB)', max_digits=12, decimal_places=2, min_value=0, required=False)
         self.fields['market_region'] = forms.ChoiceField(label='거래 지역', choices=[('', '선택'), *REGIONS], required=False)
@@ -42,6 +50,9 @@ class PostForm(forms.Form):
 
     def clean_place_url(self):
         return validate_external_place_url(self.cleaned_data['place_url'])
+
+    def clean_board_category(self):
+        return self.cleaned_data['board_category'] or None
 class CommentForm(forms.Form):
     body = forms.CharField(label="답변 내용", min_length=5, max_length=3000, widget=forms.Textarea(attrs={"rows": 5}))
 

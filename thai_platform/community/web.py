@@ -12,7 +12,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.cache import never_cache
 from rest_framework.exceptions import ValidationError as APIValidationError
 from .forms import CATEGORIES, REGIONS, AppealForm, CommentForm, PostForm, ReportForm
-from .models import Comment, CommentLike, Post
+from .models import BoardCategory, Comment, CommentLike, Post
 from .board_versions import board_data_version
 from . import services
 
@@ -58,10 +58,17 @@ def post_list(request):
         category = Post.Category.LIVING
     elif category in dict(CATEGORIES):
         qs = qs.filter(category=category)
+    board_categories = BoardCategory.objects.filter(board=category)
+    board_category = request.GET.get('board_category', '')
+    if board_category:
+        if board_category.isascii() and board_category.isdigit() and len(board_category) <= 18 and board_categories.filter(pk=board_category).exists():
+            qs = qs.filter(board_category_id=board_category)
+        else:
+            qs = qs.none()
     pagination = Paginator(qs, 20).get_page(request.GET.get("page"))
     keep = request.GET.copy()
     keep.pop("page", None)
-    return render(request, "community/list.html", {"resolution": resolution, "resolutions": Post.Resolution.choices, "page_obj": pagination, "q": q, "region": region, "category": category, "regions": REGIONS, "categories": CATEGORIES, "list_query": "?" + request.GET.urlencode(), "filter_query": keep.urlencode()})
+    return render(request, "community/list.html", {"resolution": resolution, "resolutions": Post.Resolution.choices, "page_obj": pagination, "q": q, "region": region, "category": category, "board_categories": board_categories, "board_category": board_category, "regions": REGIONS, "categories": CATEGORIES, "list_query": "?" + request.GET.urlencode(), "filter_query": keep.urlencode()})
 
 
 @never_cache
@@ -186,7 +193,7 @@ def post_edit(request, pk):
         raise PermissionDenied
     if post.category == Post.Category.NOTICE and not request.user.is_staff:
         raise PermissionDenied
-    form = PostForm(request.POST or None, initial={"board_data_version": board_data_version(post), "title": post.display_title, "body": post.display_body, "region": post.region, "category": services.canonical_life_category(post.category), "is_pinned": post.is_pinned, "market_kind": post.market_kind, "market_price": post.market_price, "market_region": post.market_region, "market_status": post.market_status, "job_kind": post.job_kind, "job_region": post.job_region, "job_compensation": post.job_compensation, "job_status": post.job_status, "place_name": post.place_name, "place_region": post.place_region, "place_note": post.place_note, "place_url": post.place_url}, staff=request.user.is_staff, editing=True)
+    form = PostForm(request.POST or None, initial={"board_category": post.board_category_id, "board_data_version": board_data_version(post), "title": post.display_title, "body": post.display_body, "region": post.region, "category": services.canonical_life_category(post.category), "is_pinned": post.is_pinned, "market_kind": post.market_kind, "market_price": post.market_price, "market_region": post.market_region, "market_status": post.market_status, "job_kind": post.job_kind, "job_region": post.job_region, "job_compensation": post.job_compensation, "job_status": post.job_status, "place_name": post.place_name, "place_region": post.place_region, "place_note": post.place_note, "place_url": post.place_url}, staff=request.user.is_staff, editing=True)
     if request.method == "POST" and form.is_valid():
         try:
             call_service("update_post", request.user, post, {k: v for k, v in form.cleaned_data.items() if k != "privacy"})
