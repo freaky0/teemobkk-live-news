@@ -20,7 +20,7 @@ class PrototypeRetirementTests(TestCase):
             with self.subTest(url=url):
                 self.assertEqual(self.client.get(url).status_code, 404)
                 self.assertEqual(self.client.post(url, {'title': 'Forged title', 'body': 'Forged body'}).status_code, 404)
-        self.assertEqual(FreePost.objects.get(pk=self.post.pk).title, 'Private old title')
+        self.assertFalse(FreePost.objects.filter(pk=self.post.pk).exists())
         self.assertEqual(JobsPost.objects.get(pk=self.post.pk).title, 'New title')
 
     def test_prototype_cannot_bypass_versioned_actual_write(self):

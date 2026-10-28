@@ -85,7 +85,7 @@ class MarketMigrationPreservationTests(TransactionTestCase):
 
     def test_existing_post_rows_survive_market_migration(self):
         executor = MigrationExecutor(connection)
-        old_target = ('community', '0021_commentlike')
+        old_target = ('community', '0027_boardcategory_post_board_category')
         executor.migrate([old_target])
         old_apps = executor.loader.project_state([old_target]).apps
         User = old_apps.get_model(*settings.AUTH_USER_MODEL.split('.'))

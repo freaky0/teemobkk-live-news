@@ -49,7 +49,7 @@ class BoardPermissionIntegrationTests(TestCase):
 
 class BoardMigrationIntegrationTests(TransactionTestCase):
     def test_legacy_records_survive_and_are_visible_after_board_migrations(self):
-        old = [('community', '0015_alter_notification_kind_privatemessage')]
+        old = [('community', '0028_freepost_jobspost_livingpost_marketpost_noticepost')]
         executor = MigrationExecutor(connection)
         leaves = executor.loader.graph.leaf_nodes()
         try:

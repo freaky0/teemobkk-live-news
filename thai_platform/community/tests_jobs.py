@@ -363,7 +363,7 @@ class JobMigrationPreservationTests(TransactionTestCase):
     def test_existing_post_rows_survive_job_migration(self):
         executor = MigrationExecutor(connection)
         leaves = executor.loader.graph.leaf_nodes()
-        old_target = ('community', '0022_post_market_kind_post_market_price_and_more')
+        old_target = ('community', '0027_boardcategory_post_board_category')
         try:
             executor.migrate([old_target])
             old_apps = executor.loader.project_state([old_target]).apps

@@ -5,8 +5,8 @@ from django.test import TransactionTestCase
 
 class SocialMigrationTests(TransactionTestCase):
     def test_existing_post_survives_private_message_migration(self):
-        old = [('community', '0014_alter_comment_parent')]
-        new = [('community', '0015_alter_notification_kind_privatemessage')]
+        old = [('community', '0027_boardcategory_post_board_category')]
+        new = [('community', '0028_freepost_jobspost_livingpost_marketpost_noticepost')]
         executor = MigrationExecutor(connection)
         try:
             executor.migrate(old)

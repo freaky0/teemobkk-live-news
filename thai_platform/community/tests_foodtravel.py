@@ -144,7 +144,7 @@ class FoodTravelMigrationPreservationTests(TransactionTestCase):
     def test_existing_post_rows_survive_place_migration(self):
         executor = MigrationExecutor(connection)
         leaves = executor.loader.graph.leaf_nodes()
-        old_target = ("community", "0024_alter_post_market_kind_alter_post_market_region_and_more")
+        old_target = ("community", "0027_boardcategory_post_board_category")
         try:
             executor.migrate([old_target])
             old_apps = executor.loader.project_state([old_target]).apps

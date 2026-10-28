@@ -39,13 +39,24 @@ class BoardContentCutoverTests(TestCase):
                 row = MODELS[target].objects.get(pk=post.pk)
                 self.assertEqual((row.title, row.body), ('Board title', 'Changed body'))
 
-    def test_transfer_preserves_identity_comment_and_old_content(self):
+    def test_transfer_preserves_identity_and_comment_without_old_content(self):
         post = services.create_post(self.user, {'category': 'free', 'title': 'Original title', 'body': 'Original content'})
         comment = Comment.objects.create(post=post, author=self.user, body='Existing comment')
         services.update_post(self.user, post, {'category': 'jobs', 'title': 'New title'})
-        self.assertTrue(FreePost.objects.filter(pk=post.pk).exists())
+        self.assertFalse(FreePost.objects.filter(pk=post.pk).exists())
         self.assertEqual(JobsPost.objects.get(pk=post.pk).title, 'New title')
         self.assertEqual(Comment.objects.get(pk=comment.pk).post_id, post.pk)
+
+    def test_edit_clears_legacy_duplicate_and_transfer_to_legacy_removes_board_row(self):
+        post = services.create_post(self.user, {'category': 'free', 'title': 'Original title', 'body': 'Original content'})
+        Post.objects.filter(pk=post.pk).update(title='obsolete title', body='obsolete body')
+        services.update_post(self.user, post, {'body': 'redacted content'})
+        post.refresh_from_db()
+        self.assertEqual((post.title, post.body), ('', ''))
+        services.update_post(self.user, post, {'category': 'questions'})
+        post.refresh_from_db()
+        self.assertEqual((post.title, post.body), ('Original title', 'redacted content'))
+        self.assertFalse(FreePost.objects.filter(pk=post.pk).exists())
 
     def test_content_write_failure_rolls_back_create_and_transfer(self):
         with patch.object(FreePost.objects, 'update_or_create', side_effect=RuntimeError('write failed')):

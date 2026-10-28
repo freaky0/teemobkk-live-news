@@ -47,7 +47,7 @@ BOARD_CONTENT_MODELS = {
 
 
 def _sync_board_content(post, title, body):
-    """Write the current board row without deleting historical board rows."""
+    """Write the current board row; transfers remove the previous row separately."""
     new_model = BOARD_CONTENT_MODELS.get(canonical_life_category(post.category))
     if new_model is not None:
         content, _ = new_model.objects.update_or_create(
@@ -176,7 +176,7 @@ def update_post(user, post, data):
     post = Post.objects.select_for_update().get(pk=post.pk)
     require_owner(user, post)
     old_category = post.category
-    legacy_title, legacy_body = post.title, post.body
+
     # Partial edits and board transfers must start from the board row, not
     # potentially stale legacy fields on the shared identity record.
     content = post.board_content
@@ -228,9 +228,13 @@ def update_post(user, post, data):
         setattr(post, key, value)
     title, body = post.title, post.body
     if BOARD_CONTENT_MODELS.get(canonical_life_category(post.category)):
-        post.title, post.body = legacy_title, legacy_body
+        post.title, post.body = '', ''
     post.save()
     _sync_board_content(post, title, body)
+    old_model = BOARD_CONTENT_MODELS.get(canonical_life_category(old_category))
+    new_model = BOARD_CONTENT_MODELS.get(canonical_life_category(post.category))
+    if old_model is not None and old_model != new_model:
+        old_model.objects.filter(post_id=post.pk).delete()
     _audit(user, 'post.update', post)
     return post
 

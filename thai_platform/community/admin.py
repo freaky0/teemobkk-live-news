@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from .models import AuditEvent, BoardCategory, Comment, ModerationAppeal, NewsComment, NewsLike, Post, Report
-from .services import hide_reported_content, is_report_moderator, moderate_comment, moderate_news_comment, resolve_appeal, resolve_report
+from .services import hide_reported_content, is_report_moderator, moderate_comment, moderate_news_comment, resolve_appeal, resolve_report, search_posts
 
 
 @admin.register(BoardCategory)
@@ -15,11 +15,27 @@ class BoardCategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
-    list_display = ['id', 'title', 'author', 'region', 'category', 'status', 'created_at']
+    list_display = ['id', 'display_title', 'author', 'region', 'category', 'status', 'created_at']
     list_filter = ['status', 'region', 'category']
-    search_fields = ['title', 'body']
-    readonly_fields = [field.name for field in Post._meta.fields]
+    # search_fields is intentionally empty: search runs through the board rows
+    # in get_search_results, which the default model search cannot reach.
+    readonly_fields = [field.name for field in Post._meta.fields if field.name not in ('title', 'body')] + ['display_title', 'display_body']
+    fields = ['display_title', 'display_body'] + [field.name for field in Post._meta.fields if field.name not in ('title', 'body')]
     actions = None
+
+    @admin.display(description='Title')
+    def display_title(self, obj):
+        return obj.display_title
+
+    @admin.display(description='Body')
+    def display_body(self, obj):
+        return obj.display_body
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('noticepost', 'freepost', 'marketpost', 'jobspost', 'livingpost')
+
+    def get_search_results(self, request, queryset, search_term):
+        return (search_posts(queryset, search_term), False) if search_term else (queryset, False)
 
     def has_add_permission(self, request):
         return False
