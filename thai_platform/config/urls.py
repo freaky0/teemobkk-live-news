@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
-from community import web, news_views, independent_free
+from community import web, news_views
 from community import private_messages
 from members import views as member_views
 from django.views.generic import RedirectView
@@ -35,10 +35,7 @@ urlpatterns = [
     path("newsroom/<str:article_id>/", news_views.detail, name="news-detail"),
     path("api/v1/", include("community.api")),
     path("", web.home, name="home"),
-    path("community/independent-free/", independent_free.listing, name="independent-free-list"),
-    path("community/independent-free/new/", independent_free.create, name="independent-free-create"),
-    path("community/independent-free/<int:pk>/edit/", independent_free.edit, name="independent-free-edit"),
-    path("community/independent-free/<int:pk>/", independent_free.detail, name="independent-free-detail"),
+
     path("community/", web.post_list, name="post-list"),
     path("community/new/", web.post_create, name="post-create"),
     path("community/activity/", web.my_activity, name="my-activity"),

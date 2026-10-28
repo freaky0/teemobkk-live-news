@@ -1,1 +1,0 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>{{ entry.title }}</title></head><body><h1>{{ entry.title }}</h1><p>{{ entry.body|linebreaksbr }}</p><a href="{% url 'independent-free-list' %}">목록</a>{% if request.user == entry.post.author %} <a href="{% url 'independent-free-edit' entry.pk %}">수정</a>{% endif %}</body></html>
