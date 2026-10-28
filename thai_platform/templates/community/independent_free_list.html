@@ -1,1 +1,0 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>독립 자유게시판</title></head><body><h1>독립 자유게시판</h1><a href="{% url 'independent-free-create' %}">글 쓰기</a><ul>{% for entry in entries %}<li><a href="{% url 'independent-free-detail' entry.pk %}">{{ entry.title }}</a></li>{% empty %}<li>게시글이 없습니다.</li>{% endfor %}</ul></body></html>

@@ -11,6 +11,8 @@ from django.test import TestCase, TransactionTestCase
 from playwright.sync_api import sync_playwright
 
 from .models import Post
+from . import services
+from .board_versions import board_data_version
 
 
 class BoardPermissionIntegrationTests(TestCase):
@@ -19,19 +21,21 @@ class BoardPermissionIntegrationTests(TestCase):
         member = User.objects.create_user(username='board-member')
         staff = User.objects.create_user(username='board-staff', is_staff=True)
         staff2 = User.objects.create_user(username='board-staff2', is_staff=True)
-        normal = Post.objects.create(author=member, category='free', title='Normal post', body='Normal post body')
+        normal = services.create_post(member, {'category': 'free', 'title': 'Normal post', 'body': 'Normal post body'})
         self.client.force_login(staff)
         payload = {'title': 'Staff notice title', 'body': 'Sufficiently long staff notice body.', 'region': 'common', 'category': 'notice', 'privacy': 'on'}
-        self.assertEqual(self.client.post('/community/new/', payload).status_code, 302)
-        notice = Post.objects.get(title=payload['title'])
+        response = self.client.post('/community/new/', payload)
+        self.assertEqual(response.status_code, 302)
+        notice = Post.objects.get(pk=int(response.url.rstrip('/').split('/')[-1]))
         self.assertNotContains(self.client.get(f'/community/{normal.pk}/'), f'/community/{normal.pk}/edit/')
         self.assertEqual(self.client.get(f'/community/{normal.pk}/edit/').status_code, 403)
         self.client.force_login(staff2)
         self.assertContains(self.client.get(f'/community/{notice.pk}/'), f'/community/{notice.pk}/edit/')
         payload['title'] = 'Edited by other staff'
+        payload['board_data_version'] = board_data_version(notice)
         self.assertEqual(self.client.post(f'/community/{notice.pk}/edit/', payload).status_code, 302)
         notice.refresh_from_db()
-        self.assertEqual(notice.title, payload['title'])
+        self.assertEqual(notice.display_title, payload['title'])
         self.client.force_login(member)
         self.assertEqual(self.client.post('/api/v1/posts/', {'title': 'Forged', 'body': 'Forged content', 'category': 'notice'}).status_code, 403)
         self.assertEqual(self.client.patch(f'/api/v1/posts/{notice.pk}/', data='{"title":"forged"}', content_type='application/json').status_code, 403)

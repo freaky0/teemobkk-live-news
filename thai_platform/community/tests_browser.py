@@ -94,6 +94,25 @@ class BrowserFlowTests(StaticLiveServerTestCase):
     def go(self, path):
         return self.page.goto(self.live_server_url + path, wait_until="networkidle")
 
+    def test_board_subcategory_selection_tracks_board(self):
+        from .models import BoardCategory
+        free = BoardCategory.objects.create(board='free', slug='browser', name='Free browser category')
+        market = BoardCategory.objects.create(board='market', slug='browser', name='Market browser category')
+        self.go('/community/new/?category=free')
+        category = self.page.locator('#id_category')
+        subcategory = self.page.locator('#id_board_category')
+        self.assertFalse(subcategory.locator('optgroup[label="free"]').is_disabled())
+        self.assertTrue(subcategory.locator('optgroup[label="market"]').is_disabled())
+        subcategory.select_option(str(free.pk))
+        category.select_option('market')
+        self.assertEqual(subcategory.input_value(), '')
+        self.assertFalse(subcategory.locator('optgroup[label="market"]').is_disabled())
+        subcategory.select_option(str(market.pk))
+        self.assertEqual(subcategory.input_value(), str(market.pk))
+        self.go('/community/?category=free')
+        self.assertEqual(self.page.locator('#board_category option').count(), 2)
+        self.assertEqual(self.errors, [])
+
     def test_legacy_life_board_routes_merge_posts_and_offer_one_category(self):
         self.go('/community/?category=housing')
         board_nav = self.page.get_by_role('navigation', name='게시판')
