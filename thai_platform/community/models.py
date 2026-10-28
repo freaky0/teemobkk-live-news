@@ -37,10 +37,10 @@ class Post(Timestamped):
         RESOLVED = "resolved", "작성자 해결 확인"
 
     class Region(models.TextChoices):
-        BANGKOK = 'bangkok', 'Bangkok'
-        CHIANGMAI = 'chiangmai', 'Chiang Mai'
-        PHUKET = 'phuket', 'Phuket'
-        COMMON = 'common', 'Common'
+        BANGKOK = 'bangkok', '방콕'
+        CHIANGMAI = 'chiangmai', '치앙마이'
+        PHUKET = 'phuket', '푸껫'
+        COMMON = 'common', '지역 공통'
 
     class Category(models.TextChoices):
         NOTICE = 'notice', '공지'
