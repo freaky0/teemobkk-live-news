@@ -109,6 +109,40 @@ class Post(Timestamped):
         return self.title
 
 
+class BoardPostContent(models.Model):
+    """Staging schema for the independent-board storage migration.
+
+    These tables are deliberately not populated until reads and writes can be
+    cut over atomically; the existing Post table remains authoritative for now.
+    """
+    post = models.OneToOneField(Post, primary_key=True, on_delete=models.CASCADE)
+    title = models.CharField(max_length=100)
+    body = models.TextField(validators=[MaxLengthValidator(6000)])
+
+    class Meta:
+        abstract = True
+
+
+class NoticePost(BoardPostContent):
+    pass
+
+
+class FreePost(BoardPostContent):
+    pass
+
+
+class MarketPost(BoardPostContent):
+    pass
+
+
+class JobsPost(BoardPostContent):
+    pass
+
+
+class LivingPost(BoardPostContent):
+    pass
+
+
 class Helpful(Timestamped):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='helpful_votes')
