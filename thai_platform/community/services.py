@@ -175,6 +175,11 @@ def update_post(user, post, data):
     post = Post.objects.select_for_update().get(pk=post.pk)
     require_owner(user, post)
     old_category = post.category
+    # Partial edits and board transfers must start from the board row, not
+    # potentially stale legacy fields on the shared identity record.
+    content = post.board_content
+    if content is not None:
+        post.title, post.body = content.title, content.body
     if post.status == Post.Status.DELETED:
         raise NotFound('Post not found.')
     values = _validate(PostInputSerializer, data, partial=True)

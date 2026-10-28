@@ -26,6 +26,19 @@ class BoardContentCutoverTests(TestCase):
                 self.assertEqual((content.title, content.body), ('Original title', 'Updated content'))
                 self.assertTrue(services.visible_posts().filter(pk=post.pk).exists())
 
+    def test_partial_update_and_transfer_preserve_authoritative_content(self):
+        for board, model in MODELS.items():
+            with self.subTest(board=board):
+                post = services.create_post(self.user, {'category': board, 'title': 'Original title', 'body': 'Original content'})
+                model.objects.filter(pk=post.pk).update(title='Board title', body='Board body')
+                services.update_post(self.user, post, {'body': 'Changed body'})
+                row = model.objects.get(pk=post.pk)
+                self.assertEqual((row.title, row.body), ('Board title', 'Changed body'))
+                target = 'free' if board != 'free' else 'jobs'
+                services.update_post(self.user, post, {'category': target})
+                row = MODELS[target].objects.get(pk=post.pk)
+                self.assertEqual((row.title, row.body), ('Board title', 'Changed body'))
+
     def test_transfer_preserves_identity_and_comment_and_removes_old_content(self):
         post = services.create_post(self.user, {'category': 'free', 'title': 'Original title', 'body': 'Original content'})
         comment = Comment.objects.create(post=post, author=self.user, body='Existing comment')
