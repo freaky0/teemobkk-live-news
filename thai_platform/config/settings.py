@@ -43,6 +43,7 @@ STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+TEST_RUNNER = "config.test_runner.IsolatedCacheTestRunner"
 SITE_ID = 1
 LOGIN_URL = reverse_lazy("member-login")
 LOGIN_REDIRECT_URL = reverse_lazy("post-list")
