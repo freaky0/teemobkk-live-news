@@ -217,7 +217,7 @@ def blocked_member_ids(user):
 
 def visible_posts(user=None):
     blocked_ids = blocked_member_ids(user)
-    qs = Post.objects.filter(status=Post.Status.PUBLISHED)
+    qs = Post.objects.filter(status=Post.Status.PUBLISHED).exclude(freepost__isnull=False)
     if blocked_ids is not None:
         qs = qs.exclude(author_id__in=blocked_ids)
     qs = qs.select_related('author', 'author__membership').annotate(
