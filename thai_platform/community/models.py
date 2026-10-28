@@ -18,6 +18,19 @@ class Timestamped(models.Model):
         abstract = True
 
 
+class BoardCategory(models.Model):
+    board = models.CharField(max_length=10, choices=[(v, v) for v in ('notice', 'free', 'market', 'jobs', 'living')])
+    slug = models.SlugField(max_length=50)
+    name = models.CharField(max_length=100)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['board', 'slug'], name='unique_board_category_slug')]
+        ordering = ['board', 'name', 'pk']
+
+    def __str__(self):
+        return f'{self.board}: {self.name}'
+
+
 class Post(Timestamped):
     class Resolution(models.TextChoices):
         UNRESOLVED = "unresolved", "미해결"
@@ -65,6 +78,7 @@ class Post(Timestamped):
     body = models.TextField(validators=[MaxLengthValidator(6000)])
     region = models.CharField(max_length=10, choices=Region.choices, default=Region.COMMON)
     category = models.CharField(max_length=10, choices=Category.choices, default=Category.LIVING)
+    board_category = models.ForeignKey(BoardCategory, null=True, blank=True, on_delete=models.PROTECT, related_name='posts')
     is_pinned = models.BooleanField(default=False, db_default=False)
     resolution = models.CharField(max_length=10, choices=Resolution.choices, default=Resolution.UNRESOLVED, db_index=True)
     status = models.CharField(max_length=10, choices=ContentStatus.choices, default=ContentStatus.PUBLISHED, db_index=True)

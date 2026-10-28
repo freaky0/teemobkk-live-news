@@ -1,7 +1,16 @@
 from django.contrib import admin, messages
 from rest_framework.exceptions import PermissionDenied, ValidationError
-from .models import AuditEvent, Comment, ModerationAppeal, NewsComment, NewsLike, Post, Report
+from .models import AuditEvent, BoardCategory, Comment, ModerationAppeal, NewsComment, NewsLike, Post, Report
 from .services import hide_reported_content, is_report_moderator, moderate_comment, moderate_news_comment, resolve_appeal, resolve_report
+
+
+@admin.register(BoardCategory)
+class BoardCategoryAdmin(admin.ModelAdmin):
+    list_display = ['board', 'name', 'slug']
+    list_filter = ['board']
+
+    def get_readonly_fields(self, request, obj=None):
+        return ['board'] if obj else []
 
 
 @admin.register(Post)

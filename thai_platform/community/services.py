@@ -35,6 +35,11 @@ def category_filter_values(category):
     return LIFE_BOARD_CATEGORIES if category in LIFE_BOARD_CATEGORIES else (category,)
 
 
+def validate_board_category(category, board_category):
+    if board_category and board_category.board != canonical_life_category(category):
+        raise ValidationError({'board_category': 'Category does not belong to this board.'})
+
+
 def require_active(user):
     if not user or not user.is_authenticated or not user.is_active:
         raise PermissionDenied('An active signed-in account is required.')
@@ -119,6 +124,7 @@ def create_post(user, data):
     values.pop('board_data_version', None)
     if 'category' in values:
         values['category'] = canonical_life_category(values['category'])
+    validate_board_category(values.get('category', Post.Category.LIVING), values.get('board_category'))
     if values.get('category') != Post.Category.MARKET:
         for key in ('market_kind', 'market_price', 'market_region', 'market_status'):
             values.pop(key, None)
@@ -153,6 +159,7 @@ def update_post(user, post, data):
         raise ValidationError({'board_data_version': '게시글이 변경되었습니다. 최신 정보를 확인해 주세요.'})
     if 'category' in values:
         values['category'] = canonical_life_category(values['category'])
+    validate_board_category(values.get('category', post.category), values.get('board_category', post.board_category))
     board_fields = {
         Post.Category.MARKET: ('market_kind', 'market_price', 'market_region', 'market_status'),
         Post.Category.JOBS: ('job_kind', 'job_region', 'job_compensation', 'job_status'),
