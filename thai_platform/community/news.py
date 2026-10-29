@@ -27,6 +27,8 @@ class NewsPage:
     total: int
     page: int
     page_size: int = 20
+    categories: tuple = ()
+    category: str = ''
 
     @property
     def has_next(self):
@@ -160,7 +162,7 @@ def project(row):
         'title':strip_tags(row['title_ko']).strip(),
         'summary':strip_tags(row['summary_ko'] or '').strip(),
         'source':(row['original_source'] or row['source'] or '').strip(),
-        'category':row['category'] or '',
+        'category':(row['category'] or '').strip(),
         'published_at':published,
         'source_url':row['link'],
         'image_url':row['image_url'] or '',
@@ -170,21 +172,36 @@ def project(row):
     }
 
 
-def list_articles(page=1,query='',page_size=20):
+def list_articles(page=1,query='',page_size=20,category='',include_categories=False):
     page=max(1,min(int(page),10000))
     page_size=max(1,min(int(page_size),20))
     with open_news() as conn:
         conn.execute('BEGIN') # Consistent policy, count and rows in one read snapshot.
         conditions,params=visibility(conn)
         fields=projection_fields(conn)
+        if include_categories:
+            category_rows=conn.execute(
+                'SELECT DISTINCT TRIM(COALESCE(a.category,\'\')) AS category FROM articles a WHERE '
+                +' AND '.join(conditions)+" AND TRIM(COALESCE(a.category,'')) <> '' ORDER BY category COLLATE NOCASE",
+                params,
+            ).fetchall()
+            categories=tuple(row['category'] for row in category_rows)
+        else:
+            categories=()
+        category=category.strip()[:200] if isinstance(category,str) else ''
+        if category not in categories:
+            category=''
         if query:
             needle='%'+query[:200].replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%'
             conditions.append("(a.title_ko LIKE ? ESCAPE '\\' OR a.summary_ko LIKE ? ESCAPE '\\')")
             params.extend([needle,needle])
+        if category:
+            conditions.append("TRIM(COALESCE(a.category,'')) = ?")
+            params.append(category)
         clause=' AND '.join(conditions)
         total=conn.execute('SELECT COUNT(*) FROM articles a WHERE '+clause,params).fetchone()[0]
         rows=conn.execute('SELECT '+fields+' FROM articles a WHERE '+clause+' ORDER BY a.published_at DESC,a.link LIMIT ? OFFSET ?',params+[page_size,(page-1)*page_size]).fetchall()
-        return NewsPage([project(row) for row in rows],total,page,page_size)
+        return NewsPage([project(row) for row in rows],total,page,page_size,categories,category)
 
 
 def get_article(article_id):

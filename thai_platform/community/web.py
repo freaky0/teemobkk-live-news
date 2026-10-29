@@ -28,6 +28,14 @@ BOARD_COPY = {
     "visa": ("비자·체류", "비자와 체류 관련 경험과 정보를 함께 나눠요."),
     "travel": ("교통·여행", "태국의 이동과 여행에 필요한 정보를 나눠요."),
 }
+RESOLUTION_CATEGORIES = {
+    Post.Category.QUESTIONS,
+    Post.Category.LIVING,
+    Post.Category.HOUSING,
+    Post.Category.BANKING,
+    Post.Category.VISA,
+    Post.Category.TRAVEL,
+}
 
 def call_service(name, *args):
     try:
@@ -69,8 +77,6 @@ def home(request):
 def post_list(request):
     qs = published(request.user)
     resolution = request.GET.get('resolution', '')
-    if resolution in Post.Resolution.values:
-        qs = qs.filter(resolution=resolution)
     q = request.GET.get("q", "").strip()[:200]
     region, category = request.GET.get("region", ""), request.GET.get("category", "")
     requested_category = category
@@ -83,6 +89,13 @@ def post_list(request):
         category = Post.Category.LIVING
     elif category in dict(CATEGORIES):
         qs = qs.filter(category=category)
+    can_filter_resolution = not category or category in RESOLUTION_CATEGORIES
+    if can_filter_resolution and resolution in Post.Resolution.values:
+        if not category:
+            qs = qs.filter(category__in=RESOLUTION_CATEGORIES)
+        qs = qs.filter(resolution=resolution)
+    else:
+        resolution = ""
     board_title, board_description = BOARD_COPY.get(
         requested_category, BOARD_COPY.get(category, DEFAULT_BOARD_COPY)
     )
@@ -96,7 +109,10 @@ def post_list(request):
     pagination = Paginator(qs, 20).get_page(request.GET.get("page"))
     keep = request.GET.copy()
     keep.pop("page", None)
-    return render(request, "community/list.html", {"resolution": resolution, "resolutions": Post.Resolution.choices, "page_obj": pagination, "q": q, "region": region, "category": category, "board_categories": board_categories, "board_category": board_category, "regions": REGIONS, "categories": CATEGORIES, "board_title": board_title, "board_description": board_description, "list_query": "?" + request.GET.urlencode(), "filter_query": keep.urlencode()})
+    if not can_filter_resolution or resolution not in Post.Resolution.values:
+        keep.pop("resolution", None)
+    is_question_board = category in RESOLUTION_CATEGORIES
+    return render(request, "community/list.html", {"resolution": resolution, "can_filter_resolution": can_filter_resolution, "is_question_board": is_question_board, "resolutions": Post.Resolution.choices, "page_obj": pagination, "q": q, "region": region, "category": category, "board_categories": board_categories, "board_category": board_category, "regions": REGIONS, "categories": CATEGORIES, "board_title": board_title, "board_description": board_description, "list_query": "?" + request.GET.urlencode(), "filter_query": keep.urlencode()})
 
 
 @never_cache

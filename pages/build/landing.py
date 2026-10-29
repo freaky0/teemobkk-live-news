@@ -536,9 +536,10 @@ def render_indicators_page() -> str:
     )
 
 
-def render_landing() -> str:
-    posts = _render_post_cards(editorial_posts(limit=3))
-    return (PAGE.replace('__POSTS__', posts)
+def render_landing(posts=None) -> str:
+    selected = editorial_posts(limit=10) if posts is None else list(posts)
+    cards = _render_post_cards(selected[:3])
+    return (PAGE.replace('__POSTS__', cards)
             .replace('__SHARED_THEME_CSS__', theme.shared_css())
             .replace('__INDICATOR_CSS__', theme.INDICATOR_CSS)
             .replace('__INDICATORS__', render_indicator_cards())

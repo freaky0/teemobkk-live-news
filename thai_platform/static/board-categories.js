@@ -6,6 +6,7 @@ document.querySelectorAll('[data-editor]').forEach(form => {
   if (!board || !subcategory) return;
   const heading = document.querySelector('[data-board-heading]');
   const summary = form.querySelector('[data-classification-summary]');
+  const titleSuffix = form.dataset.titleSuffix || '';
   const updateSummary = () => {
     const boardLabel = board.value
       ? board.selectedOptions[0]?.textContent.trim() || '게시판'
@@ -15,6 +16,7 @@ document.querySelectorAll('[data-editor]').forEach(form => {
       ? subcategory.selectedOptions[0]?.textContent.trim()
       : '세부 분류 없음';
     if (heading) heading.textContent = boardLabel;
+    document.title = `${boardLabel}${titleSuffix}`;
     if (summary) summary.textContent = `${boardLabel} · ${regionLabel} · ${subcategoryLabel}`;
   };
   const sync = () => {
@@ -28,6 +30,7 @@ document.querySelectorAll('[data-editor]').forEach(form => {
     updateSummary();
   };
   board.addEventListener('change', sync);
+  form.addEventListener('draft:restored', sync);
   region?.addEventListener('change', updateSummary);
   subcategory.addEventListener('change', updateSummary);
   sync();
