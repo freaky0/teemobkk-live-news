@@ -85,7 +85,7 @@ class AuthDisclosureTests(TestCase):
         self.assertEqual(terms.status_code,200)
         self.assertEqual(privacy.status_code,200)
         self.assertContains(terms,'서비스 이용약관')
-        self.assertContains(terms,"TEEMOBKK's POST")
+        self.assertContains(terms,"TeemoBKK POST")
         self.assertContains(terms,'뉴스 및 정보의 정확성')
         self.assertContains(privacy,'개인정보처리방침')
         self.assertContains(privacy,'태국 개인정보보호법')
