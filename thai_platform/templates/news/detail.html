@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
-{% block title %}{{ article.title }} · TEEMOBKK's POST{% endblock %}
+{% block title %}{{ article.title }} · TeemoBKK POST{% endblock %}
 {% block social_meta %}
 <link rel="canonical" href="{{ canonical_url }}">
 <meta name="description" content="{{ article.summary|striptags|truncatechars:200 }}">
 <meta property="og:type" content="article">
-<meta property="og:site_name" content="TEEMOBKK's POST">
+<meta property="og:site_name" content="TeemoBKK POST">
 <meta property="og:title" content="{{ article.title }}">
 <meta property="og:description" content="{{ article.summary|striptags|truncatechars:200 }}">
 <meta property="og:url" content="{{ canonical_url }}">

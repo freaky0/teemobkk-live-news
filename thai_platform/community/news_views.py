@@ -28,15 +28,16 @@ def request_page(request):
 
 def listing(request):
     query=request.GET.get('q','').strip()[:200]
+    category=request.GET.get('category','').strip()[:200]
     try:
         page=request_page(request)
     except ValidationError:
         return render(request,'news/error.html',{'news_error':'페이지 번호를 확인해 주세요.'},status=400)
     try:
-        result=news.list_articles(page=page,query=query)
+        result=news.list_articles(page=page,query=query,category=category,include_categories=True)
     except news.NewsUnavailable:
         return render(request,'news/error.html',{'news_error':NOTICE},status=503)
-    return render(request,'news/list.html',{'news_page':result,'query':query,'list_query':('?'+request.GET.urlencode()) if request.GET else ''})
+    return render(request,'news/list.html',{'news_page':result,'query':query,'category':result.category,'list_query':('?'+request.GET.urlencode()) if request.GET else ''})
 
 
 def _detail_context(request, article, back_url, comment_form=None):

@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
-from .models import Post, LivingPost, Comment, Report, Helpful
+from .models import Post, FreePost, LivingPost, Comment, Report, Helpful
 
 class WebTests(TestCase):
     def setUp(self):
@@ -187,7 +187,7 @@ class WebTests(TestCase):
 
     def test_community_filter_controls_remain_named_and_grouped_for_compact_layout(self):
         response = self.client.get("/community/")
-        self.assertContains(response, '<form class="filters" method="get" aria-label="질문 검색과 필터">')
+        self.assertContains(response, '<form class="filters" method="get" aria-label="게시글 검색과 필터">')
         self.assertContains(response, 'class="field filter-status"')
         for control in ['id="q"', 'id="region"', 'id="category"', 'id="resolution"']:
             with self.subTest(control=control):
@@ -201,6 +201,24 @@ class WebTests(TestCase):
             with self.subTest(label=label):
                 self.assertContains(response, label)
         self.assertContains(response, 'href="/community/">초기화</a>')
+
+    def test_resolution_filter_and_badge_are_limited_to_question_boards(self):
+        free = Post.objects.create(
+            author=self.owner,
+            title="자유게시판의 생활 경험을 나눕니다",
+            body="이 글은 질문형 해결 상태를 사용하지 않는 게시판의 글입니다.",
+            category="free",
+        )
+        FreePost.objects.create(post=free, title=free.title, body=free.body)
+        questions = self.client.get("/community/", {"resolution": "unresolved"})
+        self.assertEqual(questions.context["page_obj"].paginator.count, 1)
+        self.assertContains(questions, "미해결")
+
+        discussion = self.client.get("/community/", {"category": "free", "resolution": "resolved"})
+        self.assertEqual(discussion.context["page_obj"].paginator.count, 1)
+        self.assertContains(discussion, free.title)
+        self.assertNotContains(discussion, 'id="resolution"')
+        self.assertNotContains(discussion, "작성자 해결 확인")
     @override_settings(GOOGLE_CONFIGURED=True)
     def test_google_login_page_has_real_provider_form(self):
         # Only template wiring is exercised. This does not prove external OAuth.

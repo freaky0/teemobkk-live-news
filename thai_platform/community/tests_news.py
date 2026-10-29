@@ -63,6 +63,23 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
         ident=sha256(public.encode()).hexdigest()
         self.assertEqual(self.client.get('/newsroom/'+ident+'/').status_code,200)
         self.assertEqual(self.client.get('/api/v1/news/'+ident+'/').status_code,200)
+
+    def test_public_categories_filter_newsroom_and_stay_in_page_results(self):
+        self.add('life-category', category='생활')
+        self.add('visa-category', category='비자')
+        self.add('pending-category', category='미공개', post_status='pending')
+
+        page = news.list_articles(category='비자', include_categories=True)
+        self.assertEqual(page.categories, ('비자', '생활'))
+        self.assertEqual(page.category, '비자')
+        self.assertEqual(page.total, 1)
+        self.assertEqual([item['category'] for item in page.items], ['비자'])
+
+        response = self.client.get('/newsroom/', {'q': '태국 뉴스', 'category': '비자'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '검증용 태국 뉴스 visa-category')
+        self.assertNotContains(response, '검증용 태국 뉴스 life-category')
+        self.assertContains(response, '<option value="비자" selected>비자</option>', html=True)
     def test_article_image_is_projected_and_rendered_on_home_news_detail_and_api(self):
         image='https://images.publisher.example/story.jpg'
         link=self.add('with-image',image_url=image)

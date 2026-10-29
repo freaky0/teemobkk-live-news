@@ -2021,10 +2021,11 @@ def build_server(db_path: str = "news.db") -> dict[str, int]:
     pruned = _prune_sections(ROOT / t for t in targets)
     for gone in pruned:
         print("removed stale section %s (its address now redirects)" % gone)
-    sizes["index.html"] = write(ROOT / "index.html", landing.render_landing())
+    editorial_snapshot = landing.editorial_posts(limit=10)
+    sizes["index.html"] = write(ROOT / "index.html", landing.render_landing(editorial_snapshot))
     sizes.update(build_blog())
     sizes["perspectives/index.html"] = write(
-        ROOT / "perspectives" / "index.html", landing.render_perspectives_page())
+        ROOT / "perspectives" / "index.html", landing.render_perspectives_page(editorial_snapshot))
     sizes["indicators/index.html"] = write(
         ROOT / "indicators" / "index.html", landing.render_indicators_page())
     sizes["thai/index.html"] = write(ROOT / "thai" / "index.html",

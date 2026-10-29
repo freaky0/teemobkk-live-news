@@ -54,6 +54,7 @@ if(categoryField){
 }
 form.addEventListener('input',()=>{dirty=true;clearTimeout(timer);timer=setTimeout(save,300);});
 form.addEventListener('change',()=>{dirty=true;save();});
+if(stored&&!form.hasAttribute('data-bound'))form.dispatchEvent(new Event('draft:restored'));
 form.addEventListener('submit',e=>{if(unversionedDraft){e.preventDefault();clearTimeout(timer);save();status.textContent='이전 초안의 기준 버전을 확인할 수 없습니다. 내용을 복사한 뒤 다른 브라우저에서 최신 게시글을 확인하고 다시 수정해 주세요.';return;}const original=form.dataset.originalCategory;if(['market','jobs','foodtravel'].includes(original)&&form.elements.category.value!==original&&!confirm('게시판을 변경하면 기존 게시판 정보가 삭제됩니다. 계속할까요?')){e.preventDefault();return;}clearTimeout(timer);save();for(const name of draftFields){const control=form.elements[name];if(control&&control.disabled){const hidden=document.createElement('input');hidden.type='hidden';hidden.name=name;hidden.value=control.value;form.appendChild(hidden);}}const snapshot=document.createElement('input');snapshot.type='hidden';snapshot.name='board_fields_snapshot';snapshot.value='1';form.appendChild(snapshot);submitting=true;try{sessionStorage.setItem('post-submitted:'+user,key);}catch{}});
 document.addEventListener('click',e=>{const a=e.target.closest('a[href]');if(a&&dirty&&!e.ctrlKey&&!e.metaKey&&!e.shiftKey){if(!confirm('작성 화면을 나갈까요? 텍스트 초안은 이 브라우저에 보관합니다.')){e.preventDefault();return;}save();dirty=false;}});
 window.addEventListener('beforeunload',e=>{if(dirty&&!submitting){save();e.preventDefault();e.returnValue='';}});
