@@ -24,6 +24,17 @@ def call_service(name, *args):
     except APINotFound as exc:
         raise Http404 from exc
 
+def post_editor_context(form, **extra):
+    categories = dict(CATEGORIES)
+    region_names = dict(REGIONS)
+    return {
+        "form": form,
+        "board_name": categories.get(form["category"].value(), categories["questions"]),
+        "region_name": region_names.get(form["region"].value(), REGIONS[0][1]),
+        **extra,
+    }
+
+
 def published(user=None):
     return services.public_posts(user)
 
@@ -172,16 +183,17 @@ def post_create(request):
     if request.method == 'POST' and 'is_pinned' in request.POST and not request.user.is_staff:
         raise PermissionDenied
     category = request.GET.get('category', '')
-    form = PostForm(request.POST or None, initial={'category': category} if category in dict(CATEGORIES) else None, staff=request.user.is_staff)
+    initial_category = category if category in dict(CATEGORIES) else 'questions'
+    form = PostForm(request.POST or None, initial={'category': initial_category}, staff=request.user.is_staff)
     if request.method == "POST" and form.is_valid():
         try:
             data = {k: v for k, v in form.cleaned_data.items() if k != "privacy"}
             post = call_service("create_post", request.user, data)
-            messages.success(request, "질문을 서버에 저장했습니다.", extra_tags="post-saved")
+            messages.success(request, "게시물을 등록했습니다.", extra_tags="post-saved")
             return redirect("post-detail", pk=post.pk)
         except (ValidationError, APIValidationError) as exc:
             service_error(form, exc)
-    return render(request, "community/write.html", {"form": form, "editing": False})
+    return render(request, "community/write.html", post_editor_context(form, editing=False))
 
 @login_required
 @never_cache
@@ -197,7 +209,7 @@ def post_edit(request, pk):
     if request.method == "POST" and form.is_valid():
         try:
             call_service("update_post", request.user, post, {k: v for k, v in form.cleaned_data.items() if k != "privacy"})
-            messages.success(request, "질문을 수정했습니다.", extra_tags="post-saved")
+            messages.success(request, "게시물을 수정했습니다.", extra_tags="post-saved")
             return redirect("post-detail", pk=post.pk)
         except (ValidationError, APIValidationError) as exc:
             service_error(form, exc)
@@ -212,7 +224,7 @@ def post_edit(request, pk):
         data['board_data_version'] = data.get('board_data_version') if stale else board_data_version(post)
         data.pop('confirm_board_data_removal', None)
         form.data = data
-    return render(request, "community/write.html", {"form": form, "editing": True, "post": post})
+    return render(request, "community/write.html", post_editor_context(form, editing=True, post=post))
 
 @require_POST
 def post_helpful(request, pk):

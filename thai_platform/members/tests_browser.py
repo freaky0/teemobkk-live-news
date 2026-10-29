@@ -127,7 +127,7 @@ class MembershipBrowserTests(StaticLiveServerTestCase):
             page.locator('#id_title').fill('이메일 가입 후 작성하는 브라우저 검증 질문')
             page.locator('#id_body').fill('실제 회원정보가 아닌 테스트 회원으로 가입과 글쓰기를 검증하는 내용입니다. 외부 메일을 발송하지 않습니다.')
             page.locator('#id_privacy').check()
-            page.get_by_role('button',name='질문 등록').click()
+            page.get_by_role('button',name='게시하기').click()
             page.wait_for_url('**/community/*/')
             self.assertIn('이메일 가입 후 작성',page.locator('h1').inner_text())
             anonymous=browser.new_context()

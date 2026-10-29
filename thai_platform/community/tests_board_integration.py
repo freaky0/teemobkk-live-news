@@ -1,4 +1,5 @@
 import os
+import re
 from unittest import skipUnless
 from unittest.mock import patch
 
@@ -100,18 +101,24 @@ class BoardMobileBrowserTests(StaticLiveServerTestCase):
                     page.locator('#id_title').fill(f'Mobile {category} title')
                     page.locator('#id_body').fill('A sufficiently long mobile test post body.')
                     page.locator('#id_privacy').check()
-                    page.locator('form[data-editor] button[type=submit]').click()
-                    page.wait_for_url('**/community/*/')
-                    post = Post.objects.get(title=f'Mobile {category} title')
-                    self.assertEqual(post.category, category)
+                    create_path = f'/community/new/'
+                    with page.expect_response(lambda response: response.request.method == 'POST' and response.url.split('?', 1)[0].endswith(create_path)) as create_response:
+                        page.locator('form[data-editor] button[type=submit]').click()
+                    self.assertEqual(create_response.value.status, 302, f'{category}: {page.locator(".error").all_inner_texts()}')
+                    page.wait_for_url(re.compile(r'.*/community/\d+/$'))
+                    post = Post.objects.get(pk=int(page.url.rstrip('/').split('/')[-1]))
+                    self.assertEqual((post.display_title, post.category), (f'Mobile {category} title', category))
                     page.get_by_role('link', name='수정', exact=True).click()
                     page.locator('#id_title').fill(f'Edited mobile {category} title')
                     page.locator('#id_privacy').check()
-                    page.get_by_role('button', name='수정 저장').click()
-                    page.wait_for_load_state('networkidle')
+                    edit_path = f'/community/{post.pk}/edit/'
+                    with page.expect_response(lambda response: response.request.method == 'POST' and response.url.split('?', 1)[0].endswith(edit_path)) as edit_response:
+                        page.get_by_role('button', name='수정 저장').click()
+                    self.assertEqual(edit_response.value.status, 302, f'{category}: {page.locator(".error").all_inner_texts()}')
+                    page.wait_for_url(re.compile(r'.*/community/\d+/$'))
                     post.refresh_from_db()
-                    self.assertEqual((post.title, post.category), (f'Edited mobile {category} title', category))
-                    self.assertIn(post.title, page.locator('h1').inner_text())
+                    self.assertEqual((post.display_title, post.category), (f'Edited mobile {category} title', category))
+                    self.assertIn(post.display_title, page.locator('h1').inner_text())
                 self.assertEqual(errors, [])
             finally:
                 browser.close()

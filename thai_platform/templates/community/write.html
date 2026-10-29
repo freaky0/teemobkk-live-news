@@ -1,1 +1,25 @@
-{% extends 'base.html' %}{% block title %}{% if editing %}질문 수정{% else %}질문 쓰기{% endif %} | TEEMOBKK's POST{% endblock %}{% block content %}<section class="editor"><nav class="breadcrumb" aria-label="현재 위치"><a href="{% url 'post-list' %}">커뮤니티</a><span aria-hidden="true">›</span><span>{% if editing %}질문 수정{% else %}질문 쓰기{% endif %}</span></nav><div class="heading"><h1>{% if editing %}질문 수정{% else %}이웃에게 질문하기{% endif %}</h1><p>질문은 서버 DB에 저장됩니다. 닉네임과 함께 공개됩니다.</p></div><p class="note">신분증·주소·계좌·연락처·의료 자료를 입력하지 마세요. 이미지 업로드는 다음 단계입니다.</p><div class="panel"><form method="post" data-editor {% if request.method == 'POST' %}data-bound{% endif %} data-draft-key="{% if editing %}edit-{{ post.pk }}{% else %}new{% endif %}"{% if editing %} data-original-category="{{ post.category }}"{% endif %}>{% csrf_token %}{% include 'community/fields.html' %}<p class="status" id="draft-status" role="status">텍스트 초안은 이 브라우저에 자동 저장합니다.</p><div class="form-bottom"><a class="btn" href="{% url 'post-list' %}">나가기</a><button class="btn primary" type="submit">{% if editing %}수정 저장{% else %}질문 등록{% endif %}</button></div></form></div></section>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}{{ board_name }}{% if editing %} 수정{% else %} 글쓰기{% endif %} | TEEMOBKK's POST{% endblock %}
+{% block content %}
+<section class="editor">
+  <nav class="breadcrumb" aria-label="현재 위치">
+    <a href="{% url 'post-list' %}">커뮤니티</a>
+    <span aria-hidden="true">›</span>
+    <span>{% if editing %}글 수정{% else %}글쓰기{% endif %}</span>
+  </nav>
+  <div class="heading">
+    <h1 data-board-heading>{{ board_name }}</h1>
+  </div>
+  <div class="panel">
+    <form method="post" data-editor {% if request.method == 'POST' %}data-bound{% endif %} data-draft-key="{% if editing %}edit-{{ post.pk }}{% else %}new{% endif %}"{% if editing %} data-original-category="{{ post.category }}"{% endif %}>
+      {% csrf_token %}
+      {% include 'community/fields.html' %}
+      <p class="status" id="draft-status" role="status">텍스트 초안은 이 브라우저에 자동 저장합니다.</p>
+      <div class="form-bottom">
+        <a class="btn" href="{% url 'post-list' %}">나가기</a>
+        <button class="btn primary" type="submit">{% if editing %}수정 저장{% else %}게시하기{% endif %}</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

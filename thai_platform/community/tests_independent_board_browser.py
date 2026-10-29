@@ -51,10 +51,16 @@ class IndependentBoardBrowserTests(StaticLiveServerTestCase):
     def goto(self, path):
         return self.page.goto(self.live_server_url + path, wait_until='domcontentloaded')
 
+    def select_board(self, board):
+        category = self.page.locator('#id_category')
+        if not category.is_visible():
+            self.page.locator('[data-classification-fields] summary').click()
+        category.select_option(board)
+
     def create_post(self, board):
         self.login(self.staff if board == 'notice' else self.member)
         self.goto('/community/new/')
-        self.page.locator('#id_category').select_option(board)
+        self.select_board(board)
         self.page.locator('#id_title').fill(f'Browser marker {board}')
         self.page.locator('#id_body').fill('A sufficiently long independent board browser test body.')
         self.page.locator('#id_privacy').check()
@@ -97,7 +103,7 @@ class IndependentBoardBrowserTests(StaticLiveServerTestCase):
                 response = self.goto(path + 'edit/')
                 self.assertEqual(response.status, 403)
         self.goto('/community/new/?category=notice')
-        self.page.locator('#id_category').select_option('notice')
+        self.select_board('notice')
         self.page.locator('#id_title').fill('Forbidden notice marker')
         self.page.locator('#id_body').fill('A sufficiently long unauthorized notice body.')
         self.page.locator('#id_privacy').check()

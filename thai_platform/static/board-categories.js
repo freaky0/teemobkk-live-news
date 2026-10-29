@@ -1,8 +1,22 @@
-// Keep subcategory choices aligned with the selected board in the editor.
+// Keep subcategory choices and the compact summary aligned with the selected board.
 document.querySelectorAll('[data-editor]').forEach(form => {
   const board = form.elements.category;
+  const region = form.elements.region;
   const subcategory = form.elements.board_category;
   if (!board || !subcategory) return;
+  const heading = document.querySelector('[data-board-heading]');
+  const summary = form.querySelector('[data-classification-summary]');
+  const updateSummary = () => {
+    const boardLabel = board.value
+      ? board.selectedOptions[0]?.textContent.trim() || '게시판'
+      : heading?.textContent.trim() || '게시판';
+    const regionLabel = region?.selectedOptions[0]?.textContent.trim() || '지역 선택';
+    const subcategoryLabel = subcategory.value
+      ? subcategory.selectedOptions[0]?.textContent.trim()
+      : '세부 분류 없음';
+    if (heading) heading.textContent = boardLabel;
+    if (summary) summary.textContent = `${boardLabel} · ${regionLabel} · ${subcategoryLabel}`;
+  };
   const sync = () => {
     const current = ['housing', 'banking'].includes(board.value) ? 'living' : board.value;
     for (const group of subcategory.querySelectorAll('optgroup')) {
@@ -11,8 +25,11 @@ document.querySelectorAll('[data-editor]').forEach(form => {
     }
     const selected = subcategory.selectedOptions[0];
     if (selected && selected.parentElement.disabled) subcategory.value = '';
+    updateSummary();
   };
   board.addEventListener('change', sync);
+  region?.addEventListener('change', updateSummary);
+  subcategory.addEventListener('change', updateSummary);
   sync();
 });
 // A list's categories are specific to its original board; reload the filter
