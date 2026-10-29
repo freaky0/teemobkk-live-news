@@ -180,6 +180,17 @@ class WebTests(TestCase):
             with self.subTest(markup=markup):
                 self.assertContains(response, markup)
 
+    def test_homepage_guides_first_time_visitors_to_life_boards(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<section class="home-start" aria-labelledby="home-start-title">')
+        self.assertContains(response, "태국 생활, 무엇이 궁금하세요?")
+        for category in ["visa", "living", "jobs", "foodtravel"]:
+            with self.subTest(category=category):
+                self.assertContains(response, f"?category={category}")
+        self.assertContains(response, "뉴스에서 생활로")
+        self.assertNotContains(response, "읽기 전용 뉴스 연결")
+
     def test_homepage_hero_copy_wraps_without_forced_line_breaks(self):
         response = self.client.get("/")
         self.assertContains(response, '<h1 id="home-title" class="home-title">')
