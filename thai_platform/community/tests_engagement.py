@@ -5,12 +5,14 @@ from rest_framework.test import APIClient
 from .models import Post, Comment
 
 
+from .test_board_fixtures import fixture_post
+
 class EngagementTests(TestCase):
     def setUp(self):
         users = get_user_model()
         self.owner = users.objects.create_user(username='activity-owner', email='private@example.test')
         self.other = users.objects.create_user(username='activity-other')
-        self.post = Post.objects.create(author=self.owner, title='저장과 반응 검사 질문', body='테스트 자료입니다.')
+        self.post = fixture_post(author=self.owner, title='저장과 반응 검사 질문', body='테스트 자료입니다.')
         self.api = APIClient()
 
     def test_authority_validation_and_unavailable_posts(self):
@@ -51,7 +53,7 @@ class EngagementTests(TestCase):
 
     def test_activity_types_exclude_other_users_and_hidden_content(self):
         from .models import Helpful, Bookmark
-        alien = Post.objects.create(author=self.other, title='다른 회원만의 질문', body='Other')
+        alien = fixture_post(author=self.other, title='다른 회원만의 질문', body='Other')
         Comment.objects.create(author=self.owner, post=self.post, body='내 답변')
         Comment.objects.create(author=self.other, post=alien, body='다른 회원 답변')
         Helpful.objects.create(user=self.owner, post=self.post)

@@ -27,11 +27,31 @@ try{const pending=sessionStorage.getItem('post-submitted:'+user);if(pending&&doc
 const form=document.querySelector('[data-editor]');if(!form)return;
 const key=keyPrefix+form.dataset.draftKey,status=document.querySelector('#draft-status');let timer,dirty=false,submitting=false;
 function read(){try{return JSON.parse(localStorage.getItem(key)||'null');}catch{return null;}}
-const draftFields=['title','body','region','category','market_kind','market_price','market_region','market_status','job_kind','job_region','job_compensation','job_status','place_name','place_region','place_note','place_url','board_data_version'];
+const draftFields=['title','body','region','category','board_category','market_kind','market_price','market_region','market_status','job_kind','job_region','job_compensation','job_status','place_name','place_region','place_note','place_url','board_data_version'];
 let unversionedDraft=false;
 function save(){const data={};for(const name of draftFields)if(form.elements[name])data[name]=form.elements[name].value;if(unversionedDraft)data.board_data_version='';try{localStorage.setItem(key,JSON.stringify(data));status.textContent='텍스트 초안을 이 브라우저에 자동 저장했습니다.';return true;}catch{status.textContent='초안 자동 저장 실패. 내용을 복사한 뒤 브라우저 저장소 설정을 확인하세요.';return false;}}
 const stored=read();if(stored&&!form.hasAttribute('data-bound')){if(['housing','banking'].includes(stored.category))stored.category='living';unversionedDraft=!!form.elements.board_data_version&&!(typeof stored.board_data_version==='string'&&stored.board_data_version);for(const name of draftFields)if(form.elements[name]&&typeof stored[name]==='string')form.elements[name].value=stored[name];status.textContent=unversionedDraft?'이전 초안의 기준 버전을 확인할 수 없습니다. 내용을 복사한 뒤 다른 브라우저에서 최신 게시글을 확인하고 다시 수정해 주세요.':'저장한 초안을 불러왔습니다. 서버에 등록하려면 아래 등록 버튼을 누르세요.';}
-const categoryField=form.elements.category,marketFields=form.querySelector('[data-market-fields]');if(categoryField&&marketFields){const syncMarketFields=()=>{const isMarket=categoryField.value==='market';marketFields.open=isMarket||marketFields.querySelector('[aria-invalid="true"]')!==null;marketFields.querySelectorAll('input,select,textarea').forEach(control=>{control.disabled=!isMarket;});};syncMarketFields();categoryField.addEventListener('change',syncMarketFields);}const jobFields=form.querySelector('[data-job-fields]');if(categoryField&&jobFields){const syncJobFields=()=>{const isJobs=categoryField.value==='jobs';jobFields.open=isJobs||jobFields.querySelector('[aria-invalid="true"]')!==null;jobFields.querySelectorAll('input,select,textarea').forEach(control=>{control.disabled=!isJobs;});};syncJobFields();categoryField.addEventListener('change',syncJobFields);}const placeFields=form.querySelector('[data-place-fields]');if(categoryField&&placeFields){const syncPlaceFields=()=>{const isFoodTravel=categoryField.value==='foodtravel';placeFields.open=isFoodTravel||placeFields.querySelector('[aria-invalid="true"]')!==null;placeFields.querySelectorAll('input,select,textarea').forEach(control=>{control.disabled=!isFoodTravel;});};syncPlaceFields();categoryField.addEventListener('change',syncPlaceFields);}
+const categoryField=form.elements.category;
+if(categoryField){
+  const boardSections=[
+    ['[data-market-fields]','market'],
+    ['[data-job-fields]','jobs'],
+    ['[data-place-fields]','foodtravel'],
+    ['[data-notice-fields]','notice'],
+  ];
+  const syncBoardFields=()=>{
+    for(const [selector,category] of boardSections){
+      const section=form.querySelector(selector);
+      if(!section)continue;
+      const active=categoryField.value===category;
+      section.hidden=!active;
+      if('open' in section)section.open=active||section.querySelector('[aria-invalid="true"]')!==null;
+      section.querySelectorAll('input,select,textarea').forEach(control=>{control.disabled=!active;});
+    }
+  };
+  syncBoardFields();
+  categoryField.addEventListener('change',syncBoardFields);
+}
 form.addEventListener('input',()=>{dirty=true;clearTimeout(timer);timer=setTimeout(save,300);});
 form.addEventListener('change',()=>{dirty=true;save();});
 form.addEventListener('submit',e=>{if(unversionedDraft){e.preventDefault();clearTimeout(timer);save();status.textContent='이전 초안의 기준 버전을 확인할 수 없습니다. 내용을 복사한 뒤 다른 브라우저에서 최신 게시글을 확인하고 다시 수정해 주세요.';return;}const original=form.dataset.originalCategory;if(['market','jobs','foodtravel'].includes(original)&&form.elements.category.value!==original&&!confirm('게시판을 변경하면 기존 게시판 정보가 삭제됩니다. 계속할까요?')){e.preventDefault();return;}clearTimeout(timer);save();for(const name of draftFields){const control=form.elements[name];if(control&&control.disabled){const hidden=document.createElement('input');hidden.type='hidden';hidden.name=name;hidden.value=control.value;form.appendChild(hidden);}}const snapshot=document.createElement('input');snapshot.type='hidden';snapshot.name='board_fields_snapshot';snapshot.value='1';form.appendChild(snapshot);submitting=true;try{sessionStorage.setItem('post-submitted:'+user,key);}catch{}});

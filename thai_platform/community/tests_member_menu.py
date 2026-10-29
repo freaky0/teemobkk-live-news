@@ -5,11 +5,13 @@ from members.models import MemberProfile
 from .models import Comment, Post
 
 
+from .test_board_fixtures import fixture_post
+
 class MemberMenuTests(TestCase):
     def test_detail_author_comment_and_reply_have_public_member_menus(self):
         user = get_user_model().objects.create_user(username='private-login@example.test')
         MemberProfile.objects.create(user=user, email_key='private@example.test', nickname_key='publicname', accepted_at=timezone.now(), email_verified_at=timezone.now())
-        post = Post.objects.create(author=user, title='Public title', body='public')
+        post = fixture_post(author=user, title='Public title', body='public')
         comment = Comment.objects.create(post=post, author=user, body='Public answer')
         Comment.objects.create(post=post, author=user, parent=comment, body='Public reply')
         response = self.client.get(f'/community/{post.pk}/')
@@ -22,7 +24,7 @@ class MemberMenuTests(TestCase):
             user = get_user_model().objects.create_user(username=f'private-{state}@example.test', is_active=state != 'inactive')
             if state != 'missing':
                 MemberProfile.objects.create(user=user, email_key=f'private-{state}@example.test', nickname_key=f'nick-{state}', accepted_at=timezone.now(), email_verified_at=None if state == 'unverified' else timezone.now())
-            post = Post.objects.create(author=user, title=f'Public title {index}', body='public')
+            post = fixture_post(author=user, title=f'Public title {index}', body='public')
             Comment.objects.create(post=post, author=user, body='Public answer')
             self.client.force_login(get_user_model().objects.create_user(username=f'viewer-{index}'))
             for path in ('/community/', f'/community/{post.pk}/'):
@@ -34,8 +36,8 @@ class MemberMenuTests(TestCase):
     def test_public_profile_only_published_posts_and_nickname(self):
         user = get_user_model().objects.create_user(username='private-login@example.test', email='private@example.test')
         MemberProfile.objects.create(user=user, email_key='private@example.test', nickname_key='publicname', accepted_at=timezone.now(), email_verified_at=timezone.now())
-        Post.objects.create(author=user, title='Public title', body='public')
-        Post.objects.create(author=user, title='Hidden title', body='hidden', status=Post.Status.HIDDEN)
+        fixture_post(author=user, title='Public title', body='public')
+        fixture_post(author=user, title='Hidden title', body='hidden', status=Post.Status.HIDDEN)
         response = self.client.get(f'/community/members/{user.pk}/')
         self.assertContains(response, 'publicname')
         self.assertContains(response, 'Public title')
@@ -46,7 +48,7 @@ class MemberMenuTests(TestCase):
     def test_list_nickname_menu_uses_public_nickname(self):
         user = get_user_model().objects.create_user(username='secret@example.test')
         MemberProfile.objects.create(user=user, email_key='secret@example.test', nickname_key='publicname', accepted_at=timezone.now(), email_verified_at=timezone.now())
-        Post.objects.create(author=user, title='Public title', body='public')
+        fixture_post(author=user, title='Public title', body='public')
         response = self.client.get('/community/')
         self.assertContains(response, 'publicname')
         self.assertContains(response, f'/community/members/{user.pk}/')

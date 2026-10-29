@@ -8,8 +8,8 @@ from rest_framework.permissions import BasePermission, SAFE_METHODS
 from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
 from . import services
-from .models import ModerationAppeal, Notification, Post, Report
-from .serializers import AppealSerializer, CommentSerializer, NotificationSerializer, PostSerializer, ReportSerializer
+from .models import BoardCategory, ModerationAppeal, Notification, Post, Report
+from .serializers import AppealSerializer, BoardCategorySerializer, CommentSerializer, NotificationSerializer, PostSerializer, ReportSerializer
 
 
 class CommunityPagination(PageNumberPagination):
@@ -28,6 +28,20 @@ class ActiveWritePermission(BasePermission):
 class ActiveUserPermission(BasePermission):
     def has_permission(self, request, view):
         return bool(request.user.is_authenticated and request.user.is_active)
+
+
+class BoardCategoryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    serializer_class = BoardCategorySerializer
+    pagination_class = CommunityPagination
+
+    def get_queryset(self):
+        qs = BoardCategory.objects.all()
+        board = self.request.query_params.get('board')
+        if board:
+            if board not in dict(BoardCategory._meta.get_field('board').choices):
+                raise ValidationError({'board': 'Invalid board.'})
+            qs = qs.filter(board=board)
+        return qs
 
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -61,8 +75,13 @@ class PostViewSet(viewsets.ModelViewSet):
             if category not in Post.Category.values:
                 raise ValidationError({'category': 'Invalid category.'})
             qs = qs.filter(category__in=services.category_filter_values(category))
+        board_category = params.get('board_category')
+        if board_category:
+            if not board_category.isascii() or not board_category.isdecimal() or len(board_category) > 18 or int(board_category) < 1:
+                raise ValidationError({'board_category': 'Invalid category.'})
+            qs = qs.filter(board_category_id=int(board_category))
         if query:
-            qs = qs.filter(Q(title__icontains=query) | Q(body__icontains=query))
+            qs = services.search_posts(qs, query)
         return qs
 
     def create(self, request, *args, **kwargs):
@@ -199,6 +218,7 @@ class ActivityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
 
 router = DefaultRouter()
+router.register('board-categories', BoardCategoryViewSet, basename='board-category')
 router.register('posts', PostViewSet, basename='post')
 router.register('notifications', NotificationViewSet, basename='notification')
 router.register('activity', ActivityViewSet, basename='activity')

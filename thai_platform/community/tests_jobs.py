@@ -10,6 +10,8 @@ from .models import Post
 from .board_versions import board_data_version
 
 
+from .test_board_fixtures import fixture_post
+
 class JobBoardTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(username="job-writer")
@@ -40,10 +42,39 @@ class JobBoardTests(TestCase):
             with self.subTest(field=field_name):
                 self.assertIn(field_name, form.fields)
 
+    def test_omitted_version_keeps_ordinary_api_updates_compatible(self):
+        post = services.create_post(self.user, {'title': 'Original title', 'body': 'A sufficiently long job post description.', 'category': 'jobs'})
+        response = self.client.patch(f'/api/v1/posts/{post.pk}/', {'title': 'Updated without token'}, content_type='application/json')
+        self.assertEqual(response.status_code, 200, response.content)
+        post.refresh_from_db()
+        self.assertEqual(post.display_title, 'Updated without token')
+
+    def test_blank_or_stale_version_cannot_overwrite_api_or_web_edits(self):
+        post = services.create_post(self.user, {'title': 'Original title', 'body': 'A sufficiently long job post description.', 'category': 'jobs'})
+        url = f'/api/v1/posts/{post.pk}/'
+        token = self.client.get(url).json()['board_data_version']
+        updated = self.client.patch(url, {'title': 'New title', 'board_data_version': token}, content_type='application/json')
+        self.assertEqual(updated.status_code, 200, updated.content)
+        for value in ('', ' '):
+            payload = {'title': 'Old title', 'board_data_version': value}
+            response = self.client.patch(url, payload, content_type='application/json')
+            self.assertEqual(response.status_code, 400)
+            self.assertIn('board_data_version', response.json())
+        stale = self.client.patch(url, {'title': 'Old title', 'board_data_version': token}, content_type='application/json')
+        self.assertEqual(stale.status_code, 400)
+        web_payload = self.job_payload('Old title')
+        for _ in range(2):
+            response = self.client.post(f'/community/{post.pk}/edit/', web_payload)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('board_data_version', response.context['form'].errors)
+            web_payload['board_data_version'] = response.context['form']['board_data_version'].value() or ''
+        post.refresh_from_db()
+        self.assertEqual(post.display_title, 'New title')
+
     def test_stale_same_category_api_and_web_edits_are_rejected(self):
-        post = Post.objects.create(author=self.user, title='Concurrent edit', body='A sufficiently long job post description.', category='jobs', job_compensation='Original')
+        post = fixture_post(author=self.user, title='Concurrent edit', body='A sufficiently long job post description.', category='jobs', job_compensation='Original')
         version = self.client.get(f'/community/{post.pk}/edit/').context['form']['board_data_version'].value()
-        updated = self.client.patch(f'/api/v1/posts/{post.pk}/', {'job_compensation': 'New salary'}, content_type='application/json')
+        updated = self.client.patch(f'/api/v1/posts/{post.pk}/', {'job_compensation': 'New salary', 'board_data_version': version}, content_type='application/json')
         self.assertEqual(updated.status_code, 200)
         stale = self.client.patch(f'/api/v1/posts/{post.pk}/', {'job_compensation': 'Old salary', 'board_data_version': version}, content_type='application/json')
         self.assertEqual(stale.status_code, 400)
@@ -56,14 +87,14 @@ class JobBoardTests(TestCase):
         self.assertEqual(post.job_compensation, 'New salary')
 
     def test_failed_non_js_switch_restores_stored_board_fields(self):
-        post = Post.objects.create(author=self.user, title='Original job', body='A sufficiently long job post description.', category='jobs', job_compensation='Stored salary')
+        post = fixture_post(author=self.user, title='Original job', body='A sufficiently long job post description.', category='jobs', job_compensation='Stored salary')
         payload = self.job_payload('Original job', category='free', job_compensation='', board_data_version=board_data_version(post))
         response = self.client.post(f'/community/{post.pk}/edit/', payload)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['form']['job_compensation'].value(), 'Stored salary')
 
     def test_failed_switch_preserves_submitted_dirty_board_values(self):
-        post = Post.objects.create(author=self.user, title='Original job', body='A sufficiently long job post description.', category='jobs', job_compensation='Stored salary', job_kind='hiring')
+        post = fixture_post(author=self.user, title='Original job', body='A sufficiently long job post description.', category='jobs', job_compensation='Stored salary', job_kind='hiring')
         payload = self.job_payload('Original job', category='free', job_compensation='Unsaved salary', job_kind='', board_data_version=board_data_version(post), board_fields_snapshot='1')
         response = self.client.post(f'/community/{post.pk}/edit/', payload)
         self.assertEqual(response.status_code, 200)
@@ -73,7 +104,7 @@ class JobBoardTests(TestCase):
         self.assertEqual((post.job_compensation, post.job_kind), ('Stored salary', 'hiring'))
 
     def test_edit_responses_are_private_and_not_stored(self):
-        post = Post.objects.create(author=self.user, title='Private job', body='A sufficiently long job post description.', category='jobs')
+        post = fixture_post(author=self.user, title='Private job', body='A sufficiently long job post description.', category='jobs')
         url = f'/community/{post.pk}/edit/'
         for response in (self.client.get(url), self.client.post(url, {}), self.client.post(url, self.job_payload('Private job', board_data_version=board_data_version(post)))):
             with self.subTest(status=response.status_code):
@@ -81,22 +112,23 @@ class JobBoardTests(TestCase):
                 self.assertIn('no-store', response['Cache-Control'])
 
     def test_stale_api_confirmation_cannot_delete_new_details(self):
-        post = Post.objects.create(author=self.user, title='Concurrent job', body='A sufficiently long job post description.', category='jobs', job_compensation='Original')
+        post = fixture_post(author=self.user, title='Concurrent job', body='A sufficiently long job post description.', category='jobs', job_compensation='Original')
         snapshot = self.client.get(f'/api/v1/posts/{post.pk}/').json()['board_data_version']
-        self.client.patch(f'/api/v1/posts/{post.pk}/', {'job_compensation': 'Updated by another session'}, content_type='application/json')
+        updated = self.client.patch(f'/api/v1/posts/{post.pk}/', {'job_compensation': 'Updated by another session', 'board_data_version': snapshot}, content_type='application/json')
+        self.assertEqual(updated.status_code, 200)
         response = self.client.patch(f'/api/v1/posts/{post.pk}/', {'category': 'free', 'confirm_board_data_removal': True, 'board_data_version': snapshot}, content_type='application/json')
         self.assertEqual(response.status_code, 400)
         post.refresh_from_db()
         self.assertEqual((post.category, post.job_compensation), ('jobs', 'Updated by another session'))
 
     def test_stale_web_session_requires_new_approval(self):
-        post = Post.objects.create(author=self.user, title='Concurrent job web', body='A sufficiently long job post description.', category='jobs', job_compensation='Original')
+        post = fixture_post(author=self.user, title='Concurrent job web', body='A sufficiently long job post description.', category='jobs', job_compensation='Original')
         first = Client()
         second = Client()
         first.force_login(self.user)
         second.force_login(self.user)
         original = first.get(f'/community/{post.pk}/edit/').context['form']['board_data_version'].value()
-        updated = second.patch(f'/api/v1/posts/{post.pk}/', {'job_compensation': 'New salary'}, content_type='application/json')
+        updated = second.patch(f'/api/v1/posts/{post.pk}/', {'job_compensation': 'New salary', 'board_data_version': original}, content_type='application/json')
         self.assertEqual(updated.status_code, 200)
         payload = self.job_payload('Concurrent job web', category='free', board_data_version=original, confirm_board_data_removal='on')
         for name in ('job_kind', 'job_region', 'job_compensation', 'job_status'):
@@ -117,11 +149,13 @@ class JobBoardTests(TestCase):
         self.assertEqual((post.category, post.job_compensation), ('free', ''))
 
     def test_stale_category_switch_cannot_rebase_and_overwrite(self):
-        post = Post.objects.create(author=self.user, title='Old title', body='Original content long enough for validation.', category='free', region='common')
+        post = fixture_post(author=self.user, title='Old title', body='Original content long enough for validation.', category='free', region='common')
         old = board_data_version(post)
-        post.title = 'New saved title'
-        post.body = 'New saved content long enough for validation.'
-        post.save()
+        services.update_post(self.user, post, {
+            'title': 'New saved title',
+            'body': 'New saved content long enough for validation.',
+            'board_data_version': old,
+        })
         payload = self.job_payload('Old draft title', body='Old draft content long enough for validation.', category='questions', board_data_version=old)
         for _ in range(2):
             response = self.client.post(f'/community/{post.pk}/edit/', payload)
@@ -129,17 +163,46 @@ class JobBoardTests(TestCase):
             self.assertEqual(response.context['form']['board_data_version'].value(), old)
             payload['board_data_version'] = response.context['form']['board_data_version'].value()
         post.refresh_from_db()
-        self.assertEqual((post.title, post.category), ('New saved title', 'free'))
+        self.assertEqual(post.category, 'free')
+        self.assertEqual(post.freepost.title, 'New saved title')
+        self.assertEqual(post.freepost.body, 'New saved content long enough for validation.')
+
+    def test_api_transitions_without_data_allow_omitted_token(self):
+        post = fixture_post(author=self.user, title='Empty job', body='A sufficiently long job post description.', category='jobs')
+        response = self.client.patch(f'/api/v1/posts/{post.pk}/', {'category': 'free'}, content_type='application/json')
+        self.assertEqual(response.status_code, 200, response.content)
+        post.refresh_from_db()
+        self.assertEqual(post.category, 'free')
+
+    def test_destructive_transfer_requires_both_current_version_and_consent(self):
+        post = fixture_post(author=self.user, title='Job with data', body='A sufficiently long job post description.', category='jobs', job_compensation='Keep me')
+        url = f'/api/v1/posts/{post.pk}/'
+        token = self.client.get(url).json()['board_data_version']
+        for payload in (
+            {'category': 'free'},
+            {'category': 'free', 'confirm_board_data_removal': True},
+            {'category': 'free', 'board_data_version': token},
+            {'category': 'free', 'confirm_board_data_removal': True, 'board_data_version': ''},
+            {'category': 'free', 'confirm_board_data_removal': True, 'board_data_version': 'stale'},
+        ):
+            with self.subTest(payload=payload):
+                self.assertEqual(self.client.patch(url, payload, content_type='application/json').status_code, 400)
+                post.refresh_from_db()
+                self.assertEqual((post.category, post.job_compensation), ('jobs', 'Keep me'))
+        response = self.client.patch(url, {'category': 'free', 'confirm_board_data_removal': True, 'board_data_version': token}, content_type='application/json')
+        self.assertEqual(response.status_code, 200, response.content)
+        post.refresh_from_db()
+        self.assertEqual((post.category, post.job_compensation), ('free', ''))
 
     def test_boolean_confirmation_without_version_is_rejected(self):
-        post = Post.objects.create(author=self.user, title='No snapshot job', body='A sufficiently long job post description.', category='jobs', job_compensation='Keep me')
+        post = fixture_post(author=self.user, title='No snapshot job', body='A sufficiently long job post description.', category='jobs', job_compensation='Keep me')
         response = self.client.patch(f'/api/v1/posts/{post.pk}/', {'category': 'free', 'confirm_board_data_removal': True}, content_type='application/json')
         self.assertEqual(response.status_code, 400)
         post.refresh_from_db()
         self.assertEqual((post.category, post.job_compensation), ('jobs', 'Keep me'))
 
     def test_stale_confirmation_cannot_delete_another_category(self):
-        post = Post.objects.create(author=self.user, title='Concurrent categories', body='A sufficiently long job post description.', category='jobs', job_compensation='Original')
+        post = fixture_post(author=self.user, title='Concurrent categories', body='A sufficiently long job post description.', category='jobs', job_compensation='Original')
         version = self.client.get(f'/api/v1/posts/{post.pk}/').json()['board_data_version']
         change = self.client.patch(f'/api/v1/posts/{post.pk}/', {'category': 'market', 'market_kind': 'sell', 'market_price': '250.00', 'confirm_board_data_removal': True, 'board_data_version': version}, content_type='application/json')
         self.assertEqual(change.status_code, 200)
@@ -153,7 +216,7 @@ class JobBoardTests(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
 
     def test_category_change_requires_server_confirmation_for_web_and_api(self):
-        post = Post.objects.create(author=self.user, title='Saved job post', body='A sufficiently long job post description.', category='jobs', job_compensation='Private negotiation')
+        post = fixture_post(author=self.user, title='Saved job post', body='A sufficiently long job post description.', category='jobs', job_compensation='Private negotiation')
         payload = self.job_payload('Saved job post', category='free')
         response = self.client.post(f'/community/{post.pk}/edit/', payload)
         self.assertEqual(response.status_code, 200)
@@ -169,7 +232,7 @@ class JobBoardTests(TestCase):
         self.assertEqual((post.category, post.job_compensation), ('free', ''))
 
     def test_web_category_change_requires_checkbox_and_privacy_confirmation(self):
-        post = Post.objects.create(author=self.user, title='Saved web job', body='A sufficiently long job post description.', category='jobs', job_compensation='Negotiable')
+        post = fixture_post(author=self.user, title='Saved web job', body='A sufficiently long job post description.', category='jobs', job_compensation='Negotiable')
         payload = self.job_payload('Saved web job', category='free', confirm_board_data_removal='on', board_data_version=board_data_version(post))
         payload.pop('privacy')
         self.assertEqual(self.client.post(f'/community/{post.pk}/edit/', payload).status_code, 200)
@@ -198,7 +261,7 @@ class JobBoardTests(TestCase):
                     ),
                 )
                 self.assertEqual(response.status_code, 302)
-                post = Post.objects.get(title=title)
+                post = services.search_posts(Post.objects.all(), title).get()
                 self.assertEqual(
                     (post.job_kind, post.job_region, post.job_compensation, post.job_status),
                     (kind, region, compensation, status),
@@ -238,7 +301,7 @@ class JobBoardTests(TestCase):
                 payload = self.job_payload(title, **invalid)
                 web_response = self.client.post("/community/new/", payload)
                 self.assertEqual(web_response.status_code, 200)
-                self.assertFalse(Post.objects.filter(title=title).exists())
+                self.assertFalse(services.search_posts(Post.objects.all(), title).exists())
 
                 api_payload = {key: value for key, value in payload.items() if key != "privacy"}
                 api_response = self.client.post(
@@ -251,7 +314,7 @@ class JobBoardTests(TestCase):
         web_payload = self.job_payload("Ordinary post with job fields", category="free")
         web_response = self.client.post("/community/new/", web_payload)
         self.assertEqual(web_response.status_code, 302)
-        web_post = Post.objects.get(title=web_payload["title"])
+        web_post = services.search_posts(Post.objects.all(), web_payload["title"]).get()
         self.assertEqual(
             (web_post.job_kind, web_post.job_region, web_post.job_compensation, web_post.job_status),
             ("", "", "", ""),
@@ -300,7 +363,7 @@ class JobMigrationPreservationTests(TransactionTestCase):
     def test_existing_post_rows_survive_job_migration(self):
         executor = MigrationExecutor(connection)
         leaves = executor.loader.graph.leaf_nodes()
-        old_target = ('community', '0022_post_market_kind_post_market_price_and_more')
+        old_target = ('community', '0027_boardcategory_post_board_category')
         try:
             executor.migrate([old_target])
             old_apps = executor.loader.project_state([old_target]).apps

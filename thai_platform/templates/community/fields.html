@@ -1,1 +1,35 @@
-{% load form_accessibility %}{% if form.non_field_errors %}<div class="error" role="alert">{{ form.non_field_errors }}</div>{% endif %}{% for field in form %}{% if field.name == 'market_kind' %}<details class="field market-fields" data-market-fields{% if form.category.value == 'market' or form.market_kind.errors or form.market_price.errors or form.market_region.errors or form.market_status.errors %} open{% endif %}><summary>중고게시판 거래 정보 (선택)</summary>{% endif %}{% if field.name == 'job_kind' %}<details class="field job-fields" data-job-fields{% if form.category.value == 'jobs' or form.job_kind.errors or form.job_region.errors or form.job_compensation.errors or form.job_status.errors %} open{% endif %}><summary>구인구직 정보 (선택)</summary>{% endif %}{% if field.name == 'place_name' %}<details class="field place-fields" data-place-fields{% if form.category.value == 'foodtravel' or form.place_name.errors or form.place_region.errors or form.place_note.errors or form.place_url.errors %} open{% endif %}><summary>맛집·여행지 정보 (선택)</summary>{% endif %}<div class="field">{% if field.field.widget.input_type == 'checkbox' %}<label class="check">{{ field|accessible_field }}<span>{{ field.label }}</span></label>{% else %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field|accessible_field }}{% endif %}{% if field.errors %}<div class="error" role="alert" id="{{ field.auto_id }}_error">{{ field.errors }}</div>{% endif %}</div>{% if field.name == 'market_status' %}</details>{% endif %}{% if field.name == 'job_status' %}</details>{% endif %}{% if field.name == 'place_url' %}</details>{% endif %}{% endfor %}
+{% load form_accessibility %}
+{% if form.non_field_errors %}<div class="error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+{% for field in form %}
+  {% if field.name == 'region' %}
+    <details class="field classification-fields" data-classification-fields{% if form.region.errors or form.category.errors or form.board_category.errors %} open{% endif %}>
+      <summary>
+        <strong>게시판 및 분류</strong>
+        <span class="classification-current" data-classification-summary>{{ board_name }} · {{ region_name }}</span>
+      </summary>
+  {% endif %}
+  {% if field.name == 'market_kind' %}
+    <details class="field market-fields" data-market-fields{% if form.category.value == 'market' or form.market_kind.errors or form.market_price.errors or form.market_region.errors or form.market_status.errors %} open{% else %} hidden{% endif %}>
+      <summary>중고 거래 정보</summary>
+  {% endif %}
+  {% if field.name == 'job_kind' %}
+    <details class="field job-fields" data-job-fields{% if form.category.value == 'jobs' or form.job_kind.errors or form.job_region.errors or form.job_compensation.errors or form.job_status.errors %} open{% else %} hidden{% endif %}>
+      <summary>구인·구직 정보</summary>
+  {% endif %}
+  {% if field.name == 'place_name' %}
+    <details class="field place-fields" data-place-fields{% if form.category.value == 'foodtravel' or form.place_name.errors or form.place_region.errors or form.place_note.errors or form.place_url.errors %} open{% else %} hidden{% endif %}>
+      <summary>맛집·여행 정보</summary>
+  {% endif %}
+  <div class="field"{% if field.name == 'is_pinned' %} data-notice-fields{% if form.category.value != 'notice' %} hidden{% endif %}{% endif %}>
+    {% if field.field.widget.input_type == 'checkbox' %}
+      <label class="check">{{ field|accessible_field }}<span>{{ field.label }}</span></label>
+    {% else %}
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {% if field.name == 'body' %}<p class="field-hint" id="id_body_hint">실명·연락처·주소·계좌 등 민감한 개인정보는 본문에 올리지 마세요.</p>{% endif %}
+      {{ field|accessible_field }}
+    {% endif %}
+    {% if field.errors %}<div class="error" role="alert" id="{{ field.auto_id }}_error">{{ field.errors }}</div>{% endif %}
+  </div>
+  {% if field.name == 'board_category' %}</details>{% endif %}
+  {% if field.name == 'market_status' or field.name == 'job_status' or field.name == 'place_url' %}</details>{% endif %}
+{% endfor %}

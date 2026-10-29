@@ -12,7 +12,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.cache import never_cache
 from rest_framework.exceptions import ValidationError as APIValidationError
 from .forms import CATEGORIES, REGIONS, AppealForm, CommentForm, PostForm, ReportForm
-from .models import Comment, CommentLike, Post
+from .models import BoardCategory, Comment, CommentLike, Post
 from .board_versions import board_data_version
 from . import services
 
@@ -23,6 +23,17 @@ def call_service(name, *args):
         raise PermissionDenied from exc
     except APINotFound as exc:
         raise Http404 from exc
+
+def post_editor_context(form, **extra):
+    categories = dict(CATEGORIES)
+    region_names = dict(REGIONS)
+    return {
+        "form": form,
+        "board_name": categories.get(form["category"].value(), categories["questions"]),
+        "region_name": region_names.get(form["region"].value(), REGIONS[0][1]),
+        **extra,
+    }
+
 
 def published(user=None):
     return services.public_posts(user)
@@ -50,7 +61,7 @@ def post_list(request):
     q = request.GET.get("q", "").strip()[:200]
     region, category = request.GET.get("region", ""), request.GET.get("category", "")
     if q:
-        qs = qs.filter(Q(title__icontains=q) | Q(body__icontains=q))
+        qs = services.search_posts(qs, q)
     if region in dict(REGIONS):
         qs = qs.filter(region__in=[region, "common"])
     if category in services.LIFE_BOARD_CATEGORIES:
@@ -58,10 +69,17 @@ def post_list(request):
         category = Post.Category.LIVING
     elif category in dict(CATEGORIES):
         qs = qs.filter(category=category)
+    board_categories = BoardCategory.objects.filter(board=category)
+    board_category = request.GET.get('board_category', '')
+    if board_category:
+        if board_category.isascii() and board_category.isdigit() and len(board_category) <= 18 and board_categories.filter(pk=board_category).exists():
+            qs = qs.filter(board_category_id=board_category)
+        else:
+            qs = qs.none()
     pagination = Paginator(qs, 20).get_page(request.GET.get("page"))
     keep = request.GET.copy()
     keep.pop("page", None)
-    return render(request, "community/list.html", {"resolution": resolution, "resolutions": Post.Resolution.choices, "page_obj": pagination, "q": q, "region": region, "category": category, "regions": REGIONS, "categories": CATEGORIES, "list_query": "?" + request.GET.urlencode(), "filter_query": keep.urlencode()})
+    return render(request, "community/list.html", {"resolution": resolution, "resolutions": Post.Resolution.choices, "page_obj": pagination, "q": q, "region": region, "category": category, "board_categories": board_categories, "board_category": board_category, "regions": REGIONS, "categories": CATEGORIES, "list_query": "?" + request.GET.urlencode(), "filter_query": keep.urlencode()})
 
 
 @never_cache
@@ -165,16 +183,17 @@ def post_create(request):
     if request.method == 'POST' and 'is_pinned' in request.POST and not request.user.is_staff:
         raise PermissionDenied
     category = request.GET.get('category', '')
-    form = PostForm(request.POST or None, initial={'category': category} if category in dict(CATEGORIES) else None, staff=request.user.is_staff)
+    initial_category = category if category in dict(CATEGORIES) else 'questions'
+    form = PostForm(request.POST or None, initial={'category': initial_category}, staff=request.user.is_staff)
     if request.method == "POST" and form.is_valid():
         try:
             data = {k: v for k, v in form.cleaned_data.items() if k != "privacy"}
             post = call_service("create_post", request.user, data)
-            messages.success(request, "질문을 서버에 저장했습니다.", extra_tags="post-saved")
+            messages.success(request, "게시물을 등록했습니다.", extra_tags="post-saved")
             return redirect("post-detail", pk=post.pk)
         except (ValidationError, APIValidationError) as exc:
             service_error(form, exc)
-    return render(request, "community/write.html", {"form": form, "editing": False})
+    return render(request, "community/write.html", post_editor_context(form, editing=False))
 
 @login_required
 @never_cache
@@ -186,18 +205,18 @@ def post_edit(request, pk):
         raise PermissionDenied
     if post.category == Post.Category.NOTICE and not request.user.is_staff:
         raise PermissionDenied
-    form = PostForm(request.POST or None, initial={"board_data_version": board_data_version(post), "title": post.title, "body": post.body, "region": post.region, "category": services.canonical_life_category(post.category), "is_pinned": post.is_pinned, "market_kind": post.market_kind, "market_price": post.market_price, "market_region": post.market_region, "market_status": post.market_status, "job_kind": post.job_kind, "job_region": post.job_region, "job_compensation": post.job_compensation, "job_status": post.job_status, "place_name": post.place_name, "place_region": post.place_region, "place_note": post.place_note, "place_url": post.place_url}, staff=request.user.is_staff, editing=True)
+    form = PostForm(request.POST or None, initial={"board_category": post.board_category_id, "board_data_version": board_data_version(post), "title": post.display_title, "body": post.display_body, "region": post.region, "category": services.canonical_life_category(post.category), "is_pinned": post.is_pinned, "market_kind": post.market_kind, "market_price": post.market_price, "market_region": post.market_region, "market_status": post.market_status, "job_kind": post.job_kind, "job_region": post.job_region, "job_compensation": post.job_compensation, "job_status": post.job_status, "place_name": post.place_name, "place_region": post.place_region, "place_note": post.place_note, "place_url": post.place_url}, staff=request.user.is_staff, editing=True)
     if request.method == "POST" and form.is_valid():
         try:
             call_service("update_post", request.user, post, {k: v for k, v in form.cleaned_data.items() if k != "privacy"})
-            messages.success(request, "질문을 수정했습니다.", extra_tags="post-saved")
+            messages.success(request, "게시물을 수정했습니다.", extra_tags="post-saved")
             return redirect("post-detail", pk=post.pk)
         except (ValidationError, APIValidationError) as exc:
             service_error(form, exc)
     if request.method == 'POST':
         post.refresh_from_db()
         data = form.data.copy()
-        stale = bool(data.get('board_data_version')) and data.get('board_data_version') != board_data_version(post)
+        stale = data.get('board_data_version') != board_data_version(post)
         for prefix, category in (('market_', 'market'), ('job_', 'jobs'), ('place_', 'foodtravel')):
             for name in form.fields:
                 if name.startswith(prefix) and data.get('category') != category and (name not in data or (post.category == category and data.get('board_fields_snapshot') != '1' and not data.get(name))):
@@ -205,7 +224,7 @@ def post_edit(request, pk):
         data['board_data_version'] = data.get('board_data_version') if stale else board_data_version(post)
         data.pop('confirm_board_data_removal', None)
         form.data = data
-    return render(request, "community/write.html", {"form": form, "editing": True, "post": post})
+    return render(request, "community/write.html", post_editor_context(form, editing=True, post=post))
 
 @require_POST
 def post_helpful(request, pk):

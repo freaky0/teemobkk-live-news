@@ -1,6 +1,8 @@
 import json
+import gc
 import os
 import sqlite3
+from contextlib import closing, contextmanager
 from tempfile import TemporaryDirectory
 from pathlib import Path
 from unittest import skipUnless
@@ -10,7 +12,16 @@ from django.contrib.auth import get_user_model
 from django.test import override_settings
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from playwright.sync_api import sync_playwright
+from . import services
 from .models import Comment, Notification, Post
+
+@contextmanager
+def temporary_sqlite_fixture():
+    with TemporaryDirectory() as temp_dir:
+        try:
+            yield temp_dir
+        finally:
+            gc.collect()
 
 @skipUnless(os.environ.get("POST_RUN_BROWSER_TESTS") == "1", "Explicit browser test opt-in required")
 class BrowserFlowTests(StaticLiveServerTestCase):
@@ -27,17 +38,17 @@ class BrowserFlowTests(StaticLiveServerTestCase):
             recipient = get_user_model().objects.create_user(username='쪽지수신자')
             self.recipient = recipient
             if self._testMethodName == 'test_member_menu_mobile_keyboard_and_block':
-                Post.objects.create(author=recipient, title='회원 메뉴 테스트', body='browser fixture')
+                services.create_post(recipient, {'title': '회원 메뉴 테스트', 'body': '브라우저 메뉴 확인용 테스트 게시글입니다.', 'category': 'living'})
             MemberProfile.objects.create(user=recipient, email_key='browser-recipient@example.test', nickname_key='쪽지수신자', accepted_at=now, email_verified_at=now)
             from django.test import Client
             recipient_client = Client()
             recipient_client.force_login(recipient)
             self.recipient_session = recipient_client.cookies[settings.SESSION_COOKIE_NAME].value
-        self.post = Post.objects.create(author=self.member, title="브라우저 검증용 첫 생활 질문", body="실제 개인정보를 포함하지 않은 브라우저 검증용 게시글입니다. 목록 이동과 서버 저장을 확인합니다.", region="bangkok", category="housing")
+        self.post = services.create_post(self.member, {'title': '브라우저 검증용 첫 생활 질문', 'body': '실제 개인정보가 없는 브라우저용 글이며 목록과 저장 동작을 확인합니다.', 'region': 'bangkok', 'category': 'housing'})
         if self._testMethodName == 'test_failed_category_change_then_return_preserves_details':
-            self.post = Post.objects.create(author=self.member, title='Saved job', body='A sufficiently long job post description.', category='jobs', job_compensation='Original salary', job_kind='hiring')
+            self.post = services.create_post(self.member, {'title': 'Saved job', 'body': 'A sufficiently long job post description.', 'category': 'jobs', 'job_compensation': 'Original salary', 'job_kind': 'hiring'})
         if self._testMethodName == 'test_blocked_content_visibility_across_viewers':
-            self.blocked_post = Post.objects.create(author=self.recipient, title='브라우저 차단 대상 게시글', body='브라우저 차단 대상 본문', region='bangkok', category='living')
+            self.blocked_post = services.create_post(self.recipient, {'title': '브라우저 차단 대상 게시글', 'body': '브라우저 차단 대상 본문 테스트용 내용입니다.', 'region': 'bangkok', 'category': 'living'})
             self.blocked_comment = Comment.objects.create(post=self.post, author=self.recipient, body='브라우저 차단 대상 댓글')
             self.blocked_reply = Comment.objects.create(post=self.post, author=self.recipient, parent=self.blocked_comment, body='브라우저 차단 대상 대댓글')
             unrelated = get_user_model().objects.create_user(username='브라우저무관사용자')
@@ -51,12 +62,11 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         if self._testMethodName == 'test_legacy_life_board_routes_merge_posts_and_offer_one_category':
             self.legacy_life_posts = [self.post]
             for category in ('living', 'banking'):
-                self.legacy_life_posts.append(Post.objects.create(
-                    author=self.member,
-                    title=f'통합 생활 게시물 {category}',
-                    body='기존 게시물은 통합 게시판에서 계속 보여야 합니다.',
-                    category=category,
-                ))
+                self.legacy_life_posts.append(services.create_post(self.member, {
+                    'title': f'통합 생활 게시물 {category}',
+                    'body': '기존 게시물은 통합 게시판에서 계속 보여야 합니다.',
+                    'category': category,
+                }))
         if self._testMethodName in ('test_detail_member_menus_in_both_themes', 'test_combined_member_menu_and_comment_likes'):
             comment = Comment.objects.create(post=self.post, author=recipient, body='메뉴 답변')
             Comment.objects.create(post=self.post, author=recipient, parent=comment, body='메뉴 대댓글')
@@ -94,6 +104,72 @@ class BrowserFlowTests(StaticLiveServerTestCase):
     def go(self, path):
         return self.page.goto(self.live_server_url + path, wait_until="networkidle")
 
+    def select_board(self, value):
+        category = self.page.locator('#id_category')
+        if not category.is_visible():
+            self.page.locator('[data-classification-fields] summary').click()
+        category.select_option(value)
+
+    def test_compact_create_form_updates_heading_and_shows_only_relevant_fields(self):
+        self.page.set_viewport_size({'width': 390, 'height': 900})
+        self.go('/community/new/?category=free')
+        heading = self.page.locator('[data-board-heading]')
+        self.assertEqual(heading.inner_text(), '자유게시판')
+        self.assertEqual(self.page.get_by_text('이웃에게 질문하기', exact=True).count(), 0)
+        self.assertEqual(self.page.get_by_text('질문은 서버 DB에 저장됩니다. 닉네임과 함께 공개됩니다.', exact=True).count(), 0)
+        classification = self.page.locator('[data-classification-fields]')
+        self.assertFalse(classification.evaluate('(element) => element.open'))
+        summary = classification.locator('summary')
+        self.assertIn('자유게시판', summary.inner_text())
+        self.assertIn('방콕', summary.inner_text())
+        summary.focus()
+        summary.press('Enter')
+        self.assertTrue(classification.evaluate('(element) => element.open'))
+        summary.press('Enter')
+        self.assertFalse(classification.evaluate('(element) => element.open'))
+        summary.press('Enter')
+        for value, label, active in (
+            ('free', '자유게시판', None),
+            ('market', '중고게시판', 'market'),
+            ('jobs', '구인구직', 'job'),
+            ('foodtravel', '맛집/여행지', 'place'),
+            ('questions', '질문/답변', None),
+        ):
+            with self.subTest(category=value):
+                self.select_board(value)
+                self.assertEqual(heading.inner_text(), label)
+                for section in ('market', 'job', 'place'):
+                    visible = self.page.locator(f'[data-{section}-fields]').is_visible()
+                    self.assertEqual(visible, section == active)
+                self.assertIn(label, summary.inner_text())
+        summary.click()
+        self.assertFalse(classification.evaluate('(element) => element.open'))
+        for width in (320, 390, 1440):
+            self.page.set_viewport_size({'width': width, 'height': 900})
+            self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), width)
+            self.page.screenshot(path=str(self.output / f'compact-write-{width}.png'), full_page=True)
+        self.assertEqual(self.errors, [])
+
+    @patch.dict(os.environ, {'DJANGO_ALLOW_ASYNC_UNSAFE': 'true'})
+    def test_board_subcategory_selection_tracks_board(self):
+        from .models import BoardCategory
+        free = BoardCategory.objects.create(board='free', slug='browser', name='Free browser category')
+        market = BoardCategory.objects.create(board='market', slug='browser', name='Market browser category')
+        self.go('/community/new/?category=free')
+        subcategory = self.page.locator('#id_board_category')
+        self.select_board('free')
+        self.assertFalse(subcategory.locator('optgroup[label="free"]').is_disabled())
+        self.assertTrue(subcategory.locator('optgroup[label="market"]').is_disabled())
+        subcategory.select_option(str(free.pk))
+        self.select_board('market')
+        self.assertEqual(subcategory.input_value(), '')
+        self.assertFalse(subcategory.locator('optgroup[label="market"]').is_disabled())
+        subcategory.select_option(str(market.pk))
+        self.assertEqual(subcategory.input_value(), str(market.pk))
+        self.go('/community/?category=free')
+        self.assertEqual(self.page.locator('#board_category option').count(), 2)
+        self.assertEqual(self.errors, [])
+
     def test_legacy_life_board_routes_merge_posts_and_offer_one_category(self):
         self.go('/community/?category=housing')
         board_nav = self.page.get_by_role('navigation', name='게시판')
@@ -106,27 +182,27 @@ class BrowserFlowTests(StaticLiveServerTestCase):
             '/community/new/?category=living',
         )
         for post in self.legacy_life_posts:
-            self.assertTrue(self.page.get_by_role('link', name=post.title, exact=True).is_visible())
+            self.assertTrue(self.page.get_by_role('link', name=post.display_title, exact=True).is_visible())
         self.assertEqual(self.errors, [])
 
     def test_market_create_edit_list_detail_responsive(self):
         self.go('/community/new/?category=market')
         self.page.get_by_label('제목').fill('브라우저 중고 자전거 판매')
-        self.page.get_by_label('주제').select_option('market')
-        self.page.get_by_label('상황과 질문').fill('방콕에서 사용한 자전거를 판매하며 상태가 좋습니다.')
+        self.select_board('market')
+        self.page.get_by_label('내용').fill('방콕에서 사용한 자전거를 판매하며 상태가 좋습니다.')
         self.page.get_by_label('글 종류').select_option('sell')
         self.page.get_by_label('가격 (THB)').fill('1250.50')
         self.page.get_by_label('거래 지역').select_option('bangkok')
         self.page.get_by_label('거래 상태').select_option('reserved')
-        self.page.get_by_label('개인정보와 타인의 비공개 정보를 넣지 않았습니다.').check()
-        self.page.get_by_role('button', name='질문 등록').click()
+        self.page.get_by_label('개인정보나 다른 사람의 비공개 정보를 포함하지 않았습니다.').check()
+        self.page.get_by_role('button', name='게시하기').click()
         self.page.wait_for_url('**/community/*/')
         self.assertIn('1,250.50 THB', self.page.locator('.market-details').inner_text())
         self.assertIn('예약', self.page.locator('.market-details').inner_text())
         self.page.get_by_role('link', name='수정', exact=True).click()
         self.assertEqual(self.page.get_by_label('가격 (THB)').input_value(), '1250.50')
         self.page.get_by_label('거래 상태').select_option('active')
-        self.page.get_by_label('개인정보와 타인의 비공개 정보를 넣지 않았습니다.').check()
+        self.page.get_by_label('개인정보나 다른 사람의 비공개 정보를 포함하지 않았습니다.').check()
         self.page.get_by_role('button', name='수정 저장').click()
         self.page.wait_for_load_state('networkidle')
         self.assertIn('거래 중', self.page.locator('.market-details').inner_text())
@@ -150,22 +226,22 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         kind = self.page.get_by_label('구인/구직 종류')
         self.assertFalse(job_fields.evaluate('(element) => element.open'))
         self.assertTrue(kind.is_disabled())
-        self.page.get_by_label('주제').select_option('jobs')
+        self.select_board('jobs')
         self.assertTrue(job_fields.evaluate('(element) => element.open'))
         self.assertFalse(kind.is_disabled())
-        self.page.get_by_label('주제').select_option('free')
+        self.select_board('free')
         self.assertFalse(job_fields.evaluate('(element) => element.open'))
         self.assertTrue(kind.is_disabled())
-        self.page.get_by_label('주제').select_option('jobs')
+        self.select_board('jobs')
 
         self.page.get_by_label('제목').fill('브라우저 구인 공고')
-        self.page.get_by_label('상황과 질문').fill('방콕에서 함께할 직원을 찾고 있습니다.')
+        self.page.get_by_label('내용').fill('방콕에서 함께할 직원을 찾고 있습니다.')
         kind.select_option('hiring')
         self.page.get_by_label('근무 지역').select_option('bangkok')
         self.page.get_by_label('보상 정보').fill('급여 협의 가능')
         self.page.get_by_label('모집 상태').select_option('open')
-        self.page.get_by_label('개인정보와 타인의 비공개 정보를 넣지 않았습니다.').check()
-        self.page.get_by_role('button', name='질문 등록').click()
+        self.page.get_by_label('개인정보나 다른 사람의 비공개 정보를 포함하지 않았습니다.').check()
+        self.page.get_by_role('button', name='게시하기').click()
         self.page.wait_for_url('**/community/*/')
         details = self.page.locator('.job-details')
         self.assertIn('구인', details.inner_text())
@@ -176,7 +252,7 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.page.get_by_role('link', name='수정', exact=True).click()
         self.assertEqual(self.page.get_by_label('모집 상태').input_value(), 'open')
         self.page.get_by_label('모집 상태').select_option('closed')
-        self.page.get_by_label('개인정보와 타인의 비공개 정보를 넣지 않았습니다.').check()
+        self.page.get_by_label('개인정보나 다른 사람의 비공개 정보를 포함하지 않았습니다.').check()
         self.page.get_by_role('button', name='수정 저장').click()
         self.page.wait_for_load_state('networkidle')
         detail_url = self.page.url
@@ -205,8 +281,8 @@ class BrowserFlowTests(StaticLiveServerTestCase):
                 price = self.page.get_by_label('가격 (THB)')
                 self.assertFalse(market_fields.evaluate('(element) => element.open'))
                 self.assertTrue(price.is_disabled())
-                self.page.get_by_label('주제').select_option('market')
-                self.assertEqual(self.page.get_by_label('주제').input_value(), 'market')
+                self.select_board('market')
+                self.assertEqual(self.page.locator('#id_category').input_value(), 'market')
                 self.assertTrue(market_fields.evaluate('(element) => element.open'))
                 self.assertTrue(price.is_visible())
                 self.assertFalse(price.is_disabled())
@@ -214,7 +290,7 @@ class BrowserFlowTests(StaticLiveServerTestCase):
                     self.page.set_viewport_size({'width': 320, 'height': 900})
                     self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'))
                     self.page.screenshot(path=str(self.output / 'market-form-open-320.png'), full_page=True)
-                self.page.get_by_label('주제').select_option('free')
+                self.select_board('free')
                 self.assertFalse(market_fields.evaluate('(element) => element.open'))
                 self.assertTrue(price.is_disabled())
         self.assertEqual(self.errors, [])
@@ -234,7 +310,7 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.assertEqual(self.errors, [])
 
     def test_foodtravel_place_fields_and_maps_link_mobile_desktop(self):
-        expected_map = 'https://www.google.com/maps/search/?api=1&query=%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%81%E0%B8%B2%E0%B9%81%E0%B8%9F+%26+%EC%B9%B4%ED%8E%98%3F+Bangkok'
+        expected_map = 'https://www.google.com/maps/search/?api=1&query=%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%81%E0%B8%B2%E0%B9%81%E0%B8%9F+%26+%EC%B9%B4%ED%8E%98%3F+%EB%B0%A9%EC%BD%95'
         self.context.route('https://www.google.com/maps/**', lambda route: route.fulfill(status=200, content_type='text/html', body='<!doctype html><title>Map link test</title>'))
         self.page.set_viewport_size({'width': 390, 'height': 900})
         self.go('/community/new/?category=free')
@@ -243,21 +319,21 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.assertEqual(place_fields.count(), 1)
         self.assertFalse(place_fields.evaluate('(element) => element.open'))
         self.assertTrue(place_name.is_disabled())
-        self.page.get_by_label('주제').select_option('foodtravel')
+        self.select_board('foodtravel')
         self.assertTrue(place_fields.evaluate('(element) => element.open'))
         self.assertFalse(place_name.is_disabled())
         self.page.get_by_label('제목').fill('브라우저 맛집 소개')
-        self.page.get_by_label('상황과 질문').fill('태국어와 한국어가 섞인 장소 이름으로 검색 링크를 확인합니다.')
+        self.page.get_by_label('내용').fill('태국어와 한국어가 섞인 장소 이름으로 검색 링크를 확인합니다.')
         place_name.fill('ร้านกาแฟ & 카페?')
         self.page.get_by_label('장소 지역').select_option('bangkok')
         self.page.get_by_label('방문 메모').fill('현지인이 추천한 카페')
         self.page.get_by_label('외부 장소 링크').fill('https://example.com/place?source=community')
-        self.page.get_by_label('개인정보와 타인의 비공개 정보를 넣지 않았습니다.').check()
-        self.page.get_by_role('button', name='질문 등록').click()
+        self.page.get_by_label('개인정보나 다른 사람의 비공개 정보를 포함하지 않았습니다.').check()
+        self.page.get_by_role('button', name='게시하기').click()
         self.page.wait_for_url('**/community/*/')
         details = self.page.locator('.place-details')
         self.assertIn('ร้านกาแฟ & 카페?', details.inner_text())
-        self.assertIn('Bangkok', details.inner_text())
+        self.assertIn('방콕', details.inner_text())
         self.assertIn('현지인이 추천한 카페', details.inner_text())
         map_link = self.page.get_by_role('link', name='Google 지도에서 검색')
         self.assertEqual(map_link.get_attribute('href'), expected_map)
@@ -269,7 +345,7 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.assertEqual(self.page.get_by_label('방문 메모').input_value(), '현지인이 추천한 카페')
         self.assertEqual(self.page.get_by_label('외부 장소 링크').input_value(), 'https://example.com/place?source=community')
         self.page.get_by_label('방문 메모').fill('수정한 방문 메모')
-        self.page.get_by_label('개인정보와 타인의 비공개 정보를 넣지 않았습니다.').check()
+        self.page.get_by_label('개인정보나 다른 사람의 비공개 정보를 포함하지 않았습니다.').check()
         self.page.get_by_role('button', name='수정 저장').click()
         self.page.wait_for_load_state('networkidle')
         details = self.page.locator('.place-details')
@@ -324,7 +400,7 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.page.get_by_role('button', name='수정 저장').click()
         self.page.wait_for_load_state('networkidle')
         response = self.page.request.get(self.live_server_url + f'/api/v1/posts/{self.post.pk}/')
-        self.assertEqual(response.json()['title'], self.post.title)
+        self.assertEqual(response.json()['title'], self.post.display_title)
         self.assertIn('초안', self.page.locator('#draft-status').inner_text())
         self.page.locator('[name=title]').fill('Legacy draft revised')
         self.page.wait_for_timeout(500)
@@ -334,7 +410,7 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.page.get_by_role('button', name='수정 저장').click()
         self.assertIn('초안', self.page.locator('#draft-status').inner_text())
         response = self.page.request.get(self.live_server_url + f'/api/v1/posts/{self.post.pk}/')
-        self.assertEqual(response.json()['title'], self.post.title)
+        self.assertEqual(response.json()['title'], self.post.display_title)
 
     def test_legacy_life_draft_restores_to_living(self):
         self.go('/community/new/')
@@ -346,16 +422,16 @@ class BrowserFlowTests(StaticLiveServerTestCase):
 
     def test_invalid_board_field_does_not_block_switch(self):
         self.go('/community/new/')
-        self.page.locator('[name=category]').select_option('foodtravel')
+        self.select_board('foodtravel')
         self.page.locator('[name=title]').fill('Switch category test')
         self.page.locator('[name=body]').fill('This is a sufficiently long post body for testing.')
         self.page.locator('[name=place_url]').fill('javascript:invalid')
         self.page.locator('[name=privacy]').check()
-        self.page.get_by_role('button', name='질문 등록').click()
+        self.page.get_by_role('button', name='게시하기').click()
         self.assertEqual(self.page.locator('[name=place_url]').get_attribute('aria-invalid'), 'true')
-        self.page.locator('[name=category]').select_option('free')
+        self.select_board('free')
         self.assertTrue(self.page.locator('[name=place_url]').is_disabled())
-        self.page.get_by_role('button', name='질문 등록').click()
+        self.page.get_by_role('button', name='게시하기').click()
         self.assertIn('/community/', self.page.url)
         self.assertEqual(self.page.locator('h1').first.inner_text(), 'Switch category test')
 
@@ -366,7 +442,7 @@ class BrowserFlowTests(StaticLiveServerTestCase):
             "body:'Long enough draft body for a market post.', region:'common', category:'market'}));"
         )
         self.go('/community/new/')
-        self.assertEqual(self.page.get_by_label('주제').input_value(), 'market')
+        self.assertEqual(self.page.locator('#id_category').input_value(), 'market')
         market_fields = self.page.locator('[data-market-fields]')
         self.assertTrue(market_fields.evaluate('(element) => element.open'))
         self.assertFalse(self.page.get_by_label('가격 (THB)').is_disabled())
@@ -379,7 +455,7 @@ class BrowserFlowTests(StaticLiveServerTestCase):
             ('foodtravel', {'place_name': '방콕 카페', 'place_region': 'bangkok', 'place_note': '좋은 곳', 'place_url': 'https://example.com/place'}),
         ):
             with self.subTest(category=category):
-                self.page.locator('[name=category]').select_option(category)
+                self.select_board(category)
                 for name, value in fields.items():
                     control = self.page.locator(f'[name={name}]')
                     if control.evaluate("el => el.tagName === 'SELECT'"):
@@ -396,24 +472,39 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.go(f'/community/{self.post.pk}/edit/')
         self.page.locator('[name=job_compensation]').fill('Unsaved salary')
         self.page.locator('[name=job_kind]').select_option('')
-        self.page.locator('[name=category]').select_option('free')
+        self.select_board('free')
         self.page.locator('[name=privacy]').check()
-        self.page.once('dialog', lambda dialog: dialog.accept())
+        dialog_messages = []
+        self.page.on('dialog', lambda dialog: (dialog_messages.append(dialog.message), dialog.accept()))
+        submitted_urls = []
+        self.page.on('request', lambda request: submitted_urls.append(request.url) if request.method == 'POST' else None)
+        form = self.page.locator('form[data-editor]')
+        invalid_controls = form.evaluate("form => Array.from(form.querySelectorAll(':invalid')).map(el => [el.name, el.value, el.disabled])")
+        self.assertEqual(invalid_controls, [])
         self.page.get_by_role('button', name='수정 저장').click()
+        self.assertTrue(submitted_urls, f'No POST; dialogs={dialog_messages}; url={self.page.url}; errors={self.errors}')
+        self.assertEqual(dialog_messages, ['게시판을 변경하면 기존 게시판 정보가 삭제됩니다. 계속할까요?'])
         self.assertEqual(self.page.locator('[name=category]').input_value(), 'free')
-        self.page.locator('[name=category]').select_option('jobs')
+        self.select_board('jobs')
         self.assertEqual(self.page.locator('[name=job_compensation]').input_value(), 'Unsaved salary')
         self.assertEqual(self.page.locator('[name=job_kind]').input_value(), '')
-        self.page.get_by_role('button', name='수정 저장').click()
+        with self.page.expect_response(lambda response: response.request.method == 'POST' and f'/community/{self.post.pk}/edit/' in response.url) as second_response:
+            self.page.get_by_role('button', name='수정 저장').click()
+        self.assertEqual(second_response.value.status, 302, self.page.locator('.error').all_inner_texts())
+        self.page.wait_for_url(self.live_server_url + f'/community/{self.post.pk}/')
         response = self.page.request.get(self.live_server_url + f'/api/v1/posts/{self.post.pk}/')
         self.assertEqual(response.json()['job_compensation'], 'Unsaved salary')
         self.assertEqual(response.json()['job_kind'], '')
 
     @patch.dict(os.environ, {'DJANGO_ALLOW_ASYNC_UNSAFE': 'true'})
     def test_category_change_warns_before_clearing_board_details(self):
-        post = Post.objects.create(author=self.member, title='Saved market item', body='A sufficiently long market description for editing.', category='market', market_kind='sell', market_price=125, market_status='active')
+        from . import services
+        post = services.create_post(self.member, {'title': 'Saved market item', 'body': 'A sufficiently long market description for editing.', 'category': 'market', 'market_kind': 'sell', 'market_price': 125, 'market_status': 'active'})
         self.go(f'/community/{post.pk}/edit/')
-        self.page.locator('[name=category]').select_option('free')
+        self.select_board('free')
+        self.assertEqual(self.page.locator('form[data-editor]').get_attribute('data-original-category'), 'market')
+        self.assertEqual(self.page.locator('#id_category').input_value(), 'free')
+        self.assertEqual(self.errors, [])
         self.page.locator('[name=privacy]').check()
         dialogs = []
         self.page.on('dialog', lambda dialog: (dialogs.append(dialog.message), dialog.dismiss()))
@@ -478,11 +569,11 @@ class BrowserFlowTests(StaticLiveServerTestCase):
     def test_staff_notice_pin_and_unpin(self):
         self.go('/community/new/')
         self.page.get_by_label('제목').fill('브라우저 공지 고정 테스트')
-        self.page.get_by_label('주제').select_option('notice')
-        self.page.get_by_label('상황과 질문').fill('브라우저에서 공지 고정과 해제를 확인하는 테스트입니다.')
-        self.page.get_by_label('개인정보와 타인의 비공개 정보를 넣지 않았습니다.').check()
+        self.select_board('notice')
+        self.page.get_by_label('내용').fill('브라우저에서 공지 고정과 해제를 확인하는 테스트입니다.')
+        self.page.get_by_label('개인정보나 다른 사람의 비공개 정보를 포함하지 않았습니다.').check()
         self.page.get_by_label('공지 상단 고정 (공지 글만 가능)').check()
-        self.page.get_by_role('button', name='질문 등록').click()
+        self.page.get_by_role('button', name='게시하기').click()
         self.page.wait_for_url('**/community/*/')
         self.assertTrue(self.page.get_by_text('상단 고정', exact=True).is_visible())
         self.go('/community/')
@@ -490,7 +581,7 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.page.get_by_role('link', name='브라우저 공지 고정 테스트').click()
         self.page.get_by_role('link', name='수정', exact=True).click()
         self.page.get_by_label('공지 상단 고정 (공지 글만 가능)').uncheck()
-        self.page.get_by_label('개인정보와 타인의 비공개 정보를 넣지 않았습니다.').check()
+        self.page.get_by_label('개인정보나 다른 사람의 비공개 정보를 포함하지 않았습니다.').check()
         self.page.get_by_role('button', name='수정 저장').click()
         self.assertEqual(self.page.get_by_text('상단 고정', exact=True).count(), 0)
         response = self.page.request.get(self.live_server_url + '/api/v1/posts/?category=notice')
@@ -840,6 +931,7 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.go("/community/new/")
         p.locator("#id_title").fill("웹에서 등록한 서버 저장 검증 질문")
         p.locator("#id_body").fill("개인정보 없는 테스트 문장입니다. 실제 데이터베이스 저장과 다른 브라우저의 조회를 확인하는 내용입니다.")
+        p.locator('[data-classification-fields] summary').click()
         p.locator("#id_region").select_option("phuket")
         p.wait_for_timeout(400)
         self.assertIn("자동 저장", p.locator("#draft-status").inner_text())
@@ -1022,9 +1114,9 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         from hashlib import sha256
 
         link = "https://example.org/broken-image"
-        with TemporaryDirectory(dir=Path(settings.BASE_DIR) / "var") as temp_dir:
+        with temporary_sqlite_fixture() as temp_dir:
             news_db = Path(temp_dir) / "news.sqlite3"
-            with sqlite3.connect(news_db) as connection:
+            with closing(sqlite3.connect(news_db)) as connection, connection:
                 connection.executescript("""CREATE TABLE articles(link TEXT PRIMARY KEY,title_ko TEXT,summary_ko TEXT,summary TEXT,source TEXT,original_source TEXT,region TEXT,category TEXT,post_status TEXT,published_at TEXT,image_url TEXT);
 CREATE TABLE hidden_links(link TEXT);
 CREATE TABLE filter_rules(id INTEGER PRIMARY KEY,enabled INTEGER);
@@ -1079,9 +1171,9 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);""")
         from hashlib import sha256
 
         link = "https://example.org/news-engagement"
-        with TemporaryDirectory(dir=Path(settings.BASE_DIR) / "var") as temp_dir:
+        with temporary_sqlite_fixture() as temp_dir:
             news_db = Path(temp_dir) / "news.sqlite3"
-            with sqlite3.connect(news_db) as connection:
+            with closing(sqlite3.connect(news_db)) as connection, connection:
                 connection.executescript("""CREATE TABLE articles(link TEXT PRIMARY KEY,title_ko TEXT,summary_ko TEXT,summary TEXT,source TEXT,original_source TEXT,region TEXT,category TEXT,post_status TEXT,published_at TEXT,image_url TEXT);
 CREATE TABLE hidden_links(link TEXT);
 CREATE TABLE filter_rules(id INTEGER PRIMARY KEY,enabled INTEGER);
@@ -1145,9 +1237,9 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);""")
         link = "https://example.org/video-story"
         poster = "https://images.example.test/video-poster.png"
         video = "https://video.example.test/video-story.mp4"
-        with TemporaryDirectory(dir=Path(settings.BASE_DIR) / "var") as temp_dir:
+        with temporary_sqlite_fixture() as temp_dir:
             news_db = Path(temp_dir) / "news.sqlite3"
-            with sqlite3.connect(news_db) as connection:
+            with closing(sqlite3.connect(news_db)) as connection, connection:
                 connection.executescript("""CREATE TABLE articles(link TEXT PRIMARY KEY,title_ko TEXT,summary_ko TEXT,summary TEXT,source TEXT,original_source TEXT,region TEXT,category TEXT,post_status TEXT,published_at TEXT,image_url TEXT,video_url TEXT);
 CREATE TABLE hidden_links(link TEXT);
 CREATE TABLE filter_rules(id INTEGER PRIMARY KEY,enabled INTEGER);

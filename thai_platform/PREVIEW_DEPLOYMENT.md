@@ -42,14 +42,14 @@ Caddy가 `/thai/static/*`을 릴리스의 `staticfiles`에서 제공하고, `/th
 5. 전용 커뮤니티 DB가 계속 `/var/lib/teemobkk-post-preview/community.sqlite3`인지 확인한다. 실제 `POST_DB_PATH`가 `/opt/teemo-live-news/news.db`이거나 그 DB와 같으면 즉시 중단한다.
 6. `manage.py showmigrations --plan` 및 `check --deploy`를 운영 서비스와 동일한 비밀 환경을 출력 없이 사용해 실행한다. `--plan`에서 의도된 변경만 확인한다. 환경값을 명령 출력·저장소·로그에 노출하지 않는다.
 7. 사전 DB 보호가 별도 승인된 뒤에만 SQLite online backup API로 커뮤니티 DB를 복사하고, 그 복사본의 `PRAGMA integrity_check`, 테이블·행 수와 애플리케이션 조회를 검증한다. 실행 중인 SQLite DB를 `cp`하지 않는다. 기존 뉴스 DB는 백업하거나 변경하지 않는다.
-8. 정적 파일 변경이 있을 때만 새 릴리스 안에서 수집하고 Caddy 정적 경로의 읽기를 확인한다. 변경이 없으면 Caddy의 현재 정적 root를 그대로 둔다. 이번 변경에는 `thai_platform/static/` 파일 차이가 없어 기존 정적 자산 경로는 유지한다.
+8. 정적 파일 변경이 있을 때만 새 릴리스 안에서 수집하고 Caddy 정적 경로의 읽기를 확인한다. 변경이 없으면 Caddy의 현재 정적 root를 그대로 둔다. 글쓰기·게시판 변경에는 `thai_platform/static/` 파일 변경이 있으므로, 현재 Caddy의 `/thai/static/*` 경로를 새 릴리스의 `staticfiles`로 전환해야 한다. `/thai/news/*`와 다른 Caddy 경로는 그대로 둔다.
 
 ## 적용 순서
 
 1. 백업된 현재 Caddyfile과 systemd drop-in의 SHA-256을 확인한다.
 2. systemd의 `WorkingDirectory`만 새 릴리스로 바꾼다. 정적 파일 변경이 확인된 경우에만 Caddy의 `/thai/static/*` root를 함께 바꾼다. `/thai/news/*`, 다른 호스트·경로, 환경 파일, 인증 설정은 수정하지 않는다.
 3. `caddy validate`를 통과시킨 뒤 Caddy를 reload한다. systemd drop-in만 바뀌었다면 `daemon-reload` 후 `teemobkk-post-preview.service`를 재시작한다. 서비스 실행은 정상 journal 항목을 추가할 수 있다.
-4. 서비스 환경을 그대로 사용해 `manage.py migrate --plan`을 다시 확인하고, 별도 커뮤니티 DB에만 `manage.py migrate --noinput`을 적용한다. 현재 릴리스에서 예상되는 신규 변경은 nullable `community.Report.closed_at` 필드 추가다. 다른 앱·DB 변경이 나타나면 중단한다.
+4. 서비스 환경을 그대로 사용해 `manage.py showmigrations --plan`과 `manage.py migrate --plan`을 확인하고, 별도 커뮤니티 DB에만 마이그레이션을 적용한다. 이 변경의 예상 대기 항목은 `community.0030_alter_post_job_region_alter_post_market_region_and_more` 하나다. 이 항목은 게시글 지역 선택지의 표시 라벨을 모델과 맞추며, `sqlmigrate community 0030` 결과는 네 필드 모두 `(no-op)`이어야 한다. `community.0027`~`0029`가 대기 중이거나 다른 앱·DB 변경이 나타나면 중단한다. 이들 이전 마이그레이션은 게시판별 콘텐츠 테이블과 분류를 만들고 기존 게시물 본문을 새 테이블에 복사하므로, 별도 데이터 전환 검토 없이는 적용하지 않는다.
 5. 이전 릴리스 디렉터리는 롤백 확인이 끝날 때까지 삭제하지 않는다. `makemigrations`, 데이터 정리, 계정 삭제, 신고 보존 purge를 실행하지 않는다.
 
 ## 확인과 롤백
@@ -62,6 +62,6 @@ Caddy가 `/thai/static/*`을 릴리스의 `staticfiles`에서 제공하고, `/th
 
 ## 현재 호스트 확인 메모
 
-2026-10-22 배포 전 읽기 전용 점검에서 `/thai/`는 `teemobkk-post-preview.service`로 연결되고, 활성 릴리스는 `6cb2195e5e6e713f216edc71217e2014bc03868d`였다. 커뮤니티 DB는 `/var/lib/teemobkk-post-preview/community.sqlite3`이며 뉴스 DB와 분리되어 있다. 배포할 앱 코드는 `70d85b8c3fc5d06c8e3937e3726fd3322d717b66`이며 runbook 문서 변경은 `2c4c82ad144e424843b2dcd9bbcc022e62c8b5bc`에 있다. 앱 아카이브는 136개 파일이고 활성 릴리스에는 125개 파일이 있어 트리가 다르므로 배포가 필요하다. `thai_platform/static/`은 변경되지 않았고 `/thai/news/*`는 별도 규칙으로 유지된다. 활성 릴리스의 기존 `check --deploy`는 종료 코드 0이었고 `security.W021`(HSTS preload 미사용) 경고가 남았다. 새 릴리스는 배포 전 다시 점검한다. 이 경고를 없애려고 preload를 켜지 않는다.
+2026-10-29 읽기 전용 점검에서 `/thai/`는 `teemobkk-post-preview.service`로 연결되고, 서비스 활성 릴리스는 `368a04642427cdf4e24964873c806a0adbd0bbae`였다. Caddy의 `/thai/static/*`은 `4c6eb610d42e197318751d68c92e643d5064e637` 릴리스의 `staticfiles`를 가리키고, `/thai/news/*`는 `/opt/teemo-live-news`에서 별도 제공된다. 커뮤니티 DB는 `/var/lib/teemobkk-post-preview/community.sqlite3`이며 뉴스 DB와 분리되어 있다. 서비스 환경의 `showmigrations --plan`에서 `community.0027`~`0029`를 포함한 기존 마이그레이션이 적용된 상태임을 확인했다. 후보 `0030`의 로컬 SQL 미리보기는 네 필드 모두 `(no-op)`이었다. 서버의 `check --deploy`는 종료 코드 0이며 `security.W021`(HSTS preload 미사용) 경고가 남았고, `pip check`도 통과했다. 새 릴리스는 배포 전에 해당 검사들을 다시 수행한다. 이 경고를 없애려고 preload를 켜지 않는다.
 
-현재 호스트 PATH에는 `uv`가 없고 공유 preview 가상환경의 `certifi`는 `uv.lock`보다 오래됐지만, 새 코드에는 직접 의존성 추가가 없으며 호스트 `pip check`는 `No broken requirements found`를 반환했다. 공유 가상환경을 변경하지 않고 기존의 성공한 릴리스 절차를 사용한다. 새 코드 점검이나 import 검사가 실패하면 배포를 중단한다.
+현재 호스트 PATH에는 `uv`가 없고 공유 preview 가상환경의 `certifi`는 `uv.lock`보다 오래됐지만, 후보 변경에는 직접 런타임 의존성 추가가 없으며 호스트 `pip check`는 `No broken requirements found`를 반환했다. 공유 가상환경을 변경하지 않고 기존의 성공한 릴리스 절차를 사용한다. 새 코드 점검이나 import 검사가 실패하면 배포를 중단한다.

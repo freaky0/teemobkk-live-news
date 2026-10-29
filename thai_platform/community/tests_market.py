@@ -27,7 +27,7 @@ class MarketBoardTests(TestCase):
             'region': 'common', 'category': 'living', 'privacy': 'on', 'market_price': 'invalid',
         })
         self.assertEqual(response.status_code, 302)
-        self.assertIsNone(Post.objects.get(title='An ordinary post').market_price)
+        self.assertIsNone(services.search_posts(Post.objects.all(), 'An ordinary post').get().market_price)
 
     def test_market_fields_save_and_render(self):
         payload = {
@@ -39,7 +39,7 @@ class MarketBoardTests(TestCase):
         }
         response = self.client.post('/community/new/', payload)
         self.assertEqual(response.status_code, 302)
-        post = Post.objects.get(title=payload['title'])
+        post = services.search_posts(Post.objects.all(), payload['title']).get()
         self.assertEqual(post.market_kind, 'sell')
         self.assertEqual(str(post.market_price), '1250.50')
         self.assertEqual(post.market_region, 'bangkok')
@@ -64,7 +64,7 @@ class MarketBoardTests(TestCase):
                            'market_region': 'common', 'market_status': 'active', **bad}
                 response = self.client.post('/community/new/', payload)
                 self.assertEqual(response.status_code, 200)
-                self.assertFalse(Post.objects.filter(title='Invalid market entry').exists())
+                self.assertFalse(services.search_posts(Post.objects.all(), 'Invalid market entry').exists())
 
     def test_non_market_payload_cannot_store_market_fields(self):
         post = services.create_post(self.user, {
@@ -85,7 +85,7 @@ class MarketMigrationPreservationTests(TransactionTestCase):
 
     def test_existing_post_rows_survive_market_migration(self):
         executor = MigrationExecutor(connection)
-        old_target = ('community', '0021_commentlike')
+        old_target = ('community', '0027_boardcategory_post_board_category')
         executor.migrate([old_target])
         old_apps = executor.loader.project_state([old_target]).apps
         User = old_apps.get_model(*settings.AUTH_USER_MODEL.split('.'))

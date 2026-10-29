@@ -35,6 +35,7 @@ urlpatterns = [
     path("newsroom/<str:article_id>/", news_views.detail, name="news-detail"),
     path("api/v1/", include("community.api")),
     path("", web.home, name="home"),
+
     path("community/", web.post_list, name="post-list"),
     path("community/new/", web.post_create, name="post-create"),
     path("community/activity/", web.my_activity, name="my-activity"),

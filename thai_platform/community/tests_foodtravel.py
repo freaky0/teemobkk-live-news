@@ -125,7 +125,7 @@ class FoodTravelTests(TestCase):
 
         parser = AnchorCollector()
         parser.feed(response.content.decode())
-        expected_map = build_google_maps_search_url("카페 & ร้านกาแฟ?", "Bangkok")
+        expected_map = build_google_maps_search_url("카페 & ร้านกาแฟ?", "방콕")
         external_links = [anchor for anchor in parser.anchors if anchor.get("href") in {expected_map, place.place_url}]
         self.assertEqual({anchor.get("href") for anchor in external_links}, {expected_map, place.place_url})
         for anchor in external_links:
@@ -144,7 +144,7 @@ class FoodTravelMigrationPreservationTests(TransactionTestCase):
     def test_existing_post_rows_survive_place_migration(self):
         executor = MigrationExecutor(connection)
         leaves = executor.loader.graph.leaf_nodes()
-        old_target = ("community", "0024_alter_post_market_kind_alter_post_market_region_and_more")
+        old_target = ("community", "0027_boardcategory_post_board_category")
         try:
             executor.migrate([old_target])
             old_apps = executor.loader.project_state([old_target]).apps

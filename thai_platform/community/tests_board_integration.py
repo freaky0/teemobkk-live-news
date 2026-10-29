@@ -1,4 +1,5 @@
 import os
+import re
 from unittest import skipUnless
 from unittest.mock import patch
 
@@ -11,6 +12,8 @@ from django.test import TestCase, TransactionTestCase
 from playwright.sync_api import sync_playwright
 
 from .models import Post
+from . import services
+from .board_versions import board_data_version
 
 
 class BoardPermissionIntegrationTests(TestCase):
@@ -19,19 +22,21 @@ class BoardPermissionIntegrationTests(TestCase):
         member = User.objects.create_user(username='board-member')
         staff = User.objects.create_user(username='board-staff', is_staff=True)
         staff2 = User.objects.create_user(username='board-staff2', is_staff=True)
-        normal = Post.objects.create(author=member, category='free', title='Normal post', body='Normal post body')
+        normal = services.create_post(member, {'category': 'free', 'title': 'Normal post', 'body': 'Normal post body'})
         self.client.force_login(staff)
         payload = {'title': 'Staff notice title', 'body': 'Sufficiently long staff notice body.', 'region': 'common', 'category': 'notice', 'privacy': 'on'}
-        self.assertEqual(self.client.post('/community/new/', payload).status_code, 302)
-        notice = Post.objects.get(title=payload['title'])
+        response = self.client.post('/community/new/', payload)
+        self.assertEqual(response.status_code, 302)
+        notice = Post.objects.get(pk=int(response.url.rstrip('/').split('/')[-1]))
         self.assertNotContains(self.client.get(f'/community/{normal.pk}/'), f'/community/{normal.pk}/edit/')
         self.assertEqual(self.client.get(f'/community/{normal.pk}/edit/').status_code, 403)
         self.client.force_login(staff2)
         self.assertContains(self.client.get(f'/community/{notice.pk}/'), f'/community/{notice.pk}/edit/')
         payload['title'] = 'Edited by other staff'
+        payload['board_data_version'] = board_data_version(notice)
         self.assertEqual(self.client.post(f'/community/{notice.pk}/edit/', payload).status_code, 302)
         notice.refresh_from_db()
-        self.assertEqual(notice.title, payload['title'])
+        self.assertEqual(notice.display_title, payload['title'])
         self.client.force_login(member)
         self.assertEqual(self.client.post('/api/v1/posts/', {'title': 'Forged', 'body': 'Forged content', 'category': 'notice'}).status_code, 403)
         self.assertEqual(self.client.patch(f'/api/v1/posts/{notice.pk}/', data='{"title":"forged"}', content_type='application/json').status_code, 403)
@@ -45,7 +50,7 @@ class BoardPermissionIntegrationTests(TestCase):
 
 class BoardMigrationIntegrationTests(TransactionTestCase):
     def test_legacy_records_survive_and_are_visible_after_board_migrations(self):
-        old = [('community', '0015_alter_notification_kind_privatemessage')]
+        old = [('community', '0028_freepost_jobspost_livingpost_marketpost_noticepost')]
         executor = MigrationExecutor(connection)
         leaves = executor.loader.graph.leaf_nodes()
         try:
@@ -96,18 +101,24 @@ class BoardMobileBrowserTests(StaticLiveServerTestCase):
                     page.locator('#id_title').fill(f'Mobile {category} title')
                     page.locator('#id_body').fill('A sufficiently long mobile test post body.')
                     page.locator('#id_privacy').check()
-                    page.locator('form[data-editor] button[type=submit]').click()
-                    page.wait_for_url('**/community/*/')
-                    post = Post.objects.get(title=f'Mobile {category} title')
-                    self.assertEqual(post.category, category)
+                    create_path = f'/community/new/'
+                    with page.expect_response(lambda response: response.request.method == 'POST' and response.url.split('?', 1)[0].endswith(create_path)) as create_response:
+                        page.locator('form[data-editor] button[type=submit]').click()
+                    self.assertEqual(create_response.value.status, 302, f'{category}: {page.locator(".error").all_inner_texts()}')
+                    page.wait_for_url(re.compile(r'.*/community/\d+/$'))
+                    post = Post.objects.get(pk=int(page.url.rstrip('/').split('/')[-1]))
+                    self.assertEqual((post.display_title, post.category), (f'Mobile {category} title', category))
                     page.get_by_role('link', name='수정', exact=True).click()
                     page.locator('#id_title').fill(f'Edited mobile {category} title')
                     page.locator('#id_privacy').check()
-                    page.get_by_role('button', name='수정 저장').click()
-                    page.wait_for_load_state('networkidle')
+                    edit_path = f'/community/{post.pk}/edit/'
+                    with page.expect_response(lambda response: response.request.method == 'POST' and response.url.split('?', 1)[0].endswith(edit_path)) as edit_response:
+                        page.get_by_role('button', name='수정 저장').click()
+                    self.assertEqual(edit_response.value.status, 302, f'{category}: {page.locator(".error").all_inner_texts()}')
+                    page.wait_for_url(re.compile(r'.*/community/\d+/$'))
                     post.refresh_from_db()
-                    self.assertEqual((post.title, post.category), (f'Edited mobile {category} title', category))
-                    self.assertIn(post.title, page.locator('h1').inner_text())
+                    self.assertEqual((post.display_title, post.category), (f'Edited mobile {category} title', category))
+                    self.assertIn(post.display_title, page.locator('h1').inner_text())
                 self.assertEqual(errors, [])
             finally:
                 browser.close()

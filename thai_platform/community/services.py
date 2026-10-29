@@ -12,7 +12,9 @@ from django.utils import timezone
 from allauth.account.models import EmailAddress
 from members.models import MemberProfile
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
-from .models import AuditEvent, Bookmark, Comment, Helpful, MemberBlock, ModerationAppeal, NewsComment, Notification, Post, Report
+from .models import (AuditEvent, Bookmark, Comment, FreePost, Helpful, JobsPost, LivingPost,
+                     MarketPost, MemberBlock, ModerationAppeal, NewsComment, NoticePost,
+                     Notification, Post, Report)
 from .board_versions import board_data_version
 from django.db.models import Count, Exists, OuterRef, Q
 from .serializers import (CommentInputSerializer, PostInputSerializer, PostResolutionSerializer, EngagementInputSerializer,
@@ -33,6 +35,30 @@ def canonical_life_category(category):
 
 def category_filter_values(category):
     return LIFE_BOARD_CATEGORIES if category in LIFE_BOARD_CATEGORIES else (category,)
+
+
+BOARD_CONTENT_MODELS = {
+    Post.Category.NOTICE: NoticePost,
+    Post.Category.FREE: FreePost,
+    Post.Category.MARKET: MarketPost,
+    Post.Category.JOBS: JobsPost,
+    Post.Category.LIVING: LivingPost,
+}
+
+
+def _sync_board_content(post, title, body):
+    """Write the current board row; transfers remove the previous row separately."""
+    new_model = BOARD_CONTENT_MODELS.get(canonical_life_category(post.category))
+    if new_model is not None:
+        content, _ = new_model.objects.update_or_create(
+            post_id=post.pk, defaults={'title': title, 'body': body},
+        )
+        new_model._meta.get_field('post').remote_field.set_cached_value(post, content)
+
+
+def validate_board_category(category, board_category):
+    if board_category and board_category.board != canonical_life_category(category):
+        raise ValidationError({'board_category': 'Category does not belong to this board.'})
 
 
 def require_active(user):
@@ -119,6 +145,7 @@ def create_post(user, data):
     values.pop('board_data_version', None)
     if 'category' in values:
         values['category'] = canonical_life_category(values['category'])
+    validate_board_category(values.get('category', Post.Category.LIVING), values.get('board_category'))
     if values.get('category') != Post.Category.MARKET:
         for key in ('market_kind', 'market_price', 'market_region', 'market_status'):
             values.pop(key, None)
@@ -134,7 +161,11 @@ def create_post(user, data):
         raise PermissionDenied('Staff access required for pinning.')
     if values.get('is_pinned') and values.get('category') != Post.Category.NOTICE:
         raise ValidationError({'is_pinned': 'Only notices can be pinned.'})
+    title, body = values['title'], values['body']
+    if BOARD_CONTENT_MODELS.get(canonical_life_category(values.get('category', Post.Category.LIVING))):
+        values.update(title='', body='')
     post = Post.objects.create(author=user, **values)
+    _sync_board_content(post, title, body)
     _audit(user, 'post.create', post)
     return post
 
@@ -144,15 +175,29 @@ def update_post(user, post, data):
     require_owner(user, post)
     post = Post.objects.select_for_update().get(pk=post.pk)
     require_owner(user, post)
+    old_category = post.category
+
+    # Partial edits and board transfers must start from the board row, not
+    # potentially stale legacy fields on the shared identity record.
+    content = post.board_content
+    if BOARD_CONTENT_MODELS.get(canonical_life_category(old_category)) and content is None:
+        raise ValidationError({'detail': 'Board content is missing; restore it before editing.'})
+    if content is not None:
+        post.title, post.body = content.title, content.body
     if post.status == Post.Status.DELETED:
         raise NotFound('Post not found.')
     values = _validate(PostInputSerializer, data, partial=True)
     confirmed = values.pop('confirm_board_data_removal', False)
     version = values.pop('board_data_version', None)
-    if version and version != board_data_version(post):
+    if values.get('category') == Post.Category.NOTICE and not user.is_staff:
+        raise PermissionDenied('Staff access required for notices.')
+    if 'is_pinned' in data and not user.is_staff:
+        raise PermissionDenied('Staff access required for pinning.')
+    if 'board_data_version' in data and (not version or version != board_data_version(post)):
         raise ValidationError({'board_data_version': '게시글이 변경되었습니다. 최신 정보를 확인해 주세요.'})
     if 'category' in values:
         values['category'] = canonical_life_category(values['category'])
+    validate_board_category(values.get('category', post.category), values.get('board_category', post.board_category))
     board_fields = {
         Post.Category.MARKET: ('market_kind', 'market_price', 'market_region', 'market_status'),
         Post.Category.JOBS: ('job_kind', 'job_region', 'job_compensation', 'job_status'),
@@ -177,15 +222,19 @@ def update_post(user, post, data):
             values.pop(key, None)
         if post.category == Post.Category.FOODTRAVEL:
             values.update(place_name='', place_region='', place_note='', place_url='')
-    if values.get('category') == Post.Category.NOTICE and not user.is_staff:
-        raise PermissionDenied('Staff access required for notices.')
-    if 'is_pinned' in data and not user.is_staff:
-        raise PermissionDenied('Staff access required for pinning.')
     if values.get('is_pinned', post.is_pinned) and values.get('category', post.category) != Post.Category.NOTICE:
         raise ValidationError({'is_pinned': 'Only notices can be pinned.'})
     for key, value in values.items():
         setattr(post, key, value)
+    title, body = post.title, post.body
+    if BOARD_CONTENT_MODELS.get(canonical_life_category(post.category)):
+        post.title, post.body = '', ''
     post.save()
+    _sync_board_content(post, title, body)
+    old_model = BOARD_CONTENT_MODELS.get(canonical_life_category(old_category))
+    new_model = BOARD_CONTENT_MODELS.get(canonical_life_category(post.category))
+    if old_model is not None and old_model != new_model:
+        old_model.objects.filter(post_id=post.pk).delete()
     _audit(user, 'post.update', post)
     return post
 
@@ -211,6 +260,7 @@ def blocked_member_ids(user):
 def visible_posts(user=None):
     blocked_ids = blocked_member_ids(user)
     qs = Post.objects.filter(status=Post.Status.PUBLISHED)
+    qs = qs.select_related('noticepost', 'freepost', 'marketpost', 'jobspost', 'livingpost')
     if blocked_ids is not None:
         qs = qs.exclude(author_id__in=blocked_ids)
     qs = qs.select_related('author', 'author__membership').annotate(
@@ -222,6 +272,19 @@ def visible_posts(user=None):
             bookmarked=Exists(Bookmark.objects.filter(user=user, post_id=OuterRef('pk'))),
         )
     return qs
+
+
+def search_posts(qs, query):
+    from django.db.models import Case, CharField, F, When
+
+    boards = [('notice', 'noticepost'), ('free', 'freepost'), ('market', 'marketpost'),
+              ('jobs', 'jobspost'), ('living', 'livingpost'), ('housing', 'livingpost'),
+              ('banking', 'livingpost')]
+    def content(field):
+        return Case(*(When(category=category, then=F(f'{relation}__{field}'))
+                      for category, relation in boards), default=F(field), output_field=CharField())
+    return qs.alias(search_title=content('title'), search_body=content('body')).filter(
+        Q(search_title__icontains=query) | Q(search_body__icontains=query))
 
 
 def public_posts(user=None):

@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
-from .models import Post, Comment, Report, Helpful
+from .models import Post, LivingPost, Comment, Report, Helpful
 
 class WebTests(TestCase):
     def setUp(self):
@@ -10,6 +10,7 @@ class WebTests(TestCase):
         self.owner = get_user_model().objects.create_user(username="owner")
         self.other = get_user_model().objects.create_user(username="other")
         self.post = Post.objects.create(author=self.owner, title="방콕 첫 생활 준비 질문입니다", body="개인정보 없는 검증용 질문입니다. 동네를 정할 때 어떤 기준을 살펴볼지 질문합니다.", region="bangkok", category="housing")
+        LivingPost.objects.create(post=self.post, title=self.post.title, body=self.post.body)
     def test_public_html_and_google_unconfigured(self):
         for url in ["/", "/community/", reverse("post-detail", args=[self.post.pk]), "/accounts/login/"]:
             response = self.client.get(url)
@@ -57,12 +58,70 @@ class WebTests(TestCase):
         before = Post.objects.count()
         self.assertEqual(self.client.post("/community/new/", {"title": "몰래 등록 시도"}).status_code, 302)
         self.assertEqual(Post.objects.count(), before)
+
+    def test_create_form_uses_board_name_and_hides_unrelated_sections(self):
+        self.client.force_login(self.owner)
+        boards = (
+            ("notice", "공지", ""),
+            ("free", "자유게시판", ""),
+            ("questions", "질문/답변", ""),
+            ("market", "중고게시판", "market"),
+            ("jobs", "구인구직", "job"),
+            ("foodtravel", "맛집/여행지", "place"),
+            ("living", "생활 질문", ""),
+            ("visa", "비자·체류", ""),
+            ("travel", "교통·여행", ""),
+        )
+        for category, label, active_section in boards:
+            with self.subTest(category=category):
+                response = self.client.get("/community/new/", {"category": category})
+                self.assertEqual(response.context["board_name"], label)
+                self.assertContains(response, f'<h1 data-board-heading>{label}</h1>', html=True)
+                self.assertNotContains(response, "이웃에게 질문하기")
+                self.assertNotContains(response, "질문은 서버 DB에 저장됩니다.")
+                self.assertContains(response, 'data-classification-fields')
+                self.assertNotContains(response, 'class="classification-fields" data-classification-fields open')
+                for section in ("market", "job", "place"):
+                    marker = f'data-{section}-fields'
+                    if section == active_section:
+                        self.assertIn(marker + ' open', response.content.decode())
+                        self.assertNotIn(marker + ' hidden', response.content.decode())
+                    else:
+                        self.assertIn(marker + ' hidden', response.content.decode())
+        response = self.client.get("/community/new/")
+        self.assertEqual(response.context["form"]["category"].value(), "questions")
+        self.assertEqual(response.context["board_name"], "질문/답변")
+        self.assertContains(response, 'id="id_body_hint"')
+        self.assertContains(response, 'aria-describedby="id_body_hint"')
+
+    def test_edit_form_uses_canonical_board_name_for_legacy_life_post(self):
+        from .forms import CATEGORIES
+        self.client.force_login(self.owner)
+        response = self.client.get(reverse("post-edit", args=[self.post.pk]))
+        expected = dict(CATEGORIES)["living"]
+        self.assertEqual(response.context["form"]["category"].value(), "living")
+        self.assertEqual(response.context["board_name"], expected)
+        self.assertContains(response, f'<h1 data-board-heading>{expected}</h1>', html=True)
+
+    def test_notice_pin_control_is_only_rendered_for_staff_on_notice_board(self):
+        staff = get_user_model().objects.create_user(username="notice-staff", is_staff=True)
+        self.client.force_login(staff)
+        notice = self.client.get("/community/new/", {"category": "notice"})
+        self.assertContains(notice, 'data-notice-fields')
+        self.assertNotContains(notice, 'data-notice-fields hidden')
+        free = self.client.get("/community/new/", {"category": "free"})
+        self.assertContains(free, 'data-notice-fields hidden')
+        self.client.force_login(self.owner)
+        member_notice = self.client.get("/community/new/", {"category": "notice"})
+        self.assertNotContains(member_notice, 'data-notice-fields')
+        self.assertNotContains(member_notice, '공지 상단 고정')
+
     def test_create_edit_delete_server_persistence(self):
         self.client.force_login(self.owner)
         payload = {"title": "서버에 실제로 저장되는 질문", "body": "개인정보가 없는 테스트 게시글입니다. 서버 데이터베이스 저장과 권한을 확인하는 질문입니다.", "region": "phuket", "category": "living", "privacy": "on"}
         result = self.client.post("/community/new/", payload)
         self.assertEqual(result.status_code, 302)
-        post = Post.objects.get(title=payload["title"])
+        post = Post.objects.get(livingpost__title=payload["title"])
         self.assertEqual(post.author_id, self.owner.pk)
         other_browser = Client()
         self.assertContains(other_browser.get(result.url), payload["title"])
@@ -71,9 +130,10 @@ class WebTests(TestCase):
         self.assertEqual(self.client.post(reverse("post-delete", args=[post.pk])).status_code, 403)
         self.client.force_login(self.owner)
         payload["title"] = "정상 작성자 수정 질문입니다"
+        payload['board_data_version'] = self.client.get(reverse('post-edit', args=[post.pk])).context['form']['board_data_version'].value()
         self.assertEqual(self.client.post(reverse("post-edit", args=[post.pk]), payload).status_code, 302)
         post.refresh_from_db()
-        self.assertEqual(post.title, payload["title"])
+        self.assertEqual(post.livingpost.title, payload["title"])
         self.assertEqual(self.client.post(reverse("post-delete", args=[post.pk])).status_code, 302)
         self.assertEqual(other_browser.get(reverse("post-detail", args=[post.pk])).status_code, 404)
     def test_csrf_and_private_report(self):
@@ -87,8 +147,8 @@ class WebTests(TestCase):
         self.assertEqual(Report.objects.count(), 1)
         self.assertNotContains(Client().get(reverse("post-detail", args=[self.post.pk])), "공개해서는 안 되는")
     def test_xss_and_validation(self):
-        self.post.title = '<script>alert("test")</script>'
-        self.post.save()
+        self.post.livingpost.title = '<script>alert("test")</script>'
+        self.post.livingpost.save()
         self.assertContains(self.client.get(reverse("post-detail", args=[self.post.pk])), "&lt;script&gt;")
         self.client.force_login(self.owner)
         response = self.client.post("/community/new/", {"title": "짧음", "body": "짧음", "region": "bangkok", "category": "living"})

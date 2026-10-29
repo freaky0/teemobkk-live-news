@@ -2,6 +2,6 @@
 {% block title %}회원 정보 | TEEMOBKK's POST{% endblock %}
 {% block content %}
 <section class="editor"><h1>{{ member.nickname_key }}</h1><h2 id="member-posts">작성한 공개 글</h2>
-{% for post in page_obj %}<article class="panel"><a href="{% url 'post-detail' post.pk %}">{{ post.title }}</a></article>{% empty %}<p>공개된 글이 없습니다.</p>{% endfor %}
+{% for post in page_obj %}<article class="panel"><a href="{% url 'post-detail' post.pk %}">{{ post.display_title }}</a></article>{% empty %}<p>공개된 글이 없습니다.</p>{% endfor %}
 <nav aria-label="페이지">{% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}">이전</a>{% endif %} {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}">다음</a>{% endif %}</nav></section>
 {% endblock %}

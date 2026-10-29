@@ -7,6 +7,8 @@ from rest_framework.test import APIClient
 from .models import AuditEvent, Post
 
 
+from .test_board_fixtures import fixture_post
+
 class ResolutionTests(TestCase):
     def setUp(self):
         users = get_user_model()
@@ -14,7 +16,7 @@ class ResolutionTests(TestCase):
         self.other = users.objects.create_user(username='resolution-other')
         self.staff = users.objects.create_user(username='resolution-staff', is_staff=True)
         self.inactive = users.objects.create_user(username='resolution-inactive', is_active=False)
-        self.post = Post.objects.create(author=self.owner, title='해결 상태를 검사하는 질문', body='개인정보 없는 테스트 질문입니다.')
+        self.post = fixture_post(author=self.owner, title='해결 상태를 검사하는 질문', body='개인정보 없는 테스트 질문입니다.')
         self.api = APIClient()
         self.api_url = f'/api/v1/posts/{self.post.pk}/resolution/'
         self.web_url = f'/community/{self.post.pk}/resolution/'
@@ -113,7 +115,7 @@ class ResolutionTests(TestCase):
     def test_filters_keep_context_and_show_matching_states(self):
         self.post.resolution = 'resolved'
         self.post.save()
-        Post.objects.create(author=self.owner, title='다른 미해결 질문', body='Test')
+        fixture_post(author=self.owner, title='다른 미해결 질문', body='Test')
         response = self.client.get('/community/?resolution=resolved&region=bangkok&q=해결')
         self.assertContains(response, self.post.title)
         self.assertNotContains(response, '다른 미해결 질문')

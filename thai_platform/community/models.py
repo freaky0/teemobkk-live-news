@@ -18,16 +18,29 @@ class Timestamped(models.Model):
         abstract = True
 
 
+class BoardCategory(models.Model):
+    board = models.CharField(max_length=10, choices=[(v, v) for v in ('notice', 'free', 'market', 'jobs', 'living')])
+    slug = models.SlugField(max_length=50)
+    name = models.CharField(max_length=100)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['board', 'slug'], name='unique_board_category_slug')]
+        ordering = ['board', 'name', 'pk']
+
+    def __str__(self):
+        return f'{self.board}: {self.name}'
+
+
 class Post(Timestamped):
     class Resolution(models.TextChoices):
         UNRESOLVED = "unresolved", "미해결"
         RESOLVED = "resolved", "작성자 해결 확인"
 
     class Region(models.TextChoices):
-        BANGKOK = 'bangkok', 'Bangkok'
-        CHIANGMAI = 'chiangmai', 'Chiang Mai'
-        PHUKET = 'phuket', 'Phuket'
-        COMMON = 'common', 'Common'
+        BANGKOK = 'bangkok', '방콕'
+        CHIANGMAI = 'chiangmai', '치앙마이'
+        PHUKET = 'phuket', '푸껫'
+        COMMON = 'common', '지역 공통'
 
     class Category(models.TextChoices):
         NOTICE = 'notice', '공지'
@@ -65,6 +78,7 @@ class Post(Timestamped):
     body = models.TextField(validators=[MaxLengthValidator(6000)])
     region = models.CharField(max_length=10, choices=Region.choices, default=Region.COMMON)
     category = models.CharField(max_length=10, choices=Category.choices, default=Category.LIVING)
+    board_category = models.ForeignKey(BoardCategory, null=True, blank=True, on_delete=models.PROTECT, related_name='posts')
     is_pinned = models.BooleanField(default=False, db_default=False)
     resolution = models.CharField(max_length=10, choices=Resolution.choices, default=Resolution.UNRESOLVED, db_index=True)
     status = models.CharField(max_length=10, choices=ContentStatus.choices, default=ContentStatus.PUBLISHED, db_index=True)
@@ -82,6 +96,25 @@ class Post(Timestamped):
     place_url = models.CharField(max_length=500, blank=True, db_default='', default='')
 
     @property
+    def board_content(self):
+        relation = {
+            'notice': 'noticepost', 'free': 'freepost', 'market': 'marketpost',
+            'jobs': 'jobspost', 'living': 'livingpost', 'housing': 'livingpost',
+            'banking': 'livingpost',
+        }.get(self.category)
+        return getattr(self, relation, None) if relation else None
+
+    @property
+    def display_title(self):
+        content = self.board_content
+        return content.title if content is not None else ('' if self.category in ('notice', 'free', 'market', 'jobs', 'living', 'housing', 'banking') else self.title)
+
+    @property
+    def display_body(self):
+        content = self.board_content
+        return content.body if content is not None else ('' if self.category in ('notice', 'free', 'market', 'jobs', 'living', 'housing', 'banking') else self.body)
+
+    @property
     def google_maps_search_url(self):
         if self.category != self.Category.FOODTRAVEL or not self.place_name:
             return ''
@@ -92,7 +125,37 @@ class Post(Timestamped):
         ordering = ['-created_at', '-pk']
 
     def __str__(self):
-        return self.title
+        return self.display_title
+
+
+class BoardPostContent(models.Model):
+    """Authoritative title and body for the associated board post."""
+    post = models.OneToOneField(Post, primary_key=True, on_delete=models.CASCADE)
+    title = models.CharField(max_length=100)
+    body = models.TextField(validators=[MaxLengthValidator(6000)])
+
+    class Meta:
+        abstract = True
+
+
+class NoticePost(BoardPostContent):
+    pass
+
+
+class FreePost(BoardPostContent):
+    pass
+
+
+class MarketPost(BoardPostContent):
+    pass
+
+
+class JobsPost(BoardPostContent):
+    pass
+
+
+class LivingPost(BoardPostContent):
+    pass
 
 
 class Helpful(Timestamped):
