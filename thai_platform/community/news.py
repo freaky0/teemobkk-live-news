@@ -119,14 +119,30 @@ REGION_GROUPS = (
     ('south', '남부'),
 )
 REGION_ALIASES = {
-    'north': ('치앙마이', 'Chiang Mai', '치앙라이', 'Chiang Rai'),
+    'north': (
+        '북부', '북부 태국', '태국 북부', 'Northern Thailand',
+        '치앙마이', 'Chiang Mai', 'Chiangmai',
+        '치앙라이', 'Chiang Rai', 'Chiangrai',
+        '람빵', '람팡', 'Lampang', '람푼', 'Lamphun',
+        '매홍손', 'Mae Hong Son', '파야오', 'Phayao', '프래', 'Phrae',
+    ),
     'central': (
+        '중부', '중부 태국', '태국 중부', 'Central Thailand',
         '방콕', 'Bangkok', '논타부리', 'Nonthaburi', '파타야', 'Pattaya',
         '촌부리', 'Chonburi', 'Chon Buri',
+        '사뭇쁘라깐', '사뭇프라칸', 'Samut Prakan',
+        '빠툼타니', '빠툼 타니', 'Pathum Thani',
+        '아유타야', 'Ayutthaya', '나콘빠톰', '나콘파톰', 'Nakhon Pathom',
     ),
     'south': (
-        '푸껫', '푸켓', 'Phuket', '끄라비', 'Krabi', '핫야이', 'Hat Yai',
-        '송클라', 'Songkhla', '코사무이', '꼬사무이', 'Koh Samui', '수랏타니', 'Surat Thani',
+        '남부', '남부 태국', '태국 남부', 'Southern Thailand',
+        '푸껫', '푸켓', 'Phuket', '끄라비', '크라비', 'Krabi',
+        '핫야이', 'Hat Yai', 'Hatyai', '송클라', 'Songkhla',
+        '코사무이', '꼬사무이', 'Koh Samui', 'Ko Samui',
+        '수랏타니', 'Surat Thani', '팡아', '팡응아', 'Phang Nga',
+        '뜨랑', '트랑', 'Trang', '나콘시탐마랏', 'Nakhon Si Thammarat',
+        '사툰', 'Satun', '파타니', '빠따니', 'Pattani', '얄라', 'Yala',
+        '나라티왓', 'Narathiwat',
     ),
 }
 

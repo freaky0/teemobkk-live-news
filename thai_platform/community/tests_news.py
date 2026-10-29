@@ -111,6 +111,20 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
         self.assertContains(invalid, '태국 전체')
         self.assertNotContains(invalid, 'value="unknown" selected', html=True)
 
+    def test_newsroom_regions_match_region_names_and_common_place_variants(self):
+        self.add('north-region-name', title_ko='북부 태국 배달 기사들 유가 지원 촉구')
+        self.add('north-romanized', title_ko='Chiangmai 공항 운항 정보')
+        self.add('central-region-name', title_ko='태국 중부 고속도로 보수 안내')
+        self.add('central-province', title_ko='사뭇쁘라깐 산업단지 투자 소식')
+        self.add('south-region-name', title_ko='태국 남부 폭우에 관광지 대피')
+        self.add('south-province', title_ko='팡응아 해안 경보 발령')
+        self.add('unlocated', title_ko='태국 전체 경제 전망')
+
+        self.assertEqual(news.list_articles(region_group='north').total, 2)
+        self.assertEqual(news.list_articles(region_group='central').total, 2)
+        self.assertEqual(news.list_articles(region_group='south').total, 2)
+        self.assertEqual(news.list_articles().total, 7)
+
     def test_newsroom_region_filter_is_preserved_in_pagination(self):
         for index in range(21):
             self.add(f'north-page-{index}', title_ko=f'치앙마이 지역 기사 {index}')
