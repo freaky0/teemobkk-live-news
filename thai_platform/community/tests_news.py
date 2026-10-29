@@ -1,15 +1,19 @@
 """News integration contract. Fixture data is explicitly synthetic, never production data."""
 import json
+import gc
 import sqlite3
 from hashlib import sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from django.test import TestCase, override_settings
+from django.db import connections
 from . import news
 
 class NewsTests(TestCase):
     def setUp(self):
-        self.tmp = TemporaryDirectory(dir=Path(__file__).resolve().parent.parent / 'var')
+        # SQLite fixture files must live outside the synced source tree on Windows.
+        # OneDrive can retain a handle briefly after sqlite3 connections close.
+        self.tmp = TemporaryDirectory()
         self.path = Path(self.tmp.name) / 'fixture.sqlite3'
         with sqlite3.connect(self.path) as c:
             c.executescript('''CREATE TABLE articles(link TEXT PRIMARY KEY,title_ko TEXT,summary_ko TEXT,summary TEXT,source TEXT,original_source TEXT,region TEXT,category TEXT,post_status TEXT,published_at TEXT,image_url TEXT);
@@ -22,6 +26,9 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
         self.settings_override.enable()
         self.addCleanup(self.settings_override.disable)
         self.addCleanup(self.tmp.cleanup)
+        # Close any deferred Django cursors before deleting the fixture on Windows.
+        self.addCleanup(connections.close_all)
+        self.addCleanup(gc.collect)
     def add(self, slug, **changes):
         from django.utils import timezone
         row = dict(link='https://example.org/'+slug,title_ko='검증용 태국 뉴스 '+slug,summary_ko='테스트 전용 한국어 요약입니다.',summary='Original summary',source='Fixture',original_source='',region='태국',category='생활',post_status='ready',published_at=timezone.now().isoformat(),image_url='')

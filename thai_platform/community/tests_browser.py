@@ -1,6 +1,8 @@
 import json
+import gc
 import os
 import sqlite3
+from contextlib import closing, contextmanager
 from tempfile import TemporaryDirectory
 from pathlib import Path
 from unittest import skipUnless
@@ -10,7 +12,16 @@ from django.contrib.auth import get_user_model
 from django.test import override_settings
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from playwright.sync_api import sync_playwright
+from . import services
 from .models import Comment, Notification, Post
+
+@contextmanager
+def temporary_sqlite_fixture():
+    with TemporaryDirectory() as temp_dir:
+        try:
+            yield temp_dir
+        finally:
+            gc.collect()
 
 @skipUnless(os.environ.get("POST_RUN_BROWSER_TESTS") == "1", "Explicit browser test opt-in required")
 class BrowserFlowTests(StaticLiveServerTestCase):
@@ -27,18 +38,17 @@ class BrowserFlowTests(StaticLiveServerTestCase):
             recipient = get_user_model().objects.create_user(username='쪽지수신자')
             self.recipient = recipient
             if self._testMethodName == 'test_member_menu_mobile_keyboard_and_block':
-                Post.objects.create(author=recipient, title='회원 메뉴 테스트', body='browser fixture')
+                services.create_post(recipient, {'title': '회원 메뉴 테스트', 'body': '브라우저 메뉴 확인용 테스트 게시글입니다.', 'category': 'living'})
             MemberProfile.objects.create(user=recipient, email_key='browser-recipient@example.test', nickname_key='쪽지수신자', accepted_at=now, email_verified_at=now)
             from django.test import Client
             recipient_client = Client()
             recipient_client.force_login(recipient)
             self.recipient_session = recipient_client.cookies[settings.SESSION_COOKIE_NAME].value
-        self.post = Post.objects.create(author=self.member, title="브라우저 검증용 첫 생활 질문", body="실제 개인정보를 포함하지 않은 브라우저 검증용 게시글입니다. 목록 이동과 서버 저장을 확인합니다.", region="bangkok", category="housing")
+        self.post = services.create_post(self.member, {'title': '브라우저 검증용 첫 생활 질문', 'body': '실제 개인정보가 없는 브라우저용 글이며 목록과 저장 동작을 확인합니다.', 'region': 'bangkok', 'category': 'housing'})
         if self._testMethodName == 'test_failed_category_change_then_return_preserves_details':
-            from . import services
             self.post = services.create_post(self.member, {'title': 'Saved job', 'body': 'A sufficiently long job post description.', 'category': 'jobs', 'job_compensation': 'Original salary', 'job_kind': 'hiring'})
         if self._testMethodName == 'test_blocked_content_visibility_across_viewers':
-            self.blocked_post = Post.objects.create(author=self.recipient, title='브라우저 차단 대상 게시글', body='브라우저 차단 대상 본문', region='bangkok', category='living')
+            self.blocked_post = services.create_post(self.recipient, {'title': '브라우저 차단 대상 게시글', 'body': '브라우저 차단 대상 본문 테스트용 내용입니다.', 'region': 'bangkok', 'category': 'living'})
             self.blocked_comment = Comment.objects.create(post=self.post, author=self.recipient, body='브라우저 차단 대상 댓글')
             self.blocked_reply = Comment.objects.create(post=self.post, author=self.recipient, parent=self.blocked_comment, body='브라우저 차단 대상 대댓글')
             unrelated = get_user_model().objects.create_user(username='브라우저무관사용자')
@@ -52,12 +62,11 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         if self._testMethodName == 'test_legacy_life_board_routes_merge_posts_and_offer_one_category':
             self.legacy_life_posts = [self.post]
             for category in ('living', 'banking'):
-                self.legacy_life_posts.append(Post.objects.create(
-                    author=self.member,
-                    title=f'통합 생활 게시물 {category}',
-                    body='기존 게시물은 통합 게시판에서 계속 보여야 합니다.',
-                    category=category,
-                ))
+                self.legacy_life_posts.append(services.create_post(self.member, {
+                    'title': f'통합 생활 게시물 {category}',
+                    'body': '기존 게시물은 통합 게시판에서 계속 보여야 합니다.',
+                    'category': category,
+                }))
         if self._testMethodName in ('test_detail_member_menus_in_both_themes', 'test_combined_member_menu_and_comment_likes'):
             comment = Comment.objects.create(post=self.post, author=recipient, body='메뉴 답변')
             Comment.objects.create(post=self.post, author=recipient, parent=comment, body='메뉴 대댓글')
@@ -173,7 +182,7 @@ class BrowserFlowTests(StaticLiveServerTestCase):
             '/community/new/?category=living',
         )
         for post in self.legacy_life_posts:
-            self.assertTrue(self.page.get_by_role('link', name=post.title, exact=True).is_visible())
+            self.assertTrue(self.page.get_by_role('link', name=post.display_title, exact=True).is_visible())
         self.assertEqual(self.errors, [])
 
     def test_market_create_edit_list_detail_responsive(self):
@@ -391,7 +400,7 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.page.get_by_role('button', name='수정 저장').click()
         self.page.wait_for_load_state('networkidle')
         response = self.page.request.get(self.live_server_url + f'/api/v1/posts/{self.post.pk}/')
-        self.assertEqual(response.json()['title'], self.post.title)
+        self.assertEqual(response.json()['title'], self.post.display_title)
         self.assertIn('초안', self.page.locator('#draft-status').inner_text())
         self.page.locator('[name=title]').fill('Legacy draft revised')
         self.page.wait_for_timeout(500)
@@ -401,7 +410,7 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.page.get_by_role('button', name='수정 저장').click()
         self.assertIn('초안', self.page.locator('#draft-status').inner_text())
         response = self.page.request.get(self.live_server_url + f'/api/v1/posts/{self.post.pk}/')
-        self.assertEqual(response.json()['title'], self.post.title)
+        self.assertEqual(response.json()['title'], self.post.display_title)
 
     def test_legacy_life_draft_restores_to_living(self):
         self.go('/community/new/')
@@ -1105,9 +1114,9 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         from hashlib import sha256
 
         link = "https://example.org/broken-image"
-        with TemporaryDirectory(dir=Path(settings.BASE_DIR) / "var") as temp_dir:
+        with temporary_sqlite_fixture() as temp_dir:
             news_db = Path(temp_dir) / "news.sqlite3"
-            with sqlite3.connect(news_db) as connection:
+            with closing(sqlite3.connect(news_db)) as connection, connection:
                 connection.executescript("""CREATE TABLE articles(link TEXT PRIMARY KEY,title_ko TEXT,summary_ko TEXT,summary TEXT,source TEXT,original_source TEXT,region TEXT,category TEXT,post_status TEXT,published_at TEXT,image_url TEXT);
 CREATE TABLE hidden_links(link TEXT);
 CREATE TABLE filter_rules(id INTEGER PRIMARY KEY,enabled INTEGER);
@@ -1162,9 +1171,9 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);""")
         from hashlib import sha256
 
         link = "https://example.org/news-engagement"
-        with TemporaryDirectory(dir=Path(settings.BASE_DIR) / "var") as temp_dir:
+        with temporary_sqlite_fixture() as temp_dir:
             news_db = Path(temp_dir) / "news.sqlite3"
-            with sqlite3.connect(news_db) as connection:
+            with closing(sqlite3.connect(news_db)) as connection, connection:
                 connection.executescript("""CREATE TABLE articles(link TEXT PRIMARY KEY,title_ko TEXT,summary_ko TEXT,summary TEXT,source TEXT,original_source TEXT,region TEXT,category TEXT,post_status TEXT,published_at TEXT,image_url TEXT);
 CREATE TABLE hidden_links(link TEXT);
 CREATE TABLE filter_rules(id INTEGER PRIMARY KEY,enabled INTEGER);
@@ -1228,9 +1237,9 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);""")
         link = "https://example.org/video-story"
         poster = "https://images.example.test/video-poster.png"
         video = "https://video.example.test/video-story.mp4"
-        with TemporaryDirectory(dir=Path(settings.BASE_DIR) / "var") as temp_dir:
+        with temporary_sqlite_fixture() as temp_dir:
             news_db = Path(temp_dir) / "news.sqlite3"
-            with sqlite3.connect(news_db) as connection:
+            with closing(sqlite3.connect(news_db)) as connection, connection:
                 connection.executescript("""CREATE TABLE articles(link TEXT PRIMARY KEY,title_ko TEXT,summary_ko TEXT,summary TEXT,source TEXT,original_source TEXT,region TEXT,category TEXT,post_status TEXT,published_at TEXT,image_url TEXT,video_url TEXT);
 CREATE TABLE hidden_links(link TEXT);
 CREATE TABLE filter_rules(id INTEGER PRIMARY KEY,enabled INTEGER);
