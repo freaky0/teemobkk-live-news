@@ -80,6 +80,43 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
         self.assertContains(response, '검증용 태국 뉴스 visa-category')
         self.assertNotContains(response, '검증용 태국 뉴스 life-category')
         self.assertContains(response, '<option value="비자" selected>비자</option>', html=True)
+
+    def test_newsroom_regions_match_korean_places_in_headline_or_summary(self):
+        self.add('north-city', title_ko='치앙마이 교통 소식')
+        self.add('north-rai', title_ko='치앙라이 공항 안내')
+        self.add('central-city', title_ko='오늘의 태국 소식', summary_ko='방콕과 파타야 지역 소식입니다.')
+        self.add('central-chonburi', title_ko='촌부리 날씨 정보')
+        self.add('central-nonthaburi', title_ko='논타부리 생활 소식')
+        self.add('south-city', title_ko='푸껫 해변 소식')
+        self.add('south-krabi', title_ko='끄라비 여행 정보')
+        self.add('south-hatyai', title_ko='오늘의 남부 소식', summary_ko='핫야이와 송클라 지역 소식입니다.')
+        self.add('other-city', title_ko='태국 전체 뉴스')
+        self.add('hidden-city', title_ko='치앙라이 비공개 소식', post_status='pending')
+
+        north = news.list_articles(region_group='north', include_categories=True)
+        self.assertEqual(north.total, 2)
+        self.assertEqual({item['title'] for item in north.items}, {'치앙마이 교통 소식', '치앙라이 공항 안내'})
+        self.assertEqual(north.region_group, 'north')
+        self.assertEqual(north.region_groups, (('north', '북부'), ('central', '중부'), ('south', '남부')))
+        self.assertEqual(news.list_articles(region_group='central').total, 3)
+        self.assertEqual(news.list_articles(region_group='south').total, 3)
+
+        response = self.client.get('/newsroom/', {'q': '푸껫', 'category': '생활', 'region': 'south'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '푸껫 해변 소식')
+        self.assertNotContains(response, '방콕과 파타야 지역 소식')
+        self.assertContains(response, '<option value="south" selected>남부</option>', html=True)
+
+        invalid = self.client.get('/newsroom/', {'region': 'unknown'})
+        self.assertContains(invalid, '태국 전체')
+        self.assertNotContains(invalid, 'value="unknown" selected', html=True)
+
+    def test_newsroom_region_filter_is_preserved_in_pagination(self):
+        for index in range(21):
+            self.add(f'north-page-{index}', title_ko=f'치앙마이 지역 기사 {index}')
+        response = self.client.get('/newsroom/', {'q': '기사', 'category': '생활', 'region': 'north'})
+        self.assertContains(response, 'region=north&amp;page=2')
+
     def test_article_image_is_projected_and_rendered_on_home_news_detail_and_api(self):
         image='https://images.publisher.example/story.jpg'
         link=self.add('with-image',image_url=image)

@@ -29,6 +29,8 @@ class NewsPage:
     page_size: int = 20
     categories: tuple = ()
     category: str = ''
+    region_groups: tuple = ()
+    region_group: str = ''
 
     @property
     def has_next(self):
@@ -108,6 +110,26 @@ def visibility(conn):
 
 FIELDS='a.link,a.title_ko,a.summary_ko,a.source,a.original_source,a.category,a.published_at'
 
+# The public feed stores Thai-wide articles, not province metadata. Match the
+# places named in the Korean headline or summary and expose a small, curated set
+# of regional groups. Keep aliases here so the groups can be expanded safely.
+REGION_GROUPS = (
+    ('north', '북부'),
+    ('central', '중부'),
+    ('south', '남부'),
+)
+REGION_ALIASES = {
+    'north': ('치앙마이', 'Chiang Mai', '치앙라이', 'Chiang Rai'),
+    'central': (
+        '방콕', 'Bangkok', '논타부리', 'Nonthaburi', '파타야', 'Pattaya',
+        '촌부리', 'Chonburi', 'Chon Buri',
+    ),
+    'south': (
+        '푸껫', '푸켓', 'Phuket', '끄라비', 'Krabi', '핫야이', 'Hat Yai',
+        '송클라', 'Songkhla', '코사무이', '꼬사무이', 'Koh Samui', '수랏타니', 'Surat Thani',
+    ),
+}
+
 
 def projection_fields(conn):
     columns={row['name'] for row in conn.execute('PRAGMA table_info(articles)')}
@@ -172,7 +194,7 @@ def project(row):
     }
 
 
-def list_articles(page=1,query='',page_size=20,category='',include_categories=False):
+def list_articles(page=1,query='',page_size=20,category='',region_group='',include_categories=False):
     page=max(1,min(int(page),10000))
     page_size=max(1,min(int(page_size),20))
     with open_news() as conn:
@@ -191,6 +213,9 @@ def list_articles(page=1,query='',page_size=20,category='',include_categories=Fa
         category=category.strip()[:200] if isinstance(category,str) else ''
         if category not in categories:
             category=''
+        region_group=region_group.strip() if isinstance(region_group,str) else ''
+        if region_group not in REGION_ALIASES:
+            region_group=''
         if query:
             needle='%'+query[:200].replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%'
             conditions.append("(a.title_ko LIKE ? ESCAPE '\\' OR a.summary_ko LIKE ? ESCAPE '\\')")
@@ -198,10 +223,19 @@ def list_articles(page=1,query='',page_size=20,category='',include_categories=Fa
         if category:
             conditions.append("TRIM(COALESCE(a.category,'')) = ?")
             params.append(category)
+        if region_group:
+            aliases=REGION_ALIASES[region_group]
+            conditions.append('('+' OR '.join(
+                "COALESCE(a.title_ko,'') LIKE ? ESCAPE '\\' OR COALESCE(a.summary_ko,'') LIKE ? ESCAPE '\\'"
+                for _ in aliases
+            )+')')
+            for alias in aliases:
+                needle='%'+alias.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%'
+                params.extend((needle,needle))
         clause=' AND '.join(conditions)
         total=conn.execute('SELECT COUNT(*) FROM articles a WHERE '+clause,params).fetchone()[0]
         rows=conn.execute('SELECT '+fields+' FROM articles a WHERE '+clause+' ORDER BY a.published_at DESC,a.link LIMIT ? OFFSET ?',params+[page_size,(page-1)*page_size]).fetchall()
-        return NewsPage([project(row) for row in rows],total,page,page_size,categories,category)
+        return NewsPage([project(row) for row in rows],total,page,page_size,categories,category,REGION_GROUPS,region_group)
 
 
 def get_article(article_id):
