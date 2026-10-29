@@ -1,3 +1,5 @@
+from urllib.parse import parse_qs, urlsplit
+
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
@@ -190,6 +192,25 @@ class WebTests(TestCase):
                 self.assertContains(response, f"?category={category}")
         self.assertContains(response, "뉴스에서 생활로")
         self.assertNotContains(response, "읽기 전용 뉴스 연결")
+
+    def test_guest_write_actions_explain_login_and_preserve_selected_board(self):
+        home = self.client.get("/")
+        self.assertContains(home, 'class="btn home-secondary-action" href="/community/new/">로그인 후 질문 쓰기</a>')
+        self.assertContains(home, "로그인 후 질문 쓰기", count=2)
+
+        board = self.client.get(reverse("post-list"), {"category": "visa"})
+        self.assertContains(board, 'href="/community/new/?category=visa">로그인 후 글쓰기</a>')
+
+        protected = self.client.get(f'{reverse("post-create")}?category=visa')
+        self.assertEqual(protected.status_code, 302)
+        redirect = urlsplit(protected.url)
+        self.assertEqual(redirect.path, reverse("member-login"))
+        self.assertEqual(parse_qs(redirect.query).get("next"), [f'{reverse("post-create")}?category=visa'])
+
+        self.client.force_login(self.owner)
+        signed_in_home = self.client.get("/")
+        self.assertContains(signed_in_home, "질문 쓰기")
+        self.assertNotContains(signed_in_home, "로그인 후 질문 쓰기")
 
     def test_homepage_hero_copy_wraps_without_forced_line_breaks(self):
         response = self.client.get("/")

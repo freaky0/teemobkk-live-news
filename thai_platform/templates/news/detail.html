@@ -28,7 +28,7 @@
     {% if user.is_authenticated %}<form method="post" action="{% url 'news-like-toggle' article.id %}">{% csrf_token %}<button class="btn{% if liked_by_user %} primary{% endif %}" type="submit" aria-pressed="{{ liked_by_user|yesno:'true,false' }}">{% if liked_by_user %}♥{% else %}♡{% endif %} 좋아요 {{ like_count }}</button></form>{% else %}<a class="btn" href="{% url 'member-login' %}?next={{ request.path|urlencode }}">♡ 좋아요 {{ like_count }} · 로그인</a>{% endif %}
     <button class="btn" type="button" data-share-article data-share-title="{{ article.title }}">공유하기</button>
     <a class="btn" href="{{ back_url }}">뉴스 목록</a>
-    <a class="btn primary" href="{% url 'post-create' %}">이웃에게 질문하기</a>
+    <a class="btn primary" href="{% url 'post-create' %}">{% if user.is_authenticated %}이웃에게 질문하기{% else %}로그인 후 질문하기{% endif %}</a>
   </div>
   <span class="share-status" data-share-status role="status" aria-live="polite"></span>
 </article>
