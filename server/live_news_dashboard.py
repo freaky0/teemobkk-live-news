@@ -10,6 +10,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 import argparse
+from contextlib import closing
 from server import admin_auth
 from server import admin_page
 from pipeline import category_rules as taxonomy
@@ -748,7 +749,7 @@ def original_links() -> dict[str, str]:
 
 
 def init_db() -> None:
-    with DB_LOCK, db_connect() as connection:
+    with DB_LOCK, closing(db_connect()) as connection:
         connection.execute(
             "CREATE TABLE IF NOT EXISTS articles ("
             "link TEXT PRIMARY KEY, title TEXT NOT NULL, summary TEXT, source TEXT, source_type TEXT, "
@@ -827,6 +828,7 @@ def init_db() -> None:
             "CREATE TABLE IF NOT EXISTS filter_keeps ("
             "link TEXT PRIMARY KEY, kept_at TEXT)"
         )
+        connection.commit()
 
 
 def insert_articles(articles: list[dict[str, Any]]) -> int:

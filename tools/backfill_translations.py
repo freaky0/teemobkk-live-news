@@ -13,6 +13,7 @@ import os
 import sqlite3
 import sys
 import time
+from contextlib import closing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -70,7 +71,7 @@ def validate_database(db_path: Path) -> Path:
 
     uri = f"{resolved.as_uri()}?mode=ro"
     try:
-        with sqlite3.connect(uri, uri=True, timeout=10) as connection:
+        with closing(sqlite3.connect(uri, uri=True, timeout=10)) as connection:
             tables = {row[0] for row in connection.execute(
                 "SELECT name FROM sqlite_master WHERE type = 'table'")}
             if "articles" not in tables:

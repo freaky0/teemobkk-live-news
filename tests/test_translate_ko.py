@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from contextlib import closing
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from server import live_news_dashboard as core
@@ -19,6 +19,45 @@ from pipeline import translate_ko
 
 
 class TranslateOne(unittest.TestCase):
+    def test_baht_magnitude_is_preserved_without_currency_conversion(self):
+        with patch.object(translate_ko, "_complete_with_codex", return_value='{"title":"최대 100억 원","summary":"보상 100억 원"}'):
+            with patch.object(translate_ko, "_complete_with_api", return_value='{"title":"최대 1억 바트","summary":"보상 1억 바트"}') as api:
+                translated = translate_ko.translate_one(
+                    "แจ้งเบาะแส รับรางวัลสูงสุด 100 ล้านบาท",
+                    "ผู้แจ้งเบาะแสมีสิทธิ์รับเงิน 100 ล้านบาท",
+                )
+        self.assertEqual(translated, {"title": "최대 1억 바트", "summary": "보상 1억 바트"})
+        api.assert_called_once()
+
+    def test_changed_baht_magnitude_is_rejected(self):
+        with patch.object(translate_ko, "_complete_with_codex", return_value='{"title":"최대 100억 바트","summary":"보상 100억 바트"}'):
+            with patch.object(translate_ko, "_complete_with_api", return_value='{"title":"최대 100억 바트","summary":"보상 100억 바트"}'):
+                self.assertIsNone(translate_ko.translate_one(
+                    "รับรางวัลสูงสุด 100 ล้านบาท", "รับเงิน 100 ล้านบาท"
+                ))
+
+    def test_correct_baht_amount_can_include_won_estimate(self):
+        translated = {"title": "최대 1억 바트(약 40억 원)", "summary": "보상 1억 바트(약 40억 원)"}
+        self.assertTrue(translate_ko._preserves_currency_and_amounts(
+            "최대 100 ล้านบาท", "보상 100 ล้านบาท", translated
+        ))
+
+    def test_compound_thai_billion_baht_amount_is_preserved(self):
+        self.assertTrue(translate_ko._preserves_baht_amounts(
+            "1 พันล้านบาท", "10억 바트"
+        ))
+
+    def test_compound_korean_baht_magnitude_is_preserved(self):
+        self.assertTrue(translate_ko._preserves_baht_amounts(
+            "150 ล้านบาท", "1억 5천만 바트"
+        ))
+
+    def test_strict_codex_backfill_fails_closed_on_converted_currency(self):
+        with patch.dict(os.environ, {"TG_TRANSLATE_PROVIDER": "openai-codex"}):
+            with patch.object(translate_ko, "_complete_with_codex", return_value='{"title":"100억 원","summary":"100억 원"}'):
+                with self.assertRaisesRegex(RuntimeError, "baht amount"):
+                    translate_ko.translate_one("100 ล้านบาท", "100 ล้านบาท")
+
     def test_codex_adapter_imports_from_repository_root(self):
         from deploy import tg_push
 
@@ -432,6 +471,20 @@ class BackfillSafety(unittest.TestCase):
             connection.commit()
         self.assertEqual(backfill_translations.pending_count(), 3)
         self.assertEqual(len(backfill_translations.pending_batch(10)), 3)
+
+    def test_validate_database_closes_its_read_only_connection(self):
+        connection = Mock()
+        connection.execute.side_effect = [
+            [("articles",)],
+            [(index, name) for index, name in enumerate((
+                "link", "title", "summary", "published_at", "title_ko", "summary_ko"
+            ))],
+        ]
+        with patch.object(backfill_translations.sqlite3, "connect", return_value=connection):
+            self.assertEqual(
+                backfill_translations.validate_database(Path(self.path)), Path(self.path)
+            )
+        connection.close.assert_called_once_with()
 
     def test_ingest_default_translates_newest_article_first(self):
         with patch.dict(os.environ, {"TG_TRANSLATE_PROVIDER": "openai-codex"}):

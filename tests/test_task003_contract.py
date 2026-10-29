@@ -81,11 +81,12 @@ setTimeout(()=>{
         # resolve jsdom like tests/run.py does: tests/browser/node_modules first,
         # then the legacy scratch location
         here = os.path.dirname(os.path.abspath(__file__))
-        cands = [os.path.join(here, "browser", "node_modules"),
+        cands = [os.path.join(here, "node_modules"),
+                 os.path.join(here, "browser", "node_modules"),
                  "/opt/data/cache/scratch/jsdom-mailbox/node_modules"]
         env["NODE_PATH"] = os.pathsep.join(c for c in cands if os.path.isdir(c))
         result = subprocess.run(["node", "-e", node_script], input=page, text=True,
-                                capture_output=True, env=env, timeout=15)
+                                encoding="utf-8", capture_output=True, env=env, timeout=15)
         self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
 
     def test_korean_dashboard_has_korean_date_words_and_no_english_filter(self):
