@@ -16,6 +16,19 @@ from .models import BoardCategory, Comment, CommentLike, Post
 from .board_versions import board_data_version
 from . import services
 
+DEFAULT_BOARD_COPY = ("이웃에게 묻고 답하기", "태국 생활의 질문과 경험을 나눕니다.")
+BOARD_COPY = {
+    "notice": ("공지사항", "서비스 소식과 운영 안내를 확인하세요."),
+    "free": ("자유게시판", "태국 생활의 일상과 관심사를 이웃과 자유롭게 나눠요."),
+    "questions": ("질문/답변", "태국 생활 중 궁금한 점을 묻고 아는 정보를 나눠요."),
+    "market": ("중고게시판", "태국에서 필요한 물건을 사고팔며 이웃과 거래해요."),
+    "jobs": ("구인구직", "태국 현지의 채용과 구직 정보를 나누고 찾아보세요."),
+    "foodtravel": ("맛집/여행지", "직접 다녀온 맛집과 여행지를 소개하고 후기를 나눠요."),
+    "living": ("생활 질문", "주거와 일상에서 마주친 궁금한 점을 묻고 답해요."),
+    "visa": ("비자·체류", "비자와 체류 관련 경험과 정보를 함께 나눠요."),
+    "travel": ("교통·여행", "태국의 이동과 여행에 필요한 정보를 나눠요."),
+}
+
 def call_service(name, *args):
     try:
         return getattr(services, name)(*args)
@@ -60,6 +73,7 @@ def post_list(request):
         qs = qs.filter(resolution=resolution)
     q = request.GET.get("q", "").strip()[:200]
     region, category = request.GET.get("region", ""), request.GET.get("category", "")
+    requested_category = category
     if q:
         qs = services.search_posts(qs, q)
     if region in dict(REGIONS):
@@ -69,6 +83,9 @@ def post_list(request):
         category = Post.Category.LIVING
     elif category in dict(CATEGORIES):
         qs = qs.filter(category=category)
+    board_title, board_description = BOARD_COPY.get(
+        requested_category, BOARD_COPY.get(category, DEFAULT_BOARD_COPY)
+    )
     board_categories = BoardCategory.objects.filter(board=category)
     board_category = request.GET.get('board_category', '')
     if board_category:
@@ -79,7 +96,7 @@ def post_list(request):
     pagination = Paginator(qs, 20).get_page(request.GET.get("page"))
     keep = request.GET.copy()
     keep.pop("page", None)
-    return render(request, "community/list.html", {"resolution": resolution, "resolutions": Post.Resolution.choices, "page_obj": pagination, "q": q, "region": region, "category": category, "board_categories": board_categories, "board_category": board_category, "regions": REGIONS, "categories": CATEGORIES, "list_query": "?" + request.GET.urlencode(), "filter_query": keep.urlencode()})
+    return render(request, "community/list.html", {"resolution": resolution, "resolutions": Post.Resolution.choices, "page_obj": pagination, "q": q, "region": region, "category": category, "board_categories": board_categories, "board_category": board_category, "regions": REGIONS, "categories": CATEGORIES, "board_title": board_title, "board_description": board_description, "list_query": "?" + request.GET.urlencode(), "filter_query": keep.urlencode()})
 
 
 @never_cache
