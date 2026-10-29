@@ -83,7 +83,8 @@ PYTHON_CHECKS = [
 
 
 def jsdom_path():
-    for cand in (os.path.join(HERE, "browser", "node_modules"),
+    for cand in (os.path.join(HERE, "node_modules"),
+                 os.path.join(HERE, "browser", "node_modules"),
                  os.path.join(os.environ.get("LOCALAPPDATA", ""), "Temp", "pagetest", "node_modules")):
         if os.path.isdir(os.path.join(cand, "jsdom")):
             return cand

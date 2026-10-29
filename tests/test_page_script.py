@@ -111,7 +111,10 @@ class PageScript(unittest.TestCase):
             "const english=calendarDisplayName(events[2]);",
             "process.stdout.write(JSON.stringify([translated,escaped,fallback,english]));",
         ])
-        result = subprocess.run(["node", "-e", node_script], check=True, capture_output=True, text=True)
+        result = subprocess.run(
+            ["node", "-e", node_script], check=True, capture_output=True,
+            text=True, encoding="utf-8",
+        )
         self.assertEqual(json.loads(result.stdout), [
             "물가 <script>& 'quote'",
             "물가 &lt;script&gt;&amp; &#39;quote&#39;",

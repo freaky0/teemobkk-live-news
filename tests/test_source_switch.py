@@ -142,9 +142,9 @@ class Endpoint(unittest.TestCase):
         cls.server.shutdown()
         cls.server.server_close()
         admin_auth.PASSWORD_FILE = cls._password_file
+        core.setting_set(core.HIDDEN_SOURCES, "[]")
         core.DB_FILE = cls._db
         core.PUBLIC_MODE = cls._public
-        core.setting_set(core.HIDDEN_SOURCES, "[]")
 
     def setUp(self):
         admin_auth._failures.clear()

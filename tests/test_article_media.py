@@ -1,5 +1,6 @@
 """Video article media extraction contract. All fixtures are synthetic."""
 from pathlib import Path
+from contextlib import closing
 import sqlite3
 import sys
 from tempfile import TemporaryDirectory
@@ -65,7 +66,7 @@ class ArticleMediaTests(unittest.TestCase):
     def test_init_db_adds_video_url_to_legacy_article_table(self):
         with TemporaryDirectory() as temp:
             db_path = Path(temp) / "legacy.sqlite3"
-            with sqlite3.connect(db_path) as connection:
+            with closing(sqlite3.connect(db_path)) as connection:
                 connection.execute(
                     "CREATE TABLE articles (link TEXT PRIMARY KEY, title TEXT NOT NULL, "
                     "summary TEXT, source TEXT, source_type TEXT, region TEXT, category TEXT, "
@@ -76,7 +77,7 @@ class ArticleMediaTests(unittest.TestCase):
             try:
                 core.DB_FILE = db_path
                 core.init_db()
-                with sqlite3.connect(db_path) as connection:
+                with closing(sqlite3.connect(db_path)) as connection:
                     columns = {row[1] for row in connection.execute("PRAGMA table_info(articles)")}
                 self.assertIn("video_url", columns)
                 self.assertIn("media_checked_at", columns)
