@@ -20,6 +20,8 @@ Environment (systemd EnvironmentFile, never on the command line):
     TG_COOLDOWN_SECONDS  default 180   - shortest gap between two non-breaking posts
     TG_MAX_PER_HOUR      default 12
     TG_WINDOW_HOURS      default 3     - how stale a candidate may be and still be posted
+    TG_CHANNEL_REGION    default global - global or thai, using a separate channel environment
+    TG_STATE_TABLE       default tg_posted - isolate posting history for each channel
     TG_TRANSLATE         default 1
     TG_DRY_RUN           default 0
 """
@@ -56,7 +58,9 @@ from collectors import google_news  # noqa: E402
 
 ICT = timezone(timedelta(hours=7), name="ICT")
 BOT_API = "https://api.telegram.org/bot%s/%s"
-STATE_TABLE = "tg_posted"
+STATE_TABLE = (os.environ.get("TG_STATE_TABLE") or "tg_posted").strip()
+if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", STATE_TABLE):
+    raise ValueError("TG_STATE_TABLE must be a SQLite table name")
 POST_COMPARISON_WINDOW_MINUTES = 5
 LOCK_FILE = Path(os.environ.get("TG_LOCK_FILE") or (Path(tempfile.gettempdir()) / "teemo-tg-push.lock"))
 LINK_CHARS = 4096
@@ -133,7 +137,10 @@ def env_flag(name: str, default: bool) -> bool:
 
 
 MIN_PRIORITY = env_int("TG_MIN_PRIORITY", 4)
-THAI_MIN_PRIORITY = env_int("TG_THAI_MIN_PRIORITY", MIN_PRIORITY)
+_channel_region = (os.environ.get("TG_CHANNEL_REGION") or "global").strip().lower()
+CHANNEL_REGION = core.THAI_REGION if _channel_region in {"thai", "th", "태국"} else core.GLOBAL_REGION
+CHANNEL_MIN_PRIORITY = (env_int("TG_THAI_MIN_PRIORITY", MIN_PRIORITY)
+                        if CHANNEL_REGION == core.THAI_REGION else MIN_PRIORITY)
 COOLDOWN_SECONDS = env_int("TG_COOLDOWN_SECONDS", 180)
 MAX_PER_HOUR = env_int("TG_MAX_PER_HOUR", 12)
 WINDOW_HOURS = env_int("TG_WINDOW_HOURS", 3)
@@ -332,21 +339,22 @@ def is_noise(title: str) -> str:
 def candidates(connection: sqlite3.Connection, window_hours: int) -> list[dict[str, Any]]:
     """The rows eligible for the channel, newest first.
 
-    Global and Thai stories have separate score filters so Thai-local coverage can reach the
-    channel without lowering the global threshold. A pick outranks the score: the operator's
-    judgement is a deliberate act on one story, and that story has to reach the channel even when
-    the keywords scored it low. Picked rows are taken regardless of region.
+    Each channel reads its own region. A pick outranks the score but not the channel boundary: the
+    operator's judgement can promote a story within the configured channel without crossing into
+    the other channel.
     """
     seen: dict[str, dict[str, Any]] = {}
     reads = (
-        {"region": core.GLOBAL_REGION, "minimum_priority": MIN_PRIORITY, "picked_only": False},
-        {"region": core.THAI_REGION, "minimum_priority": THAI_MIN_PRIORITY, "picked_only": False},
-        {"region": "", "minimum_priority": 0, "picked_only": True},
+        {"region": CHANNEL_REGION, "minimum_priority": CHANNEL_MIN_PRIORITY, "picked_only": False},
+        {"region": CHANNEL_REGION, "minimum_priority": 0, "picked_only": True},
     )
     for read in reads:
         rows, _total, _counts = core.query_articles(hours=window_hours, limit=CANDIDATE_LIMIT, **read)
         for row in rows:
             item = dict(row)
+            item_region = str(item.get("region") or core.GLOBAL_REGION).strip()
+            if item_region != CHANNEL_REGION:
+                continue
             item["channel_pick"] = bool(item.get("picked")) or read["picked_only"]
             seen.setdefault(item["link"], item)
     ordered = sorted(seen.values(), key=lambda item: (item.get("published_at") or ""), reverse=True)
@@ -373,6 +381,11 @@ def age_minutes(item: dict[str, Any], now: datetime) -> float | None:
 
 def worth_posting(item: dict[str, Any], now: datetime | None = None) -> tuple[bool, str]:
     title = item.get("title") or ""
+    region = str(item.get("region") or core.GLOBAL_REGION).strip()
+    if region != CHANNEL_REGION:
+        return False, "wrong channel region"
+    if not shared_translation(item)[0]:
+        return False, "translation incomplete"
     if is_noise(title):
         return False, "noise"
     if CELEBRITY.search(title):
@@ -722,20 +735,35 @@ def send(text: str, preview: bool) -> dict[str, Any]:
 def article_row(connection: sqlite3.Connection, link: str) -> dict[str, Any]:
     """The stored row the shape's ticker, source and stamp lines are read from."""
     row = connection.execute(
-        "SELECT link, title, summary, title_ko, summary_ko, source, asset, priority, published_at, categories "
+        "SELECT link, title, summary, title_ko, summary_ko, source, region, asset, priority, published_at, categories "
         "FROM articles WHERE link = ?", (link,)).fetchone()
     return dict(row) if row else {}
 
 
+def is_korean_channel_text(value: Any) -> bool:
+    text = str(value or "")
+    hangul_count = len(re.findall(r"[가-힣]", text))
+    latin_count = len(re.findall(r"[A-Za-z]", text))
+    has_thai = bool(re.search(r"[\u0e00-\u0e7f]", text))
+    return hangul_count > 0 and not has_thai and hangul_count * 2 >= latin_count
+
+
+def _translated_or_korean_original(translated: Any, original: Any) -> str:
+    for value in (translated, original):
+        text = str(value or "")
+        if text.strip() and is_korean_channel_text(text):
+            return text
+    return ""
+
+
 def shared_translation(item: dict[str, Any]) -> tuple[str, str]:
-    """Use each persisted site translation verbatim, with per-field original fallback."""
-    title = item.get("title_ko")
-    summary = item.get("summary_ko")
-    if title is None or title == "":
-        title = item.get("title")
-    if summary is None or summary == "":
-        summary = item.get("summary")
-    return str(title or ""), str(summary or "")
+    """Use saved Korean translations, or original text only when it is already Korean."""
+    title = _translated_or_korean_original(item.get("title_ko"), item.get("title"))
+    original_summary = str(item.get("summary") or "")
+    summary = _translated_or_korean_original(item.get("summary_ko"), original_summary)
+    if not title or (original_summary.strip() and not summary):
+        return "", ""
+    return title, summary
 
 
 def editorial_brief(item: dict[str, Any], title: str, summary: str) -> dict[str, Any] | None:
@@ -798,9 +826,12 @@ def post_parts(connection: sqlite3.Connection, parts: dict[str, Any],
     attach_original_link(connection, item)
     note_here = operator_note(connection, link)
     item["channel_pick"] = bool(parts.get("pick")) or bool(note_here)
+    region = str(item.get("region") or "").strip()
+    if region and region != CHANNEL_REGION:
+        return False, "wrong channel region"
     title, body = shared_translation(item)
     if not title:
-        return False, "no title"
+        return False, "translation incomplete"
     if is_single_alt_notice(item):
         return False, "altcoin-noise"
     if jev_gate.MODE == "live":

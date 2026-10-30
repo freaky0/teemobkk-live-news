@@ -183,21 +183,26 @@ class ShapeCheck(unittest.TestCase):
 
 
 class CandidateRegions(unittest.TestCase):
-    def test_candidates_include_high_priority_thai_news_without_lowering_global_threshold(self):
-        global_item = {"link": "https://example.com/global", "published_at": "2026-10-01T00:00:00+00:00"}
-        thai_item = {"link": "https://example.com/thai", "published_at": "2026-10-01T01:00:00+00:00"}
-        with patch.object(core, "query_articles", side_effect=(
-                ([global_item], 1, {}), ([thai_item], 1, {}), ([], 0, {}))) as query:
+    def test_candidates_stay_in_configured_channel_region_including_picks(self):
+        global_item = {"link": "https://example.com/global", "region": core.GLOBAL_REGION,
+                       "published_at": "2026-10-01T00:00:00+00:00"}
+        thai_item = {"link": "https://example.com/thai", "region": core.THAI_REGION,
+                     "published_at": "2026-10-01T01:00:00+00:00"}
+        with patch.object(tg_push, "CHANNEL_REGION", core.GLOBAL_REGION), \
+                patch.object(core, "query_articles", side_effect=(
+                    ([global_item], 1, {}), ([global_item, thai_item], 2, {}))) as query:
             rows = tg_push.candidates(None, window_hours=3)
 
-        self.assertEqual(
-            {"https://example.com/global", "https://example.com/thai"},
-            {row["link"] for row in rows},
-        )
+        self.assertEqual({global_item["link"]}, {row["link"] for row in rows})
         self.assertEqual(core.GLOBAL_REGION, query.call_args_list[0].kwargs["region"])
-        self.assertEqual(core.THAI_REGION, query.call_args_list[1].kwargs["region"])
-        self.assertEqual(tg_push.THAI_MIN_PRIORITY, query.call_args_list[1].kwargs["minimum_priority"])
-        self.assertTrue(query.call_args_list[2].kwargs["picked_only"])
+        self.assertEqual(core.GLOBAL_REGION, query.call_args_list[1].kwargs["region"])
+        self.assertTrue(query.call_args_list[1].kwargs["picked_only"])
+
+        with patch.object(tg_push, "CHANNEL_REGION", core.THAI_REGION), \
+                patch.object(core, "query_articles", side_effect=(
+                    ([thai_item], 1, {}), ([global_item, thai_item], 2, {}))):
+            rows = tg_push.candidates(None, window_hours=3)
+        self.assertEqual({thai_item["link"]}, {row["link"] for row in rows})
 
 
 class TagsLine(unittest.TestCase):
@@ -270,6 +275,15 @@ class AgentPath(AgentFixture):
         self.assertTrue(ok, text)
         self.assertNotIn("Teemo's Note", text)
 
+    def test_an_article_for_the_other_region_is_refused(self):
+        self.connection.execute("UPDATE articles SET region = ? WHERE link = ?",
+                                (core.THAI_REGION, LINK))
+        self.connection.commit()
+        with patch.object(tg_push, "CHANNEL_REGION", core.GLOBAL_REGION):
+            ok, why = tg_push.post_parts(self.connection, self.parts())
+        self.assertFalse(ok)
+        self.assertEqual("wrong channel region", why)
+
     def test_a_second_post_of_the_same_link_is_refused(self):
         self.connection.execute(
             "INSERT INTO tg_posted (link, posted_at, mode) VALUES (?,?,?)",
@@ -278,6 +292,23 @@ class AgentPath(AgentFixture):
         ok, why = tg_push.post_parts(self.connection, self.parts())
         self.assertFalse(ok)
         self.assertIn("already posted", why)
+
+    def test_each_channel_can_keep_independent_post_history(self):
+        self.connection.execute(
+            "INSERT INTO tg_posted (link, posted_at, mode) VALUES (?,?,?)",
+            (LINK, "2026-09-21T02:00:00+00:00", "agent"))
+        self.connection.commit()
+        with patch.object(tg_push, "STATE_TABLE", "tg_posted_thai"):
+            thai_connection = tg_push.connect()
+            try:
+                self.assertFalse(tg_push.already_posted(thai_connection, LINK, set()))
+                thai_connection.execute(
+                    "INSERT INTO tg_posted_thai (link, posted_at, mode) VALUES (?,?,?)",
+                    (LINK, "2026-09-21T02:00:00+00:00", "agent"))
+                thai_connection.commit()
+                self.assertTrue(tg_push.already_posted(thai_connection, LINK, set()))
+            finally:
+                thai_connection.close()
 
 
 class PostedHistoryWindow(AgentFixture):
@@ -357,7 +388,7 @@ class SharedArticleTranslation(AgentFixture):
         self.assertNotIn("Note", text)
         self.assertNotIn("채널 전용 노트", text)
 
-    def test_partial_translation_falls_back_per_field_without_trimming_saved_text(self):
+    def test_partial_translation_falls_back_only_to_korean_original_text(self):
         item = {
             "title_ko": "저장 제목 ",
             "summary_ko": "",
@@ -365,6 +396,14 @@ class SharedArticleTranslation(AgentFixture):
             "summary": "원문 요약",
         }
         self.assertEqual(("저장 제목 ", "원문 요약"), tg_push.shared_translation(item))
+        for title, summary in (
+            ("Untranslated English headline", "English summary"),
+            ("ข่าวภาษาไทยที่ยังไม่ได้แปล", "เนื้อหาภาษาไทย"),
+        ):
+            with self.subTest(title=title):
+                self.assertEqual(("", ""), tg_push.shared_translation({
+                    "title": title, "summary": summary,
+                }))
 
     def test_timer_renders_each_partial_translation_with_original_fallback(self):
         cases = (
