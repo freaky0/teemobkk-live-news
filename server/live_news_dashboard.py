@@ -41,8 +41,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
-ROOT = Path(os.environ.get("TEEMO_DATA_ROOT", str(_REPO_ROOT))).resolve()
-DB_FILE = Path(os.environ.get("TEEMO_NEWS_DB_FILE", str(ROOT / "news.db"))).resolve()
+ROOT = Path(__file__).resolve().parent.parent
+DB_FILE = ROOT / "news.db"
 PUBLIC_MODE = False
 DEFAULT_INTERVAL = 30
 RETENTION_HOURS = 24
@@ -1700,8 +1700,8 @@ def collect_news() -> dict[str, Any]:
     # arriving in a later cycle under another outlet's link is the repetition a reader notices.
     deduped = drop_already_stored(dedupe_by_region(fresh_articles))
     inserted = insert_articles(deduped)
-    # Translation is best-effort. Originals remain available if a provider fails, and the next
-    # collection cycle can retry the newest incomplete rows.
+    # Translation is deliberately best-effort: if providers are unavailable, originals stay readable
+    # and the next collection cycle can retry the pending rows.
     if os.environ.get("TEEMO_TRANSLATE_KO_ENABLED", "1").strip().lower() not in {"0", "false", "no"}:
         try:
             from pipeline import translate_ko

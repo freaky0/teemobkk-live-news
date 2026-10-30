@@ -388,10 +388,6 @@ padding:5px 7px;font-size:12px;cursor:pointer}
 .cal{display:none;margin:0 0 14px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-card);background:var(--panel)}
 .cal h2{margin:0 0 4px;font-size:12.5px;color:var(--muted);font-weight:600}
 .cal-sum{color:var(--muted);font-size:11.5px;margin:0 0 12px}
-.cal-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 14px}
-.cal-filters label{display:grid;gap:4px;min-width:0;color:var(--muted);font-size:12px;font-weight:600}
-.cal-filters select{width:100%;min-width:0;min-height:44px;padding:8px 10px;border:1px solid var(--line2);border-radius:var(--r-ctl);background:var(--panel);color:var(--text);font:inherit}
-.cal-no-matches{padding:9px 0;color:var(--muted);font-size:12px}
 .cal-grid{display:grid;grid-template-columns:1fr;gap:2px 22px}
 .cal-day h3{margin:0 0 6px;font-size:13px}
 .cal-row{display:grid;grid-template-columns:68px minmax(0,1fr) auto;gap:8px;align-items:baseline;
@@ -414,7 +410,6 @@ padding:5px 7px;font-size:12px;cursor:pointer}
 .cal-err button{margin-left:10px;background:var(--panel2);border:1px solid var(--line);
   border-radius:var(--r-ctl);padding:6px 14px;cursor:pointer}
 @media (max-width:900px){.cal-row{grid-template-columns:68px minmax(0,1fr)}.cal-row .cal-v{grid-column:1 / -1;padding-left:0}}
-@media (max-width:560px){.cal-filters{grid-template-columns:1fr;gap:8px}.cal-filters select{font-size:16px}.cal h2 #cal-stamp{display:block;margin-top:3px}.cal{padding:12px}}
 body.tab-cal .cal{display:block}
 body.tab-cal .toolbar,body.tab-cal .pills,body.tab-cal .trend,body.tab-cal #feed,body.tab-cal .more-wrap,body.tab-cal .side{display:none!important}
 body.tab-cal .layout{grid-template-columns:minmax(0,1fr)}

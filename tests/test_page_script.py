@@ -72,20 +72,6 @@ def check(script: str, name: str):
 
 
 class PageScript(unittest.TestCase):
-    def test_calendar_country_and_importance_filters_render_in_both_languages(self):
-        english = page_build.render(public=True, datadir="", want_thai=False,
-                                    icon_prefix="/", admin=False, lang="en")
-        korean = page_build.render(public=True, datadir="", want_thai=False,
-                                   icon_prefix="/", admin=False, lang="ko")
-        for page in (english, korean):
-            self.assertIn('id="cal-country"', page)
-            self.assertIn('id="cal-importance"', page)
-            self.assertNotIn("__CAL_FILTERS__", page)
-        self.assertIn("All countries", english)
-        self.assertIn("All levels", english)
-        self.assertIn("전체 국가", korean)
-        self.assertIn("전체 중요도", korean)
-
     def test_node_is_available(self):
         self.assertTrue(shutil.which("node"),
                         "the page tests already need node; a missing node must fail, not skip")

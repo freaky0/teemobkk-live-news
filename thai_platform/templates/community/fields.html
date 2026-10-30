@@ -2,7 +2,7 @@
 {% if form.non_field_errors %}<div class="error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
 {% for field in form %}
   {% if field.name == 'region' %}
-    <details class="field classification-fields" data-classification-fields>
+    <details class="field classification-fields" data-classification-fields open>
       <summary>
         <strong>게시판 및 분류</strong>
         <span class="classification-current" data-classification-summary>{{ board_name }} · {{ region_name }}</span>

@@ -16,7 +16,7 @@ class NewsTests(TestCase):
         self.tmp = TemporaryDirectory()
         self.path = Path(self.tmp.name) / 'fixture.sqlite3'
         with sqlite3.connect(self.path) as c:
-            c.executescript('''CREATE TABLE articles(link TEXT PRIMARY KEY,title TEXT,title_ko TEXT,summary_ko TEXT,summary TEXT,source TEXT,original_source TEXT,region TEXT,category TEXT,post_status TEXT,published_at TEXT,image_url TEXT);
+            c.executescript('''CREATE TABLE articles(link TEXT PRIMARY KEY,title_ko TEXT,summary_ko TEXT,summary TEXT,source TEXT,original_source TEXT,region TEXT,category TEXT,post_status TEXT,published_at TEXT,image_url TEXT);
 CREATE TABLE hidden_links(link TEXT);
 CREATE TABLE filter_rules(id INTEGER PRIMARY KEY,enabled INTEGER);
 CREATE TABLE filter_hits(link TEXT,rule_id INTEGER);
@@ -31,10 +31,10 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
         self.addCleanup(gc.collect)
     def add(self, slug, **changes):
         from django.utils import timezone
-        row = dict(link='https://example.org/'+slug,title='Original title',title_ko='검증용 태국 뉴스 '+slug,summary_ko='테스트 전용 한국어 요약입니다.',summary='Original summary',source='Fixture',original_source='',region='태국',category='생활',post_status='ready',published_at=timezone.now().isoformat(),image_url='')
+        row = dict(link='https://example.org/'+slug,title_ko='검증용 태국 뉴스 '+slug,summary_ko='테스트 전용 한국어 요약입니다.',summary='Original summary',source='Fixture',original_source='',region='태국',category='생활',post_status='ready',published_at=timezone.now().isoformat(),image_url='')
         row.update(changes)
         with sqlite3.connect(self.path) as c:
-            c.execute('INSERT INTO articles (link,title,title_ko,summary_ko,summary,source,original_source,region,category,post_status,published_at,image_url) VALUES (:link,:title,:title_ko,:summary_ko,:summary,:source,:original_source,:region,:category,:post_status,:published_at,:image_url)',row)
+            c.execute('INSERT INTO articles (link,title_ko,summary_ko,summary,source,original_source,region,category,post_status,published_at,image_url) VALUES (:link,:title_ko,:summary_ko,:summary,:source,:original_source,:region,:category,:post_status,:published_at,:image_url)',row)
         return row['link']
     def sql(self, statement, args=()):
         with sqlite3.connect(self.path) as c:
@@ -124,21 +124,6 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
         self.assertEqual(news.list_articles(region_group='central').total, 2)
         self.assertEqual(news.list_articles(region_group='south').total, 2)
         self.assertEqual(news.list_articles().total, 7)
-
-    def test_regions_use_original_text_and_optional_full_body_or_location_metadata(self):
-        thai_title = self.add('original-thai-title', title='ประกาศจังหวัดเชียงใหม่')
-        english_summary = self.add('original-english-summary', title='Regional notice', summary='Chiang Rai transport update')
-        body_story = self.add('full-body', title_ko='태국 현장 소식')
-        location_story = self.add('location-metadata', title_ko='지역 소식')
-        with sqlite3.connect(self.path) as connection:
-            connection.execute('ALTER TABLE articles ADD COLUMN body TEXT')
-            connection.execute('ALTER TABLE articles ADD COLUMN province TEXT')
-            connection.execute('UPDATE articles SET body=? WHERE link=?', ('Authorities in Chiang Mai announced the plan.', body_story))
-            connection.execute('UPDATE articles SET province=? WHERE link=?', ('Phuket', location_story))
-        self.assertEqual(news.list_articles(region_group='north').total, 3)
-        self.assertEqual(news.list_articles(region_group='south').total, 1)
-        self.assertEqual(news.list_articles(query='Chiang Rai').total, 1)
-        self.assertEqual(news.list_articles(query='Chiang Mai').total, 1)
 
     def test_newsroom_region_filter_is_preserved_in_pagination(self):
         for index in range(21):

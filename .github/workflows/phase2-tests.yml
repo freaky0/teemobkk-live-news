@@ -1,12 +1,6 @@
 name: Phase 2 Django tests
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "thai_platform/**"
-      - ".github/workflows/phase2-tests.yml"
   pull_request:
     branches:
       - main
@@ -24,7 +18,7 @@ concurrency:
 jobs:
   django-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: thai_platform
@@ -36,8 +30,6 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - name: Install locked dependencies
         run: uv sync --locked
-      - name: Install Chromium for community browser tests
-        run: uv run playwright install --with-deps chromium
       - name: Create isolated local development secret
         run: uv run python -c "import os,secrets; fd=os.open('.dev-secret',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600);os.write(fd,secrets.token_urlsafe(64).encode());os.close(fd)"
       - name: Check Django configuration
@@ -45,7 +37,4 @@ jobs:
       - name: Check migration state
         run: POST_LOCAL_DEVELOPMENT=1 uv run python manage.py makemigrations --check --dry-run
       - name: Run Django test suite
-        env:
-          POST_LOCAL_DEVELOPMENT: "1"
-          POST_RUN_BROWSER_TESTS: "1"
-        run: uv run python manage.py test
+        run: POST_LOCAL_DEVELOPMENT=1 uv run python manage.py test

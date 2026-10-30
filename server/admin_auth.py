@@ -45,8 +45,7 @@ MAX_BODY = 4096
 REQUIRED_HEADER = "X-Requested-With"
 
 ROOT = Path(__file__).resolve().parent.parent
-DATA_ROOT = Path(os.environ.get("TEEMO_DATA_ROOT", str(ROOT))).resolve()
-PASSWORD_FILE = DATA_ROOT / ".admin_password"
+PASSWORD_FILE = ROOT / ".admin_password"
 
 _lock = threading.Lock()
 _failures: dict[str, list[float]] = {}

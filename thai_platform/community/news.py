@@ -121,24 +121,23 @@ REGION_GROUPS = (
 REGION_ALIASES = {
     'north': (
         '북부', '북부 태국', '태국 북부', 'Northern Thailand',
-        '치앙마이', 'Chiang Mai', 'Chiangmai', 'เชียงใหม่',
-        '치앙라이', 'Chiang Rai', 'Chiangrai', 'เชียงราย',
+        '치앙마이', 'Chiang Mai', 'Chiangmai',
+        '치앙라이', 'Chiang Rai', 'Chiangrai',
         '람빵', '람팡', 'Lampang', '람푼', 'Lamphun',
         '매홍손', 'Mae Hong Son', '파야오', 'Phayao', '프래', 'Phrae',
     ),
     'central': (
         '중부', '중부 태국', '태국 중부', 'Central Thailand',
-        '방콕', 'Bangkok', 'กรุงเทพ', 'กรุงเทพมหานคร',
-        '논타부리', 'Nonthaburi', 'นนทบุรี', '파타야', 'Pattaya', 'พัทยา',
-        '촌부리', 'Chonburi', 'Chon Buri', 'ชลบุรี',
+        '방콕', 'Bangkok', '논타부리', 'Nonthaburi', '파타야', 'Pattaya',
+        '촌부리', 'Chonburi', 'Chon Buri',
         '사뭇쁘라깐', '사뭇프라칸', 'Samut Prakan',
         '빠툼타니', '빠툼 타니', 'Pathum Thani',
         '아유타야', 'Ayutthaya', '나콘빠톰', '나콘파톰', 'Nakhon Pathom',
     ),
     'south': (
         '남부', '남부 태국', '태국 남부', 'Southern Thailand',
-        '푸껫', '푸켓', 'Phuket', 'ภูเก็ต', '끄라비', '크라비', 'Krabi', 'กระบี่',
-        '핫야이', 'Hat Yai', 'Hatyai', 'หาดใหญ่', '송클라', 'Songkhla', 'สงขลา',
+        '푸껫', '푸켓', 'Phuket', '끄라비', '크라비', 'Krabi',
+        '핫야이', 'Hat Yai', 'Hatyai', '송클라', 'Songkhla',
         '코사무이', '꼬사무이', 'Koh Samui', 'Ko Samui',
         '수랏타니', 'Surat Thani', '팡아', '팡응아', 'Phang Nga',
         '뜨랑', '트랑', 'Trang', '나콘시탐마랏', 'Nakhon Si Thammarat',
@@ -146,26 +145,6 @@ REGION_ALIASES = {
         '나라티왓', 'Narathiwat',
     ),
 }
-
-_ARTICLE_TEXT_COLUMNS = (
-    'title_ko', 'summary_ko', 'title', 'summary', 'body', 'content',
-    'article_body', 'content_text', 'text', 'location_name', 'source_location',
-    'location', 'province', 'city', 'area', 'place', 'places', 'region',
-    'region_group', 'tags', 'keywords',
-)
-
-
-def article_text_columns(conn):
-    """Return only known article text columns that exist in this read-only DB."""
-    existing = {row['name'].lower() for row in conn.execute('PRAGMA table_info(articles)')}
-    return tuple(name for name in _ARTICLE_TEXT_COLUMNS if name in existing)
-
-
-def text_match_clause(columns, needle):
-    """Build a parameterized LIKE clause from the fixed, schema-checked column allowlist."""
-    return '(' + ' OR '.join(
-        "COALESCE(a.%s,'') LIKE ? ESCAPE '\\'" % name for name in columns
-    ) + ')', [needle] * len(columns)
 
 
 def projection_fields(conn):
@@ -255,22 +234,20 @@ def list_articles(page=1,query='',page_size=20,category='',region_group='',inclu
             region_group=''
         if query:
             needle='%'+query[:200].replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%'
-            clause, values = text_match_clause(article_text_columns(conn), needle)
-            conditions.append(clause)
-            params.extend(values)
+            conditions.append("(a.title_ko LIKE ? ESCAPE '\\' OR a.summary_ko LIKE ? ESCAPE '\\')")
+            params.extend([needle,needle])
         if category:
             conditions.append("TRIM(COALESCE(a.category,'')) = ?")
             params.append(category)
         if region_group:
             aliases=REGION_ALIASES[region_group]
-            columns = article_text_columns(conn)
             conditions.append('('+' OR '.join(
-                text_match_clause(columns, '%'+alias.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%')[0]
-                for alias in aliases
+                "COALESCE(a.title_ko,'') LIKE ? ESCAPE '\\' OR COALESCE(a.summary_ko,'') LIKE ? ESCAPE '\\'"
+                for _ in aliases
             )+')')
             for alias in aliases:
                 needle='%'+alias.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%'
-                params.extend([needle] * len(columns))
+                params.extend((needle,needle))
         clause=' AND '.join(conditions)
         total=conn.execute('SELECT COUNT(*) FROM articles a WHERE '+clause,params).fetchone()[0]
         rows=conn.execute('SELECT '+fields+' FROM articles a WHERE '+clause+' ORDER BY a.published_at DESC,a.link LIMIT ? OFFSET ?',params+[page_size,(page-1)*page_size]).fetchall()

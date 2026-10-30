@@ -136,7 +136,7 @@ class SharedThemeContract(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            with patch.object(page_build, "DATA_ROOT", root), \
+            with patch.object(page_build, "ROOT", root), \
                     patch.object(page_build, "seed_from_db", return_value=""), \
                     patch.object(page_build, "seed_briefing_from_db", return_value=("", "")), \
                     patch.object(page_build, "_prune_sections", return_value=[]), \

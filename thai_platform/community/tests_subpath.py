@@ -23,7 +23,7 @@ class SubpathMountTests(TestCase):
         self.assertContains(response, 'href="/thai/newsroom/"')
         self.assertContains(response, 'href="/thai/community/"')
         self.assertContains(response, 'href="/thai/accounts/login/?next=/thai/"')
-        for category in ('visa', 'living', 'market', 'foodtravel'):
+        for category in ('visa', 'living', 'jobs', 'foodtravel'):
             with self.subTest(category=category):
                 self.assertContains(response, f'href="/thai/community/?category={category}"')
 

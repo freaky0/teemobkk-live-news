@@ -55,9 +55,7 @@ from collectors import google_news  # noqa: E402
 
 ICT = timezone(timedelta(hours=7), name="ICT")
 BOT_API = "https://api.telegram.org/bot%s/%s"
-STATE_TABLE = (os.environ.get("TG_STATE_TABLE") or "tg_posted").strip()
-if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", STATE_TABLE):
-    raise ValueError("TG_STATE_TABLE must be a SQLite table name")
+STATE_TABLE = "tg_posted"
 POST_COMPARISON_WINDOW_MINUTES = 5
 LOCK_FILE = Path(os.environ.get("TG_LOCK_FILE") or (Path(tempfile.gettempdir()) / "teemo-tg-push.lock"))
 LINK_CHARS = 4096
@@ -134,10 +132,6 @@ def env_flag(name: str, default: bool) -> bool:
 
 
 MIN_PRIORITY = env_int("TG_MIN_PRIORITY", 4)
-_channel_region = (os.environ.get("TG_CHANNEL_REGION") or "global").strip().lower()
-CHANNEL_REGION = core.THAI_REGION if _channel_region in {"thai", "th", "태국"} else core.GLOBAL_REGION
-CHANNEL_MIN_PRIORITY = (env_int("TG_THAI_MIN_PRIORITY", MIN_PRIORITY)
-                        if CHANNEL_REGION == core.THAI_REGION else MIN_PRIORITY)
 COOLDOWN_SECONDS = env_int("TG_COOLDOWN_SECONDS", 180)
 MAX_PER_HOUR = env_int("TG_MAX_PER_HOUR", 12)
 WINDOW_HOURS = env_int("TG_WINDOW_HOURS", 3)
@@ -336,20 +330,20 @@ def is_noise(title: str) -> str:
 def candidates(connection: sqlite3.Connection, window_hours: int) -> list[dict[str, Any]]:
     """The rows eligible for the channel, newest first.
 
-    Each channel reads its own region. An operator pick can lower the score threshold but stays
-    inside that channel's region.
+    Two reads, because a pick outranks the star score rather than adding to it: the operator's
+    judgement is a deliberate act on one story, and the story it lands on has to reach the channel
+    even when the keywords scored it low. Picked rows are taken regardless of region - a pick in
+    the Thailand tab is still the operator saying "this one".
     """
     seen: dict[str, dict[str, Any]] = {}
     reads = (
-        {"region": CHANNEL_REGION, "minimum_priority": CHANNEL_MIN_PRIORITY, "picked_only": False},
-        {"region": CHANNEL_REGION, "minimum_priority": 0, "picked_only": True},
+        {"region": core.GLOBAL_REGION, "minimum_priority": MIN_PRIORITY, "picked_only": False},
+        {"region": "", "minimum_priority": 0, "picked_only": True},
     )
     for read in reads:
         rows, _total, _counts = core.query_articles(hours=window_hours, limit=CANDIDATE_LIMIT, **read)
         for row in rows:
             item = dict(row)
-            if str(item.get("region") or core.GLOBAL_REGION).strip() != CHANNEL_REGION:
-                continue
             item["channel_pick"] = bool(item.get("picked")) or read["picked_only"]
             seen.setdefault(item["link"], item)
     ordered = sorted(seen.values(), key=lambda item: (item.get("published_at") or ""), reverse=True)
@@ -376,8 +370,6 @@ def age_minutes(item: dict[str, Any], now: datetime) -> float | None:
 
 def worth_posting(item: dict[str, Any], now: datetime | None = None) -> tuple[bool, str]:
     title = item.get("title") or ""
-    if str(item.get("region") or core.GLOBAL_REGION).strip() != CHANNEL_REGION:
-        return False, "wrong channel region"
     if is_noise(title):
         return False, "noise"
     if CELEBRITY.search(title):
