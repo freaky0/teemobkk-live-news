@@ -182,6 +182,24 @@ class ShapeCheck(unittest.TestCase):
         self.assertIn("order", " | ".join(tg_push.validate_post("\n".join(lines))))
 
 
+class CandidateRegions(unittest.TestCase):
+    def test_candidates_include_high_priority_thai_news_without_lowering_global_threshold(self):
+        global_item = {"link": "https://example.com/global", "published_at": "2026-10-01T00:00:00+00:00"}
+        thai_item = {"link": "https://example.com/thai", "published_at": "2026-10-01T01:00:00+00:00"}
+        with patch.object(core, "query_articles", side_effect=(
+                ([global_item], 1, {}), ([thai_item], 1, {}), ([], 0, {}))) as query:
+            rows = tg_push.candidates(None, window_hours=3)
+
+        self.assertEqual(
+            {"https://example.com/global", "https://example.com/thai"},
+            {row["link"] for row in rows},
+        )
+        self.assertEqual(core.GLOBAL_REGION, query.call_args_list[0].kwargs["region"])
+        self.assertEqual(core.THAI_REGION, query.call_args_list[1].kwargs["region"])
+        self.assertEqual(tg_push.THAI_MIN_PRIORITY, query.call_args_list[1].kwargs["minimum_priority"])
+        self.assertTrue(query.call_args_list[2].kwargs["picked_only"])
+
+
 class TagsLine(unittest.TestCase):
     def test_a_full_editor_answer_is_left_alone(self):
         self.assertEqual(["비트코인", "ETF", "정크본드"],

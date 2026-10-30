@@ -149,7 +149,9 @@ python live_news_dashboard.py --interval 30
 중요한 기사를 채널에 1분 주기로 내보낸다. 결정론적 규칙이 하드 게이트를 맡고, JEV는 VPS에서 후보 최대 3건을 한 번에 판정한다.
 
 ```
-후보   query_articles(minimum_priority=4, region=글로벌) + picked_only (티모의 선택은 별점 무관)
+후보   query_articles(region=글로벌, minimum_priority=TG_MIN_PRIORITY) +
+       query_articles(region=태국, minimum_priority=TG_THAI_MIN_PRIORITY) + picked_only
+       태국 기준은 TG_THAI_MIN_PRIORITY로 조절하며 기본값은 글로벌 기준(TG_MIN_PRIORITY)과 같다
        숨긴 기사·걸러진 기사·꺼둔 소스는 서버 읽기 경로가 이미 제외한다
 중복   링크(tg_posted 기본키) → 제목 문자 유사도 0.88 → 같은 사건 토큰 판정(180분 창)
        같은 실행 안에서 먼저 스킵된 후보도 사건 서명으로 예약해 다음 변형 재게시를 막는다
@@ -170,7 +172,6 @@ JEV_TIMEOUT_SECONDS=18
 JEV는 사실 여부를 검증하지 않는다. API 장애·응답 오류·키 누락 시 게시를 전부 중단하지 않고 기존 결정론적 규칙으로 폴백한다.
 설치   bash deploy/vps_push_setup.sh   (로컬에서. 유닛 설치·타이머 활성·호스트 dry-run까지)
 검증   python deploy/tg_push.py --replay 24   과거 24시간을 1분 단위로 재생해 예상 건수를 본다
-       실측: 후보 299건 → 게시 132건/24h, 남은 중복 0쌍
 운영   systemctl stop teemo-tg-push.timer 로 즉시 중지, .env.push 수정 후 restart 로 임계 조정
 ```
 

@@ -16,6 +16,7 @@ Environment (systemd EnvironmentFile, never on the command line):
     TELEGRAM_CHAT_ID     required - the channel or supergroup id
     DEEPSEEK_API_KEY     optional - enables the Korean rewrite of non-Korean items
     TG_MIN_PRIORITY      default 4
+    TG_THAI_MIN_PRIORITY default TG_MIN_PRIORITY - Thai-region candidate score
     TG_COOLDOWN_SECONDS  default 180   - shortest gap between two non-breaking posts
     TG_MAX_PER_HOUR      default 12
     TG_WINDOW_HOURS      default 3     - how stale a candidate may be and still be posted
@@ -132,6 +133,7 @@ def env_flag(name: str, default: bool) -> bool:
 
 
 MIN_PRIORITY = env_int("TG_MIN_PRIORITY", 4)
+THAI_MIN_PRIORITY = env_int("TG_THAI_MIN_PRIORITY", MIN_PRIORITY)
 COOLDOWN_SECONDS = env_int("TG_COOLDOWN_SECONDS", 180)
 MAX_PER_HOUR = env_int("TG_MAX_PER_HOUR", 12)
 WINDOW_HOURS = env_int("TG_WINDOW_HOURS", 3)
@@ -330,14 +332,15 @@ def is_noise(title: str) -> str:
 def candidates(connection: sqlite3.Connection, window_hours: int) -> list[dict[str, Any]]:
     """The rows eligible for the channel, newest first.
 
-    Two reads, because a pick outranks the star score rather than adding to it: the operator's
-    judgement is a deliberate act on one story, and the story it lands on has to reach the channel
-    even when the keywords scored it low. Picked rows are taken regardless of region - a pick in
-    the Thailand tab is still the operator saying "this one".
+    Global and Thai stories have separate score filters so Thai-local coverage can reach the
+    channel without lowering the global threshold. A pick outranks the score: the operator's
+    judgement is a deliberate act on one story, and that story has to reach the channel even when
+    the keywords scored it low. Picked rows are taken regardless of region.
     """
     seen: dict[str, dict[str, Any]] = {}
     reads = (
         {"region": core.GLOBAL_REGION, "minimum_priority": MIN_PRIORITY, "picked_only": False},
+        {"region": core.THAI_REGION, "minimum_priority": THAI_MIN_PRIORITY, "picked_only": False},
         {"region": "", "minimum_priority": 0, "picked_only": True},
     )
     for read in reads:
