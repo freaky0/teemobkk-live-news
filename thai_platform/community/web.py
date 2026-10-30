@@ -83,17 +83,19 @@ def home(request):
     from . import news
     context = {"posts": published(request.user)[:4], "helpful_posts": published(request.user).filter(helpful_count__gt=0).order_by('-helpful_count', '-created_at', '-pk')[:4]}
     if request.user.is_authenticated:
-        own_posts = services.activity(request.user, 'posts')
-        saved_posts = services.activity(request.user, 'bookmarks')
-        context['member_home'] = {
-            'questions': own_posts.filter(category__in=RESOLUTION_CATEGORIES).count(),
-            'answers': services.visible_comments(request.user).filter(author=request.user).count(),
-            'saved': saved_posts.count(),
-            'unread_answers': services.visible_notifications(request.user).filter(
-                kind=Notification.Kind.REPLY, is_read=False,
-            ).count(),
-            'saved_posts': saved_posts.select_related('author')[:3],
-        }
+        membership = getattr(request.user, 'membership', None)
+        if request.user.is_active and (membership is None or membership.is_complete):
+            own_posts = services.activity(request.user, 'posts')
+            saved_posts = services.activity(request.user, 'bookmarks')
+            context['member_home'] = {
+                'questions': own_posts.filter(category__in=RESOLUTION_CATEGORIES).count(),
+                'answers': services.visible_comments(request.user).filter(author=request.user).count(),
+                'saved': saved_posts.count(),
+                'unread_answers': services.visible_notifications(request.user).filter(
+                    kind=Notification.Kind.REPLY, is_read=False,
+                ).count(),
+                'saved_posts': saved_posts.select_related('author')[:3],
+            }
     try:
         context["news_page"] = news.list_articles(page_size=5)
     except news.NewsUnavailable:
