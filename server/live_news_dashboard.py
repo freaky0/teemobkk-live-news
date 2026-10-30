@@ -842,7 +842,8 @@ def queued_translation_links(limit: int = 5) -> list[str]:
     limit = max(1, min(int(limit), 100))
     with DB_LOCK, closing(db_connect()) as connection:
         rows = connection.execute(
-            "SELECT link FROM article_translation_queue ORDER BY queued_at, link LIMIT ?", (limit,)
+            "SELECT link FROM article_translation_queue "
+            "ORDER BY queued_at DESC, link DESC LIMIT ?", (limit,)
         ).fetchall()
     return [str(row["link"]) for row in rows]
 
