@@ -26,7 +26,7 @@ class PostInputSerializer(StrictInputMixin, serializers.ModelSerializer):
     body = serializers.CharField(max_length=6000)
     confirm_board_data_removal = serializers.BooleanField(required=False, write_only=True)
     board_data_version = serializers.CharField(required=False, allow_blank=True, write_only=True)
-    place_url = serializers.CharField(max_length=500, allow_blank=True, required=False)
+    place_url = serializers.CharField(max_length=2048, allow_blank=True, required=False)
 
     class Meta:
         model = Post

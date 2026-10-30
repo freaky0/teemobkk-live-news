@@ -8,7 +8,7 @@ from rest_framework.permissions import BasePermission, SAFE_METHODS
 from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
 from . import services
-from .models import BoardCategory, ModerationAppeal, Notification, Post, Report
+from .models import BoardCategory, ModerationAppeal, Notification, Post, Report, RESOLUTION_CATEGORIES
 from .serializers import AppealSerializer, BoardCategorySerializer, CommentSerializer, NotificationSerializer, PostSerializer, ReportSerializer
 
 
@@ -65,7 +65,7 @@ class PostViewSet(viewsets.ModelViewSet):
         if resolution:
             if resolution not in Post.Resolution.values:
                 raise ValidationError({'resolution': 'Invalid resolution.'})
-            qs = qs.filter(resolution=resolution)
+            qs = qs.filter(category__in=RESOLUTION_CATEGORIES, resolution=resolution)
         region, category, query = params.get('region'), params.get('category'), params.get('q')
         if region:
             if region not in Post.Region.values:

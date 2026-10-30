@@ -1,7 +1,10 @@
 from django.conf import settings
 from django.core.validators import MaxLengthValidator, MinValueValidator
 from django.db import models
-from .places import build_google_maps_search_url
+from .places import build_google_maps_embed_url, build_google_maps_search_url, is_google_maps_url
+
+
+RESOLUTION_CATEGORIES = frozenset({"questions", "living", "housing", "banking", "visa", "travel"})
 
 
 class ContentStatus(models.TextChoices):
@@ -93,7 +96,7 @@ class Post(Timestamped):
     place_name = models.CharField(max_length=160, blank=True, db_default='', default='')
     place_region = models.CharField(max_length=10, choices=Region.choices, blank=True, db_default='', default='')
     place_note = models.CharField(max_length=500, blank=True, db_default='', default='')
-    place_url = models.CharField(max_length=500, blank=True, db_default='', default='')
+    place_url = models.CharField(max_length=2048, blank=True, db_default='', default='')
 
     @property
     def board_content(self):
@@ -120,6 +123,36 @@ class Post(Timestamped):
             return ''
         region = self.get_place_region_display() if self.place_region else ''
         return build_google_maps_search_url(self.place_name, region)
+
+    @property
+    def google_maps_embed_url(self):
+        if self.category != self.Category.FOODTRAVEL:
+            return ''
+        region = self.get_place_region_display() if self.place_region else ''
+        return build_google_maps_embed_url(
+            self.place_name,
+            region,
+            self.place_url,
+            getattr(settings, 'GOOGLE_MAPS_EMBED_API_KEY', ''),
+        )
+
+    @property
+    def google_maps_link_url(self):
+        if self.category != self.Category.FOODTRAVEL:
+            return ''
+        if is_google_maps_url(self.place_url):
+            return self.place_url
+        return self.google_maps_search_url
+
+    @property
+    def external_place_url(self):
+        if self.place_url and not is_google_maps_url(self.place_url):
+            return self.place_url
+        return ''
+
+    @property
+    def has_resolution_status(self):
+        return self.category in RESOLUTION_CATEGORIES
 
     class Meta:
         ordering = ['-created_at', '-pk']
@@ -156,6 +189,24 @@ class JobsPost(BoardPostContent):
 
 class LivingPost(BoardPostContent):
     pass
+
+
+class PostImage(models.Model):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='images')
+    image_data = models.BinaryField(null=True, blank=True, editable=False)
+    content_type = models.CharField(max_length=30, blank=True, default='')
+    image_url = models.URLField(max_length=2048, blank=True, default='')
+    position = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['position', 'pk']
+        constraints = [
+            models.CheckConstraint(
+                condition=(models.Q(image_data__isnull=False, image_url='') | models.Q(image_data__isnull=True, image_url__gt='')),
+                name='community_post_image_has_source',
+            ),
+        ]
 
 
 class Helpful(Timestamped):
