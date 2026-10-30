@@ -72,6 +72,7 @@ PYTHON_CHECKS = [
     ("test_picks.py", ["tests/test_picks.py"], "Pick 계약", "local"),
     ("test_google_links.py", ["tests/test_google_links.py"], "구글뉴스 원본 링크 계약", "local"),
     ("test_original_source.py", ["tests/test_original_source.py"], "원출처 이름 표시 계약", "local"),
+    ("test_release_data_paths.py", ["tests/test_release_data_paths.py"], "불변 릴리스의 기존 데이터 경로 보존", "local"),
     ("test_translate_ko.py", ["tests/test_translate_ko.py"], "한국어 번역 저장·실패 폴백", "local"),
     ("test_article_media.py", ["tests/test_article_media.py"], "기사 동영상·포스터 계약", "local"),
     ("test_dedupe.py", ["tests/test_dedupe.py"], "같은 사건 중복 차단 계약", "local"),

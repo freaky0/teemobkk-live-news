@@ -41,8 +41,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
-ROOT = Path(__file__).resolve().parent.parent
-DB_FILE = ROOT / "news.db"
+ROOT = Path(os.environ.get("TEEMO_DATA_ROOT", str(_REPO_ROOT))).resolve()
+DB_FILE = Path(os.environ.get("TEEMO_NEWS_DB_FILE", str(ROOT / "news.db"))).resolve()
 PUBLIC_MODE = False
 DEFAULT_INTERVAL = 30
 RETENTION_HOURS = 24
