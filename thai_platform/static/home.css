@@ -80,6 +80,9 @@
   max-width: 42ch;
   margin: 0;
   color: var(--color-text-muted);
+  text-wrap: pretty;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .home-start-grid {
@@ -122,13 +125,17 @@
 
 .home-start-card strong {
   font-size: 1rem;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .home-start-card-description {
   color: var(--color-text-muted);
   font-size: 0.85rem;
   line-height: 1.5;
-  overflow-wrap: anywhere;
+  text-wrap: pretty;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .home-content-grid {
@@ -143,11 +150,38 @@
   gap: 1.25rem;
 }
 
+.home-sidebar > .panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: clamp(0.75rem, 2vw, 1rem);
+}
+
+.home-sidebar > .panel > .hero-label,
+.home-sidebar > .panel > h2,
+.home-sidebar > .panel > p {
+  margin: 0;
+}
+
+.home-sidebar > .panel > h2 {
+  max-width: 22ch;
+  text-wrap: balance;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+.home-sidebar > .panel > p:not(.hero-label) {
+  line-height: 1.7;
+  text-wrap: pretty;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
 .home-community-nav {
   display: grid;
   justify-items: start;
-  gap: 0.75rem;
-  margin-block-start: 1.25rem;
+  gap: 1rem;
+  margin-block-start: 0.25rem;
 }
 
 .home-community-nav a:not(.btn) {
@@ -265,6 +299,7 @@
 
   .home-start-card-description {
     font-size: 0.8rem;
+    line-height: 1.55;
   }
 
   .home-news-card.is-featured .news-item {
@@ -276,4 +311,4 @@
   }
 }
 .home-member{margin:0 0 clamp(1.75rem,3vw,2.5rem)}.home-member-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}.home-member-head h2{margin:0}.home-member-head .hero-label{margin:0 0 4px;color:var(--color-text-muted)}.home-member-head .btn{white-space:nowrap}.home-unread-count{display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 6px;border-radius:999px;background:var(--color-action-primary);color:var(--color-text-on-primary);font-variant-numeric:tabular-nums}.home-member-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.home-member-grid a{min-height:72px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border:1px solid var(--color-border-default);border-radius:10px;background:var(--color-bg-canvas)}.home-member-grid a:hover{text-decoration:none;border-color:var(--color-action-primary)}.home-member-grid strong{font-size:1.35rem;font-variant-numeric:tabular-nums}.home-member-grid span{font-size:.9rem;color:var(--color-text-muted)}.home-saved-posts{margin-top:16px}.home-saved-posts h3{font-size:.95rem;margin:0 0 6px}.home-saved-posts ul{list-style:none;margin:0;padding:0}.home-saved-posts li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--color-border-default)}.home-saved-posts li a{font-weight:650;overflow-wrap:anywhere}.home-saved-posts li span{flex-shrink:0;color:var(--color-text-muted);font-size:.8rem}
-@media(max-width:600px){.home-content-grid{margin-block-start:1.5rem;row-gap:1rem}.home-sidebar{gap:1rem}.home-community-nav{gap:.9rem;margin-block-start:1rem}.home-member{padding:16px}.home-member-head{align-items:flex-start}.home-member-head .btn{min-height:48px;padding:8px 10px;font-size:.82rem;white-space:normal;text-align:center}.home-member-grid{grid-template-columns:1fr 1fr;gap:10px}.home-member-grid a:last-child{grid-column:1/-1}.home-member-grid a{min-height:56px;padding:9px 12px}.home-saved-posts li{align-items:flex-start}.home-saved-posts li span{font-size:.75rem}}
+@media(max-width:600px){.home-content-grid{margin-block-start:1.5rem;row-gap:1rem}.home-sidebar{gap:1rem}.home-community-nav{gap:1rem;margin-block-start:.25rem}.home-member{padding:16px}.home-member-head{align-items:flex-start}.home-member-head .btn{min-height:48px;padding:8px 10px;font-size:.82rem;white-space:normal;text-align:center}.home-member-grid{grid-template-columns:1fr 1fr;gap:10px}.home-member-grid a:last-child{grid-column:1/-1}.home-member-grid a{min-height:56px;padding:9px 12px}.home-saved-posts li{align-items:flex-start}.home-saved-posts li span{font-size:.75rem}}

@@ -861,8 +861,11 @@ class BrowserFlowTests(StaticLiveServerTestCase):
                 self.go("/")
                 self.assertEqual(p.locator('.home-start-card[href="/community/?category=market"]').count(), 1)
                 self.assertEqual(p.locator('.home-start-card[href*="category=jobs"]').count(), 0)
+                self.assertEqual(p.locator('.home-start-card[href="/community/?category=market"] strong').inner_text(), '중고거래')
+                self.assertIn('필요한 물건을 사고팔고', p.locator('.home-start-card[href="/community/?category=market"]').inner_text())
                 self.assertEqual(p.locator(".home-secondary-action").get_attribute("href"), "/community/")
                 self.assertEqual(p.locator('main a[href="/community/new/"]').count(), 1)
+                self.assertEqual(p.locator('#home-news-bridge-title').inner_text(), '뉴스를 넘어, 태국 생활의 답까지')
                 spacing = p.evaluate("""() => {
                     const value = selector => getComputedStyle(document.querySelector(selector));
                     return {
@@ -870,12 +873,16 @@ class BrowserFlowTests(StaticLiveServerTestCase):
                         memberLinks: parseFloat(value('.home-member-grid').gap),
                         communityLinks: parseFloat(value('.home-community-nav').gap),
                         sidebar: parseFloat(value('.home-sidebar').rowGap),
+                        topicWordBreak: value('.home-start-card-description').wordBreak,
+                        sidebarTitleWordBreak: value('#home-news-bridge-title').wordBreak,
                     };
                 }""")
                 self.assertGreaterEqual(spacing["section"], 20, (width, spacing))
                 self.assertGreaterEqual(spacing["memberLinks"], 9, (width, spacing))
                 self.assertGreaterEqual(spacing["communityLinks"], 12, (width, spacing))
                 self.assertGreaterEqual(spacing["sidebar"], 15, (width, spacing))
+                self.assertEqual(spacing["topicWordBreak"], "keep-all", (width, spacing))
+                self.assertEqual(spacing["sidebarTitleWordBreak"], "keep-all", (width, spacing))
                 self.assertTrue(p.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), width)
 
     def test_homepage_handles_expanded_localized_copy_without_horizontal_scroll(self):
