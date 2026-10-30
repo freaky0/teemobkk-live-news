@@ -16,6 +16,7 @@ Environment (systemd EnvironmentFile, never on the command line):
     TELEGRAM_CHAT_ID     required - the channel or supergroup id
     DEEPSEEK_API_KEY     optional - enables the Korean rewrite of non-Korean items
     TG_MIN_PRIORITY      default 4
+    TG_THAI_MIN_PRIORITY default TG_MIN_PRIORITY - Thai-region candidate score
     TG_COOLDOWN_SECONDS  default 180   - shortest gap between two non-breaking posts
     TG_MAX_PER_HOUR      default 12
     TG_WINDOW_HOURS      default 3     - how stale a candidate may be and still be posted
