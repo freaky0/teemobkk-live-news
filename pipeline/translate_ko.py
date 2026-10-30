@@ -293,8 +293,13 @@ def translate_one(title: str, summary: str) -> dict[str, str] | None:
 
 
 def translate_pending(limit: int = COLLECT_BATCH, throttle_seconds: float = 0.0,
-                     links: list[str] | None = None) -> int:
-    """Translate recent ingest rows, or only the explicitly selected backfill links."""
+                     links: list[str] | None = None,
+                     continue_on_error: bool = False) -> int:
+    """Translate recent ingest rows, or only the explicitly selected links.
+
+    A collection pass can keep processing after a failed item; strict explicit
+    backfills continue to raise on provider or persistence failures by default.
+    """
     limit = max(1, min(int(limit), MAX_BATCH))
     selected_links = list(dict.fromkeys(str(link) for link in (links or []) if link))
     with core.DB_LOCK:
@@ -326,7 +331,8 @@ def translate_pending(limit: int = COLLECT_BATCH, throttle_seconds: float = 0.0,
 
     completed = 0
     strict_codex = (
-        os.environ.get("TG_TRANSLATE_PROVIDER", "").strip().lower() == "openai-codex"
+        not continue_on_error
+        and os.environ.get("TG_TRANSLATE_PROVIDER", "").strip().lower() == "openai-codex"
         and links is not None
     )
     for index, row in enumerate(rows):
