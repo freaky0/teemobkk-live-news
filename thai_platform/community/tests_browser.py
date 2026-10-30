@@ -853,6 +853,31 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.page.wait_for_load_state('networkidle')
         self.assertIn('모바일 브라우저에서 작성한 대댓글입니다.', self.page.locator('.reply').inner_text())
         self.assertEqual(self.errors, [])
+    def test_homepage_uses_distinct_actions_and_clear_section_spacing(self):
+        p = self.page
+        for width in (320, 390, 768, 1440):
+            with self.subTest(width=width):
+                p.set_viewport_size({"width": width, "height": 900})
+                self.go("/")
+                self.assertEqual(p.locator('.home-start-card[href="/community/?category=market"]').count(), 1)
+                self.assertEqual(p.locator('.home-start-card[href*="category=jobs"]').count(), 0)
+                self.assertEqual(p.locator(".home-secondary-action").get_attribute("href"), "/community/")
+                self.assertEqual(p.locator('main a[href="/community/new/"]').count(), 1)
+                spacing = p.evaluate("""() => {
+                    const value = selector => getComputedStyle(document.querySelector(selector));
+                    return {
+                        section: parseFloat(value('.home-content-grid').marginBlockStart),
+                        memberLinks: parseFloat(value('.home-member-grid').gap),
+                        communityLinks: parseFloat(value('.home-community-nav').gap),
+                        sidebar: parseFloat(value('.home-sidebar').rowGap),
+                    };
+                }""")
+                self.assertGreaterEqual(spacing["section"], 20, (width, spacing))
+                self.assertGreaterEqual(spacing["memberLinks"], 9, (width, spacing))
+                self.assertGreaterEqual(spacing["communityLinks"], 12, (width, spacing))
+                self.assertGreaterEqual(spacing["sidebar"], 15, (width, spacing))
+                self.assertTrue(p.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), width)
+
     def test_homepage_handles_expanded_localized_copy_without_horizontal_scroll(self):
         p = self.page
         for width in [320, 390, 768, 1440]:

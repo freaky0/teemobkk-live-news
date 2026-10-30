@@ -205,16 +205,18 @@ class WebTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '<section class="home-start" aria-labelledby="home-start-title">')
         self.assertContains(response, "태국 생활, 무엇이 궁금하세요?")
-        for category in ["visa", "living", "jobs", "foodtravel"]:
+        for category in ["visa", "living", "market", "foodtravel"]:
             with self.subTest(category=category):
                 self.assertContains(response, f"?category={category}")
+        self.assertContains(response, "중고거래")
         self.assertContains(response, "뉴스에서 생활로")
         self.assertNotContains(response, "읽기 전용 뉴스 연결")
 
     def test_guest_write_actions_explain_login_and_preserve_selected_board(self):
         home = self.client.get("/")
-        self.assertContains(home, 'class="btn home-secondary-action" href="/community/new/">로그인 후 질문 쓰기</a>')
-        self.assertContains(home, "로그인 후 질문 쓰기", count=2)
+        self.assertContains(home, 'class="btn home-secondary-action" href="/community/">커뮤니티 둘러보기</a>')
+        self.assertContains(home, 'class="home-community-nav" aria-label="커뮤니티 바로가기"')
+        self.assertContains(home, "로그인 후 질문 쓰기", count=1)
 
         board = self.client.get(reverse("post-list"), {"category": "visa"})
         self.assertContains(board, 'href="/community/new/?category=visa">로그인 후 글쓰기</a>')
