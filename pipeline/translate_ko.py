@@ -159,7 +159,7 @@ _MONEY_AMOUNT_TEXT = re.compile(
     rf"|{_MONEY_AMOUNT}\s*{_MONEY_SUFFIX_CURRENCY})",
     re.I,
 )
-_NUMBER_TEXT = re.compile(r"(?<![\w.])\d[\d,]*(?:\.\d+)?(?![\w.])")
+_NUMBER_TEXT = re.compile(r"(?<![A-Za-z0-9_.])\d[\d,]*(?:\.\d+)?(?![A-Za-z0-9_.])")
 _HANGUL_TEXT = re.compile(r"[\uac00-\ud7a3]")
 _THAI_TEXT = re.compile(r"[\u0e00-\u0e7f]")
 

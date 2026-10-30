@@ -62,6 +62,15 @@ class TranslateOne(unittest.TestCase):
             "Korean title", "", {"title": "한국어 제목", "summary": "원문에 없던 요약"}
         ))
 
+    def test_codex_translation_preserves_numbers_with_hangul_unit_suffixes(self):
+        expected = '{"title":"신청자 10명 접수","summary":""}'
+        with patch.dict(os.environ, {"TG_TRANSLATE_PROVIDER": "openai-codex"}):
+            with patch.object(translate_ko, "_complete_with_codex", return_value=expected):
+                self.assertEqual(
+                    translate_ko.translate_one("10 applications were received", ""),
+                    {"title": "신청자 10명 접수", "summary": ""},
+                )
+
     def test_compound_thai_billion_baht_amount_is_preserved(self):
         self.assertTrue(translate_ko._preserves_baht_amounts(
             "1 พันล้านบาท", "10억 바트"
