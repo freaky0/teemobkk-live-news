@@ -55,7 +55,7 @@ def _detail_context(request, article, back_url, comment_form=None):
 
 def detail(request,article_id,comment_form=None,status=200):
     try:
-        article=news.get_article(article_id)
+        article=news.get_article(article_id,include_full_text=True)
     except news.NewsUnavailable:
         return render(request,'news/error.html',{'news_error':NOTICE},status=503)
     if not article:
@@ -127,7 +127,7 @@ def api_list(request):
 @permission_classes([AllowAny])
 def api_detail(request,article_id):
     try:
-        article=news.get_article(article_id)
+        article=news.get_article(article_id,include_full_text=True)
     except news.NewsUnavailable:
         return Response({'detail':NOTICE},status=503)
     if not article:

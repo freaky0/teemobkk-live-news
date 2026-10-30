@@ -168,7 +168,7 @@ def text_match_clause(columns, needle):
     ) + ')', [needle] * len(columns)
 
 
-def projection_fields(conn):
+def projection_fields(conn, include_full_text=False):
     columns={row['name'] for row in conn.execute('PRAGMA table_info(articles)')}
     if 'image_url' in columns:
         image="CASE WHEN safe_url(a.image_url)=1 AND lower(a.image_url) LIKE 'https://%' THEN a.image_url ELSE '' END AS image_url"
@@ -178,7 +178,11 @@ def projection_fields(conn):
         video="CASE WHEN safe_url(a.video_url)=1 AND lower(a.video_url) LIKE 'https://%' THEN a.video_url ELSE '' END AS video_url"
     else:
         video="'' AS video_url"
-    return FIELDS+','+image+','+video
+    fields=FIELDS+','+image+','+video
+    if include_full_text:
+        full_text="a.full_text_ko" if 'full_text_ko' in columns else "''"
+        fields+=','+full_text+' AS full_text'
+    return fields
 
 
 def project_video(value):
@@ -216,7 +220,7 @@ def project(row):
     if published and timezone.is_naive(published):
         published=published.replace(tzinfo=dt_timezone.utc)
     video=project_video(row['video_url'] or '')
-    return {
+    article = {
         'id':public_id(row['link']),
         'title':strip_tags(row['title_ko']).strip(),
         'summary':strip_tags(row['summary_ko'] or '').strip(),
@@ -229,6 +233,9 @@ def project(row):
         'video_url':video['url'],
         'video_embed_url':video['embed_url'],
     }
+    if 'full_text' in row.keys():
+        article['full_text']=strip_tags(row['full_text'] or '').strip()
+    return article
 
 
 def list_articles(page=1,query='',page_size=20,category='',region_group='',include_categories=False):
@@ -277,13 +284,13 @@ def list_articles(page=1,query='',page_size=20,category='',region_group='',inclu
         return NewsPage([project(row) for row in rows],total,page,page_size,categories,category,REGION_GROUPS,region_group)
 
 
-def get_article(article_id):
+def get_article(article_id, include_full_text=False):
     if len(article_id)!=64 or any(c not in '0123456789abcdef' for c in article_id):
         return None
     with open_news() as conn:
         conn.execute('BEGIN')
         conditions,params=visibility(conn)
-        fields=projection_fields(conn)
+        fields=projection_fields(conn,include_full_text=include_full_text)
         conditions.append('public_id(a.link)=?')
         row=conn.execute('SELECT '+fields+' FROM articles a WHERE '+' AND '.join(conditions),params+[article_id]).fetchone()
         return project(row) if row else None

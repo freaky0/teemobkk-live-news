@@ -1,0 +1,20 @@
+[Unit]
+Description=Fetch and translate licensed Thai news article bodies
+After=network-online.target teemo-live-news.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=teemo
+Group=teemo
+WorkingDirectory=/opt/teemo-live-news
+EnvironmentFile=/opt/teemo-live-news/.env.push
+ExecStart=/usr/bin/python3 /opt/teemo-live-news/pipeline/full_article_worker.py
+TimeoutStartSec=3600
+Nice=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/teemo-live-news
+StandardOutput=journal
+StandardError=journal

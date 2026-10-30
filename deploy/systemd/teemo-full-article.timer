@@ -1,0 +1,11 @@
+[Unit]
+Description=Check Thai news articles for full-text translation
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=10min
+AccuracySec=10s
+Unit=teemo-full-article.service
+
+[Install]
+WantedBy=timers.target
