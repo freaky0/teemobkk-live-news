@@ -211,7 +211,14 @@ def post_detail(request, pk):
     visible = services.visible_comments(request.user, post).select_related('author', 'author__membership').annotate(like_count=Count('likes'), viewer_likes=viewer).order_by('created_at', 'pk')
     replies = visible.filter(parent__isnull=False)
     comments = visible.filter(parent__isnull=True).prefetch_related(Prefetch('replies', queryset=replies))
-    return render(request, "community/detail.html", {"post": post, "comments": comments, "comment_form": CommentForm(), "report_form": ReportForm(), "back_url": back_url(request)})
+    return render(request, "community/detail.html", {
+        "post": post,
+        "create_category": services.canonical_life_category(post.category),
+        "comments": comments,
+        "comment_form": CommentForm(),
+        "report_form": ReportForm(),
+        "back_url": back_url(request),
+    })
 
 
 @never_cache
@@ -245,6 +252,7 @@ def post_create(request):
         raise PermissionDenied
     category = request.GET.get('category', '')
     initial_category = category if category in dict(CATEGORIES) else 'questions'
+    selected_category = category if category in dict(CATEGORIES) else ''
     form = PostForm(request.POST or None, initial={'category': initial_category}, staff=request.user.is_staff)
     if request.method == "POST" and form.is_valid():
         try:
@@ -254,7 +262,9 @@ def post_create(request):
             return redirect("post-detail", pk=post.pk)
         except (ValidationError, APIValidationError) as exc:
             service_error(form, exc)
-    return render(request, "community/write.html", post_editor_context(form, editing=False))
+    return render(request, "community/write.html", post_editor_context(
+        form, editing=False, selected_category=selected_category,
+    ))
 
 @login_required
 @never_cache

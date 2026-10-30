@@ -216,10 +216,14 @@ class WebTests(TestCase):
         home = self.client.get("/")
         self.assertContains(home, 'class="btn home-secondary-action" href="/community/">커뮤니티 둘러보기</a>')
         self.assertContains(home, 'class="home-community-nav" aria-label="커뮤니티 바로가기"')
-        self.assertContains(home, "로그인 후 질문 쓰기", count=1)
+        self.assertNotContains(home, 'class="btn primary" href="/community/new/"')
+        self.assertNotContains(home, "질문 쓰기")
 
         board = self.client.get(reverse("post-list"), {"category": "visa"})
         self.assertContains(board, 'href="/community/new/?category=visa">로그인 후 글쓰기</a>')
+        self.assertContains(board, 'class="nav-write" href="/community/new/?category=visa"')
+        detail = self.client.get(reverse("post-detail", args=[self.post.pk]))
+        self.assertContains(detail, 'class="nav-write" href="/community/new/?category=living"')
 
         protected = self.client.get(f'{reverse("post-create")}?category=visa')
         self.assertEqual(protected.status_code, 302)
@@ -229,8 +233,7 @@ class WebTests(TestCase):
 
         self.client.force_login(self.owner)
         signed_in_home = self.client.get("/")
-        self.assertContains(signed_in_home, "질문 쓰기")
-        self.assertNotContains(signed_in_home, "로그인 후 질문 쓰기")
+        self.assertNotContains(signed_in_home, "질문 쓰기")
 
     def test_homepage_hero_copy_wraps_without_forced_line_breaks(self):
         response = self.client.get("/")
