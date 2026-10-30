@@ -115,6 +115,7 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.go('/community/new/?category=free')
         heading = self.page.locator('[data-board-heading]')
         self.assertEqual(heading.inner_text(), '자유게시판')
+        self.assertEqual(self.page.locator('[data-editor-guide-title]').inner_text(), '자유게시판 작성 안내')
         self.assertEqual(self.page.get_by_text('이웃에게 질문하기', exact=True).count(), 0)
         self.assertEqual(self.page.get_by_text('질문은 서버 DB에 저장됩니다. 닉네임과 함께 공개됩니다.', exact=True).count(), 0)
         classification = self.page.locator('[data-classification-fields]')
@@ -138,6 +139,10 @@ class BrowserFlowTests(StaticLiveServerTestCase):
             with self.subTest(category=value):
                 self.select_board(value)
                 self.assertEqual(heading.inner_text(), label)
+                expected_guide = {'free': '자유게시판 작성 안내', 'market': '중고 거래 작성 안내',
+                                  'jobs': '구인구직 작성 안내', 'foodtravel': '맛집·여행 후기 작성 안내',
+                                  'questions': '질문 작성 안내'}[value]
+                self.assertEqual(self.page.locator('[data-editor-guide-title]').inner_text(), expected_guide)
                 for section in ('market', 'job', 'place'):
                     visible = self.page.locator(f'[data-{section}-fields]').is_visible()
                     self.assertEqual(visible, section == active)
@@ -147,6 +152,9 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         for width in (320, 390, 1440):
             self.page.set_viewport_size({'width': width, 'height': 900})
             self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), width)
+            guide = self.page.locator('.editor-guide').bounding_box()
+            self.assertGreaterEqual(guide['x'], 0, width)
+            self.assertLessEqual(guide['x'] + guide['width'], width, width)
             self.page.screenshot(path=str(self.output / f'compact-write-{width}.png'), full_page=True)
         self.assertEqual(self.errors, [])
 

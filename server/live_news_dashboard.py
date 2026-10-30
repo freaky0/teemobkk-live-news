@@ -41,8 +41,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
-ROOT = Path(__file__).resolve().parent.parent
-DB_FILE = ROOT / "news.db"
+ROOT = Path(os.environ.get("TEEMO_DATA_ROOT", str(_REPO_ROOT))).resolve()
+DB_FILE = Path(os.environ.get("TEEMO_NEWS_DB_FILE", str(ROOT / "news.db"))).resolve()
 PUBLIC_MODE = False
 DEFAULT_INTERVAL = 30
 RETENTION_HOURS = 24
@@ -756,6 +756,12 @@ def init_db() -> None:
             "region TEXT, category TEXT, categories TEXT, asset TEXT, priority INTEGER, "
             "published_at TEXT NOT NULL, collected_at TEXT)"
         )
+        # Only newly inserted articles enter this queue. An additive table avoids scanning
+        # the archive for old rows with missing Korean fields during normal collection.
+        connection.execute(
+            "CREATE TABLE IF NOT EXISTS article_translation_queue ("
+            "link TEXT PRIMARY KEY, queued_at TEXT NOT NULL)"
+        )
         # A database created before multi-label matching has no `categories` column. Add it and
         # leave the old rows blank rather than guessing at them: split_categories() falls back to
         # `category`, and tools/retag_categories.py recomputes the archive from the stored text.
@@ -831,6 +837,34 @@ def init_db() -> None:
         connection.commit()
 
 
+def queued_translation_links(limit: int = 5) -> list[str]:
+    """Read links explicitly queued at insert time; never infer a translation backfill."""
+    limit = max(1, min(int(limit), 100))
+    with DB_LOCK, closing(db_connect()) as connection:
+        rows = connection.execute(
+            "SELECT link FROM article_translation_queue ORDER BY queued_at, link LIMIT ?", (limit,)
+        ).fetchall()
+    return [str(row["link"]) for row in rows]
+
+
+def clear_completed_translation_queue(links: list[str]) -> int:
+    """Remove only queued links whose required Korean text has been stored."""
+    links = list(dict.fromkeys(str(link) for link in links if link))
+    if not links:
+        return 0
+    placeholders = ",".join("?" for _ in links)
+    with DB_LOCK, closing(db_connect()) as connection:
+        cursor = connection.execute(
+            "DELETE FROM article_translation_queue WHERE link IN (" + placeholders + ") "
+            "AND EXISTS (SELECT 1 FROM articles a WHERE a.link=article_translation_queue.link "
+            "AND TRIM(COALESCE(a.title_ko,''))<>'' "
+            "AND (TRIM(COALESCE(a.summary,''))='' OR TRIM(COALESCE(a.summary_ko,''))<>''))",
+            links,
+        )
+        connection.commit()
+        return cursor.rowcount
+
+
 def insert_articles(articles: list[dict[str, Any]]) -> int:
     rows = [
         (
@@ -849,12 +883,21 @@ def insert_articles(articles: list[dict[str, Any]]) -> int:
         return 0
     with DB_LOCK, db_connect() as connection:
         before = connection.total_changes
-        connection.executemany(
-            "INSERT OR IGNORE INTO articles (link, title, summary, source, source_type, region, category, categories, asset, priority, published_at, collected_at, original_source) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            rows,
-        )
-        inserted = connection.total_changes - before
+        inserted_rows = []
+        for row in rows:
+            cursor = connection.execute(
+                "INSERT OR IGNORE INTO articles (link, title, summary, source, source_type, region, category, categories, asset, priority, published_at, collected_at, original_source) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", row,
+            )
+            if cursor.rowcount == 1:
+                inserted_rows.append(row)
+        inserted = len(inserted_rows)
+        if inserted_rows:
+            queued_at = datetime.now(timezone.utc).isoformat()
+            connection.executemany(
+                "INSERT OR IGNORE INTO article_translation_queue (link, queued_at) VALUES (?, ?)",
+                [(row[0], queued_at) for row in inserted_rows],
+            )
         # A row collected before this column existed - or one whose feed had not published a
         # publisher name yet - carries a blank name, and INSERT OR IGNORE would leave it blank for
         # good. The name therefore moves one way only: from empty to filled, and only for the row's
@@ -1700,14 +1743,18 @@ def collect_news() -> dict[str, Any]:
     # arriving in a later cycle under another outlet's link is the repetition a reader notices.
     deduped = drop_already_stored(dedupe_by_region(fresh_articles))
     inserted = insert_articles(deduped)
-    # Translation is deliberately best-effort: if providers are unavailable, originals stay readable
-    # and the next collection cycle can retry the pending rows.
+    # Translation is deliberately best-effort. Only links first inserted by this collector are
+    # queued; transient provider failures remain queued for a later cycle. The existing archive is
+    # never scanned to discover untranslated historical articles.
     if os.environ.get("TEEMO_TRANSLATE_KO_ENABLED", "1").strip().lower() not in {"0", "false", "no"}:
         try:
             from pipeline import translate_ko
-            translated = translate_ko.translate_pending(limit=translate_ko.COLLECT_BATCH)
+            queued_links = queued_translation_links(limit=translate_ko.COLLECT_BATCH)
+            translated = (translate_ko.translate_pending(limit=len(queued_links), links=queued_links)
+                          if queued_links else 0)
             if translated:
                 logging.info("Korean translations saved: %d", translated)
+            clear_completed_translation_queue(queued_links)
         except Exception:
             logging.exception("Korean translation post-processing failed; collection continues")
     # Publisher images and video links are best-effort: a missing media hint leaves the

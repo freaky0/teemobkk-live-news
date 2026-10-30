@@ -13,6 +13,12 @@
   <div class="panel">
     <form method="post" data-editor data-title-suffix="{% if editing %} 수정{% else %} 글쓰기{% endif %} | TeemoBKK POST" {% if request.method == 'POST' %}data-bound{% endif %} data-draft-key="{% if editing %}edit-{{ post.pk }}{% else %}new{% endif %}"{% if editing %} data-original-category="{{ post.category }}"{% endif %}>
       {% csrf_token %}
+      <aside class="editor-guide" aria-live="polite" aria-labelledby="editor-guide-title">
+        <h2 id="editor-guide-title" data-editor-guide-title>{{ board_guide.title }}</h2>
+        <p data-editor-guide-description>{{ board_guide.description }}</p>
+        <ul data-editor-guide-tips>{% for tip in board_guide.tips %}<li>{{ tip }}</li>{% endfor %}</ul>
+      </aside>
+      {{ board_guides|json_script:"board-guides-data" }}
       {% include 'community/fields.html' %}
       <p class="status" id="draft-status" role="status">텍스트 초안은 이 브라우저에 자동 저장합니다.</p>
       <div class="form-bottom">

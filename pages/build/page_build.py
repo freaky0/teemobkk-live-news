@@ -988,23 +988,49 @@ function calendarDisplayName(e){return CFG.lang==='ko'&&typeof e.name_ko==='stri
 function calNum(t){const m=String(t==null?'':t).replace(/,/g,'').match(/-?\\d+(\\.\\d+)?/);return m?parseFloat(m[0]):null}
 function calTone(e){const a=calNum(e.actual),c=calNum(e.consensus);if(a===null||c===null)return 'flat';
   const tol=Math.abs(c)*0.02;return Math.abs(a-c)<=tol?'flat':(a>c?'up':'down')}
+function updateCalendarCountryOptions(data){
+  const select=document.querySelector('#cal-country');if(!select)return;
+  const selected=select.value,all=CFG.calendarLabels.calCountryAll;
+  const choices=new Map();
+  for(const day of (data.days||[]))for(const e of (day.events||[])){
+    const value=String(e.country_code||e.country||'').trim();
+    if(value)choices.set(value,String(e.country||value).trim())}
+  const options=[new Option(all,'')];
+  for(const [code,name] of Array.from(choices.entries()).sort((a,b)=>a[0].localeCompare(b[0]))){
+    const option=new Option(code===name?code:code+' · '+name,code);options.push(option)}
+  select.replaceChildren(...options);
+  if(choices.has(selected))select.value=selected}
 function paintCalendar(data){
+  window.__calendarData=data||{days:[]};data=window.__calendarData;
   const days=(data&&data.days)||[];
+  updateCalendarCountryOptions(data||{days:[]});
+  const countryFilter=document.querySelector('#cal-country')?.value||'';
+  const importanceFilter=document.querySelector('#cal-importance')?.value||'all';
   if(!days.length){document.querySelector('#cal-stamp').textContent='';
     document.querySelector('#cal-body').innerHTML='<div class="note">표시할 일정이 없습니다.</div>';
     document.querySelector('#cal-sum').textContent=fmt(CFG.calendarLabels.window,0)+' · '+fmt(CFG.calendarLabels.major,0);return}
   document.querySelector('#cal-stamp').textContent=(data.updated_at_kst||'')+' KST';
   document.querySelector('#cal-body').innerHTML=days.map(d=>{
-    const rows=d.events.length?d.events.map(e=>{
+    const filtered=(d.events||[]).filter(e=>{
+      const country=String(e.country_code||e.country||'');
+      const level=Number(e.importance||0);
+      if(countryFilter&&country!==countryFilter)return false;
+      if(importanceFilter==='5'&&level!==5)return false;
+      if(importanceFilter==='4'&&level!==4)return false;
+      if(importanceFilter==='3+'&&level<3)return false;
+      if(importanceFilter==='1-2'&&(level<1||level>2))return false;
+      return true
+    }).sort((a,b)=>Number(b.importance||0)-Number(a.importance||0)||String(a.kst||'').localeCompare(String(b.kst||'')));
+    const rows=filtered.length?filtered.map(e=>{
       const parts=[];
-      if(e.kind==='earnings'){parts.push('실적 발표')}
-      else if(e.kind==='potus'){parts.push('대통령 일정')}
+      if(e.kind==='earnings'){parts.push(CFG.calendarLabels.slotEarnings)}
+      else if(e.kind==='potus'){parts.push(CFG.calendarLabels.slotPotus)}
       else{
         if(e.kind==='speech'&&e.fed_vote)parts.push(e.fed_vote);
         if(e.released)parts.push(shown(e.actual,calTone(e)));
-        else if(e.passed)parts.push('발표');
-        if(e.consensus)parts.push('예상 '+calEsc(e.consensus));
-        if(e.previous)parts.push('이전 '+calEsc(e.previous));
+        else if(e.passed)parts.push(CFG.calendarLabels.slotReleased);
+        if(e.consensus)parts.push(CFG.calendarLabels.slotExpected+' '+calEsc(e.consensus));
+        if(e.previous)parts.push(CFG.calendarLabels.slotPrevious+' '+calEsc(e.previous));
       }
       const val=parts.join(' · ');
       const label=calEsc(e.country_code||e.country)+' · ';
@@ -1015,20 +1041,23 @@ function paintCalendar(data){
       return '<div class="cal-row '+(e.kind||'econ')+' i'+e.importance+'">'+
         '<span class="cal-t">'+at+'</span>'+
         '<span class="cal-n">'+name+'</span><span class="cal-v">'+val+'</span></div>'}).join('')
-      :'<div class="note">주요 지표 없음</div>';
+      :'<div class="cal-no-matches">'+calEsc(CFG.calendarLabels.calNoMatches)+'</div>';
     return '<div class="cal-day"><h3>'+calEsc(d.label)+' <span>'+calEsc(String(d.date).slice(5))+' ('+calEsc(d.weekday)+')</span></h3>'+rows+'</div>'}).join('');
   const renderedRows=document.querySelectorAll('#cal-body .cal-row');
   const total=renderedRows.length,top=Array.from(renderedRows).filter(row=>
     Array.from(row.classList).some(name=>name.length>1&&name[0]==='i'&&Number(name.slice(1))>=4)).length;
   document.querySelector('#cal-sum').textContent=fmt(total===1?CFG.calendarLabels.windowOne:CFG.calendarLabels.window,total)
     +' · '+fmt(top===1?CFG.calendarLabels.majorOne:CFG.calendarLabels.major,top)
-    +' · '+'출처 나스닥 캘린더 · 연준 · 백악관 · Factba.se'
-    +' · '+'시각 기준 KST(UTC+9) · 방콕은 여기서 2시간 뒤'
-    +' · '+fmt('연준 인사 기준일 {n}',data.fed_roster_as_of||'?')}
+    +' · '+CFG.calendarLabels.calSources
+    +' · '+CFG.calendarLabels.calTimeBasis
+    +' · '+fmt(CFG.calendarLabels.calRosterAsOf,data.fed_roster_as_of||'?')}
 function loadCalendar(){
   fetch(CAL_URL,{cache:'no-cache'}).then(r=>{
     if(!r.ok)throw Error(r.status);return r.json()
   }).then(paintCalendar).catch(()=>calendarFailure('경제지표 데이터를 불러오지 못했습니다.'))}
+['cal-country','cal-importance'].forEach(id=>{
+  const select=document.getElementById(id);
+  if(select)select.addEventListener('change',()=>{if(window.__calendarData)paintCalendar(window.__calendarData)})});
 
 document.querySelectorAll('.tab[data-tab]').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 // The category and source rows are built by renderPills(), which binds each button as it
@@ -1590,7 +1619,13 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
         "calendarLabels": {"window": ui_text.UI[lang]["calWindowCount"],
                            "major": ui_text.UI[lang]["calTopCount"],
                            "windowOne": ui_text.UI[lang]["calWindowCountOne"],
-                           "majorOne": ui_text.UI[lang]["calTopCountOne"]},
+                           "majorOne": ui_text.UI[lang]["calTopCountOne"],
+                           **{key: ui_text.UI[lang][key] for key in (
+                               "calCountryAll", "calImportanceAll", "calImportance5",
+                               "calImportance4", "calImportance3", "calImportance12",
+                               "calNoMatches", "calSources", "calTimeBasis", "calRosterAsOf",
+                               "slotEarnings", "slotPotus", "slotReleased", "slotExpected",
+                               "slotPrevious")}},
         "regionLabels": {"글로벌": "Global" if lang == "en" else "글로벌",
                          "태국": "Thailand" if lang == "en" else "태국"},
     }
@@ -1605,6 +1640,20 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
                      # The way out of a session belongs with the other operator controls, and only
                      # on the page that was served to a session in the first place.
                      + LOGOUT_CONTROL)
+    calendar_copy = ui_text.UI[lang]
+    calendar_filters = (
+        '<div class="cal-filters" role="group" aria-label="%s">'
+        '<label><span>%s</span><select id="cal-country" aria-label="%s">'
+        '<option value="">%s</option></select></label>'
+        '<label><span>%s</span><select id="cal-importance" aria-label="%s">'
+        '<option value="all">%s</option>'
+        '<option value="5">%s</option><option value="4">%s</option>'
+        '<option value="3+">%s</option><option value="1-2">%s</option>'
+        '</select></label></div>'
+    ) % tuple(html.escape(calendar_copy[key]) for key in (
+        "calFilterGroup", "calCountry", "calCountry", "calCountryAll",
+        "calImportance", "calImportance", "calImportanceAll", "calImportance5",
+        "calImportance4", "calImportance3", "calImportance12"))
     side = ('' if not admin else
             '<aside class="side admin"><div class="box"><h2>수집 상태</h2><div id="sources">'
             '<div class="note">대기 중</div></div></div>'
@@ -1722,6 +1771,7 @@ __TABS__
   <section class="cal" id="cal">
     <h2>경제지표 · 연설 · 실적 · 대통령 일정 <span class="note" id="cal-stamp"></span></h2>
     <p class="cal-sum" id="cal-sum"></p>
+    __CAL_FILTERS__
     <div class="cal-grid" id="cal-body"><div class="note">불러오는 중…</div></div>
   </section>
 
@@ -1822,7 +1872,8 @@ __TABS__
             .replace("__SEED__", seed)
             .replace("__BRIEFING__", briefing_html)
             .replace("__BRIEF_SRC__", html.escape(briefing_source))
-            .replace("__BRIEFING_TITLE__", html.escape(briefing_title)))
+            .replace("__BRIEFING_TITLE__", html.escape(briefing_title))
+            .replace("__CAL_FILTERS__", calendar_filters))
     return page
 
 

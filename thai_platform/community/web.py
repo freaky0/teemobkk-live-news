@@ -12,7 +12,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.cache import never_cache
 from rest_framework.exceptions import ValidationError as APIValidationError
 from .forms import CATEGORIES, REGIONS, AppealForm, CommentForm, PostForm, ReportForm
-from .models import BoardCategory, Comment, CommentLike, Post
+from .models import BoardCategory, Comment, CommentLike, Notification, Post
 from .board_versions import board_data_version
 from . import services
 
@@ -27,6 +27,17 @@ BOARD_COPY = {
     "living": ("생활 질문", "주거와 일상에서 마주친 궁금한 점을 묻고 답해요."),
     "visa": ("비자·체류", "비자와 체류 관련 경험과 정보를 함께 나눠요."),
     "travel": ("교통·여행", "태국의 이동과 여행에 필요한 정보를 나눠요."),
+}
+BOARD_GUIDES = {
+    "notice": {"title": "공지 작성 안내", "description": "운영진의 공식 소식과 이용 안내를 간결하게 전달해 주세요.", "tips": ["변경 내용과 적용 날짜를 제목에 담아 주세요.", "개인 정보나 확인되지 않은 안내는 게시하지 마세요."]},
+    "free": {"title": "자유게시판 작성 안내", "description": "태국에서 겪은 일상과 경험을 이웃과 나눠 보세요.", "tips": ["지역이나 상황을 덧붙이면 다른 회원이 공감하기 쉬워요.", "연락처·주소 등 개인 정보는 공개하지 마세요."]},
+    "questions": {"title": "질문 작성 안내", "description": "상황과 궁금한 점을 구체적으로 적으면 더 정확한 답을 받을 수 있어요.", "tips": ["지역, 일정, 예산처럼 답변에 필요한 조건을 적어 주세요.", "답을 찾으면 질문 상태를 해결로 표시해 주세요."]},
+    "market": {"title": "중고 거래 작성 안내", "description": "물건 상태와 거래 조건을 분명히 적어 안전한 거래를 도와주세요.", "tips": ["가격(바트), 상태, 거래 희망 지역을 확인해 주세요.", "송금 전 물건과 판매자 정보를 직접 확인하세요."]},
+    "jobs": {"title": "구인구직 작성 안내", "description": "직무와 근무 조건을 투명하게 알려 구직자와 연결해 주세요.", "tips": ["근무지, 급여, 근무 시간, 지원 방법을 적어 주세요.", "비자·취업 자격은 공식 기관의 최신 안내를 확인하세요."]},
+    "foodtravel": {"title": "맛집·여행 후기 작성 안내", "description": "직접 방문한 장소와 경험을 바탕으로 이웃에게 추천해 주세요.", "tips": ["장소명, 지역, 방문 시기와 가격대를 알려 주세요.", "광고·협찬이 있다면 관계를 밝혀 주세요."]},
+    "living": {"title": "생활 질문 작성 안내", "description": "집, 통신, 은행 등 생활에 필요한 정보를 함께 찾아요.", "tips": ["도시·동네와 현재 상황을 알려 주면 답변에 도움이 돼요.", "계좌번호, 여권번호 등 민감 정보는 올리지 마세요."]},
+    "visa": {"title": "비자·체류 정보 작성 안내", "description": "비자와 체류 경험을 나누되 기준과 날짜를 함께 적어 주세요.", "tips": ["비자 종류와 신청 시기를 밝혀 경험의 맥락을 알려 주세요.", "규정은 바뀔 수 있으니 공식 기관 안내도 함께 확인하세요."]},
+    "travel": {"title": "교통·여행 정보 작성 안내", "description": "이동 경로와 여행 팁을 공유해 태국 여행을 더 편하게 만들어요.", "tips": ["출발·도착지, 이동 수단, 소요 시간과 비용을 적어 주세요.", "운행 시간과 요금은 방문 전에 다시 확인해 주세요."]},
 }
 RESOLUTION_CATEGORIES = {
     Post.Category.QUESTIONS,
@@ -48,10 +59,13 @@ def call_service(name, *args):
 def post_editor_context(form, **extra):
     categories = dict(CATEGORIES)
     region_names = dict(REGIONS)
+    category = form["category"].value() or "questions"
     return {
         "form": form,
-        "board_name": categories.get(form["category"].value(), categories["questions"]),
+        "board_name": categories.get(category, categories["questions"]),
         "region_name": region_names.get(form["region"].value(), REGIONS[0][1]),
+        "board_guides": BOARD_GUIDES,
+        "board_guide": BOARD_GUIDES.get(category, BOARD_GUIDES["questions"]),
         **extra,
     }
 
@@ -68,6 +82,20 @@ def back_url(request):
 def home(request):
     from . import news
     context = {"posts": published(request.user)[:4], "helpful_posts": published(request.user).filter(helpful_count__gt=0).order_by('-helpful_count', '-created_at', '-pk')[:4]}
+    if request.user.is_authenticated:
+        membership = getattr(request.user, 'membership', None)
+        if request.user.is_active and (membership is None or membership.is_complete):
+            own_posts = services.activity(request.user, 'posts')
+            saved_posts = services.activity(request.user, 'bookmarks')
+            context['member_home'] = {
+                'questions': own_posts.filter(category__in=RESOLUTION_CATEGORIES).count(),
+                'answers': services.visible_comments(request.user).filter(author=request.user).count(),
+                'saved': saved_posts.count(),
+                'unread_answers': services.visible_notifications(request.user).filter(
+                    kind=Notification.Kind.REPLY, is_read=False,
+                ).count(),
+                'saved_posts': saved_posts.select_related('author')[:3],
+            }
     try:
         context["news_page"] = news.list_articles(page_size=5)
     except news.NewsUnavailable:
