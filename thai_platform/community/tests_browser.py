@@ -27,7 +27,10 @@ def temporary_sqlite_fixture():
 class BrowserFlowTests(StaticLiveServerTestCase):
     def setUp(self):
         self.member = get_user_model().objects.create_user(username="브라우저검증")
-        if self._testMethodName == 'test_staff_notice_pin_and_unpin':
+        if self._testMethodName in (
+            'test_staff_notice_pin_and_unpin',
+            'test_explicit_board_selection_overrides_saved_draft_category',
+        ):
             self.member.is_staff = True
             self.member.save(update_fields=['is_staff'])
         if self._testMethodName in ('test_private_messages_mobile_send', 'test_unread_badge_refreshes_and_pauses_in_hidden_tab', 'test_member_menu_mobile_keyboard_and_block', 'test_blocked_content_visibility_across_viewers', 'test_detail_member_menus_in_both_themes', 'test_combined_member_menu_and_comment_likes'):
@@ -461,8 +464,6 @@ class BrowserFlowTests(StaticLiveServerTestCase):
             f"localStorage.setItem('{key}', JSON.stringify({{title:'Saved draft', "
             "body:'Long enough saved draft body for a post.', region:'common', category:'market'}));"
         )
-        self.member.is_staff = True
-        self.member.save(update_fields=['is_staff'])
         for category in ('notice', 'free', 'questions', 'market', 'jobs', 'foodtravel', 'living', 'visa', 'travel'):
             with self.subTest(category=category):
                 self.go(f'/community/new/?category={category}')
@@ -893,9 +894,9 @@ class BrowserFlowTests(StaticLiveServerTestCase):
                         topicWordBreak: value('.home-start-card-description').wordBreak,
                         sidebarTitleWordBreak: value('#home-news-bridge-title').wordBreak,
                         communityLinkFontSize: value('.home-community-nav a[href="/community/"]').fontSize,
-                        buttonFontSize: value('.home-news-more').fontSize,
+                        buttonFontSize: value('.news-sidebar .btn').fontSize,
                         communityLinkFontWeight: value('.home-community-nav a[href="/community/"]').fontWeight,
-                        buttonFontWeight: value('.home-news-more').fontWeight,
+                        buttonFontWeight: value('.news-sidebar .btn').fontWeight,
                     };
                 }""")
                 self.assertGreaterEqual(spacing["section"], 20, (width, spacing))
