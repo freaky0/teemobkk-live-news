@@ -1100,7 +1100,10 @@ class BrowserFlowTests(StaticLiveServerTestCase):
             p.set_viewport_size({"width": width, "height": 844 if width < 768 else 1000})
             desktop = p.locator(selectors[0]).evaluate_all("links => links.map(a => [a.getAttribute('href'), Array.from(a.childNodes).filter(n => !(n.nodeType === 1 && n.getAttribute('aria-hidden') === 'true')).map(n => n.textContent).join('').trim()])")
             mobile = p.locator(selectors[1]).evaluate_all("links => links.map(a => [a.getAttribute('href'), Array.from(a.childNodes).filter(n => !(n.nodeType === 1 && n.getAttribute('aria-hidden') === 'true')).map(n => n.textContent).join('').trim()])")
-            self.assertEqual(mobile[:4], desktop)
+            self.assertEqual(mobile[:3], desktop)
+            self.assertEqual(mobile[3][1], "글쓰기")
+            self.assertTrue(mobile[3][0].startswith("/community/new/"))
+            self.assertEqual(p.locator('nav[aria-label="주 메뉴"] a.nav-write').count(), 0)
             self.assertEqual(mobile[-1][1], "내 계정")
             nav = selectors[1] if width == 390 else selectors[0]
             expected_next = mobile[1][0] if width == 390 else desktop[1][0]
