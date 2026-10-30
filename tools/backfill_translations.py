@@ -141,6 +141,7 @@ def main() -> int:
                 limit=len(links),
                 links=links,
                 throttle_seconds=throttle,
+                strict=True,
             )
         except Exception:
             logging.exception(
