@@ -48,6 +48,7 @@ from pipeline import semantic_event
 from pages.build import ui_text
 
 ROOT = Path(__file__).resolve().parent.parent.parent
+DATA_ROOT = Path(os.environ.get("TEEMO_DATA_ROOT", str(ROOT))).resolve()
 DOCS = ROOT / "docs"
 
 CSS = theme.DASHBOARD_CSS + "\n" + theme.USAGE_BAR_CSS
@@ -1937,7 +1938,7 @@ def not_found_page() -> str:
     return (ROOT / "pages" / "static" / "404.html").read_text(encoding="utf-8")
 
 
-BLOG_CONTENT_DIR = ROOT / "content" / "blog"
+BLOG_CONTENT_DIR = DATA_ROOT / "content" / "blog"
 
 _BLOG_SPLIT_RE = None
 
@@ -1982,11 +1983,11 @@ def build_blog(content_dir=None) -> dict:
     """Write /blog/ list plus one page per post. Returns {path: bytes}."""
     posts = read_blog_posts(content_dir)
     sizes = {"blog/index.html": write(
-        ROOT / "blog" / "index.html", landing.render_blog_list(posts))}
+        DATA_ROOT / "blog" / "index.html", landing.render_blog_list(posts))}
     for post in posts:
         slug = post["original_slug"]
         sizes["blog/%s/index.html" % slug] = write(
-            ROOT / "blog" / slug / "index.html",
+            DATA_ROOT / "blog" / slug / "index.html",
             landing.render_blog_post(post, landing.blog_markdown_to_html(post["body"])))
     return sizes
 
@@ -2003,9 +2004,9 @@ def build_public() -> dict[str, int]:
     The redirects are rewritten every cycle on purpose: whatever the publish step does, the old
     address must not come back as a copy of the dashboard.
     """
-    sizes = {"docs/404.html": write(DOCS / "404.html", not_found_page())}
+    sizes = {"docs/404.html": write(DATA_ROOT / "docs" / "404.html", not_found_page())}
     for name, to in MOVED.items():
-        sizes[name] = write(ROOT / name, redirect_page(to))
+        sizes[name] = write(DATA_ROOT / name, redirect_page(to))
     return sizes
 
 
@@ -2040,14 +2041,14 @@ def _prune_sections(keep) -> list:
     keep = {Path(p) for p in keep}
     removed = []
     for section in ("news", "thai"):
-        base = ROOT / section
+        base = DATA_ROOT / section
         if not base.is_dir():
             continue
         for dirpath, _dirnames, filenames in os.walk(base, topdown=False):
             here = Path(dirpath)
             if "index.html" in filenames and here not in keep:
                 shutil.rmtree(here)
-                removed.append(here.relative_to(ROOT).as_posix())
+                removed.append(here.relative_to(DATA_ROOT).as_posix())
     return removed
 
 
@@ -2063,23 +2064,23 @@ def build_server(db_path: str = "news.db") -> dict[str, int]:
     indicator pages later. Each has an English default and a Korean copy one directory down,
     which keeps the language switcher a plain relative link.
     """
-    sizes = {"sitemap.xml": write(ROOT / "sitemap.xml", sitemap_xml())}
+    sizes = {"sitemap.xml": write(DATA_ROOT / "sitemap.xml", sitemap_xml())}
     global_seed = seed_from_db(db_path, "\uae00\ub85c\ubc8c", False, "en")
     thai_seed = seed_from_db(db_path, "\ud0dc\uad6d", True, "en")
     # The section roots are in the keep set: build_server writes them (the section front pages and
     # the news dashboard), and pruning them first would leave a window where nothing answers.
     targets = ("news", "news/ko", "thai", "thai/news", "thai/news/ko")
-    pruned = _prune_sections(ROOT / t for t in targets)
+    pruned = _prune_sections(DATA_ROOT / t for t in targets)
     for gone in pruned:
         print("removed stale section %s (its address now redirects)" % gone)
     editorial_snapshot = landing.editorial_posts(limit=10)
-    sizes["index.html"] = write(ROOT / "index.html", landing.render_landing(editorial_snapshot))
+    sizes["index.html"] = write(DATA_ROOT / "index.html", landing.render_landing(editorial_snapshot))
     sizes.update(build_blog())
     sizes["perspectives/index.html"] = write(
-        ROOT / "perspectives" / "index.html", landing.render_perspectives_page(editorial_snapshot))
+        DATA_ROOT / "perspectives" / "index.html", landing.render_perspectives_page(editorial_snapshot))
     sizes["indicators/index.html"] = write(
-        ROOT / "indicators" / "index.html", landing.render_indicators_page())
-    sizes["thai/index.html"] = write(ROOT / "thai" / "index.html",
+        DATA_ROOT / "indicators" / "index.html", landing.render_indicators_page())
+    sizes["thai/index.html"] = write(DATA_ROOT / "thai" / "index.html",
                                      landing_thai.render_thai_landing())
     # Sections: /news is the market dashboard, /thai introduces the Thailand material and
     # /thai/news is its dashboard. Each has an English default and a Korean copy one level
@@ -2092,7 +2093,7 @@ def build_server(db_path: str = "news.db") -> dict[str, int]:
         alt = "../index.html" if code == "ko" else "ko/index.html"
         briefing_source, briefing_html = seed_briefing_from_db(db_path, region_name, code)
         sizes["%s/index.html" % section] = write(
-            ROOT / section / "index.html",
+            DATA_ROOT / section / "index.html",
             render(public=False, datadir="", want_thai=want_thai, icon_prefix="/",
                    admin=False, lang=code, alt=alt, seed_html=seed,
                    briefing_html=briefing_html, briefing_source=briefing_source))
@@ -2101,7 +2102,7 @@ def build_server(db_path: str = "news.db") -> dict[str, int]:
 
 def build_all() -> dict[str, int]:
     """Rewrite the local page and both published pages (used when building by hand)."""
-    sizes = {"index.html": write(ROOT / "index.html", admin_page())}
+    sizes = {"index.html": write(DATA_ROOT / "index.html", admin_page())}
     sizes.update(build_public())
     return sizes
 
