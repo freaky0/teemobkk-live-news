@@ -455,6 +455,22 @@ class BrowserFlowTests(StaticLiveServerTestCase):
         self.assertTrue(market_fields.evaluate('(element) => element.open'))
         self.assertFalse(self.page.get_by_label('가격 (THB)').is_disabled())
 
+    def test_explicit_board_selection_overrides_saved_draft_category(self):
+        key = f'post-draft:{self.member.pk}:new'
+        self.context.add_init_script(
+            f"localStorage.setItem('{key}', JSON.stringify({{title:'Saved draft', "
+            "body:'Long enough saved draft body for a post.', region:'common', category:'market'}));"
+        )
+        self.member.is_staff = True
+        self.member.save(update_fields=['is_staff'])
+        for category in ('notice', 'free', 'questions', 'market', 'jobs', 'foodtravel', 'living', 'visa', 'travel'):
+            with self.subTest(category=category):
+                self.go(f'/community/new/?category={category}')
+                self.assertEqual(self.page.locator('#id_category').input_value(), category)
+                self.assertEqual(self.page.locator('#id_title').input_value(), 'Saved draft')
+                market_fields = self.page.locator('[data-market-fields]')
+                self.assertEqual(market_fields.evaluate('(element) => element.open'), category == 'market')
+
     def test_category_details_survive_draft_reload(self):
         self.go('/community/new/')
         for category, fields in (
@@ -864,7 +880,8 @@ class BrowserFlowTests(StaticLiveServerTestCase):
                 self.assertEqual(p.locator('.home-start-card[href="/community/?category=market"] strong').inner_text(), '중고거래')
                 self.assertIn('필요한 물건을 사고팔고', p.locator('.home-start-card[href="/community/?category=market"]').inner_text())
                 self.assertEqual(p.locator(".home-secondary-action").get_attribute("href"), "/community/")
-                self.assertEqual(p.locator('main a[href="/community/new/"]').count(), 1)
+                self.assertEqual(p.locator('main a[href="/community/new/"]').count(), 0)
+                self.assertEqual(p.locator('.home-community-nav a:not(.btn)').count(), 2)
                 self.assertEqual(p.locator('#home-news-bridge-title').inner_text(), '뉴스를 넘어, 태국 생활의 답까지')
                 spacing = p.evaluate("""() => {
                     const value = selector => getComputedStyle(document.querySelector(selector));
@@ -875,6 +892,10 @@ class BrowserFlowTests(StaticLiveServerTestCase):
                         sidebar: parseFloat(value('.home-sidebar').rowGap),
                         topicWordBreak: value('.home-start-card-description').wordBreak,
                         sidebarTitleWordBreak: value('#home-news-bridge-title').wordBreak,
+                        communityLinkFontSize: value('.home-community-nav a[href="/community/"]').fontSize,
+                        buttonFontSize: value('.home-news-more').fontSize,
+                        communityLinkFontWeight: value('.home-community-nav a[href="/community/"]').fontWeight,
+                        buttonFontWeight: value('.home-news-more').fontWeight,
                     };
                 }""")
                 self.assertGreaterEqual(spacing["section"], 20, (width, spacing))
@@ -883,6 +904,8 @@ class BrowserFlowTests(StaticLiveServerTestCase):
                 self.assertGreaterEqual(spacing["sidebar"], 15, (width, spacing))
                 self.assertEqual(spacing["topicWordBreak"], "keep-all", (width, spacing))
                 self.assertEqual(spacing["sidebarTitleWordBreak"], "keep-all", (width, spacing))
+                self.assertEqual(spacing["communityLinkFontSize"], spacing["buttonFontSize"], (width, spacing))
+                self.assertEqual(spacing["communityLinkFontWeight"], spacing["buttonFontWeight"], (width, spacing))
                 self.assertTrue(p.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), width)
 
     def test_homepage_handles_expanded_localized_copy_without_horizontal_scroll(self):

@@ -185,7 +185,14 @@
 }
 
 .home-community-nav a:not(.btn) {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
   padding-block: 0.25rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 .home-news .home-section-head {

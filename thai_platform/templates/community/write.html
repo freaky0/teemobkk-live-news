@@ -11,7 +11,7 @@
     <h1 data-board-heading>{{ board_name }}</h1>
   </div>
   <div class="panel">
-    <form method="post" data-editor data-title-suffix="{% if editing %} 수정{% else %} 글쓰기{% endif %} | TeemoBKK POST" {% if request.method == 'POST' %}data-bound{% endif %} data-draft-key="{% if editing %}edit-{{ post.pk }}{% else %}new{% endif %}"{% if editing %} data-original-category="{{ post.category }}"{% endif %}>
+    <form method="post" data-editor data-title-suffix="{% if editing %} 수정{% else %} 글쓰기{% endif %} | TeemoBKK POST" {% if request.method == 'POST' %}data-bound{% endif %} data-draft-key="{% if editing %}edit-{{ post.pk }}{% else %}new{% endif %}"{% if selected_category %} data-selected-category="{{ selected_category }}"{% endif %}{% if editing %} data-original-category="{{ post.category }}"{% endif %}>
       {% csrf_token %}
       <aside class="editor-guide" aria-live="polite" aria-labelledby="editor-guide-title">
         <h2 id="editor-guide-title" data-editor-guide-title>{{ board_guide.title }}</h2>
