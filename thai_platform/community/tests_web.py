@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
-from .models import Post, FreePost, LivingPost, Comment, Report, Helpful
+from .models import Post, FreePost, LivingPost, Comment, Report, Helpful, Bookmark, Notification
 
 class WebTests(TestCase):
     def setUp(self):
@@ -32,6 +32,23 @@ class WebTests(TestCase):
         activity = self.client.get('/community/activity/')
         self.assertEqual(activity.status_code, 200)
         self.assertContains(activity, self.post.title)
+
+    def test_home_shows_private_member_activity_and_unread_answers(self):
+        answer = Comment.objects.create(post=self.post, author=self.owner, body='내 답변을 남겼습니다.')
+        Bookmark.objects.create(user=self.owner, post=self.post)
+        Notification.objects.create(recipient=self.owner, kind=Notification.Kind.REPLY,
+                                    post=self.post, comment=answer)
+        self.client.force_login(self.owner)
+        response = self.client.get('/')
+        summary = response.context['member_home']
+        self.assertEqual(summary['questions'], 1)
+        self.assertEqual(summary['answers'], 1)
+        self.assertEqual(summary['saved'], 1)
+        self.assertEqual(summary['unread_answers'], 1)
+        self.assertContains(response, '내 활동 한눈에 보기')
+        self.assertContains(response, '새 답변 알림')
+        self.assertContains(response, self.post.title)
+        self.assertContains(response, 'community/notifications/')
 
     def test_home_helpful_questions_use_public_real_votes_only(self):
         self.assertNotContains(self.client.get('/'), '도움을 받은 질문')
@@ -78,6 +95,7 @@ class WebTests(TestCase):
             with self.subTest(category=category):
                 response = self.client.get("/community/new/", {"category": category})
                 self.assertEqual(response.context["board_name"], label)
+                self.assertContains(response, response.context["board_guide"]["title"])
                 self.assertContains(response, f'<h1 data-board-heading>{label}</h1>', html=True)
                 self.assertNotContains(response, "이웃에게 질문하기")
                 self.assertNotContains(response, "질문은 서버 DB에 저장됩니다.")

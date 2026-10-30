@@ -36,10 +36,30 @@ class TranslateOne(unittest.TestCase):
                     "รับรางวัลสูงสุด 100 ล้านบาท", "รับเงิน 100 ล้านบาท"
                 ))
 
-    def test_correct_baht_amount_can_include_won_estimate(self):
+    def test_added_won_estimate_is_rejected_as_an_unverified_currency_conversion(self):
         translated = {"title": "최대 1억 바트(약 40억 원)", "summary": "보상 1억 바트(약 40억 원)"}
-        self.assertTrue(translate_ko._preserves_currency_and_amounts(
+        self.assertFalse(translate_ko._preserves_currency_and_amounts(
             "최대 100 ล้านบาท", "보상 100 ล้านบาท", translated
+        ))
+
+    def test_english_baht_amount_scales_are_normalized(self):
+        self.assertTrue(translate_ko._preserves_baht_amounts("THB 100 million", "1억 바트"))
+        self.assertTrue(translate_ko._preserves_baht_amounts("฿1.5bn", "15억 바트"))
+
+    def test_non_baht_currency_must_keep_its_original_value_and_currency(self):
+        self.assertTrue(translate_ko._preserves_money_facts("US$ 1.2 billion", "12억 달러"))
+        self.assertFalse(translate_ko._preserves_money_facts("US$100", "3,500 바트"))
+        self.assertFalse(translate_ko._preserves_money_facts("100 USD", "100,000 원"))
+
+    def test_unpriced_numbers_must_match_and_output_must_be_korean(self):
+        self.assertFalse(translate_ko._preserves_currency_and_amounts(
+            "Inflation reached 2.5%", "", {"title": "물가 상승률 3.5%", "summary": ""}
+        ))
+        self.assertFalse(translate_ko._preserves_currency_and_amounts(
+            "Inflation reached 2.5%", "", {"title": "Inflation reached 2.5%", "summary": ""}
+        ))
+        self.assertFalse(translate_ko._preserves_currency_and_amounts(
+            "Korean title", "", {"title": "한국어 제목", "summary": "원문에 없던 요약"}
         ))
 
     def test_compound_thai_billion_baht_amount_is_preserved(self):
@@ -340,6 +360,7 @@ class PendingTranslations(unittest.TestCase):
             connection.close()
             core.DB_FILE = legacy_path
             core.init_db()
+            self.assertEqual(core.queued_translation_links(limit=10), [])
             connection = sqlite3.connect(legacy_path)
             try:
                 columns = {row[1] for row in connection.execute("PRAGMA table_info(articles)")}
@@ -355,6 +376,26 @@ class PendingTranslations(unittest.TestCase):
                     os.unlink(legacy_path + suffix)
                 except OSError:
                     pass
+
+    def test_collector_translation_queue_retries_only_new_rows(self):
+        with sqlite3.connect(self.path) as connection:
+            connection.execute(
+                "INSERT INTO articles (link,title,summary,published_at,collected_at) VALUES (?,?,?,?,?)",
+                ("https://example.test/old-untranslated", "Old untranslated 1980", "Historical row",
+                 "2020-01-01T00:00:00+00:00", "2020-01-01T00:00:00+00:00"),
+            )
+        queued = core.queued_translation_links(limit=10)
+        self.assertEqual(queued, ["https://example.test/story"])
+        with patch.object(translate_ko, "translate_one", side_effect=RuntimeError("temporary outage")):
+            self.assertEqual(translate_ko.translate_pending(limit=1, links=queued), 0)
+        self.assertEqual(core.clear_completed_translation_queue(queued), 0)
+        self.assertEqual(core.queued_translation_links(limit=10), queued)
+        with patch.object(translate_ko, "translate_one", return_value={
+            "title": "시장이 2% 상승", "summary": "펀드가 비트코인을 매수했다."
+        }):
+            self.assertEqual(translate_ko.translate_pending(limit=1, links=queued), 1)
+        self.assertEqual(core.clear_completed_translation_queue(queued), 1)
+        self.assertEqual(core.queued_translation_links(limit=10), [])
 
     def test_collect_cycle_continues_when_translation_postprocessing_raises(self):
         from unittest.mock import patch
@@ -488,7 +529,7 @@ class BackfillSafety(unittest.TestCase):
 
     def test_ingest_default_translates_newest_article_first(self):
         with patch.dict(os.environ, {"TG_TRANSLATE_PROVIDER": "openai-codex"}):
-            with patch.object(translate_ko, "_complete_with_codex", return_value='{"title":"최신 제목","summary":"최신 요약"}') as codex:
+            with patch.object(translate_ko, "_complete_with_codex", return_value='{"title":"최신 제목 2","summary":"최신 요약 2"}') as codex:
                 count = translate_ko.translate_pending(limit=1, throttle_seconds=0)
         self.assertEqual(count, 1)
         codex.assert_called_once()
@@ -514,7 +555,8 @@ class BackfillSafety(unittest.TestCase):
 
         def translate(title, summary):
             translated_titles.append(title)
-            return '{"title":"한국어 제목","summary":"한국어 요약"}'
+            number = title.rsplit(" ", 1)[-1]
+            return json.dumps({"title": f"한국어 제목 {number}", "summary": f"한국어 요약 {number}"}, ensure_ascii=False)
 
         with patch.dict(os.environ, {"TG_TRANSLATE_PROVIDER": "openai-codex"}):
             with patch.object(translate_ko, "_complete_with_codex", side_effect=translate):
@@ -530,12 +572,12 @@ class BackfillSafety(unittest.TestCase):
             connection.execute("UPDATE articles SET title_ko = ? WHERE link = ?", ("기존 제목", self.links[0]))
             connection.commit()
         with patch.dict(os.environ, {"TG_TRANSLATE_PROVIDER": "openai-codex"}):
-            with patch.object(translate_ko, "_complete_with_codex", return_value='{"title":"새 제목","summary":"새 요약"}'):
+            with patch.object(translate_ko, "_complete_with_codex", return_value='{"title":"새 제목 0","summary":"새 요약 0"}'):
                 count = translate_ko.translate_pending(links=[self.links[0]], throttle_seconds=0)
         self.assertEqual(count, 1)
         with closing(sqlite3.connect(self.path)) as connection:
             row = connection.execute("SELECT title_ko, summary_ko FROM articles WHERE link = ?", (self.links[0],)).fetchone()
-        self.assertEqual(row, ("새 제목", "새 요약"))
+        self.assertEqual(row, ("새 제목 0", "새 요약 0"))
 
 
 if __name__ == "__main__":
