@@ -255,22 +255,12 @@ def _preserves_currency_and_amounts(title: str, summary: str,
 
 
 def _provider_order() -> list:
-    """Order providers by TG_TRANSLATE_PROVIDER, mirroring tg_push.py.
-
-    The Codex subscription route needs the hermes CLI and its profile, which the
-    collector service does not have; the API route needs OPENAI_API_KEY from the
-    service environment. The env var decides which is tried first.
-    """
-    import os
-
-    provider = (os.environ.get("TG_TRANSLATE_PROVIDER") or "").strip().lower()
-    if provider == "openai":
-        return [_complete_with_api, _complete_with_codex]
-    return [_complete_with_codex, _complete_with_api]
+    """Use Codex only; no direct model-provider API fallback is permitted."""
+    return [_complete_with_codex]
 
 
 def translate_one(title: str, summary: str) -> dict[str, str] | None:
-    """Try the configured provider first, then fall back to the other one."""
+    """Use the Codex subscription only; direct API fallback is disabled."""
     if os.environ.get("TG_TRANSLATE_PROVIDER", "").strip().lower() == "openai-codex":
         translated = _parse_translation(_complete_with_codex(title, summary))
         if translated is None or (summary.strip() and not translated["summary"]):

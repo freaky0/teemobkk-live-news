@@ -19,15 +19,15 @@ from pipeline import translate_ko
 
 
 class TranslateOne(unittest.TestCase):
-    def test_baht_magnitude_is_preserved_without_currency_conversion(self):
+    def test_invalid_codex_baht_magnitude_is_rejected_without_api_fallback(self):
         with patch.object(translate_ko, "_complete_with_codex", return_value='{"title":"최대 100억 원","summary":"보상 100억 원"}'):
-            with patch.object(translate_ko, "_complete_with_api", return_value='{"title":"최대 1억 바트","summary":"보상 1억 바트"}') as api:
+            with patch.object(translate_ko, "_complete_with_api") as api:
                 translated = translate_ko.translate_one(
                     "แจ้งเบาะแส รับรางวัลสูงสุด 100 ล้านบาท",
                     "ผู้แจ้งเบาะแสมีสิทธิ์รับเงิน 100 ล้านบาท",
                 )
-        self.assertEqual(translated, {"title": "최대 1억 바트", "summary": "보상 1억 바트"})
-        api.assert_called_once()
+        self.assertIsNone(translated)
+        api.assert_not_called()
 
     def test_changed_baht_magnitude_is_rejected(self):
         with patch.object(translate_ko, "_complete_with_codex", return_value='{"title":"최대 100억 바트","summary":"보상 100억 바트"}'):
@@ -92,20 +92,21 @@ class TranslateOne(unittest.TestCase):
 
         self.assertTrue(callable(tg_push.codex_complete_translation))
 
-    def test_codex_subscription_is_tried_before_api_fallback(self):
+    def test_openai_setting_still_uses_codex_without_api_fallback(self):
         expected = {"title": "번역 제목", "summary": "번역 요약"}
-        with patch.object(translate_ko, "_complete_with_codex", return_value='{"title":"번역 제목","summary":"번역 요약"}') as codex, \
-             patch.object(translate_ko, "_complete_with_api") as api:
-            self.assertEqual(translate_ko.translate_one("Original", "Summary"), expected)
+        with patch.dict(os.environ, {"TG_TRANSLATE_PROVIDER": "openai"}):
+            with patch.object(translate_ko, "_complete_with_codex", return_value='{"title":"번역 제목","summary":"번역 요약"}') as codex:
+                with patch.object(translate_ko, "_complete_with_api") as api:
+                    self.assertEqual(translate_ko.translate_one("Original", "Summary"), expected)
         codex.assert_called_once()
         api.assert_not_called()
 
-    def test_codex_failure_uses_api_fallback(self):
-        expected = {"title": "번역 제목", "summary": "번역 요약"}
-        with patch.object(translate_ko, "_complete_with_codex", side_effect=RuntimeError("rate limited")), \
-             patch.object(translate_ko, "_complete_with_api", return_value='{"title":"번역 제목","summary":"번역 요약"}') as api:
-            self.assertEqual(translate_ko.translate_one("Original", "Summary"), expected)
-        api.assert_called_once()
+    def test_codex_failure_does_not_use_api_fallback(self):
+        with patch.object(translate_ko, "_complete_with_codex", side_effect=RuntimeError("rate limited")) as codex, \
+             patch.object(translate_ko, "_complete_with_api") as api:
+            self.assertIsNone(translate_ko.translate_one("Original", "Summary"))
+        codex.assert_called_once()
+        api.assert_not_called()
 
     def test_explicit_codex_provider_never_uses_api_fallback(self):
         with patch.dict(os.environ, {"TG_TRANSLATE_PROVIDER": "openai-codex"}):
@@ -148,12 +149,11 @@ class TranslateOne(unittest.TestCase):
         translated = [{"link": "https://example.test/story", "title_ko": "번역 제목", "summary_ko": "번역 요약"}]
         self.assertNotEqual(collect_public.digest_of(original), collect_public.digest_of(translated))
 
-    def test_empty_translation_of_a_nonempty_summary_uses_fallback(self):
-        expected = {"title": "번역 제목", "summary": "번역 요약"}
+    def test_empty_codex_summary_is_rejected_without_api_fallback(self):
         with patch.object(translate_ko, "_complete_with_codex", return_value='{"title":"번역 제목","summary":""}'):
-            with patch.object(translate_ko, "_complete_with_api", return_value='{"title":"번역 제목","summary":"번역 요약"}') as api:
-                self.assertEqual(translate_ko.translate_one("Original", "A nonempty summary"), expected)
-        api.assert_called_once()
+            with patch.object(translate_ko, "_complete_with_api") as api:
+                self.assertIsNone(translate_ko.translate_one("Original", "A nonempty summary"))
+        api.assert_not_called()
 
     def test_invalid_and_failed_translations_fail_open(self):
         with patch.object(translate_ko, "_complete_with_codex", side_effect=RuntimeError("offline")), \
