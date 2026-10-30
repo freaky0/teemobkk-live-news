@@ -3,6 +3,7 @@ from __future__ import annotations
 """Fetch and translate licensed Thai article bodies without changing collector code."""
 
 import concurrent.futures
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
 import html
@@ -271,7 +272,7 @@ def ensure_schema(connection) -> None:
 def fetch_candidates(limit: int = FETCH_LIMIT):
     cutoff = (datetime.now(timezone.utc) - timedelta(days=ARTICLE_WINDOW_DAYS)).isoformat()
     retry_before = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
-    with core.DB_LOCK, core.db_connect() as connection:
+    with core.DB_LOCK, closing(core.db_connect()) as connection:
         ensure_schema(connection)
         rows = connection.execute(
             "SELECT link FROM articles WHERE region=? AND published_at>=? "
@@ -301,7 +302,7 @@ def resolve_links(links: list[str]) -> list[tuple[str, str]]:
 def store_fetched(results: list[tuple[str, str]]) -> int:
     checked_at = datetime.now(timezone.utc).isoformat()
     changed = 0
-    with core.DB_LOCK, core.db_connect() as connection:
+    with core.DB_LOCK, closing(core.db_connect()) as connection:
         for link, text in results:
             if text:
                 cursor = connection.execute(
@@ -321,7 +322,7 @@ def store_fetched(results: list[tuple[str, str]]) -> int:
 
 
 def translate_pending(limit: int = TRANSLATION_LIMIT) -> int:
-    with core.DB_LOCK, core.db_connect() as connection:
+    with core.DB_LOCK, closing(core.db_connect()) as connection:
         ensure_schema(connection)
         rows = connection.execute(
             "SELECT link, full_text FROM articles WHERE region=? "
@@ -341,7 +342,7 @@ def translate_pending(limit: int = TRANSLATION_LIMIT) -> int:
             continue
         if not translated:
             continue
-        with core.DB_LOCK, core.db_connect() as connection:
+        with core.DB_LOCK, closing(core.db_connect()) as connection:
             cursor = connection.execute(
                 "UPDATE articles SET full_text_ko=? WHERE link=? "
                 "AND TRIM(COALESCE(full_text_ko,''))=''",
