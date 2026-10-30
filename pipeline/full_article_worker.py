@@ -269,17 +269,56 @@ def ensure_schema(connection) -> None:
     connection.commit()
 
 
+def public_article_filter(connection) -> tuple[str, list[str]]:
+    """Mirror the public news visibility rules so hidden rows are never fetched or translated."""
+    required = {"articles", "hidden_links", "settings", "filter_rules", "filter_hits", "filter_keeps"}
+    tables = {str(row[0]) for row in connection.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'"
+    )}
+    if not required.issubset(tables):
+        raise RuntimeError("news visibility tables are incomplete; refusing to process articles")
+    setting = connection.execute(
+        "SELECT value FROM settings WHERE name='hidden_sources'"
+    ).fetchone()
+    try:
+        hidden_sources = json.loads(setting[0]) if setting else []
+    except (ValueError, TypeError) as exc:
+        raise RuntimeError("hidden source policy is invalid; refusing to process articles") from exc
+    if not isinstance(hidden_sources, list) or not all(isinstance(source, str) for source in hidden_sources):
+        raise RuntimeError("hidden source policy is invalid; refusing to process articles")
+
+    now = datetime.now(timezone.utc)
+    start = (now - timedelta(days=ARTICLE_WINDOW_DAYS)).isoformat()
+    end = (now + timedelta(minutes=1)).isoformat()
+    clauses = [
+        "region = ?",
+        "post_status IN ('ready','legacy')",
+        "TRIM(COALESCE(title_ko,'')) <> ''",
+        "(TRIM(COALESCE(summary,'')) = '' OR TRIM(COALESCE(summary_ko,'')) <> '')",
+        "julianday(published_at) BETWEEN julianday(?) AND julianday(?)",
+        "NOT EXISTS (SELECT 1 FROM hidden_links h WHERE h.link=articles.link)",
+        "NOT EXISTS (SELECT 1 FROM filter_hits h JOIN filter_rules r ON r.id=h.rule_id "
+        "WHERE h.link=articles.link AND r.enabled=1 "
+        "AND NOT EXISTS (SELECT 1 FROM filter_keeps k WHERE k.link=articles.link))",
+    ]
+    params: list[str] = [core.THAI_REGION, start, end]
+    if hidden_sources:
+        clauses.append("source NOT IN (" + ",".join("?" for _ in hidden_sources) + ")")
+        params.extend(hidden_sources)
+    return " AND ".join(clauses), params
+
+
 def fetch_candidates(limit: int = FETCH_LIMIT):
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=ARTICLE_WINDOW_DAYS)).isoformat()
     retry_before = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
     with core.DB_LOCK, closing(core.db_connect()) as connection:
         ensure_schema(connection)
+        public_filter, public_params = public_article_filter(connection)
         rows = connection.execute(
-            "SELECT link FROM articles WHERE region=? AND published_at>=? "
+            "SELECT link FROM articles WHERE " + public_filter + " "
             "AND TRIM(COALESCE(full_text,''))='' "
             "AND (full_text_checked_at IS NULL OR full_text_checked_at<?) "
             "ORDER BY published_at DESC, link DESC LIMIT ?",
-            (core.THAI_REGION, cutoff, retry_before, max(1, min(int(limit), FETCH_LIMIT))),
+            (*public_params, retry_before, max(1, min(int(limit), FETCH_LIMIT))),
         ).fetchall()
         return [str(row["link"]) for row in rows]
 
@@ -324,11 +363,12 @@ def store_fetched(results: list[tuple[str, str]]) -> int:
 def translate_pending(limit: int = TRANSLATION_LIMIT) -> int:
     with core.DB_LOCK, closing(core.db_connect()) as connection:
         ensure_schema(connection)
+        public_filter, public_params = public_article_filter(connection)
         rows = connection.execute(
-            "SELECT link, full_text FROM articles WHERE region=? "
+            "SELECT link, full_text FROM articles WHERE " + public_filter + " "
             "AND TRIM(COALESCE(full_text,''))<>'' AND TRIM(COALESCE(full_text_ko,''))='' "
             "ORDER BY published_at DESC, link DESC LIMIT ?",
-            (core.THAI_REGION, max(1, min(int(limit), TRANSLATION_LIMIT))),
+            (*public_params, max(1, min(int(limit), TRANSLATION_LIMIT))),
         ).fetchall()
     saved = 0
     for row in rows:
