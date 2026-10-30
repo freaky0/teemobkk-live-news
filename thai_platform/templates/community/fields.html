@@ -27,6 +27,7 @@
       <label for="{{ field.id_for_label }}">{{ field.label }}</label>
       {% if field.name == 'body' %}<p class="field-hint" id="id_body_hint">실명·연락처·주소·계좌 등 민감한 개인정보는 본문에 올리지 마세요.</p>{% endif %}
       {{ field|accessible_field }}
+      {% if field.help_text %}<p class="field-hint">{{ field.help_text }}</p>{% endif %}
     {% endif %}
     {% if field.errors %}<div class="error" role="alert" id="{{ field.auto_id }}_error">{{ field.errors }}</div>{% endif %}
   </div>

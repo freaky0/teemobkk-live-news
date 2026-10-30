@@ -38,6 +38,7 @@ urlpatterns = [
 
     path("community/", web.post_list, name="post-list"),
     path("community/new/", web.post_create, name="post-create"),
+    path("community/images/<int:pk>/", web.post_image, name="post-image"),
     path("community/activity/", web.my_activity, name="my-activity"),
     path("community/operator/hidden/", web.operator_hidden_posts, name="operator-hidden-posts"),
     path("community/members/<int:pk>/", web.public_member, name="public-member"),

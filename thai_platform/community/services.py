@@ -14,7 +14,7 @@ from members.models import MemberProfile
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from .models import (AuditEvent, Bookmark, Comment, FreePost, Helpful, JobsPost, LivingPost,
                      MarketPost, MemberBlock, ModerationAppeal, NewsComment, NoticePost,
-                     Notification, Post, Report)
+                     Notification, Post, Report, RESOLUTION_CATEGORIES)
 from .board_versions import board_data_version
 from django.db.models import Count, Exists, OuterRef, Q
 from .serializers import (CommentInputSerializer, PostInputSerializer, PostResolutionSerializer, EngagementInputSerializer,
@@ -145,6 +145,8 @@ def create_post(user, data):
     values.pop('board_data_version', None)
     if 'category' in values:
         values['category'] = canonical_life_category(values['category'])
+    if values.get('category', Post.Category.LIVING) not in RESOLUTION_CATEGORIES:
+        values['resolution'] = Post.Resolution.UNRESOLVED
     validate_board_category(values.get('category', Post.Category.LIVING), values.get('board_category'))
     if values.get('category') != Post.Category.MARKET:
         for key in ('market_kind', 'market_price', 'market_region', 'market_status'):
@@ -197,6 +199,8 @@ def update_post(user, post, data):
         raise ValidationError({'board_data_version': '게시글이 변경되었습니다. 최신 정보를 확인해 주세요.'})
     if 'category' in values:
         values['category'] = canonical_life_category(values['category'])
+    if values.get('category', post.category) not in RESOLUTION_CATEGORIES:
+        values['resolution'] = Post.Resolution.UNRESOLVED
     validate_board_category(values.get('category', post.category), values.get('board_category', post.board_category))
     board_fields = {
         Post.Category.MARKET: ('market_kind', 'market_price', 'market_region', 'market_status'),
@@ -378,6 +382,8 @@ def set_resolution(user, post, data):
         raise NotFound('Post not found.')
     if post.author_id != user.pk:
         raise PermissionDenied('Only the author may confirm resolution.')
+    if post.category not in RESOLUTION_CATEGORIES:
+        raise ValidationError({'resolution': 'This board does not use question resolution status.'})
     value = _validate(PostResolutionSerializer, data)['resolution']
     previous = post.resolution
     if previous != value:

@@ -1,1 +1,24 @@
-{% if post.category == 'foodtravel' %}{% if post.place_name or post.place_region or post.place_note or post.place_url %}<section class="place-details" aria-label="맛집·여행지 정보">{% if post.place_name %}<p><strong>장소</strong> {{ post.place_name }}</p>{% endif %}{% if post.place_region %}<p><strong>지역</strong> {{ post.get_place_region_display }}</p>{% endif %}{% if post.place_note %}<p><strong>방문 메모</strong> {{ post.place_note }}</p>{% endif %}{% if post.google_maps_search_url %}<p><a href="{{ post.google_maps_search_url }}" target="_blank" rel="noopener noreferrer">Google 지도에서 검색</a></p>{% endif %}{% if post.place_url %}<p><a href="{{ post.place_url }}" target="_blank" rel="noopener noreferrer">외부 장소 정보</a></p>{% endif %}</section>{% endif %}{% endif %}
+{% if post.category == 'foodtravel' %}
+  {% if post.place_name or post.place_region or post.place_note or post.place_url %}
+  <section class="place-details" aria-label="맛집·여행지 정보">
+    {% if post.place_name %}<p><strong>장소</strong> {{ post.place_name }}</p>{% endif %}
+    {% if post.place_region %}<p><strong>지역</strong> {{ post.get_place_region_display }}</p>{% endif %}
+    {% if post.place_note %}<p><strong>방문 메모</strong> {{ post.place_note }}</p>{% endif %}
+    {% if post.google_maps_link_url %}
+      <div class="map-preview">
+        {% if post.google_maps_embed_url %}
+          <iframe src="{{ post.google_maps_embed_url }}" title="{{ post.place_name|default:'장소' }} Google 지도 미리보기" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        {% else %}
+          <div class="map-preview-fallback">
+            <strong>Google 지도 미리보기</strong>
+            <span>{{ post.place_name|default:'등록한 장소 링크' }}</span>
+            <p>지도를 열어 위치와 주변 정보를 확인하세요.</p>
+          </div>
+        {% endif %}
+        <a class="btn" href="{{ post.google_maps_link_url }}" target="_blank" rel="noopener noreferrer">Google 지도에서 열기</a>
+      </div>
+    {% endif %}
+    {% if post.external_place_url %}<p><a href="{{ post.external_place_url }}" target="_blank" rel="noopener noreferrer">외부 장소 정보</a></p>{% endif %}
+  </section>
+  {% endif %}
+{% endif %}

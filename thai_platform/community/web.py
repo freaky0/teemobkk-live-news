@@ -5,15 +5,17 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Q, Prefetch, Count, Exists, OuterRef, Value, BooleanField
 from django.shortcuts import get_object_or_404, redirect, render
-from django.http import Http404
+from django.http import Http404, HttpResponse
+from django.db import transaction
 from rest_framework.exceptions import PermissionDenied as APIPermissionDenied, NotFound as APINotFound
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.cache import never_cache
 from rest_framework.exceptions import ValidationError as APIValidationError
 from .forms import CATEGORIES, REGIONS, AppealForm, CommentForm, PostForm, ReportForm
-from .models import BoardCategory, Comment, CommentLike, Notification, Post
+from .models import BoardCategory, Comment, CommentLike, Notification, Post, PostImage, RESOLUTION_CATEGORIES
 from .board_versions import board_data_version
+from .post_media import save_post_images
 from . import services
 
 DEFAULT_BOARD_COPY = ("이웃에게 묻고 답하기", "태국 생활의 질문과 경험을 나눕니다.")
@@ -39,15 +41,6 @@ BOARD_GUIDES = {
     "visa": {"title": "비자·체류 정보 작성 안내", "description": "비자와 체류 경험을 나누되 기준과 날짜를 함께 적어 주세요.", "tips": ["비자 종류와 신청 시기를 밝혀 경험의 맥락을 알려 주세요.", "규정은 바뀔 수 있으니 공식 기관 안내도 함께 확인하세요."]},
     "travel": {"title": "교통·여행 정보 작성 안내", "description": "이동 경로와 여행 팁을 공유해 태국 여행을 더 편하게 만들어요.", "tips": ["출발·도착지, 이동 수단, 소요 시간과 비용을 적어 주세요.", "운행 시간과 요금은 방문 전에 다시 확인해 주세요."]},
 }
-RESOLUTION_CATEGORIES = {
-    Post.Category.QUESTIONS,
-    Post.Category.LIVING,
-    Post.Category.HOUSING,
-    Post.Category.BANKING,
-    Post.Category.VISA,
-    Post.Category.TRAVEL,
-}
-
 def call_service(name, *args):
     try:
         return getattr(services, name)(*args)
@@ -206,13 +199,16 @@ def my_activity(request):
 
 @never_cache
 def post_detail(request, pk):
-    post = get_object_or_404(services.public_posts(request.user), pk=pk)
+    post = get_object_or_404(services.public_posts(request.user).prefetch_related(
+        Prefetch('images', queryset=PostImage.objects.only('pk', 'post_id', 'image_url', 'position')),
+    ), pk=pk)
     viewer = Exists(CommentLike.objects.filter(comment_id=OuterRef('pk'), user=request.user)) if request.user.is_authenticated else Value(False, output_field=BooleanField())
     visible = services.visible_comments(request.user, post).select_related('author', 'author__membership').annotate(like_count=Count('likes'), viewer_likes=viewer).order_by('created_at', 'pk')
     replies = visible.filter(parent__isnull=False)
     comments = visible.filter(parent__isnull=True).prefetch_related(Prefetch('replies', queryset=replies))
     return render(request, "community/detail.html", {
         "post": post,
+        "has_resolution_status": post.has_resolution_status,
         "create_category": services.canonical_life_category(post.category),
         "comments": comments,
         "comment_form": CommentForm(),
@@ -253,11 +249,14 @@ def post_create(request):
     category = request.GET.get('category', '')
     initial_category = category if category in dict(CATEGORIES) else 'questions'
     selected_category = category if category in dict(CATEGORIES) else ''
-    form = PostForm(request.POST or None, initial={'category': initial_category}, staff=request.user.is_staff)
+    form = PostForm(request.POST or None, request.FILES or None, initial={'category': initial_category}, staff=request.user.is_staff)
     if request.method == "POST" and form.is_valid():
         try:
-            data = {k: v for k, v in form.cleaned_data.items() if k != "privacy"}
-            post = call_service("create_post", request.user, data)
+            cleaned = form.cleaned_data
+            data = {k: v for k, v in cleaned.items() if k not in {"privacy", "image_uploads", "image_urls", "remove_image_ids"}}
+            with transaction.atomic():
+                post = call_service("create_post", request.user, data)
+                save_post_images(post, cleaned.get('image_uploads', []), cleaned.get('image_urls', []))
             messages.success(request, "게시물을 등록했습니다.", extra_tags="post-saved")
             return redirect("post-detail", pk=post.pk)
         except (ValidationError, APIValidationError) as exc:
@@ -276,10 +275,15 @@ def post_edit(request, pk):
         raise PermissionDenied
     if post.category == Post.Category.NOTICE and not request.user.is_staff:
         raise PermissionDenied
-    form = PostForm(request.POST or None, initial={"board_category": post.board_category_id, "board_data_version": board_data_version(post), "title": post.display_title, "body": post.display_body, "region": post.region, "category": services.canonical_life_category(post.category), "is_pinned": post.is_pinned, "market_kind": post.market_kind, "market_price": post.market_price, "market_region": post.market_region, "market_status": post.market_status, "job_kind": post.job_kind, "job_region": post.job_region, "job_compensation": post.job_compensation, "job_status": post.job_status, "place_name": post.place_name, "place_region": post.place_region, "place_note": post.place_note, "place_url": post.place_url}, staff=request.user.is_staff, editing=True)
+    existing_images = list(post.images.only('pk', 'post_id', 'image_url', 'position'))
+    form = PostForm(request.POST or None, request.FILES or None, initial={"board_category": post.board_category_id, "board_data_version": board_data_version(post), "title": post.display_title, "body": post.display_body, "region": post.region, "category": services.canonical_life_category(post.category), "is_pinned": post.is_pinned, "market_kind": post.market_kind, "market_price": post.market_price, "market_region": post.market_region, "market_status": post.market_status, "job_kind": post.job_kind, "job_region": post.job_region, "job_compensation": post.job_compensation, "job_status": post.job_status, "place_name": post.place_name, "place_region": post.place_region, "place_note": post.place_note, "place_url": post.place_url}, staff=request.user.is_staff, editing=True, existing_images=existing_images)
     if request.method == "POST" and form.is_valid():
         try:
-            call_service("update_post", request.user, post, {k: v for k, v in form.cleaned_data.items() if k != "privacy"})
+            cleaned = form.cleaned_data
+            data = {k: v for k, v in cleaned.items() if k not in {"privacy", "image_uploads", "image_urls", "remove_image_ids"}}
+            with transaction.atomic():
+                call_service("update_post", request.user, post, data)
+                save_post_images(post, cleaned.get('image_uploads', []), cleaned.get('image_urls', []), cleaned.get('remove_image_ids', []))
             messages.success(request, "게시물을 수정했습니다.", extra_tags="post-saved")
             return redirect("post-detail", pk=post.pk)
         except (ValidationError, APIValidationError) as exc:
@@ -295,7 +299,22 @@ def post_edit(request, pk):
         data['board_data_version'] = data.get('board_data_version') if stale else board_data_version(post)
         data.pop('confirm_board_data_removal', None)
         form.data = data
-    return render(request, "community/write.html", post_editor_context(form, editing=True, post=post))
+    return render(request, "community/write.html", post_editor_context(form, editing=True, post=post, existing_images=existing_images))
+
+
+@never_cache
+@require_GET
+def post_image(request, pk):
+    image = get_object_or_404(PostImage.objects.only('pk', 'post_id', 'content_type'), pk=pk)
+    if not services.public_posts(request.user).filter(pk=image.post_id).exists():
+        raise Http404
+    if image.image_data is None:
+        raise Http404
+    response = HttpResponse(bytes(image.image_data), content_type=image.content_type or 'image/jpeg')
+    response['X-Content-Type-Options'] = 'nosniff'
+    response['Content-Security-Policy'] = "default-src 'none'; sandbox"
+    response['Cache-Control'] = 'private, no-store'
+    return response
 
 @require_POST
 def post_helpful(request, pk):

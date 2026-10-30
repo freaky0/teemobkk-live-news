@@ -80,6 +80,8 @@ SESAME_MAX_AGE = 600
 SESAME_ONE_TIME = True
 SESAME_INVALIDATE_ON_EMAIL_CHANGE = True
 POST_PUBLIC_ORIGIN = os.environ.get("POST_PUBLIC_ORIGIN", "http://127.0.0.1:8870" if LOCAL_DEVELOPMENT else "").rstrip("/")
+# Use a browser key restricted to the Maps Embed API and teemobkk.io HTTP referrers.
+GOOGLE_MAPS_EMBED_API_KEY = os.environ.get("GOOGLE_MAPS_EMBED_API_KEY", "").strip()
 from urllib.parse import urlsplit
 _origin = urlsplit(POST_PUBLIC_ORIGIN)
 if POST_PUBLIC_ORIGIN and (not _origin.hostname or _origin.username or _origin.password or _origin.path or _origin.query or _origin.fragment or (_origin.scheme != "https" and not (LOCAL_DEVELOPMENT and _origin.scheme == "http" and _origin.hostname in {"127.0.0.1", "localhost", "testserver"}))):

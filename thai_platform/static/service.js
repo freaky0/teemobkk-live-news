@@ -27,9 +27,9 @@ try{const pending=sessionStorage.getItem('post-submitted:'+user);if(pending&&doc
 const form=document.querySelector('[data-editor]');if(!form)return;
 const key=keyPrefix+form.dataset.draftKey,status=document.querySelector('#draft-status');let timer,dirty=false,submitting=false;
 function read(){try{return JSON.parse(localStorage.getItem(key)||'null');}catch{return null;}}
-const draftFields=['title','body','region','category','board_category','market_kind','market_price','market_region','market_status','job_kind','job_region','job_compensation','job_status','place_name','place_region','place_note','place_url','board_data_version'];
+const draftFields=['title','body','region','category','board_category','market_kind','market_price','market_region','market_status','job_kind','job_region','job_compensation','job_status','place_name','place_region','place_note','place_url','image_urls','board_data_version'];
 let unversionedDraft=false;
-function save(){const data={};for(const name of draftFields)if(form.elements[name])data[name]=form.elements[name].value;if(unversionedDraft)data.board_data_version='';try{localStorage.setItem(key,JSON.stringify(data));status.textContent='텍스트 초안을 이 브라우저에 자동 저장했습니다.';return true;}catch{status.textContent='초안 자동 저장 실패. 내용을 복사한 뒤 브라우저 저장소 설정을 확인하세요.';return false;}}
+function save(){const data={};for(const name of draftFields)if(form.elements[name])data[name]=form.elements[name].value;if(unversionedDraft)data.board_data_version='';try{localStorage.setItem(key,JSON.stringify(data));status.textContent='텍스트와 사진 링크를 저장했습니다. 선택한 사진 파일은 다시 선택해야 합니다.';return true;}catch{status.textContent='초안 자동 저장 실패. 내용을 복사한 뒤 브라우저 저장소 설정을 확인하세요.';return false;}}
 const stored=read();if(stored&&!form.hasAttribute('data-bound')){if(['housing','banking'].includes(stored.category))stored.category='living';unversionedDraft=!!form.elements.board_data_version&&!(typeof stored.board_data_version==='string'&&stored.board_data_version);for(const name of draftFields){if(name==='category'&&form.dataset.selectedCategory)continue;if(form.elements[name]&&typeof stored[name]==='string')form.elements[name].value=stored[name];}status.textContent=unversionedDraft?'이전 초안의 기준 버전을 확인할 수 없습니다. 내용을 복사한 뒤 다른 브라우저에서 최신 게시글을 확인하고 다시 수정해 주세요.':'저장한 초안을 불러왔습니다. 서버에 등록하려면 아래 등록 버튼을 누르세요.';}
 const categoryField=form.elements.category;
 if(categoryField){
