@@ -1,0 +1,23 @@
+[Unit]
+Description=TeemoBKK Thai community news Telegram publisher
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=teemo
+Group=teemo
+WorkingDirectory=/opt/teemo-live-news
+EnvironmentFile=/opt/teemo-live-news/.env.push
+# This file contains only the Thai channel destination and overrides the shared live channel ID.
+EnvironmentFile=/opt/teemo-live-news/.env.push.thai
+Environment=TEEMO_DATA_ROOT=/opt/teemo-live-news
+Environment=TEEMO_NEWS_DB_FILE=/opt/teemo-live-news/news.db
+Environment=TG_CHANNEL_REGION=thai
+Environment=TG_STATE_TABLE=tg_posted_thai
+Environment=TG_LOCK_FILE=/run/teemo-tg-push-thai/push.lock
+RuntimeDirectory=teemo-tg-push-thai
+RuntimeDirectoryMode=0750
+ExecStart=/usr/bin/python3 /opt/teemo-live-news/releases/tgfix-2f8f8be/deploy/tg_push.py
+Nice=10
+TimeoutStartSec=120

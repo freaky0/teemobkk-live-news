@@ -1,0 +1,11 @@
+[Unit]
+Description=Tick the Thai community Telegram news publisher every minute
+
+[Timer]
+OnBootSec=90
+OnUnitActiveSec=60
+AccuracySec=5s
+Unit=teemo-tg-push-thai.service
+
+[Install]
+WantedBy=timers.target
