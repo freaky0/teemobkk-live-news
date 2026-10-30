@@ -1750,7 +1750,8 @@ def collect_news() -> dict[str, Any]:
         try:
             from pipeline import translate_ko
             queued_links = queued_translation_links(limit=translate_ko.COLLECT_BATCH)
-            translated = (translate_ko.translate_pending(limit=len(queued_links), links=queued_links)
+            translated = (translate_ko.translate_pending(
+                limit=len(queued_links), links=queued_links, continue_on_error=True)
                           if queued_links else 0)
             if translated:
                 logging.info("Korean translations saved: %d", translated)
