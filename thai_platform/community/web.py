@@ -15,7 +15,7 @@ from rest_framework.exceptions import ValidationError as APIValidationError
 from .forms import CATEGORIES, REGIONS, AppealForm, CommentForm, PostForm, ReportForm
 from .models import BoardCategory, Comment, CommentLike, Notification, Post, PostImage, RESOLUTION_CATEGORIES
 from .board_versions import board_data_version
-from .post_media import save_post_images
+from .post_media import replace_inline_upload_markers, save_post_images
 from . import services
 
 DEFAULT_BOARD_COPY = ("이웃에게 묻고 답하기", "태국 생활의 질문과 경험을 나눕니다.")
@@ -30,6 +30,15 @@ BOARD_COPY = {
     "visa": ("비자·체류", "비자와 체류 관련 경험과 정보를 함께 나눠요."),
     "travel": ("교통·여행", "태국의 이동과 여행에 필요한 정보를 나눠요."),
 }
+
+
+def with_post_images(queryset):
+    return queryset.prefetch_related(
+        Prefetch(
+            'images',
+            queryset=PostImage.objects.only('pk', 'post_id', 'image_url', 'position'),
+        ),
+    )
 BOARD_GUIDES = {
     "notice": {"title": "공지 작성 안내", "description": "운영진의 공식 소식과 이용 안내를 간결하게 전달해 주세요.", "tips": ["변경 내용과 적용 날짜를 제목에 담아 주세요.", "개인 정보나 확인되지 않은 안내는 게시하지 마세요."]},
     "free": {"title": "자유게시판 작성 안내", "description": "태국에서 겪은 일상과 경험을 이웃과 나눠 보세요.", "tips": ["지역이나 상황을 덧붙이면 다른 회원이 공감하기 쉬워요.", "연락처·주소 등 개인 정보는 공개하지 마세요."]},
@@ -74,7 +83,12 @@ def back_url(request):
 
 def home(request):
     from . import news
-    context = {"posts": published(request.user)[:4], "helpful_posts": published(request.user).filter(helpful_count__gt=0).order_by('-helpful_count', '-created_at', '-pk')[:4]}
+    context = {
+        "posts": with_post_images(published(request.user))[:4],
+        "helpful_posts": with_post_images(
+            published(request.user).filter(helpful_count__gt=0).order_by('-helpful_count', '-created_at', '-pk')
+        )[:4],
+    }
     if request.user.is_authenticated:
         membership = getattr(request.user, 'membership', None)
         if request.user.is_active and (membership is None or membership.is_complete):
@@ -127,6 +141,7 @@ def post_list(request):
             qs = qs.filter(board_category_id=board_category)
         else:
             qs = qs.none()
+    qs = with_post_images(qs)
     pagination = Paginator(qs, 20).get_page(request.GET.get("page"))
     keep = request.GET.copy()
     keep.pop("page", None)
@@ -193,6 +208,8 @@ def my_activity(request):
         qs = call_service('activity', request.user, kind)
     except APIValidationError:
         raise Http404
+    if kind != 'comments':
+        qs = with_post_images(qs)
     page = Paginator(qs, 20).get_page(request.GET.get('page'))
     return render(request, 'community/activity.html', {'page_obj': page, 'kind': kind})
 
@@ -206,8 +223,14 @@ def post_detail(request, pk):
     visible = services.visible_comments(request.user, post).select_related('author', 'author__membership').annotate(like_count=Count('likes'), viewer_likes=viewer).order_by('created_at', 'pk')
     replies = visible.filter(parent__isnull=False)
     comments = visible.filter(parent__isnull=True).prefetch_related(Prefetch('replies', queryset=replies))
+    body = post.display_body
+    gallery_images = [
+        image for image in post.images.all()
+        if (image.image_url or reverse('post-image', args=[image.pk])) not in body
+    ]
     return render(request, "community/detail.html", {
         "post": post,
+        "gallery_images": gallery_images,
         "has_resolution_status": post.has_resolution_status,
         "create_category": services.canonical_life_category(post.category),
         "comments": comments,
@@ -242,6 +265,19 @@ def service_error(form, exc):
     else:
         form.add_error(None, "처리하지 못했습니다. 입력 내용을 확인해 주세요.")
 
+
+def finalize_inline_images(post, body, saved_images):
+    rendered_body = replace_inline_upload_markers(body, saved_images)
+    if rendered_body == body:
+        return
+    if len(rendered_body) > 6000:
+        raise ValidationError({'body': '사진을 본문에 넣은 뒤 내용이 6,000자 제한을 넘어요. 본문을 조금 줄여 주세요.'})
+    content_model = services.BOARD_CONTENT_MODELS.get(services.canonical_life_category(post.category))
+    if content_model is not None:
+        content_model.objects.filter(post_id=post.pk).update(body=rendered_body)
+    else:
+        Post.objects.filter(pk=post.pk).update(body=rendered_body)
+
 @login_required
 def post_create(request):
     if request.method == 'POST' and 'is_pinned' in request.POST and not request.user.is_staff:
@@ -256,7 +292,8 @@ def post_create(request):
             data = {k: v for k, v in cleaned.items() if k not in {"privacy", "image_uploads", "image_urls", "remove_image_ids"}}
             with transaction.atomic():
                 post = call_service("create_post", request.user, data)
-                save_post_images(post, cleaned.get('image_uploads', []), cleaned.get('image_urls', []))
+                saved_images = save_post_images(post, cleaned.get('image_uploads', []), cleaned.get('image_urls', []))
+                finalize_inline_images(post, cleaned.get('body', ''), saved_images)
             messages.success(request, "게시물을 등록했습니다.", extra_tags="post-saved")
             return redirect("post-detail", pk=post.pk)
         except (ValidationError, APIValidationError) as exc:
@@ -282,8 +319,9 @@ def post_edit(request, pk):
             cleaned = form.cleaned_data
             data = {k: v for k, v in cleaned.items() if k not in {"privacy", "image_uploads", "image_urls", "remove_image_ids"}}
             with transaction.atomic():
-                call_service("update_post", request.user, post, data)
-                save_post_images(post, cleaned.get('image_uploads', []), cleaned.get('image_urls', []), cleaned.get('remove_image_ids', []))
+                post = call_service("update_post", request.user, post, data)
+                saved_images = save_post_images(post, cleaned.get('image_uploads', []), cleaned.get('image_urls', []), cleaned.get('remove_image_ids', []))
+                finalize_inline_images(post, cleaned.get('body', ''), saved_images)
             messages.success(request, "게시물을 수정했습니다.", extra_tags="post-saved")
             return redirect("post-detail", pk=post.pk)
         except (ValidationError, APIValidationError) as exc:

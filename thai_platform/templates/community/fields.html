@@ -28,19 +28,9 @@
   <section class="field post-body-field" data-rich-editor>
     <label for="{{ field.id_for_label }}">{{ field.label }}</label>
     <p class="field-hint" id="id_body_hint">실명·연락처·주소·계좌 등 민감한 개인정보는 본문에 올리지 마세요.</p>
-    <div class="editor-toolbar" role="toolbar" aria-label="본문 서식">
-      <button type="button" data-format="bold" aria-label="굵게"><strong>B</strong></button>
-      <button type="button" data-format="italic" aria-label="기울임"><em>I</em></button>
-      <button type="button" data-format="quote">인용</button>
-      <button type="button" data-format="list">목록</button>
-      <button type="button" data-format="link">링크</button>
-      <button type="button" data-format="image">이미지</button>
-      <span class="toolbar-spacer"></span>
-      <button type="button" data-preview-toggle aria-pressed="false">미리 보기</button>
-    </div>
     {{ field|accessible_field }}
-    <div class="editor-preview" data-editor-preview hidden role="region" tabindex="-1" aria-label="본문 미리 보기"></div>
-    <p class="editor-help">서식 도구를 쓰거나 Markdown을 입력하세요. <code>![사진 설명](https://example.com/photo.jpg)</code> 형식이면 게시글 본문에 사진이 표시됩니다.</p>
+    <p class="editor-inline-status" data-inline-image-status role="status" aria-live="polite">사진을 붙여넣거나 도구 모음의 사진 추가를 눌러 본문 커서 위치에 넣을 수 있어요.</p>
+    <p class="editor-help">선택한 글자에 굵게·기울임·제목을 적용하고, 이미지 주소는 본문 안에 직접 삽입할 수 있어요. Ctrl+V로 복사한 사진도 커서 위치에 들어갑니다.</p>
     {% if field.help_text %}<p class="field-hint">{{ field.help_text }}</p>{% endif %}
     {% if field.errors %}<div class="error" role="alert" id="{{ field.auto_id }}_error">{{ field.errors }}</div>{% endif %}
   </section>
@@ -48,7 +38,7 @@
   {% if field.name == 'image_uploads' and post_editor %}
   <fieldset class="photo-fields">
     <legend>사진 추가</legend>
-    <p class="photo-fields-note">파일을 올리거나 공개 이미지 주소를 붙여 넣으세요. 본문에서 이미지를 배치하려면 서식 도구의 ‘이미지’를 누르세요.</p>
+    <p class="photo-fields-note">여기서 첨부한 사진은 글 아래 사진 모음에 표시됩니다. 본문 중간에 넣으려면 편집기 도구 모음의 ‘사진 추가’를 누르거나 Ctrl+V로 붙여넣으세요.</p>
     <div class="photo-input-grid">
   {% endif %}
   <div class="field{% if field.name == 'category' %} board-category-field{% elif field.name == 'title' %} title-field{% elif field.name == 'privacy' %} privacy-field{% elif field.name == 'image_uploads' %} image-upload-field{% elif field.name == 'image_urls' %} image-url-field{% endif %}"{% if field.name == 'is_pinned' %} data-notice-fields{% if form.category.value != 'notice' %} hidden{% endif %}{% endif %}>

@@ -4,19 +4,30 @@ from urllib.parse import urlsplit
 
 from django import template
 from django.utils.html import format_html, format_html_join
+from django.utils.safestring import mark_safe
+from django.urls import reverse
 
 register = template.Library()
 
+_INTERNAL_POST_IMAGE = re.compile(r"/(?:[A-Za-z0-9_-]+/)*community/images/[1-9][0-9]*/\Z")
 _INLINE = re.compile(
-    r"!\[([^\]]*)\]\((https?://[^\s)]+)\)"
+    r"~~([^~]+)~~"
+    r"|!\[([^\]]*)\]\((https?://[^\s)]+|/(?:[A-Za-z0-9_-]+/)*community/images/[1-9][0-9]*/)\)"
     r"|\[([^\]]+)\]\((https?://[^\s)]+)\)"
     r"|\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`"
     r"|(https?://[^\s<>]+)"
 )
+_THUMBNAIL_MARKDOWN_IMAGE = re.compile(
+    r"!\[[^\]]*\]\((https?://[^\s)]+|/(?:[A-Za-z0-9_-]+/)*community/images/[1-9][0-9]*/)\)"
+)
+_RAW_IMAGE_URL = re.compile(r"(?<![\w\"'=])https?://[^\s<>]+")
+_IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif")
 
 
 def _safe_url(value):
     value = value.rstrip(".,!?;:")
+    if _INTERNAL_POST_IMAGE.fullmatch(value):
+        return value
     try:
         parts = urlsplit(value)
         if parts.scheme in {"http", "https"} and parts.netloc and not parts.username and not parts.password:
@@ -32,8 +43,10 @@ def _inline(value):
     for match in _INLINE.finditer(value):
         if match.start() > cursor:
             rendered.append(format_html("{}", value[cursor:match.start()]))
-        image_alt, image_url, link_label, link_url, bold, italic, code, bare_url = match.groups()
-        if image_url:
+        strike, image_alt, image_url, link_label, link_url, bold, italic, code, bare_url = match.groups()
+        if strike:
+            item = format_html("<del>{}</del>", strike)
+        elif image_url:
             url = _safe_url(image_url)
             item = format_html(
                 '<img src="{}" alt="{}" loading="lazy" decoding="async" referrerpolicy="no-referrer">',
@@ -72,6 +85,35 @@ def _inline(value):
 
 
 @register.filter
+def community_thumbnail(post):
+    """Return the first safe inline or attached image for a community-card thumbnail."""
+    if not post:
+        return ""
+    body = html.unescape(str(getattr(post, "display_body", "") or ""))
+    body = body.replace("\r\n", "\n").replace("\r", "\n")
+    body = re.sub(r"\\\s*\n", "\n", body)
+    body = re.sub(r"\\([()[\]:])", r"\1", body)
+
+    match = _THUMBNAIL_MARKDOWN_IMAGE.search(body)
+    if match:
+        url = _safe_url(match.group(1))
+        if url:
+            return url
+    for match in _RAW_IMAGE_URL.finditer(body):
+        if match.start() and body[match.start() - 1] == "(":
+            continue
+        url = _safe_url(match.group(0))
+        if url and urlsplit(url).path.lower().endswith(_IMAGE_EXTENSIONS):
+            return url
+
+    for image in post.images.all():
+        url = _safe_url(image.image_url) if image.image_url else reverse("post-image", args=[image.pk])
+        if url:
+            return url
+    return ""
+
+
+@register.filter
 def community_body(value):
     """Render a safe, intentionally small Markdown subset for community posts."""
     source = html.unescape(str(value or "")).replace("\r\n", "\n").replace("\r", "\n")
@@ -85,7 +127,7 @@ def community_body(value):
 
     def flush_paragraph():
         if paragraph:
-            lines = format_html_join("<br>", "{}", ((_inline(line),) for line in paragraph))
+            lines = format_html_join(mark_safe("<br>"), "{}", ((_inline(line),) for line in paragraph))
             blocks.append(format_html("<p>{}</p>", lines))
             paragraph.clear()
 
