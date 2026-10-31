@@ -4,23 +4,54 @@
   {% if field.name == 'region' %}
     <details class="field classification-fields" data-classification-fields open>
       <summary>
-        <strong>게시판 및 분류</strong>
-        <span class="classification-current" data-classification-summary>{{ board_name }} · {{ region_name }}</span>
+        <strong>지역·세부 분류</strong>
+        <span class="classification-current" data-classification-summary>지역과 필요한 하위 분류를 선택하세요.</span>
       </summary>
+      <div class="classification-input-grid">
   {% endif %}
   {% if field.name == 'market_kind' %}
     <details class="field market-fields" data-market-fields{% if form.category.value == 'market' or form.market_kind.errors or form.market_price.errors or form.market_region.errors or form.market_status.errors %} open{% else %} hidden{% endif %}>
       <summary>중고 거래 정보</summary>
+      <div class="board-fields-grid">
   {% endif %}
   {% if field.name == 'job_kind' %}
     <details class="field job-fields" data-job-fields{% if form.category.value == 'jobs' or form.job_kind.errors or form.job_region.errors or form.job_compensation.errors or form.job_status.errors %} open{% else %} hidden{% endif %}>
       <summary>구인·구직 정보</summary>
+      <div class="board-fields-grid">
   {% endif %}
   {% if field.name == 'place_name' %}
     <details class="field place-fields" data-place-fields{% if form.category.value == 'foodtravel' or form.place_name.errors or form.place_region.errors or form.place_note.errors or form.place_url.errors %} open{% else %} hidden{% endif %}>
       <summary>맛집·여행 정보</summary>
+      <div class="board-fields-grid">
   {% endif %}
-  <div class="field"{% if field.name == 'is_pinned' %} data-notice-fields{% if form.category.value != 'notice' %} hidden{% endif %}{% endif %}>
+  {% if field.name == 'body' and post_editor %}
+  <section class="field post-body-field" data-rich-editor>
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    <p class="field-hint" id="id_body_hint">실명·연락처·주소·계좌 등 민감한 개인정보는 본문에 올리지 마세요.</p>
+    <div class="editor-toolbar" role="toolbar" aria-label="본문 서식">
+      <button type="button" data-format="bold" aria-label="굵게"><strong>B</strong></button>
+      <button type="button" data-format="italic" aria-label="기울임"><em>I</em></button>
+      <button type="button" data-format="quote">인용</button>
+      <button type="button" data-format="list">목록</button>
+      <button type="button" data-format="link">링크</button>
+      <button type="button" data-format="image">이미지</button>
+      <span class="toolbar-spacer"></span>
+      <button type="button" data-preview-toggle aria-pressed="false">미리 보기</button>
+    </div>
+    {{ field|accessible_field }}
+    <div class="editor-preview" data-editor-preview hidden role="region" tabindex="-1" aria-label="본문 미리 보기"></div>
+    <p class="editor-help">서식 도구를 쓰거나 Markdown을 입력하세요. <code>![사진 설명](https://example.com/photo.jpg)</code> 형식이면 게시글 본문에 사진이 표시됩니다.</p>
+    {% if field.help_text %}<p class="field-hint">{{ field.help_text }}</p>{% endif %}
+    {% if field.errors %}<div class="error" role="alert" id="{{ field.auto_id }}_error">{{ field.errors }}</div>{% endif %}
+  </section>
+  {% else %}
+  {% if field.name == 'image_uploads' and post_editor %}
+  <fieldset class="photo-fields">
+    <legend>사진 추가</legend>
+    <p class="photo-fields-note">파일을 올리거나 공개 이미지 주소를 붙여 넣으세요. 본문에서 이미지를 배치하려면 서식 도구의 ‘이미지’를 누르세요.</p>
+    <div class="photo-input-grid">
+  {% endif %}
+  <div class="field{% if field.name == 'category' %} board-category-field{% elif field.name == 'title' %} title-field{% elif field.name == 'privacy' %} privacy-field{% elif field.name == 'image_uploads' %} image-upload-field{% elif field.name == 'image_urls' %} image-url-field{% endif %}"{% if field.name == 'is_pinned' %} data-notice-fields{% if form.category.value != 'notice' %} hidden{% endif %}{% endif %}>
     {% if field.field.widget.input_type == 'checkbox' %}
       <label class="check">{{ field|accessible_field }}<span>{{ field.label }}</span></label>
     {% else %}
@@ -31,6 +62,8 @@
     {% endif %}
     {% if field.errors %}<div class="error" role="alert" id="{{ field.auto_id }}_error">{{ field.errors }}</div>{% endif %}
   </div>
-  {% if field.name == 'board_category' %}</details>{% endif %}
-  {% if field.name == 'market_status' or field.name == 'job_status' or field.name == 'place_url' %}</details>{% endif %}
+  {% endif %}
+  {% if field.name == 'image_urls' and post_editor %}</div></fieldset>{% endif %}
+  {% if field.name == 'board_category' %}</div></details>{% endif %}
+  {% if field.name == 'market_status' or field.name == 'job_status' or field.name == 'place_url' %}</div></details>{% endif %}
 {% endfor %}

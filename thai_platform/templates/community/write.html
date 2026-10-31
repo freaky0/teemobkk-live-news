@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block title %}{{ board_name }}{% if editing %} 수정{% else %} 글쓰기{% endif %} | TeemoBKK POST{% endblock %}
 {% block content %}
 <section class="editor">
@@ -19,7 +20,7 @@
         <ul data-editor-guide-tips>{% for tip in board_guide.tips %}<li>{{ tip }}</li>{% endfor %}</ul>
       </aside>
       {{ board_guides|json_script:"board-guides-data" }}
-      {% include 'community/fields.html' %}
+      {% include 'community/fields.html' with post_editor=True %}
       {% if existing_images %}
       <fieldset class="existing-post-images">
         <legend>등록된 사진</legend>
@@ -42,4 +43,5 @@
     </form>
   </div>
 </section>
+<script src="{% static 'community-editor.js' %}" defer></script>
 {% endblock %}
