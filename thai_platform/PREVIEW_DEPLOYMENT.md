@@ -49,7 +49,7 @@ Caddy가 `/thai/static/*`을 릴리스의 `staticfiles`에서 제공하고, `/th
 1. 백업된 현재 Caddyfile과 systemd drop-in의 SHA-256을 확인한다.
 2. systemd의 `WorkingDirectory`만 새 릴리스로 바꾼다. 정적 파일 변경이 확인된 경우에만 Caddy의 `/thai/static/*` root를 함께 바꾼다. `/thai/news/*`, 다른 호스트·경로, 환경 파일, 인증 설정은 수정하지 않는다.
 3. `caddy validate`를 통과시킨 뒤 Caddy를 reload한다. systemd drop-in만 바뀌었다면 `daemon-reload` 후 `teemobkk-post-preview.service`를 재시작한다. 서비스 실행은 정상 journal 항목을 추가할 수 있다.
-4. 서비스 환경을 그대로 사용해 `manage.py showmigrations --plan`과 `manage.py migrate --plan`을 확인하고, 별도 커뮤니티 DB에만 마이그레이션을 적용한다. 이 변경의 예상 대기 항목은 `community.0030_alter_post_job_region_alter_post_market_region_and_more` 하나다. 이 항목은 게시글 지역 선택지의 표시 라벨을 모델과 맞추며, `sqlmigrate community 0030` 결과는 네 필드 모두 `(no-op)`이어야 한다. `community.0027`~`0029`가 대기 중이거나 다른 앱·DB 변경이 나타나면 중단한다. 이들 이전 마이그레이션은 게시판별 콘텐츠 테이블과 분류를 만들고 기존 게시물 본문을 새 테이블에 복사하므로, 별도 데이터 전환 검토 없이는 적용하지 않는다.
+4. 서비스 환경을 그대로 사용해 `manage.py showmigrations --plan`과 `manage.py migrate --plan`을 확인하고, 별도 커뮤니티 DB에만 마이그레이션을 적용한다. 이 릴리스에서 예상하는 대기 항목은 `community.0030_alter_post_job_region_alter_post_market_region_and_more`와 `community.0031_postimage`다. `0030`은 게시글 지역 선택지 표시 라벨을 모델과 맞추며, `sqlmigrate community 0030` 결과는 네 필드 모두 `(no-op)`이어야 한다. `0031`은 `PostImage` 테이블과 이미지 출처 제약을 추가하고 `Post.place_url` 길이를 2048자로 늘리는 변경만 포함해야 한다. `community.0027`~`0029`가 대기 중이거나 다른 앱·DB 변경이 나타나면 중단한다. 이들 이전 마이그레이션은 게시판별 콘텐츠 테이블과 분류를 만들고 기존 게시물 본문을 새 테이블에 복사하므로, 별도 데이터 전환 검토 없이는 적용하지 않는다.
 5. 이전 릴리스 디렉터리는 롤백 확인이 끝날 때까지 삭제하지 않는다. `makemigrations`, 데이터 정리, 계정 삭제, 신고 보존 purge를 실행하지 않는다.
 
 ## 확인과 롤백

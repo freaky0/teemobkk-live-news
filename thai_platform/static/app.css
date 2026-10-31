@@ -36,3 +36,61 @@ input[type="file"]{min-height:52px;padding:8px}
 .map-preview>.btn{justify-self:start}
 @media(max-width:600px){.existing-post-images{padding:12px}.existing-image-grid,.post-gallery{grid-template-columns:1fr}.map-preview iframe{min-height:240px;aspect-ratio:4/3}.post-gallery img{max-height:440px}}#id_image_urls{min-height:104px}
 @media(max-width:600px){#id_image_urls{min-height:96px}}
+/* Compact post composer: the board selects share a row and the body stays central. */
+.editor form[data-editor]{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.editor form[data-editor]>.editor-guide,.editor form[data-editor]>.title-field,.editor form[data-editor]>.classification-fields,.editor form[data-editor]>.post-body-field,.editor form[data-editor]>.privacy-field,.editor form[data-editor]>.market-fields,.editor form[data-editor]>.job-fields,.editor form[data-editor]>.place-fields,.editor form[data-editor]>.image-upload-field,.editor form[data-editor]>.image-url-field,.editor form[data-editor]>.existing-post-images,.editor form[data-editor]>.status,.editor form[data-editor]>.form-bottom,.editor form[data-editor]>.error{grid-column:1/-1}
+.classification-fields[open]{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:start;gap:12px}
+.classification-fields[open]>summary{grid-column:1/-1}
+.classification-fields[open]>.field{min-width:0}
+.market-fields[open],.job-fields[open],.place-fields[open]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;align-items:start}
+.market-fields[open]>summary,.job-fields[open]>summary,.place-fields[open]>summary{grid-column:1/-1}
+.market-fields>.field,.job-fields>.field,.place-fields>.field{min-width:0}
+.image-upload-field input[type=file]{min-height:52px}
+.image-upload-field .field-hint,.image-url-field .field-hint{margin-bottom:0}
+.post-body-field{min-width:0}
+.editor-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:8px;border:1px solid var(--color-border-control);border-bottom:0;border-radius:8px 8px 0 0;background:var(--color-bg-subtle)}
+.editor-toolbar button{min-width:40px;min-height:38px;border:1px solid var(--color-border-control);border-radius:7px;background:var(--color-bg-surface);padding:5px 10px;font:inherit;font-size:.88rem}
+.editor-toolbar button:hover{border-color:var(--color-action-primary)}
+.editor-toolbar button[aria-pressed="true"]{font-weight:750}
+.editor-toolbar .toolbar-spacer{flex:1}
+.post-body-field textarea{min-height:340px;border-radius:0 0 8px 8px;line-height:1.75}
+.editor-help{margin:8px 0 0;font-size:.82rem;color:var(--color-text-muted)}
+.editor-help code{padding:2px 5px;background:var(--color-bg-subtle);border-radius:4px;overflow-wrap:anywhere}
+.editor-preview{min-height:180px;padding:18px;border:1px solid var(--color-border-control);border-top:0;border-radius:0 0 8px 8px;background:var(--color-bg-surface);overflow-wrap:anywhere}
+.editor-preview p{margin:0 0 1em}
+.editor-preview img{display:block;max-width:100%;max-height:380px;object-fit:contain;margin:12px 0}
+.editor-preview blockquote,.article .body blockquote{margin:12px 0;padding:8px 16px;border-left:3px solid var(--color-border-default);color:var(--color-text-muted)}
+.editor-preview ul,.editor-preview ol,.article .body ul,.article .body ol{padding-left:1.5em}
+.article .body{white-space:normal}
+.article .body p{margin:0 0 1em}
+.article .body p:last-child{margin-bottom:0}
+.article .body img{display:block;width:auto;max-width:100%;max-height:520px;object-fit:contain;margin:16px 0;border-radius:8px}
+.article .body a{text-decoration:underline;text-underline-offset:3px}
+.article .body code{padding:2px 5px;background:var(--color-bg-subtle);border-radius:4px;font-size:.92em}
+@media(max-width:600px){.editor form[data-editor]{grid-template-columns:1fr;gap:14px}.editor form[data-editor]>.field,.editor form[data-editor]>.editor-guide,.editor form[data-editor]>.title-field,.editor form[data-editor]>.classification-fields,.editor form[data-editor]>.post-body-field,.editor form[data-editor]>.privacy-field,.editor form[data-editor]>.market-fields,.editor form[data-editor]>.job-fields,.editor form[data-editor]>.place-fields,.editor form[data-editor]>.image-upload-field,.editor form[data-editor]>.image-url-field,.editor form[data-editor]>.existing-post-images,.editor form[data-editor]>.status,.editor form[data-editor]>.form-bottom,.editor form[data-editor]>.error{grid-column:1}.classification-fields[open]{grid-template-columns:repeat(2,minmax(0,1fr))}.classification-fields[open]>.field:last-child{grid-column:1/-1}.market-fields[open],.job-fields[open],.place-fields[open]{grid-template-columns:1fr}.post-body-field textarea{min-height:280px}.editor-toolbar{gap:4px;padding:6px}.editor-toolbar button{min-width:36px;padding:5px 8px}}
+@media(min-width:601px){.editor form[data-editor]>.image-upload-field,.editor form[data-editor]>.image-url-field{grid-column:auto}}
+
+/* Community writer: keep the board choice beside the title and reduce vertical form travel. */
+.editor{max-width:1080px}
+.editor form[data-editor]{grid-template-columns:minmax(200px,.3fr) minmax(0,1fr);align-items:start}
+.editor form[data-editor]>.board-category-field{grid-column:1}
+.editor form[data-editor]>.title-field{grid-column:2}
+.editor-guide{display:grid;grid-template-columns:minmax(180px,.42fr) minmax(0,1fr);gap:4px 16px;align-items:start}
+.editor-guide h2{grid-column:1;grid-row:1}
+.editor-guide p{grid-column:2;grid-row:1;margin:0}
+.editor-guide ul{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:2px 20px;padding:0;list-style:none}
+.classification-fields[open]{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.classification-fields[open]>summary{grid-column:1/-1;display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.classification-fields .classification-current{color:var(--color-text-muted);font-size:.82rem;font-weight:400}
+.photo-fields{grid-column:1/-1;min-width:0;margin:0;padding:12px 16px 16px;border:1px solid var(--color-border-default);border-radius:10px}
+.photo-fields legend{padding:0 6px;font-weight:700}
+.photo-fields-note{margin:0 0 12px;color:var(--color-text-muted);font-size:.87rem}
+.photo-input-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.photo-input-grid>.field{min-width:0}
+.image-url-field textarea{min-height:104px}
+@media(max-width:720px){.editor form[data-editor]{grid-template-columns:minmax(0,1fr)}.editor form[data-editor]>.board-category-field,.editor form[data-editor]>.title-field{grid-column:1}.editor-guide{display:block}.editor-guide ul{display:block;padding-left:20px;list-style:disc}.photo-input-grid{grid-template-columns:1fr}.classification-fields[open]{grid-template-columns:repeat(2,minmax(0,1fr))}.classification-fields[open]>.field:last-child{grid-column:1/-1}.editor form[data-editor]>.form-bottom{grid-template-columns:1fr 1.35fr}}
+.classification-fields[open],.market-fields[open],.job-fields[open],.place-fields[open]{display:block}
+.classification-input-grid,.board-fields-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;align-items:start}
+.classification-fields[open]>.classification-input-grid,.market-fields[open]>.board-fields-grid,.job-fields[open]>.board-fields-grid,.place-fields[open]>.board-fields-grid{margin-top:12px}
+.market-fields[open]>summary,.job-fields[open]>summary,.place-fields[open]>summary{display:block}
+@media(max-width:720px){.classification-input-grid,.board-fields-grid{grid-template-columns:minmax(0,1fr)}}

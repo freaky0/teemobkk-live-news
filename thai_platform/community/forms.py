@@ -54,11 +54,31 @@ class PostForm(forms.Form):
         self.fields['place_region'] = forms.ChoiceField(label='장소 지역', choices=[('', '선택'), *REGIONS], required=False)
         self.fields['place_note'] = forms.CharField(label='방문 메모', max_length=500, required=False, widget=forms.Textarea(attrs={'rows': 3}))
         self.fields['place_url'] = forms.CharField(label='Google 지도 또는 장소 링크', max_length=2048, required=False, widget=forms.URLInput(attrs={'placeholder': 'https://maps.app.goo.gl/...'}), help_text='Google 지도 공유 링크를 붙여 넣으면 게시글에 지도 미리보기가 표시됩니다.')
+        board_copy = {
+            'market': ('상품·거래 내용', '상품 상태, 희망 가격과 거래 방법을 적어 주세요.', '상품명과 상태를 제목에 적어 주세요.'),
+            'jobs': ('채용·구직 내용', '담당 업무, 근무 지역, 시간과 보상 조건을 적어 주세요.', '직무와 근무 지역을 제목에 적어 주세요.'),
+            'foodtravel': ('맛집 경험과 메뉴', '장소 분위기, 추천 메뉴, 가격대와 방문 팁을 적어 주세요.', '장소명과 추천 메뉴를 제목에 적어 주세요.'),
+        }
+        body_label, body_placeholder, title_placeholder = board_copy.get(
+            self.data.get('category') or self.initial.get('category'),
+            ('내용', '상황과 경험을 자세히 적어 주세요.', '제목을 입력해 주세요.'),
+        )
+        self.fields['body'].label = body_label
+        self.fields['body'].widget.attrs['placeholder'] = body_placeholder
+        self.fields['title'].widget.attrs['placeholder'] = title_placeholder
         if staff:
             self.fields['is_pinned'] = forms.BooleanField(label='공지 상단 고정 (공지 글만 가능)', required=False)
         if editing:
             self.fields['confirm_board_data_removal'] = forms.BooleanField(label='게시판 변경 시 기존 게시판 정보를 삭제하는 데 동의합니다.', required=False)
             self.fields['board_data_version'] = forms.CharField(required=False, widget=forms.HiddenInput)
+        self.order_fields([
+            'category', 'title', 'region', 'board_category',
+            'market_kind', 'market_price', 'market_region', 'market_status',
+            'job_kind', 'job_region', 'job_compensation', 'job_status',
+            'place_name', 'place_region', 'place_note', 'place_url',
+            'body', 'image_uploads', 'image_urls', 'privacy',
+            'is_pinned', 'confirm_board_data_removal', 'board_data_version',
+        ])
     def _clean_fields(self):
         category = self.data.get('category')
         for name, bound_field in self._bound_items():
