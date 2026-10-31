@@ -6,7 +6,7 @@
       <p class="home-start-kicker">처음 오셨나요?</p>
       <h2 id="home-start-title">태국 생활, 무엇이 궁금하세요?</h2>
     </div>
-    <p class="home-start-intro">비자·집·생활부터 중고거래와 맛집·여행까지, 지금 필요한 정보를 찾아보세요.</p>
+    <p class="home-start-intro">비자·집·생활, 중고거래, 구인·구직과 맛집·여행까지, 지금 필요한 정보를 찾아보세요.</p>
   </div>
   <nav class="home-start-grid" aria-label="태국 생활 주제">
     <a class="home-start-card" href="{% url 'post-list' %}?category=visa">
@@ -24,8 +24,13 @@
       <strong>중고거래</strong>
       <span class="home-start-card-description">필요한 물건을 사고팔고, 거래 정보를 나눠요.</span>
     </a>
-    <a class="home-start-card" href="{% url 'post-list' %}?category=foodtravel">
+    <a class="home-start-card" href="{% url 'post-list' %}?category=jobs">
       <span class="home-start-card-top"><span class="home-start-number">04</span><span aria-hidden="true">↗</span></span>
+      <strong>구인·구직</strong>
+      <span class="home-start-card-description">태국에서 일자리를 찾거나 직원을 모집해요.</span>
+    </a>
+    <a class="home-start-card" href="{% url 'post-list' %}?category=foodtravel">
+      <span class="home-start-card-top"><span class="home-start-number">05</span><span aria-hidden="true">↗</span></span>
       <strong>맛집·여행</strong>
       <span class="home-start-card-description">이웃이 다녀온 곳과 이동 정보를 확인해요.</span>
     </a>
