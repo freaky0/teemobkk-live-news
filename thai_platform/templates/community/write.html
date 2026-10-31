@@ -1,6 +1,9 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block title %}{{ board_name }}{% if editing %} 수정{% else %} 글쓰기{% endif %} | TeemoBKK POST{% endblock %}
+{% block social_meta %}{{ block.super }}
+<link rel="stylesheet" href="{% static 'vendor/easymde/easymde.min.css' %}">
+{% endblock %}
 {% block content %}
 <section class="editor">
   <nav class="breadcrumb" aria-label="현재 위치">
@@ -43,5 +46,20 @@
     </form>
   </div>
 </section>
+<dialog class="editor-insert-dialog" data-editor-insert-dialog aria-labelledby="editor-insert-title">
+  <form method="dialog" data-editor-insert-form>
+    <h2 id="editor-insert-title" data-editor-insert-title>본문에 링크 삽입</h2>
+    <p class="field-hint">주소는 https://로 시작해야 합니다.</p>
+    <label for="editor-insert-url">주소</label>
+    <input id="editor-insert-url" name="url" type="url" inputmode="url" placeholder="https://example.com" required autocomplete="url">
+    <label for="editor-insert-label" data-insert-label-caption>표시할 문구</label>
+    <input id="editor-insert-label" name="label" type="text" maxlength="300" placeholder="선택 사항">
+    <div class="editor-insert-actions">
+      <button class="btn" type="button" data-editor-insert-cancel>취소</button>
+      <button class="btn primary" type="submit">본문에 삽입</button>
+    </div>
+  </form>
+</dialog>
+<script src="{% static 'vendor/easymde/easymde.min.js' %}" defer></script>
 <script src="{% static 'community-editor.js' %}" defer></script>
 {% endblock %}

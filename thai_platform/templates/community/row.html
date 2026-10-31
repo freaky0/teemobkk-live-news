@@ -1,1 +1,9 @@
-<article class="row">{% if post.is_pinned %}<span class="tag">상단 고정</span>{% endif %}<span class="tag">{{ post.get_category_display }}</span><span class="tag">{{ post.get_region_display }}</span>{% if post.has_resolution_status %}<span class="tag">{{ post.get_resolution_display }}</span>{% endif %}<h2><a class="title" href="{% url 'post-detail' post.pk %}{% if list_query %}?from={{ list_query|urlencode }}{% endif %}">{{ post.display_title }}</a></h2><div class="market-details">{% include 'community/market_details.html' %}</div><div class="job-details">{% include 'community/job_details.html' %}</div>{% include 'community/place_details.html' %}<div class="meta">도움 반응 {{ post.helpful_count }}개 · {% include 'community/member_menu.html' with author=post.author %} · {{ post.created_at|date:'Y.m.d H:i' }} ICT</div></article>
+{% load post_body %}
+{% with thumbnail=post|community_thumbnail %}
+<article class="row community-post-row{% if thumbnail %} has-image{% endif %}">
+  {% if thumbnail %}<a class="community-post-media" href="{% url 'post-detail' post.pk %}" aria-label="{{ post.display_title }} 게시글 보기"><img src="{{ thumbnail }}" alt="{{ post.display_title }} 대표 사진" loading="lazy" decoding="async" referrerpolicy="no-referrer"></a>{% endif %}
+  <div class="community-post-copy">
+    {% if post.is_pinned %}<span class="tag">상단 고정</span>{% endif %}<span class="tag">{{ post.get_category_display }}</span><span class="tag">{{ post.get_region_display }}</span>{% if post.has_resolution_status %}<span class="tag">{{ post.get_resolution_display }}</span>{% endif %}<h2><a class="title" href="{% url 'post-detail' post.pk %}{% if list_query %}?from={{ list_query|urlencode }}{% endif %}">{{ post.display_title }}</a></h2><div class="market-details">{% include 'community/market_details.html' %}</div><div class="job-details">{% include 'community/job_details.html' %}</div>{% include 'community/place_details.html' %}<div class="meta">도움 반응 {{ post.helpful_count }}개 · {% include 'community/member_menu.html' with author=post.author %} · {{ post.created_at|date:'Y.m.d H:i' }} ICT</div>
+  </div>
+</article>
+{% endwith %}

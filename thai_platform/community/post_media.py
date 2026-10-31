@@ -1,9 +1,11 @@
 import io
+import re
 import warnings
 from urllib.parse import urlsplit
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 from django.core.exceptions import ValidationError
+from django.urls import reverse
 
 from .models import PostImage
 
@@ -12,6 +14,7 @@ MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024
 MAX_IMAGE_PIXELS = 20_000_000
 MAX_IMAGE_SIDE = 8_000
 OUTPUT_IMAGE_SIDE = 2_048
+INLINE_UPLOAD_MARKER = re.compile(r"(?<=\]\()teemobkk-upload:([0-4])\.png(?=\))")
 
 
 def sanitize_post_image(upload):
@@ -80,4 +83,17 @@ def save_post_images(post, uploads=(), image_urls=(), remove_ids=()):
         raise ValidationError("게시글 사진은 최대 5장까지 등록할 수 있어요.")
     if remove_ids:
         post.images.filter(pk__in=remove_ids).delete()
-    PostImage.objects.bulk_create(additions)
+    created = PostImage.objects.bulk_create(additions)
+    if created and any(image.pk is None for image in created):
+        created = list(
+            post.images.filter(position__gte=current_count - removed_count)
+            .order_by('position', 'pk')[:len(additions)]
+        )
+    return created
+
+
+def replace_inline_upload_markers(body, images):
+    """Replace temporary Markdown image URLs with saved, same-origin image URLs."""
+    uploaded = [image for image in images if not image.image_url and image.pk]
+    urls = {str(index): reverse('post-image', args=[image.pk]) for index, image in enumerate(uploaded)}
+    return INLINE_UPLOAD_MARKER.sub(lambda match: urls.get(match.group(1), match.group(0)), body)
