@@ -51,15 +51,19 @@ class WebTests(TestCase):
         self.assertContains(response, 'community/notifications/')
 
     def test_home_helpful_questions_use_public_real_votes_only(self):
-        self.assertNotContains(self.client.get('/'), '도움을 받은 질문')
+        home = self.client.get('/')
+        self.assertContains(home, '도움을 받은 질문')
+        empty_helpful = self.client.get('/?feed=helpful')
+        self.assertContains(empty_helpful, '아직 도움을 받은 질문이 없어요')
         Helpful.objects.create(user=self.other, post=self.post)
         hidden = Post.objects.create(author=self.owner, title='숨겨진 질문입니다', body='숨겨진 게시글입니다.', region='bangkok', category='living', status=Post.Status.HIDDEN)
         Helpful.objects.create(user=self.other, post=hidden)
-        response = self.client.get('/')
+        response = self.client.get('/?feed=helpful')
         self.assertContains(response, '도움을 받은 질문')
         self.assertContains(response, self.post.title)
         self.assertNotContains(response, hidden.title)
         self.assertEqual(list(response.context['helpful_posts']), [self.post])
+        self.assertEqual(list(response.context['community_posts']), [self.post])
 
     def test_desktop_header_links_to_profile_only_when_signed_in(self):
         self.assertNotContains(self.client.get('/'), 'class="account-profile"')

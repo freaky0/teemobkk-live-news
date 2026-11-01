@@ -83,11 +83,17 @@ def back_url(request):
 
 def home(request):
     from . import news
+    question_posts = published(request.user).filter(category__in=RESOLUTION_CATEGORIES)
+    posts = question_posts.order_by('-created_at', '-pk')[:4]
+    helpful_posts = question_posts.filter(helpful_count__gt=0).order_by(
+        '-helpful_count', '-created_at', '-pk'
+    )[:4]
+    feed_mode = 'helpful' if request.GET.get('feed') == 'helpful' else 'recent'
     context = {
-        "posts": with_post_images(published(request.user))[:4],
-        "helpful_posts": with_post_images(
-            published(request.user).filter(helpful_count__gt=0).order_by('-helpful_count', '-created_at', '-pk')
-        )[:4],
+        "posts": posts,
+        "helpful_posts": helpful_posts,
+        "community_posts": helpful_posts if feed_mode == 'helpful' else posts,
+        "community_feed_mode": feed_mode,
     }
     if request.user.is_authenticated:
         membership = getattr(request.user, 'membership', None)

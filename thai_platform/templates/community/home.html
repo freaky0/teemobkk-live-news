@@ -1,4 +1,4 @@
-{% extends 'base.html' %}{% load static %}{% load post_body %}{% block content %}
+{% extends 'base.html' %}{% load static %}{% block content %}
 <section class="hero home-hero" aria-labelledby="home-title">
   <img src="{% static 'assets/cat-hero.webp' %}" alt="태국 모자와 카메라를 쓴 고양이의 방콕 일러스트">
   <div class="hero-copy home-hero-copy">
@@ -99,50 +99,43 @@
 </div>
 
 <section class="section home-questions" aria-labelledby="home-questions-title">
-  <div class="section-head">
-    <h2 id="home-questions-title">이웃의 최근 질문</h2>
-    <a class="btn" href="{% url 'post-list' %}">질문 전체</a>
+  <div class="home-questions-head">
+    <div>
+      <h2 id="home-questions-title">이웃의 최근 질문</h2>
+    </div>
+    <a class="home-questions-all" href="{% url 'post-list' %}?category=questions">질문 전체 보기 <span aria-hidden="true">↗</span></a>
   </div>
-  <div class="home-questions-grid{% if not helpful_posts %} is-single{% endif %}">
-    <section class="panel home-question-panel" aria-labelledby="recent-questions-title">
-      <h3 id="recent-questions-title">최근 질문</h3>
-      <ul class="home-question-list">
-        {% for post in posts %}
-        {% with thumbnail=post|community_thumbnail %}
-        <li class="home-question-item{% if thumbnail %} has-image{% endif %}">
-          {% if thumbnail %}<a class="home-question-media" href="{% url 'post-detail' post.pk %}" aria-label="게시글 대표 사진 보기"><img src="{{ thumbnail }}" alt="{{ post.display_title }} 대표 사진" loading="lazy" decoding="async" referrerpolicy="no-referrer"></a>{% endif %}
-          <div class="home-question-copy">
-            <a class="home-question-title" href="{% url 'post-detail' post.pk %}">{{ post.display_title }}</a>
-            <p class="home-question-meta"><span class="tag">{{ post.get_category_display }}</span><span class="tag">{{ post.get_region_display }}</span>{% if post.has_resolution_status %}<span class="tag">{{ post.get_resolution_display }}</span>{% endif %}<span class="meta">도움 반응 {{ post.helpful_count }}개</span></p>
-          </div>
-        </li>
-        {% endwith %}
-        {% empty %}
-        <li class="home-question-empty">
-          <p>아직 등록된 질문이 없습니다.</p>
-          <p class="meta">첫 질문을 남겨보세요. 작성에는 로그인이 필요합니다.</p>
-        </li>
-        {% endfor %}
-      </ul>
-    </section>
-    {% if helpful_posts %}
-    <section class="panel home-question-panel" aria-labelledby="helpful-questions-title">
-      <h3 id="helpful-questions-title">도움을 받은 질문</h3>
-      <ul class="home-question-list">
-        {% for post in helpful_posts %}
-        {% with thumbnail=post|community_thumbnail %}
-        <li class="home-question-item{% if thumbnail %} has-image{% endif %}">
-          {% if thumbnail %}<a class="home-question-media" href="{% url 'post-detail' post.pk %}" aria-label="게시글 대표 사진 보기"><img src="{{ thumbnail }}" alt="{{ post.display_title }} 대표 사진" loading="lazy" decoding="async" referrerpolicy="no-referrer"></a>{% endif %}
-          <div class="home-question-copy">
-            <a class="home-question-title" href="{% url 'post-detail' post.pk %}">{{ post.display_title }}</a>
-            <p class="home-question-meta"><span class="tag">{{ post.get_category_display }}</span><span class="tag">{{ post.get_region_display }}</span>{% if post.has_resolution_status %}<span class="tag">{{ post.get_resolution_display }}</span>{% endif %}<span class="meta">도움 반응 {{ post.helpful_count }}개</span></p>
-          </div>
-        </li>
-        {% endwith %}
-        {% endfor %}
-      </ul>
-    </section>
-    {% endif %}
+  <div class="home-question-feed">
+    <div class="home-question-controls">
+      <nav class="home-question-tabs" aria-label="질문 보기 순서">
+        <a class="home-question-tab{% if community_feed_mode == 'recent' %} is-active{% endif %}" href="{% url 'home' %}"{% if community_feed_mode == 'recent' %} aria-current="page"{% endif %}>최근 질문</a>
+        <a class="home-question-tab{% if community_feed_mode == 'helpful' %} is-active{% endif %}" href="{% url 'home' %}?feed=helpful"{% if community_feed_mode == 'helpful' %} aria-current="page"{% endif %}>도움을 받은 질문</a>
+      </nav>
+      <span class="home-question-sort">{% if community_feed_mode == 'helpful' %}도움 반응 순{% else %}최신 순{% endif %}</span>
+    </div>
+    <ul class="home-question-list">
+      {% for post in community_posts %}
+      <li class="home-question-item">
+        <div class="home-question-copy">
+          <a class="home-question-title" href="{% url 'post-detail' post.pk %}">{{ post.display_title }}</a>
+          <p class="home-question-meta"><span>{{ post.get_category_display }}</span><span>{{ post.get_region_display }}</span><span>{{ post.created_at|date:'Y.m.d' }}</span>{% if post.has_resolution_status %}<span>{{ post.get_resolution_display }}</span>{% endif %}</p>
+        </div>
+        <span class="home-question-helpful">도움 {{ post.helpful_count }}</span>
+      </li>
+      {% empty %}
+      <li class="home-question-empty">
+        <div>
+          <p class="home-question-empty-title">{% if community_feed_mode == 'helpful' %}아직 도움을 받은 질문이 없어요{% else %}아직 이웃의 질문이 없어요{% endif %}</p>
+          <p class="home-question-empty-copy">{% if community_feed_mode == 'helpful' %}질문에 경험을 나누면 이웃에게 큰 도움이 됩니다.{% else %}태국 생활에서 궁금한 점을 가장 먼저 나눠 보세요.{% endif %}</p>
+        </div>
+        {% if community_feed_mode == 'helpful' %}
+        <a class="btn" href="{% url 'post-list' %}?category=questions">질문 둘러보기</a>
+        {% else %}
+        <a class="btn primary" href="{% url 'post-create' %}?category=questions">첫 질문 남기기</a>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
   </div>
 </section>
 {% endblock %}
