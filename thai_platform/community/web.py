@@ -12,6 +12,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.cache import never_cache
 from rest_framework.exceptions import ValidationError as APIValidationError
+from config.seo import render_seo
 from .forms import CATEGORIES, REGIONS, AppealForm, CommentForm, PostForm, ReportForm
 from .models import BoardCategory, Comment, CommentLike, Notification, Post, PostImage, RESOLUTION_CATEGORIES
 from .board_versions import board_data_version
@@ -113,7 +114,13 @@ def home(request):
         context["news_page"] = news.list_articles(page_size=5)
     except news.NewsUnavailable:
         context["news_error"] = "뉴스를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요."
-    return render(request, "community/home.html", context)
+    return render_seo(
+        request,
+        "community/home.html",
+        context,
+        title="태국 교민 뉴스와 생활정보 | TeemoBKK POST",
+        description="태국 소식은 한국어로 읽고, 비자·집·생활 정보는 이웃의 경험에서 찾아보세요.",
+    )
 
 def post_list(request):
     qs = published(request.user)
@@ -154,7 +161,13 @@ def post_list(request):
     if not can_filter_resolution or resolution not in Post.Resolution.values:
         keep.pop("resolution", None)
     is_question_board = category in RESOLUTION_CATEGORIES
-    return render(request, "community/list.html", {"resolution": resolution, "can_filter_resolution": can_filter_resolution, "is_question_board": is_question_board, "resolutions": Post.Resolution.choices, "page_obj": pagination, "q": q, "region": region, "category": category, "board_categories": board_categories, "board_category": board_category, "regions": REGIONS, "categories": CATEGORIES, "board_title": board_title, "board_description": board_description, "list_query": "?" + request.GET.urlencode(), "filter_query": keep.urlencode()})
+    return render_seo(
+        request,
+        "community/list.html",
+        {"resolution": resolution, "can_filter_resolution": can_filter_resolution, "is_question_board": is_question_board, "resolutions": Post.Resolution.choices, "page_obj": pagination, "q": q, "region": region, "category": category, "board_categories": board_categories, "board_category": board_category, "regions": REGIONS, "categories": CATEGORIES, "board_title": board_title, "board_description": board_description, "list_query": "?" + request.GET.urlencode(), "filter_query": keep.urlencode()},
+        title="태국 교민 커뮤니티 | TeemoBKK POST",
+        description=board_description,
+    )
 
 
 @never_cache
@@ -234,7 +247,7 @@ def post_detail(request, pk):
         image for image in post.images.all()
         if (image.image_url or reverse('post-image', args=[image.pk])) not in body
     ]
-    return render(request, "community/detail.html", {
+    return render_seo(request, "community/detail.html", {
         "post": post,
         "gallery_images": gallery_images,
         "has_resolution_status": post.has_resolution_status,
@@ -243,7 +256,8 @@ def post_detail(request, pk):
         "comment_form": CommentForm(),
         "report_form": ReportForm(),
         "back_url": back_url(request),
-    })
+    }, title=f"{post.display_title} | 태국 교민 생활정보 | TeemoBKK POST",
+        description=post.display_body, allow_from=True)
 
 
 @never_cache

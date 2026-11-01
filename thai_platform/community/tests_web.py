@@ -218,7 +218,7 @@ class WebTests(TestCase):
 
     def test_guest_write_actions_explain_login_and_preserve_selected_board(self):
         home = self.client.get("/")
-        self.assertContains(home, 'class="btn home-secondary-action" href="/community/">커뮤니티 둘러보기</a>')
+        self.assertContains(home, 'class="btn home-secondary-action" href="/community/?category=questions">생활정보 찾기</a>')
         self.assertContains(home, 'class="home-community-nav" aria-label="커뮤니티 바로가기"')
         self.assertNotContains(home, 'class="btn primary" href="/community/new/"')
         self.assertNotContains(home, "질문 쓰기")

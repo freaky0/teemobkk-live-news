@@ -166,13 +166,13 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
         detail = metadata(self.client.get('/newsroom/'+ident+'/'))
         self.assertEqual([v for k, v in detail if k == 'og:image'], [image])
         self.assertIn(('twitter:image', image), detail)
-        self.assertIn(('og:title', '검증용 태국 뉴스 social-story'), detail)
+        self.assertIn(('og:title', '검증용 태국 뉴스 social-story | 태국 뉴스 | TeemoBKK POST'), detail)
         self.assertIn(('og:url', 'https://teemobkk.io/thai/newsroom/'+ident+'/'), detail)
         no_image = self.add('social-no-image')
         missing = metadata(self.client.get('/newsroom/'+sha256(no_image.encode()).hexdigest()+'/'))
         self.assertEqual([v for k, v in missing if k == 'og:image'], [branded])
         self.assertIn(('twitter:image', branded), missing)
-        self.assertIn(('og:title', '검증용 태국 뉴스 social-no-image'), missing)
+        self.assertIn(('og:title', '검증용 태국 뉴스 social-no-image | 태국 뉴스 | TeemoBKK POST'), missing)
         from PIL import Image
         from django.contrib.staticfiles import finders
         asset = Path(__file__).resolve().parent.parent / 'static/assets/share-home-v1.jpg'

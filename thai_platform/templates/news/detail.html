@@ -1,18 +1,18 @@
 {% extends 'base.html' %}
-{% block title %}{{ article.title }} · TeemoBKK POST{% endblock %}
+{% block title %}{{ seo_title }}{% endblock %}
 {% block social_meta %}
 <link rel="canonical" href="{{ canonical_url }}">
-<meta name="description" content="{{ article.summary|striptags|truncatechars:200 }}">
+<meta name="description" content="{{ article.summary|striptags|truncatechars:160 }}">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="TeemoBKK POST">
-<meta property="og:title" content="{{ article.title }}">
-<meta property="og:description" content="{{ article.summary|striptags|truncatechars:200 }}">
+<meta property="og:title" content="{{ seo_title }}">
+<meta property="og:description" content="{{ article.summary|striptags|truncatechars:160 }}">
 <meta property="og:url" content="{{ canonical_url }}">
 <meta property="og:image" content="{% if article.image_url %}{{ article.image_url }}{% else %}{{ share_image_url }}{% endif %}">
 <meta property="og:image:alt" content="{% if article.image_url %}{{ article.title }}{% else %}방콕을 여행하는 TEEMOBKK 고양이와 태국 소식{% endif %}">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{{ article.title }}">
-<meta name="twitter:description" content="{{ article.summary|striptags|truncatechars:200 }}">
+<meta name="twitter:title" content="{{ seo_title }}">
+<meta name="twitter:description" content="{{ article.summary|striptags|truncatechars:160 }}">
 <meta name="twitter:image" content="{% if article.image_url %}{{ article.image_url }}{% else %}{{ share_image_url }}{% endif %}">
 {% endblock %}
 {% block content %}

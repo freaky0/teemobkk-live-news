@@ -62,7 +62,7 @@ class EmailLinkSubpathTests(TestCase):
         home = self.client.get("/", SCRIPT_NAME="/thai")
         self.assertEqual(home.status_code, 200)
         self.assertContains(home, "태국 주요 소식")
-        self.assertEqual(home["X-Robots-Tag"], "noindex, nofollow")
+        self.assertEqual(home["X-Robots-Tag"], "index, follow")
 
         community = self.client.get("/community/", SCRIPT_NAME="/thai")
         self.assertEqual(community.status_code, 200)

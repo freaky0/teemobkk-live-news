@@ -222,6 +222,11 @@
   gap: 0;
 }
 
+.home-news-list > .panel.empty {
+  border: 0;
+  background: var(--color-bg-surface);
+}
+
 .home-news-card {
   min-width: 0;
 }
