@@ -85,8 +85,8 @@ function cleanTitle(value,source){let text=String(value||'').replace(/(?:https?:
 const shown=(s,label)=>{const t=String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   return '실제 <b class="'+label+'">'+t+'</b>'};
 
-var V={tab:CFG.wantThai?'thai':'global',cats:[],hours:24,q:'',terms:[],limit:PAGE,tag:null,mode:'all',value:'',offset:0,pickOnly:false,language:CFG.lang==='en'&&!CFG.wantThai?'en':'all'};
-const SHARE_LIMITS={categories:12,terms:10,category:120,term:80,query:160,source:160};
+var V={tab:CFG.wantThai?'thai':'global',lastNews:CFG.wantThai?'thai':'global',cats:[],hours:24,q:'',terms:[],limit:PAGE,tag:null,mode:'all',value:'',offset:0,pickOnly:false,language:CFG.lang==='en'&&!CFG.wantThai?'en':'all'};
+const SHARE_LIMITS={categories:24,terms:10,category:120,term:160,query:160,source:160};
 function uniqueValues(values,maxLength,maxItems){
   const seen=new Set(),out=[];
   for(const value of values){
@@ -96,21 +96,40 @@ function uniqueValues(values,maxLength,maxItems){
   return out}
 function restoreUrlState(){
   const url=new URL(location.href),params=url.searchParams,hash=new URLSearchParams(url.hash.slice(1));
-  const tab=CFG.wantThai?'thai':(hash.get('tab')||params.get('tab'));
-  const initialTab=tab==='cal'?'cal':(tab==='thai'?'thai':'global');
+  const requested=hash.get('tab')||params.get('tab');
+  // The Thailand list is restored in place only on a page that carries the tab: the Thai
+  // dashboards (wantThai) and the operator page (ADMIN). A legacy #tab=thai on a public global
+  // dashboard is ignored - that link predates the /thai/news/ split, so a reader following it
+  // still expects global news, and the page has no Thailand list to show them.
+  const initialTab=requested==='cal'?'cal'
+    :(requested==='thai'&&(CFG.wantThai||ADMIN)?'thai':(CFG.wantThai?'thai':'global'));
+  // Keep the fragment only in the shape this page writes it back: a Thailand dashboard already
+  // implies its tab, and a global page without the tab has nothing to remember. Anything else
+  // (the legacy #tab=thai, an explicit #tab=global) is stale, so it is dropped here rather than
+  // carried into a shared link.
+  const keepTab=initialTab==='cal'?'cal':(initialTab==='thai'&&!CFG.wantThai?'thai':'');
+  // A `?tab=` search parameter is never kept: the tab lives in the fragment. It is read above
+  // only so old links still land on the tab they asked for.
+  let dropTab=params.has('tab');
+  params.delete('tab');
+  if((requested||'')!==keepTab&&hash.has('tab')){hash.delete('tab');dropTab=true}
   setTab(initialTab,true,true);
   const hours=document.querySelector('#hours');
   const allowedHours=hours?Array.from(hours.options).map(option=>Number(option.value)):[24];
   const requestedHours=Number(params.get('hours'));
   V.hours=allowedHours.includes(requestedHours)?requestedHours:24;
   V.q=String(params.get('q')||'').trim().slice(0,SHARE_LIMITS.query);
-  V.cats=uniqueValues(params.getAll('category').concat(hash.getAll('cat')),SHARE_LIMITS.category,SHARE_LIMITS.categories);
+  V.cats=uniqueValues(params.getAll('category').concat(hash.getAll('cat')),SHARE_LIMITS.category,SHARE_LIMITS.categories)
+    .filter(value=>value!=='전체');
   V.terms=uniqueValues(params.getAll('term'),SHARE_LIMITS.term,SHARE_LIMITS.terms);
   const source=String(params.get('source')||'').trim().slice(0,SHARE_LIMITS.source);
   V.tag=source?{k:'src',v:source}:null;
   V.pickOnly=params.get('picked')==='1';
-  const language=params.get('language');
-  if(language==='all'||language==='en')V.language=language;
+  const language=params.get('language');let dropLanguage=false;
+  if(language==='all'||language==='en'){
+    if(CFG.lang==='en'&&!CFG.wantThai)V.language=language;
+    else{params.delete('language');dropLanguage=true}}
+  else if(language){params.delete('language');dropLanguage=true}
   const priority=params.get('priority');
   if(priority){V.mode='priority';V.value=priority.slice(0,8)}
   else if(params.get('source_type')==='official')V.mode='official';
@@ -118,7 +137,19 @@ function restoreUrlState(){
   if(q)q.value=V.q;
   if(hours)hours.value=String(V.hours);
   if(languageFilter)languageFilter.value=V.language;
-  renderGuide()}
+  if(dropTab||dropLanguage){
+    const fragment=hash.toString();
+    url.hash=fragment?'#'+fragment:'';
+    history.replaceState(history.state,'',url.pathname+url.search+url.hash)}
+  renderGuide();syncLanguageLinks()}
+function syncLanguageLinks(){
+  document.querySelectorAll('.langbar a').forEach(link=>{
+    try{
+      const target=new URL(link.getAttribute('href'),location.href),params=new URLSearchParams(location.search);
+      if(target.pathname.indexOf('/news/ko')>=0)params.delete('language');
+      target.search=params.toString();target.hash=location.hash;
+      link.href=target.pathname+target.search+target.hash
+    }catch(e){}})}
 function writeUrlState(){
   const url=new URL(location.href),params=url.searchParams,hash=new URLSearchParams(url.hash.slice(1));
   ['tab','hours','category','term','q','source','picked','language','priority','source_type'].forEach(key=>params.delete(key));
@@ -139,7 +170,11 @@ function writeUrlState(){
   if(categories.length===1)hash.set('cat',categories[0]);
   const fragment=hash.toString();
   url.hash=fragment?'#'+fragment:'';
-  history.replaceState(history.state,'',url.pathname+url.search+url.hash)}
+  history.replaceState(history.state,'',url.pathname+url.search+url.hash);
+  syncLanguageLinks()}
+function announceShareLimit(){
+  const live=document.querySelector('#live');
+  if(live)live.textContent=CFG.lang==='en'?'You can share up to 10 keyword filters.':'공유 검색어는 최대 10개까지 사용할 수 있습니다.'}
 var MEM={},LATEST={},PENDING={},INDEX={},SEEN={},FULL={},DATA={articles:[],sources:{},total:0,has_more:false};
 var BRIEF_CACHE={},BRIEF_PENDING={};
 var archiveTotal=0,refreshTimer=null,hidden=false,lastRegion={};
@@ -399,7 +434,7 @@ function renderPills(){
     // 전체 is the one control that clears the lot and shows the whole list, so it releases the
     // source tag and the keywords as well; a single category toggles and composes with the rest.
     if(v==='전체'){V.cats=[];V.tag=null;V.pickOnly=false;clearText()}
-    else{const i=V.cats.indexOf(v);if(i>=0)V.cats.splice(i,1);else V.cats.push(v)}
+    else{const i=V.cats.indexOf(v);if(i>=0)V.cats.splice(i,1);else if(V.cats.length<SHARE_LIMITS.categories)V.cats.push(v)}
     V.mode='all';V.value='';
     V.limit=PAGE;V.offset=0;renderPills();writeUrlState();fetchFeed()});
   row.querySelectorAll('button[data-src]').forEach(b=>b.onclick=()=>{
@@ -540,7 +575,9 @@ document.querySelector('#trend').onclick=ev=>{
   // so a reader never has to go back a page to undo a click. Categories are left alone: 트럼프 and
   // 거시경제 are two axes and are asked for together.
   const term=b.dataset.trend,i=V.terms.indexOf(term);
-  if(i>=0)V.terms.splice(i,1);else V.terms.push(term);
+  if(i>=0)V.terms.splice(i,1);
+  else if(V.terms.length<SHARE_LIMITS.terms)V.terms.push(term);
+  else{announceShareLimit();return}
   const q=document.querySelector('#q');if(q&&q.value)q.value='';V.q='';
   V.limit=PAGE;V.offset=0;renderTrends();writeUrlState();fetchFeed();
 };
@@ -1013,7 +1050,7 @@ function setTab(next,silent,deferFetch){
   // The indicator tab toggles: pressing it again closes the panel and returns to the
   // last news tab. Previously the calendar stayed open above the feed once visited,
   // because it was shown with an inline style that the tab class could not undo.
-  if(next==='cal'&&V.tab==='cal'&&!silent){setTab(V.lastNews||'global');return}
+  if(next==='cal'&&V.tab==='cal'&&!silent){setTab(V.lastNews||(CFG.wantThai?'thai':'global'));return}
   if(next!=='cal')V.lastNews=next;
   V.tab=next;V.cats=[];V.tag=null;V.limit=PAGE;V.offset=0;V.mode='all';V.value='';V.pickOnly=false;clearText();
   document.body.classList.toggle('tab-cal',next==='cal');
@@ -1099,7 +1136,9 @@ document.querySelector('#q').oninput=()=>{clearTimeout(window.__qt);
 document.querySelector('#qadd').onclick=()=>{
   const box=document.querySelector('#q'),value=(box.value||'').trim();
   if(!value)return;
-  if(V.terms.indexOf(value)<0)V.terms.push(value);
+  if(V.terms.indexOf(value)<0){
+    if(V.terms.length>=SHARE_LIMITS.terms){announceShareLimit();return}
+    V.terms.push(value.slice(0,SHARE_LIMITS.term))}
   box.value='';V.q='';
   V.limit=PAGE;V.offset=0;renderTrends();writeUrlState();fetchFeed()};
 const filterToggle=document.querySelector('#filter-toggle');
@@ -1787,7 +1826,7 @@ __TABS__
   </section>
 
   <section class="toolbar">
-    <input id="q" type="search" placeholder="제목·요약·출처 검색 ( / )" aria-label="뉴스 검색">
+    <input id="q" type="search" maxlength="160" placeholder="제목·요약·출처 검색 ( / )" aria-label="뉴스 검색">
     <button id="qadd" class="qadd" type="button" title="검색어를 조건으로 고정합니다">+ 조건 추가</button>
     <select id="hours" aria-label="기간">
       <option value="1">최근 1시간</option>

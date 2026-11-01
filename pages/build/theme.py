@@ -24,22 +24,36 @@ USAGE_BAR_CSS = ('.urow{display:flex;align-items:center;gap:8px}\n'
 
 HEADER_CSS = ('.top{border-bottom:1px solid var(--line);background:var(--bg);background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(8px);position:sticky;top:0;z-index:20}\n'
               '.nav{min-height:66px;display:flex;align-items:center;gap:24px}\n'
-              '.nav nav{flex:1;min-width:0}\n'
-              '.brand{font-family:var(--mono);font-weight:700;font-size:18px;letter-spacing:-.02em;white-space:nowrap}\n'
-              '.brand .prompt{color:var(--accent)}\n'
-              '.brand .cursor{display:inline-block;width:9px;height:17px;background:var(--accent);vertical-align:-3px;margin-left:5px;animation:blink 1.1s steps(1) infinite}\n'
-              '@keyframes blink{50%{opacity:0}}\n'
+              '.nav .primary-nav{flex:1;min-width:0}\n'
+              '.top .brand{font-family:Georgia,"Times New Roman","Noto Serif KR",serif;font-weight:600;font-size:20px;line-height:1.2;letter-spacing:-.03em;white-space:nowrap;color:var(--text)}\n'
+              '.top .brand:hover{color:var(--accent)}\n'
               'nav{display:flex;gap:26px;align-items:center;flex:1}\n'
               'nav a{font-size:13.5px;font-weight:600;padding-block:12px;color:var(--muted)}\n'
               'nav a{min-height:44px;display:inline-flex;align-items:center}\n'
+              '.top .primary-nav a{white-space:nowrap}\n'
               'nav a:hover{color:var(--accent)}\n'
               'nav a.secondary{margin-left:auto;font-family:var(--mono);font-size:12.5px}\n'
               '.theme-toggle{flex:0 0 auto;min-height:40px;padding:7px 11px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);color:var(--text);font-size:12px;font-weight:650;white-space:nowrap}\n'
-              '.theme-toggle:hover{border-color:var(--accent);color:var(--accent)}')
+              '.theme-toggle:hover{border-color:var(--accent);color:var(--accent)}\n'
+              '.top .brand:focus-visible,.theme-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}\n'
+              '/* The landing sheet labels .brand through a ::before pseudo-element that the old terminal\n'
+              '   markup needed; the wordmark is real text now, so that generated copy is suppressed. */\n'
+              '.top .brand::before{content:none}\n'
+              '@media(min-width:861px) and (max-width:1020px){.top .nav{gap:16px}.top .primary-nav{gap:16px}}\n'
+              '@media(max-width:860px){\n'
+              '.top .nav{flex-wrap:wrap;gap:8px 14px;padding-block:8px;min-height:0}\n'
+              '.top .brand{order:1;flex:1 1 auto;min-width:0;font-size:18px}\n'
+              '.top .theme-toggle{order:2;margin-left:auto;min-height:44px}\n'
+              '.top .primary-nav{order:3;flex:1 0 100%;flex-wrap:nowrap;gap:22px;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;scroll-padding-inline:2px;padding-inline:2px}\n'
+              '.top .primary-nav::-webkit-scrollbar{display:none}\n'
+              '.top .primary-nav a{flex:0 0 auto;min-height:44px;padding-block:10px}\n'
+              '.top .primary-nav a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:4px}\n'
+              '.top .primary-nav a.secondary{margin-left:0}\n'
+              '}')
 
 FOOTER_CSS = ('.footer{border-top:1px solid var(--line);padding:26px 0 38px;color:var(--dim);font-size:12px;background:var(--surface2)}\n'
               '.footer-row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px;align-items:center}\n'
-              '.footer-row .fbrand{font-family:var(--mono);color:var(--muted)}\n'
+              '.footer-row .fbrand{font-family:var(--sans);font-weight:650;font-size:12.5px;letter-spacing:-.01em;color:var(--muted)}\n'
               '.footer p{margin:16px 0 0;max-width:860px;line-height:1.7}\n'
               '.footer-links{display:flex;flex-wrap:wrap;gap:10px 20px;margin-top:16px;font-size:12.5px}\n'
               '.footer-links a{color:var(--muted);text-decoration:underline;text-underline-offset:3px}\n'
@@ -49,6 +63,10 @@ SUBPAGE_CSS = """\
 body{margin:0;background:var(--bg);color:var(--text);font:16px/1.75 var(--sans)}
 .wrap{max-width:1120px;margin:auto;padding-inline:28px}
 .page-main{max-width:900px;margin:auto;padding:52px 28px 72px}
+.skip{position:fixed;left:16px;top:16px;z-index:50;transform:translateY(-160%);padding:10px 16px;border-radius:var(--radius);background:var(--accent);color:var(--bg);font:600 14px/1.4 var(--sans);text-decoration:none;box-shadow:0 8px 22px rgba(0,0,0,.18);transition:transform .15s ease}
+.skip:focus,.skip:focus-visible{transform:none}
+.skip:focus-visible{outline:3px solid var(--text);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.skip{transition:none}}
 .page-head{padding-bottom:30px;border-bottom:1px solid var(--line)}
 .page-eyebrow{margin:0 0 12px;color:var(--accent);font:12px/1.5 var(--mono);letter-spacing:.1em}
 .page-title{margin:0;font-size:clamp(32px,6vw,52px);line-height:1.2;letter-spacing:-.04em}
@@ -60,6 +78,9 @@ body{margin:0;background:var(--bg);color:var(--text);font:16px/1.75 var(--sans)}
 .page-post h2{margin:8px 0;font-size:20px;line-height:1.45}
 .page-post p{margin:0;color:var(--muted);font-size:14px;word-break:keep-all}
 .page-post .read{display:inline-block;margin-top:12px;color:var(--accent);font:12px/1.5 var(--mono)}
+.page-post h2 a{color:inherit;text-decoration:none}
+.page-post h2 a:hover{color:var(--accent)}
+.page-main a:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:3px}
 .page-indicators{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:24px}
 .page-back{display:inline-block;margin-top:24px;color:var(--accent);font:13px/1.5 var(--mono)}
 @media(max-width:767px){
@@ -103,17 +124,16 @@ def theme_head_script() -> str:
 
 
 def render_header() -> str:
-    return ('<header class="top"><div class="wrap nav"><a class="brand" href="/" aria-label="TeemoBKK 홈">'
-            '<span class="prompt">teemo@bkk</span>:~$ ./live-news<span class="cursor" aria-hidden="true"></span>'
-            '</a><nav aria-label="주요 메뉴"><a href="/news/ko/">경제 뉴스</a><a href="/perspectives/">시장 관점</a>'
-            '<a href="/indicators/">트레이딩뷰 지표</a><a href="/tradingtalk/">트레이딩 톡</a>'
+    return ('<header class="top"><div class="wrap nav"><a class="brand" href="/" aria-label="TeemoBKK 홈">TeemoBKK</a>'
+            '<nav class="primary-nav" aria-label="주요 메뉴"><a href="/news/ko/">경제 뉴스</a><a href="/perspectives/">시장 관점</a>'
+            '<a href="/blog/">블로그</a><a href="/indicators/">트레이딩뷰 지표</a><a href="/tradingtalk/">트레이딩 톡</a>'
             '<a href="/lab/">지표 연구</a><a class="secondary" href="/thai/">/thai ↗</a></nav>'
             '<button class="theme-toggle" id="landing-theme-toggle" type="button" aria-label="다크 모드 켜기" aria-pressed="false">다크 모드 켜기</button></div></header>')
 
 
 def render_footer() -> str:
     return ('<footer class="footer"><div class="wrap"><div class="footer-row">'
-            '<span class="fbrand">teemo@bkk:~$ ./live-news --v2026</span>'
+            '<span class="fbrand">TeemoBKK</span>'
             '<a href="/thai/">별도 소식 · 태국 교민 뉴스 ↗</a></div>'
             '<p>뉴스는 자동 매매 신호가 아닙니다 · 중요한 사건은 원문과 공시로 확인하세요. 제공되는 글과 지표만으로 투자 결정을 내리지 마세요.</p>'
             '<nav class="footer-links" aria-label="사이트 정보"><a href="/privacy/">개인정보 처리방침</a>'
