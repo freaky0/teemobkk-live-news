@@ -24,8 +24,8 @@ class LandingContract(unittest.TestCase):
         page = landing.render_landing()
         cta = '<a class="button primary" href="/news/ko/">오늘의 시장 보기</a>'
         self.assertEqual(page.count(cta), 1)
-        self.assertIn('id="headline">차트보다 먼저 읽는 뉴스</h1>', page)
-        self.assertIn('시장이 움직이는 이유를 전합니다.', page)
+        self.assertRegex(page, r'<h1 id="headline">.*차트보다 먼저.*읽는 뉴스.*</h1>')
+        self.assertIn('시장이 움직인 이유를 설명하고', page)
 
     def test_thai_mobile_economy_link_targets_korean_market_news(self):
         page = landing_thai.render_thai_landing()
@@ -33,13 +33,15 @@ class LandingContract(unittest.TestCase):
         self.assertIn('.nav nav a.secondary{display:inline-flex}', page)
 
     def test_market_first_and_platform_neutral(self):
-        parser=Text(); parser.feed(landing.render_landing()); text=' '.join(parser.parts)
-        self.assertIn('시장이 움직이는 이유를 전합니다.', text)
+        page = landing.render_landing()
+        parser=Text(); parser.feed(page); text=' '.join(parser.parts)
+        self.assertIn('시장이 움직인 이유를 설명하고', text)
         self.assertIn('최근 경제 뉴스', text)
         self.assertIn('시장 관점', text)
         self.assertNotIn('서브스택', text)
         self.assertIn('무료 공개', text)
-        self.assertIn('태국 교민 뉴스', text)
+        self.assertIn('태국 뉴스', text)
+        self.assertIn('href="/thai/"', page)
 
     def test_thai_category_filters_render_cached_results_immediately(self):
         page = landing_thai.render_thai_landing()
@@ -67,18 +69,32 @@ class LandingContract(unittest.TestCase):
         self.assertNotIn('class="pointer-light"', page)
         self.assertIn('@media(max-width:767px)', page)
         self.assertIn('.hero{grid-template-columns:1fr', page)
-        self.assertIn('.news-row{gap:10px;padding:12px 14px}', page)
-        self.assertIn('--bg:#faf8f3', page)
-        self.assertIn('--accent:#0a7a4a', page)
+        self.assertIn('.news-strip{position:relative;margin:26px 0 0;height:160px', page)
+        self.assertIn('.news-strip{height:120px', page)
+        self.assertIn('--bg:#f0f0ee', page)
+        self.assertIn('--accent:#0f7a52', page)
         self.assertIn('<meta name="color-scheme" content="light dark">', page)
         self.assertIn('id="landing-theme-toggle"', page)
         self.assertIn('다크 모드로 전환', page)
         self.assertIn('localStorage.setItem("tbn-theme",t)', page)
-        self.assertIn('[data-theme=dark] .top{background:', page)
+        self.assertIn('color-mix(in srgb,var(--bg) 94%,transparent)', page)
         self.assertIn('@media(prefers-reduced-motion:reduce)', page)
         self.assertIn('src="/assets/landing/hero-editorial.webp"', page)
         self.assertIn('src="/assets/landing/news-editorial.webp"', page)
-        self.assertIn('src="/assets/landing/btc-analysis.webp"', page)
+
+    def test_market_ticker_is_live_accessible_and_limited_to_supported_symbols(self):
+        page = landing.render_landing()
+        self.assertIn('wss://wbs-api.mexc.com/ws', page)
+        self.assertIn('spot@public.miniTicker.v3.api.pb@', page)
+        self.assertIn("socket.binaryType='arraybuffer'", page)
+        for symbol in ('BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT',
+                       'BNBUSDT', 'DOGEUSDT', 'ADAUSDT', 'LINKUSDT'):
+            self.assertIn(symbol, page)
+        self.assertNotIn('api.binance.com', page)
+        self.assertIn('data-state=stale', page)
+        self.assertIn('data-state=reconnecting', page)
+        self.assertIn('id="kinetic-toggle"', page)
+        self.assertIn('@media(prefers-reduced-motion:reduce)', page)
 
     def test_tradingview_invite_is_removed_but_official_profile_remains(self):
         page = landing.render_landing()

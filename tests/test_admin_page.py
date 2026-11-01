@@ -56,7 +56,8 @@ class PublicDocument(unittest.TestCase):
             with self.subTest(thai=thai):
                 page = public_document(want_thai=thai)
                 self.assertEqual(fragments(page, skip_words()), {})
-                self.assertIn('>Enable dark mode</button>', page)
+                expected_theme_label = 'Enable dark mode' if thai else 'Switch to dark mode'
+                self.assertIn('>' + expected_theme_label + '</button>', page)
                 self.assertIn('selected ✕', page)
                 self.assertIn('esc(CFG.clearTerms)', page)
 
@@ -77,7 +78,7 @@ class PublicDocument(unittest.TestCase):
 
     def test_reader_edition_has_a_distinct_name_and_theme(self):
         korean = public_document(lang="ko")
-        self.assertIn('<body class="public">', korean)
+        self.assertIn('<body class="public site-roots">', korean)
         self.assertIn('<title>오늘의 시장 | TeemoBKK</title>', korean)
         self.assertIn('<h1>오늘의 시장</h1>', korean)
         self.assertIn('body.public .feed{display:block', korean)
@@ -88,7 +89,7 @@ class PublicDocument(unittest.TestCase):
 
     def test_reader_page_has_persistent_theme_switch(self):
         page = public_document()
-        self.assertEqual(page.count('id="theme-toggle"'), 1)
+        self.assertEqual(page.count('id="landing-theme-toggle"'), 1)
         self.assertIn("localStorage.getItem('tbn-theme')", page)
         self.assertIn("localStorage.setItem('tbn-theme',next)", page)
         self.assertIn('html[data-theme="dark"] body.public', page)
@@ -156,7 +157,8 @@ class PublicDocument(unittest.TestCase):
         self.assertIn('class="t"><time', page)
         self.assertIn('class="timeline-dot"', page)
         self.assertIn('>속보</span>', page)
-        self.assertIn('요약 펼치기', page)
+        self.assertIn('class="expand"', page)
+        self.assertIn('aria-expanded="false"', page)
         self.assertIn('원문 열기 ↗', page)
 
     def test_the_operator_only_block_is_marked_and_balanced(self):
@@ -233,8 +235,8 @@ class OperatorDocument(unittest.TestCase):
         page = admin_page.operator_page()
         self.assertIn('<body class="local">', page)
         self.assertIn('body.public,body.local{', page)
-        self.assertIn('--bg:#fbfaf7', page)
-        self.assertIn('--accent:#a02c22', page)
+        self.assertIn('--bg:#f7f8f6', page)
+        self.assertIn('--accent:#176b43', page)
         self.assertIn('font-family:var(--serif)', page)
         self.assertIn('body.local .feed{display:block', page)
         self.assertIn('body.local .side{display:grid', page)

@@ -2,18 +2,25 @@
 from datetime import date
 
 
-CSS_CUSTOM_PROPERTIES = ':root{color-scheme:light;--bg:#faf8f3;--surface:#ffffff;--surface2:#f3f0e8;--text:#1a1c1a;--muted:#5f665f;--dim:#9aa099;--line:#e5e0d3;--accent:#0a7a4a;--accent-dim:rgba(10,122,74,.10);--down:#d33f3f;--radius:6px;--sans:system-ui,-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"D2Coding","JetBrains Mono","Courier New",monospace}'
+def _lang_code(value) -> str:
+    return "en" if str(value or "").strip().lower().startswith("en") else "ko"
 
-BUTTON_CSS = ('.button{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:10px 22px;border-radius:var(--radius);border:1px solid var(--line);font-size:14px;font-weight:700;white-space:nowrap;background:var(--surface);color:var(--text);transition:border-color .25s,transform .25s}\n'
-              '.button.primary{background:var(--accent);border-color:var(--accent);color:#ffffff}\n'
-              '.button:hover{border-color:var(--accent);color:var(--accent)}\n'
-              '.button.primary:hover{color:#ffffff;transform:translateY(-1px)}\n'
-              '.button:active{transform:translateY(1px)}')
+
+CSS_CUSTOM_PROPERTIES = (':root{color-scheme:light;--bg:#f0f0ee;--paper:#f0f0ee;--surface:#f7f7f6;--surface2:#e5e5e3;--text:#12211c;--muted:#3f4b44;--dim:#5b5f5d;--line:#d1d1ce;--ink:#0d1a15;--ink-2:#14231d;--accent:#0f7a52;--accent-bright:#3ecf8e;--accent-dim:rgba(15,122,82,.10);--up:#0f7a52;--down:#b23b3b;--rule:rgba(18,33,28,.12);--content:1180px;--radius:6px;--sans:system-ui,-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"D2Coding","JetBrains Mono","Courier New",monospace}')
+
+BUTTON_CSS = ('.button{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:11px 22px;border-radius:2px;border:0;font-size:17px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;background:var(--surface2);color:var(--text);transition:background-color .2s,color .2s}\n'
+              '.button.primary{background:var(--accent);color:#ffffff}\n'
+              '.button:hover{background:var(--text);color:var(--bg)}\n'
+              '.button.primary:hover{background:var(--ink);color:var(--bg)}\n'
+              '.button:active{transform:translateY(1px)}\n'
+              '.button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}')
 
 DARK_THEME_CSS = (':root{color-scheme:light}\n'
-                  '[data-theme=dark]{color-scheme:dark;--bg:#101412;--surface:#171d19;--surface2:#202822;'
-                  '--text:#e7eee8;--muted:#b0bcb3;--dim:#849188;--line:#344039;--accent:#42c98a;'
-                  '--accent-dim:rgba(66,201,138,.14);--down:#ff7777}')
+                  '[data-theme=dark]{color-scheme:dark;--bg:#0f1411;--paper:#0f1411;--surface:#161d18;'
+                  '--surface2:#1d2620;--text:#eef3ec;--muted:#c3cec4;--dim:#9faca2;--line:#2b3b34;'
+                  '--ink:#0a1511;--ink-2:#10201a;--accent:#46d69b;--accent-bright:#5ee6ae;'
+                  '--accent-dim:rgba(70,214,155,.14);--up:#5ee6ae;--down:#ff8a8a;'
+                  '--rule:rgba(238,243,236,.14)}')
 
 USAGE_BAR_CSS = ('.urow{display:flex;align-items:center;gap:8px}\n'
                  '.ubar{height:6px;flex:1;overflow:hidden;border-radius:99px;background:var(--surface2)}\n'
@@ -22,124 +29,248 @@ USAGE_BAR_CSS = ('.urow{display:flex;align-items:center;gap:8px}\n'
                  '.urow:last-child{border-bottom:0}\n'
                  '.urow .source{border-bottom:0;padding:4px 0 1px}')
 
-HEADER_CSS = ('.top{border-bottom:1px solid var(--line);background:var(--bg);background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(8px);position:sticky;top:0;z-index:20}\n'
-              '.nav{min-height:66px;display:flex;align-items:center;gap:24px}\n'
-              '.nav .primary-nav{flex:1;min-width:0}\n'
-              '.top .brand{font-family:Georgia,"Times New Roman","Noto Serif KR",serif;font-weight:600;font-size:20px;line-height:1.2;letter-spacing:-.03em;white-space:nowrap;color:var(--text)}\n'
-              '.top .brand:hover{color:var(--accent)}\n'
-              'nav{display:flex;gap:26px;align-items:center;flex:1}\n'
-              'nav a{font-size:13.5px;font-weight:600;padding-block:12px;color:var(--muted)}\n'
-              'nav a{min-height:44px;display:inline-flex;align-items:center}\n'
-              '.top .primary-nav a{white-space:nowrap}\n'
-              'nav a:hover{color:var(--accent)}\n'
-              'nav a.secondary{margin-left:auto;font-family:var(--mono);font-size:12.5px}\n'
-              '.theme-toggle{flex:0 0 auto;min-height:40px;padding:7px 11px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);color:var(--text);font-size:12px;font-weight:650;white-space:nowrap}\n'
-              '.theme-toggle:hover{border-color:var(--accent);color:var(--accent)}\n'
-              '.top .brand:focus-visible,.theme-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}\n'
-              '/* The landing sheet labels .brand through a ::before pseudo-element that the old terminal\n'
-              '   markup needed; the wordmark is real text now, so that generated copy is suppressed. */\n'
-              '.top .brand::before{content:none}\n'
-              '@media(min-width:861px) and (max-width:1020px){.top .nav{gap:16px}.top .primary-nav{gap:16px}}\n'
+# The masthead is one ink field on every root page, independent of the page palette below it:
+# the newsroom reads as a single publication from the home page to the dashboards.
+HEADER_CSS = ('.top{--bg:var(--ink,#0d1a15);position:sticky;top:0;z-index:30;background:var(--bg);'
+              'background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(10px);'
+              'border:0;color:#f2f2f1}\n'
+              '.nav.wrap{max-width:var(--content,1180px);margin-inline:auto;padding:0 clamp(20px,4vw,40px);'
+              'min-height:68px;display:flex;align-items:center;gap:clamp(16px,2.4vw,30px)}\n'
+              '.top a.brand{display:inline-flex;align-items:center;color:#f2f2f1;white-space:nowrap;text-decoration:none}\n'
+              '.top .brand-word{font-size:20px;font-weight:800;letter-spacing:-.04em;color:inherit}\n'
+              '.top a.brand:hover{color:var(--accent-bright,#3ecf8e)}\n'
+              '.primary-nav{display:flex;align-items:center;gap:clamp(14px,2vw,26px);flex:1;min-width:0}\n'
+              '.primary-nav a{position:relative;display:inline-flex;align-items:center;min-height:44px;'
+              'font-size:13.5px;font-weight:550;letter-spacing:-.005em;color:rgba(242,242,241,.76);'
+              'white-space:nowrap;text-decoration:none}\n'
+              '.primary-nav a:hover{color:#f2f2f1}\n'
+              '.primary-nav a[aria-current=page]{color:#ffffff;font-weight:700}\n'
+              '.site-switch{flex:0 0 auto;display:inline-flex;align-items:center;min-height:36px;padding:0 12px;'
+              'border:0;background:rgba(242,242,241,.08);font-family:var(--sans,system-ui,sans-serif);'
+              'font-size:13.5px;color:rgba(242,242,241,.88);white-space:nowrap;text-decoration:none}\n'
+              '.site-switch:hover{background:rgba(62,207,142,.14);color:var(--accent-bright,#3ecf8e)}\n'
+              '.theme-toggle{flex:0 0 auto;min-height:36px;padding:6px 12px;border-radius:2px;'
+              'border:0;background:rgba(242,242,241,.08);color:rgba(242,242,241,.88);'
+              'font-size:13.5px;font-weight:600;white-space:nowrap}\n'
+              '.theme-toggle:hover{background:rgba(62,207,142,.14);color:var(--accent-bright,#3ecf8e)}\n'
+              '.top a:focus-visible,.top button:focus-visible{outline:2px solid var(--accent-bright,#3ecf8e);outline-offset:3px}\n'
+              '@media(min-width:861px) and (max-width:1060px){.nav.wrap{gap:14px}.primary-nav{gap:14px}.primary-nav a{font-size:13.5px}}\n'
               '@media(max-width:860px){\n'
-              '.top .nav{flex-wrap:wrap;gap:8px 14px;padding-block:8px;min-height:0}\n'
-              '.top .brand{order:1;flex:1 1 auto;min-width:0;font-size:18px}\n'
-              '.top .theme-toggle{order:2;margin-left:auto;min-height:44px}\n'
-              '.top .primary-nav{order:3;flex:1 0 100%;flex-wrap:nowrap;gap:22px;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;scroll-padding-inline:2px;padding-inline:2px}\n'
-              '.top .primary-nav::-webkit-scrollbar{display:none}\n'
-              '.top .primary-nav a{flex:0 0 auto;min-height:44px;padding-block:10px}\n'
-              '.top .primary-nav a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:4px}\n'
-              '.top .primary-nav a.secondary{margin-left:0}\n'
+              '.nav.wrap{flex-wrap:wrap;gap:6px 12px;padding-block:10px;min-height:0}\n'
+              '.top a.brand{order:1;flex:1 1 auto;min-width:0}\n'
+              '.site-switch{order:2;min-height:44px}\n'
+              '.theme-toggle{order:3;margin-left:auto;min-height:44px}\n'
+              '.primary-nav{order:4;flex:1 0 100%;display:flex;flex-wrap:wrap;gap:4px 16px;'
+              'overflow:visible;padding-bottom:2px}\n'
+              '.primary-nav a{flex:0 0 auto;min-height:44px;font-size:13.5px}\n'
+              '}\n'
+              '@media(max-width:480px){\n'
+              '.nav.wrap{padding-inline:16px}\n'
+              '/* A 3x2 grid keeps all six sections inside a 320px viewport; wrapping\n'
+              '   alone let the last label and its focus ring sit past the right edge. */\n'
+              '.primary-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;width:100%}\n'
+              '.primary-nav a{justify-content:flex-start;padding-inline:2px;font-size:13.5px;min-height:44px}\n'
+              '.site-switch{padding:0 9px;font-size:13.5px}\n'
+              '.theme-toggle{padding:6px 10px;font-size:13.5px}\n'
+              '}\n'
+              '@media(max-width:360px){\n'
+              '.nav.wrap{padding-inline:12px;gap:6px 8px}\n'
+              '.top .brand-word{font-size:18px}\n'
+              '.site-switch{padding:0 8px;font-size:12px}\n'
+              '.theme-toggle{padding:0 8px;font-size:12px;margin-left:0}\n'
               '}')
 
-FOOTER_CSS = ('.footer{border-top:1px solid var(--line);padding:26px 0 38px;color:var(--dim);font-size:12px;background:var(--surface2)}\n'
-              '.footer-row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px;align-items:center}\n'
-              '.footer-row .fbrand{font-family:var(--sans);font-weight:650;font-size:12.5px;letter-spacing:-.01em;color:var(--muted)}\n'
-              '.footer p{margin:16px 0 0;max-width:860px;line-height:1.7}\n'
-              '.footer-links{display:flex;flex-wrap:wrap;gap:10px 20px;margin-top:16px;font-size:12.5px}\n'
-              '.footer-links a{color:var(--muted);text-decoration:underline;text-underline-offset:3px}\n'
-              '.footer-links a:hover{color:var(--accent)}')
+FOOTER_CSS = ('.footer{background:var(--ink,#0d1a15);color:rgba(242,242,241,.74);font-size:13.5px;'
+              'padding:48px 0 42px;border:0}\n'
+              '.footer .wrap{max-width:var(--content,1180px);margin-inline:auto;padding-inline:clamp(20px,4vw,40px)}\n'
+              '.footer-grid{display:flex;flex-wrap:wrap;justify-content:space-between;gap:22px 40px}\n'
+              '.fbrand{display:inline-block;font-size:20px;font-weight:800;letter-spacing:-.04em;color:#f2f2f1;text-decoration:none}\n'
+              '.fbrand:hover{color:var(--accent-bright,#3ecf8e)}\n'
+              '.fbrand-sub{display:none}\n'
+              '.footer-nav{display:flex;flex-wrap:wrap;gap:4px 22px}\n'
+              '.footer-nav a{display:inline-flex;align-items:center;min-height:40px;color:rgba(242,242,241,.82);text-decoration:none}\n'
+              '.footer-nav a:hover{color:var(--accent-bright,#3ecf8e)}\n'
+              '.footer > .wrap > p{margin:22px 0 0;max-width:64ch;font-size:13.5px;line-height:1.8;color:rgba(242,242,241,.76)}\n'
+              '.footer-links{display:flex;flex-wrap:wrap;gap:10px 20px;margin-top:18px;font-size:13.5px}\n'
+              '.footer-links a{display:inline-flex;align-items:center;min-height:36px;color:rgba(242,242,241,.82);'
+              'text-decoration:underline;text-underline-offset:3px}\n'
+              '.footer-links a:hover{color:var(--accent-bright,#3ecf8e)}\n'
+              '.footer a:focus-visible{outline:2px solid var(--accent-bright,#3ecf8e);outline-offset:3px}')
 
 SUBPAGE_CSS = """\
-body{margin:0;background:var(--bg);color:var(--text);font:16px/1.75 var(--sans)}
-.wrap{max-width:1120px;margin:auto;padding-inline:28px}
-.page-main{max-width:900px;margin:auto;padding:52px 28px 72px}
-.skip{position:fixed;left:16px;top:16px;z-index:50;transform:translateY(-160%);padding:10px 16px;border-radius:var(--radius);background:var(--accent);color:var(--bg);font:600 14px/1.4 var(--sans);text-decoration:none;box-shadow:0 8px 22px rgba(0,0,0,.18);transition:transform .15s ease}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.wrap{max-width:var(--content);margin:auto;padding-inline:clamp(20px,4vw,40px)}
+.skip{position:fixed;left:16px;top:16px;z-index:50;transform:translateY(-160%);padding:11px 16px;border-radius:2px;background:var(--accent);color:#fff;font:650 14px/1.4 var(--sans);text-decoration:none;box-shadow:0 8px 22px rgba(0,0,0,.18);transition:transform .15s ease}
 .skip:focus,.skip:focus-visible{transform:none}
 .skip:focus-visible{outline:3px solid var(--text);outline-offset:2px}
 @media(prefers-reduced-motion:reduce){.skip{transition:none}}
-.page-head{padding-bottom:30px;border-bottom:1px solid var(--line)}
-.page-eyebrow{margin:0 0 12px;color:var(--accent);font:12px/1.5 var(--mono);letter-spacing:.1em}
-.page-title{margin:0;font-size:clamp(32px,6vw,52px);line-height:1.2;letter-spacing:-.04em}
-.page-intro{max-width:720px;margin:14px 0 0;color:var(--muted);font-size:16px;word-break:keep-all}
-.page-posts{margin-top:24px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden}
-.page-post{padding:22px 24px;border-bottom:1px solid var(--line)}
-.page-post:last-child{border-bottom:0}
-.page-post time{color:var(--dim);font:12px/1.5 var(--mono)}
-.page-post h2{margin:8px 0;font-size:20px;line-height:1.45}
-.page-post p{margin:0;color:var(--muted);font-size:14px;word-break:keep-all}
-.page-post .read{display:inline-block;margin-top:12px;color:var(--accent);font:12px/1.5 var(--mono)}
+.page-main{max-width:1080px;margin:auto;padding:clamp(34px,5vw,58px) clamp(20px,4vw,40px) 96px}
+.page-head{padding:0 0 28px;border:0}
+.page-title{margin:0;font-size:clamp(34px,6vw,62px);line-height:1.06;letter-spacing:-.045em;font-weight:800;word-break:keep-all}
+.page-intro{max-width:60ch;margin:18px 0 0;color:var(--muted);font-size:17px;line-height:1.75;word-break:keep-all}
+.page-posts{margin-top:12px}
+.page-post{padding:30px 0;border:0}
+.page-post:last-child{padding-bottom:0}
+.page-post time{display:block;margin:0 0 10px;color:var(--dim);font:400 13.5px/1.5 var(--sans);letter-spacing:0}
+.page-post h2{margin:10px 0 8px;font-size:clamp(21px,2.6vw,26px);line-height:1.3;letter-spacing:-.02em;font-weight:750;word-break:keep-all}
+.page-post p{margin:0;color:var(--text);font-size:17px;line-height:1.75;max-width:60ch;word-break:keep-all}
+.page-post .read{display:inline-flex;align-items:center;min-height:40px;margin-top:10px;color:var(--accent);font:600 13.5px/1.5 var(--sans);text-decoration:none}
+.page-post .read:hover{text-decoration:underline;text-underline-offset:4px}
 .page-post h2 a{color:inherit;text-decoration:none}
 .page-post h2 a:hover{color:var(--accent)}
-.page-main a:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:3px}
-.page-indicators{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:24px}
-.page-back{display:inline-block;margin-top:24px;color:var(--accent);font:13px/1.5 var(--mono)}
+.page-main a:focus-visible,.skip:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.empty{color:var(--muted);padding:22px 0}
+.page-indicators{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:26px}
+.page-back{display:inline-flex;align-items:center;min-height:44px;margin-top:34px;color:var(--accent);font:600 13.5px/1.5 var(--sans);text-decoration:none}
+.page-back:hover{text-decoration:underline;text-underline-offset:4px}
+.post-meta{margin:26px 0 0;color:var(--dim);font:400 13.5px/1.6 var(--sans);letter-spacing:0}
+.post-body{margin-top:22px;max-width:68ch}
+.post-body h3,.post-body h4{font-size:22px;line-height:1.35;letter-spacing:-.02em;margin:34px 0 10px}
+.post-body p{margin:0 0 16px;font-size:17px;line-height:1.8}
+.post-body ul{margin:0 0 18px;padding-left:20px}
+.post-body li{margin:6px 0}
+.post-body blockquote{margin:22px 0;padding:4px 0 4px 18px;border-left:3px solid var(--accent);color:var(--muted);font-size:17px}
+.post-body code{font-family:var(--mono);font-size:.9em;background:var(--surface2);padding:1px 5px;border-radius:3px}
 @media(max-width:767px){
-  .wrap{padding-inline:18px}.page-main{padding:36px 18px 52px}
-  .page-indicators{grid-template-columns:1fr}.page-post{padding:18px}
+  .page-main{padding:30px 20px 64px}.page-indicators{grid-template-columns:1fr}.page-post{padding:24px 0}
 }
 """
 
 INDICATOR_CSS = """\
-.indicators{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px}
-.indicator{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:26px;transition:border-color .25s,transform .25s}
-.indicator:hover{border-color:rgba(10,122,74,.45);transform:translateY(-3px)}
-.chart-open{display:block;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-bottom:18px;background:#0d1117}
+.indicators{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:24px}
+.indicator{border:0;border-radius:0;background:var(--surface);padding:22px;display:flex;flex-direction:column}
+.chart-open{display:block;border:0;border-radius:0;overflow:hidden;margin-bottom:14px;background:var(--surface2)}
 .chart-open img{display:block;width:100%;height:auto;aspect-ratio:1404/1281;object-fit:cover}
-.chart-caption{display:block;padding:9px 13px;color:var(--muted);font-size:11.5px;border-top:1px solid var(--line);background:var(--surface)}
-.indicator .icode{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.08em}
-.indicator h3{font-size:20px;margin:10px 0 8px;letter-spacing:-.015em;font-weight:700}
-.indicator p{color:var(--muted);font-size:14px;margin:0 0 20px;word-break:keep-all;line-height:1.7}
-.indicator .free{display:inline-block;font-family:var(--mono);font-size:11px;color:var(--accent);border:1px solid rgba(0,229,160,.3);background:var(--accent-dim);border-radius:3px;padding:3px 9px;margin-bottom:16px}
+.chart-caption{display:block;padding:8px 0 0;color:var(--muted);font-size:13.5px;border:0;background:transparent}
+.indicator h3{font-size:20px;margin:10px 0 8px;letter-spacing:-.02em;font-weight:750}
+.indicator p{color:var(--text);font-size:17px;margin:0 0 18px;max-width:60ch;word-break:keep-all;line-height:1.7}
+.indicator .free{display:inline-block;align-self:flex-start;font-family:var(--sans);font-size:13.5px;color:var(--accent);background:var(--accent-dim);border:0;border-radius:2px;padding:4px 9px;margin-bottom:14px}
+.indicator .button{margin-top:auto}
 @media(max-width:767px){.indicators{grid-template-columns:1fr}}
 """
+
+
+DIALOG_CSS = ('.donate-dialog{width:min(440px,calc(100% - 24px));border:0;border-radius:var(--radius);'
+              'background:var(--surface);color:var(--text);padding:0;box-shadow:0 24px 80px rgba(0,0,0,.28)}\n'
+              '.donate-dialog::backdrop{background:rgba(12,26,21,.55)}\n'
+              '.dialog-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px 0}\n'
+              '.dialog-head p{margin:0;font-weight:750}\n'
+              '.dialog-head button{min-height:36px;padding:0 10px;border:0;border-radius:2px;background:var(--surface2);color:var(--text);font-size:13.5px}\n'
+              '.donate-body{display:grid;gap:16px;padding:18px 20px 20px}\n'
+              '.donate-qr{width:100%;max-width:280px;aspect-ratio:1;object-fit:contain;background:#ffffff;border-radius:4px;display:block;margin:0 auto}\n'
+              '.donate-bank{display:flex;justify-content:space-between;gap:12px;padding:12px 14px;border:0;border-radius:2px;background:var(--surface2)}\n'
+              '.donate-bank p{margin:0}\n'
+              '.donate-bank-name{margin:0 0 2px;font-size:13px;color:var(--muted)}')
 
 
 def shared_css() -> str:
     """Return the common tokens and components included in page stylesheets."""
     return '\n'.join((CSS_CUSTOM_PROPERTIES, BUTTON_CSS, HEADER_CSS, FOOTER_CSS,
-                      DARK_THEME_CSS, USAGE_BAR_CSS))
+                      DIALOG_CSS, DARK_THEME_CSS, USAGE_BAR_CSS))
 
 
 def theme_head_script() -> str:
-    """Restore the saved theme before first paint."""
+    """Restore the saved theme before first paint and localize root controls."""
     return ('<script>(function(){try{var t=localStorage.getItem("tbn-theme");'
             'if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)'
             '}catch(e){}})();</script>'
-            '<script>document.addEventListener("DOMContentLoaded",function(){var r=document.documentElement,b=document.getElementById("landing-theme-toggle");'
-            'if(!b)return;function update(){var d=r.getAttribute("data-theme")==="dark";'
-            'b.textContent=d?"라이트 모드로 전환":"다크 모드로 전환";'
+            '<script>document.addEventListener("DOMContentLoaded",function(){'
+            'var r=document.documentElement,b=document.getElementById("landing-theme-toggle");'
+            'var en=(r.lang||"ko").toLowerCase().indexOf("en")===0;'
+            'if(b){function update(){var d=r.getAttribute("data-theme")==="dark";'
+            'b.textContent=d?(en?"Switch to light mode":"라이트 모드로 전환"):(en?"Switch to dark mode":"다크 모드로 전환");'
             'b.setAttribute("aria-label",b.textContent);b.setAttribute("aria-pressed",String(d))}'
             'b.addEventListener("click",function(){var t=r.getAttribute("data-theme")==="dark"?"light":"dark";'
-            'r.setAttribute("data-theme",t);try{localStorage.setItem("tbn-theme",t)}catch(e){}update()});update()});</script>')
+            'r.setAttribute("data-theme",t);try{localStorage.setItem("tbn-theme",t)}catch(e){}update()});update()}'
+            'if(en){var d=document.getElementById("donate-dialog");if(d){'
+            'var title=document.getElementById("donate-title");if(title)title.textContent="Support TeemoBKK";'
+            'var close=document.getElementById("close-donate");if(close){close.textContent="Close";close.setAttribute("aria-label","Close donation dialog")}'
+            'var qr=d.querySelector(".donate-qr");if(qr)qr.alt="PromptPay donation QR code";'
+            'var copy=document.getElementById("copy-donate-account");'
+            'if(copy){copy.textContent="Copy account number";copy.addEventListener("click",function(e){'
+            'e.preventDefault();e.stopImmediatePropagation();'
+            'var acct=document.getElementById("donate-account"),msg=document.getElementById("donate-copy-status");'
+            'try{navigator.clipboard.writeText(acct?acct.textContent.trim():"").then(function(){'
+            'if(msg)msg.textContent="Account number copied."'
+            '},function(){if(msg)msg.textContent="Could not copy. Select the account number and copy it manually."})}'
+            'catch(err){if(msg)msg.textContent="Could not copy. Select the account number and copy it manually."}'
+            '},true)}}}'
+            '});</script>')
 
 
-def render_header() -> str:
-    return ('<header class="top"><div class="wrap nav"><a class="brand" href="/" aria-label="TeemoBKK 홈">TeemoBKK</a>'
-            '<nav class="primary-nav" aria-label="주요 메뉴"><a href="/news/ko/">경제 뉴스</a><a href="/perspectives/">시장 관점</a>'
-            '<a href="/blog/">블로그</a><a href="/indicators/">트레이딩뷰 지표</a><a href="/tradingtalk/">트레이딩 톡</a>'
-            '<a href="/lab/">지표 연구</a><a class="secondary" href="/thai/">/thai ↗</a></nav>'
-            '<button class="theme-toggle" id="landing-theme-toggle" type="button" aria-label="다크 모드 켜기" aria-pressed="false">다크 모드 켜기</button></div></header>')
+NAV_SECTIONS = (
+    ("news", "/news/ko/", "뉴스", "News"),
+    ("perspectives", "/perspectives/", "관점", "Perspectives"),
+    ("blog", "/blog/", "블로그", "Blog"),
+    ("indicators", "/indicators/", "지표", "Indicators"),
+    ("tradingtalk", "/tradingtalk/", "트레이딩 톡", "Trading Talk"),
+    ("lab", "/lab/", "지표 연구", "Lab"),
+)
 
 
-def render_footer() -> str:
-    return ('<footer class="footer"><div class="wrap"><div class="footer-row">'
-            '<span class="fbrand">TeemoBKK</span>'
-            '<a href="/thai/">별도 소식 · 태국 교민 뉴스 ↗</a></div>'
-            '<p>뉴스는 자동 매매 신호가 아닙니다 · 중요한 사건은 원문과 공시로 확인하세요. 제공되는 글과 지표만으로 투자 결정을 내리지 마세요.</p>'
-            '<nav class="footer-links" aria-label="사이트 정보"><a href="/privacy/">개인정보 처리방침</a>'
-            '<a href="https://kr.tradingview.com/u/TeemoBKK/" target="_blank" rel="noopener noreferrer me">트레이딩뷰 TeemoBKK 공식 프로필 ↗</a>'
-            '<a class="donate-link" href="#donate">후원하기</a>'
-            '</nav></div>' + donation_dialog() + '</footer>')
+def render_header(active: str = "", lang: str = "ko") -> str:
+    """The shared root masthead. `active` names the current section so the nav can show it."""
+    english = _lang_code(lang) == "en"
+    links = "".join(
+        '<a href="%s"%s>%s</a>' % (
+            ("/news/" if english and key == "news" else href),
+            ' aria-current="page"' if key == active else "",
+            en_label if english else ko_label)
+        for key, href, ko_label, en_label in NAV_SECTIONS)
+    brand_current = ' aria-current="page"' if active == "home" else ""
+    theme_label = "Switch to dark mode" if english else "다크 모드 켜기"
+    return ('<header class="top"><div class="wrap nav">'
+            '<a class="brand" href="/"%s><span class="brand-word">TeemoBKK</span></a>'
+            '<nav class="primary-nav" aria-label="%s">%s</nav>'
+            '<a class="site-switch" href="/thai/" title="%s">%s</a>'
+            '<button class="theme-toggle" id="landing-theme-toggle" type="button" '
+            'aria-label="%s" aria-pressed="false">%s</button>'
+            '</div></header>') % (
+                brand_current, "Main sections" if english else "주요 섹션", links,
+                "Opens the separate Thailand site" if english else "별도 사이트로 이동",
+                "Thailand news ↗" if english else "태국 뉴스 ↗",
+                theme_label, theme_label)
+
+
+def render_footer(with_dialog: bool = True, lang: str = "ko") -> str:
+    code = _lang_code(lang)
+    english = code == "en"
+    links = "".join(
+        '<a href="%s">%s</a>' % (
+            "/news/" if english and key == "news" else href,
+            en_label if english else ko_label)
+        for key, href, ko_label, en_label in NAV_SECTIONS)
+    sections_label = "Site sections" if english else "사이트 섹션"
+    info_label = "Site information" if english else "사이트 정보"
+    disclaimer = (
+        "News is not an automated trading signal. Verify important events in the original "
+        "source and official filings. Do not make investment decisions from the articles "
+        "and indicators alone."
+        if english else
+        "뉴스는 자동 매매 신호가 아닙니다 · 중요한 사건은 원문과 공시로 확인하세요. "
+        "제공되는 글과 지표만으로 투자 결정을 내리지 마세요."
+    )
+    privacy_href = "/privacy/en/" if english else "/privacy/"
+    privacy_label = "Privacy Policy" if english else "개인정보 처리방침"
+    profile_label = ("TeemoBKK on TradingView ↗" if english
+                     else "트레이딩뷰 TeemoBKK 공식 프로필 ↗")
+    donate_label = "Support" if english else "후원하기"
+    thai_label = ("Thailand news · separate site ↗" if english
+                  else "태국 뉴스 · 별도 사이트 ↗")
+    footer = ('<footer class="footer"><div class="wrap"><div class="footer-grid">'
+              '<div><a class="fbrand" href="/">TeemoBKK</a></div>'
+              '<nav class="footer-nav" aria-label="%s">%s</nav></div>'
+              '<p>%s</p>'
+              '<nav class="footer-links" aria-label="%s"><a href="%s">%s</a>'
+              '<a href="https://kr.tradingview.com/u/TeemoBKK/" target="_blank" '
+              'rel="noopener noreferrer me">%s</a>'
+              '<a class="donate-link" href="#donate">%s</a>'
+              '<a href="/thai/">%s</a>'
+              '</nav></div>') % (
+                  sections_label, links, disclaimer, info_label,
+                  privacy_href, privacy_label, profile_label, donate_label, thai_label)
+    return footer + (donation_dialog(code) if with_dialog else "") + '</footer>'
 
 
 def with_donation(html: str) -> str:
@@ -156,14 +287,20 @@ def with_donation(html: str) -> str:
     return html
 
 
-def donation_dialog() -> str:
+def donation_dialog(lang="ko") -> str:
+    english = _lang_code(lang) == "en"
+    title = "Support TeemoBKK" if english else "TeemoBKK 후원"
+    close_label = "Close donation dialog" if english else "후원 창 닫기"
+    close_text = "Close" if english else "닫기"
+    qr_alt = "PromptPay donation QR code" if english else "PromptPay 후원 QR 코드"
     return ('<dialog class="donate-dialog" id="donate-dialog" aria-labelledby="donate-title">'
-            '<div class="dialog-head"><p id="donate-title">TeemoBKK 후원</p>'
-            '<button type="button" aria-label="후원 창 닫기" onclick="this.closest(\'dialog\').close()">닫기</button></div>'
-            '<div class="donate-body"><img class="donate-qr" src="/assets/donate-qr.jpg" alt="PromptPay 후원 QR 코드">'
+            '<div class="dialog-head"><p id="donate-title">%s</p>'
+            '<button type="button" aria-label="%s" onclick="this.closest(\'dialog\').close()">%s</button></div>'
+            '<div class="donate-body"><img class="donate-qr" src="/assets/donate-qr.jpg" alt="%s">'
             '<div class="donate-bank"><div><p class="donate-bank-name">Bangkok Bank</p>'
             '<p><strong>926-0-280236</strong></p></div></div></div></dialog>'
-            '<script>document.querySelectorAll(\'a[href="#donate"]\').forEach(a=>a.addEventListener(\'click\',e=>{e.preventDefault();document.getElementById("donate-dialog").showModal()}))</script>')
+            '<script>document.querySelectorAll(\'a[href="#donate"]\').forEach(a=>a.addEventListener(\'click\',e=>{e.preventDefault();document.getElementById("donate-dialog").showModal()}))</script>'
+            ) % (title, close_label, close_text, qr_alt)
 
 
 def display_date(value: str) -> str:

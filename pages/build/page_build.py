@@ -1753,6 +1753,65 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
     privacy_url = "/privacy/en/" if lang == "en" else "/privacy/"
     privacy_label = "Privacy policy" if lang == "en" else "개인정보 처리방침"
     privacy_link = '<p class="legal-links"><a href="%s">%s</a> | <a class="donate-link" href="#donate">후원하기</a></p>' % (privacy_url, privacy_label)
+    # The root newsroom gives its public pages the shared masthead, footer and theme control.
+    # Thai dashboards and the operator page keep their existing chrome byte-for-byte.
+    root_chrome = not want_thai and not admin
+    site_header = theme.render_header("news", lang) if root_chrome else ""
+    site_footer = theme.render_footer(with_dialog=False, lang=lang) if root_chrome else ""
+    site_head_script = theme.theme_head_script() if root_chrome else ""
+    site_chrome_css = (theme.HEADER_CSS + "\n" + theme.FOOTER_CSS + "\n"
+                       'body.site-roots{display:flex;flex-direction:column;min-height:100vh;'
+                       '--bg:#f0f0ee;--paper:#f0f0ee;--panel:#f7f7f6;--panel2:#e5e5e3;'
+                       '--surface:#f7f7f6;--surface2:#e5e5e3;--text:#12211c;--muted:#3f4b44;'
+                       '--dim:#5b5f5d;--line:#d1d1ce;--line2:#d1d1ce;--accent:#0f7a52;'
+                       '--accent-bright:#3ecf8e;--accent-dim:rgba(15,122,82,.10);--thai:#0f7a52;'
+                       '--official:#0f7a52;--hot:#b23b3b;--warn:#b23b3b;--content:1180px;'
+                       '--serif:system-ui,-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo",'
+                       '"Noto Sans KR",sans-serif;'
+                       'background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px;'
+                       'line-height:1.7}\n'
+                       'html[data-theme=light] body.site-roots{--bg:#f0f0ee;--paper:#f0f0ee;'
+                       '--panel:#f7f7f6;--panel2:#e5e5e3;--surface:#f7f7f6;--surface2:#e5e5e3;'
+                       '--text:#12211c;--muted:#3f4b44;--dim:#5b5f5d;--line:#d1d1ce;--line2:#d1d1ce;'
+                       '--accent:#0f7a52;--accent-bright:#3ecf8e;--accent-dim:rgba(15,122,82,.10);'
+                       '--thai:#0f7a52;--official:#0f7a52;--hot:#b23b3b;--warn:#b23b3b}\n'
+                       'html[data-theme=dark] body.site-roots{--bg:#0f1411;--paper:#0f1411;'
+                       '--panel:#161d18;--panel2:#1d2620;--surface:#161d18;--surface2:#1d2620;'
+                       '--text:#eef3ec;--muted:#c3cec4;--dim:#9faca2;--line:#2b3b34;--line2:#2b3b34;'
+                       '--accent:#46d69b;--accent-bright:#5ee6ae;--accent-dim:rgba(70,214,155,.14);'
+                       '--thai:#46d69b;--official:#46d69b;--hot:#ff8a8a;--warn:#ff8a8a}\n'
+                       'body.site-roots h1,body.site-roots h2,body.site-roots .title,body.site-roots .sec{'
+                       'font-family:var(--sans)}\n'
+                       'body.site-roots .nav.wrap{max-width:1180px}\n'
+                       'body.site-roots .bar{position:static;border-bottom:1px solid var(--line);'
+                       'background:transparent;backdrop-filter:none}\n'
+                       'body.site-roots .bar-in{max-width:1180px;padding:24px 22px 16px;align-items:flex-end}\n'
+                       'body.site-roots .bar h1{font-family:var(--sans);font-size:clamp(24px,3vw,32px);'
+                       'letter-spacing:-.03em;font-weight:800}\n'
+                       'body.site-roots .bar .theme-toggle{display:none}\n'
+                       'body.site-roots main.wrap{max-width:1180px;width:100%;flex:1 0 auto}\n'
+                       'body.site-roots .footer{flex:0 0 auto}\n'
+                       # The dashboard nav has to stay whole on the narrowest phones: the six root
+                       # sections wrap instead of running past the viewport, and the focus ring is
+                       # drawn inside the link so it can never sit outside the screen edge.
+                       '@media(max-width:360px){\n'
+                       'body.site-roots .nav.wrap{padding-inline:12px}\n'
+                       'body.site-roots .nav.wrap .brand-word{font-size:17px}\n'
+                       'body.site-roots .theme-toggle{font-size:10.5px;padding:5px 9px;min-height:34px}\n'
+                       'body.site-roots .nav.wrap .primary-nav{flex-wrap:wrap;gap:0 10px;overflow:visible}\n'
+                       'body.site-roots .nav.wrap .primary-nav a{flex:0 0 auto;font-size:12px;min-height:44px;'
+                       'outline-offset:-2px}\n'
+                       'body.site-roots .nav.wrap .primary-nav a:focus-visible{outline:2px solid var(--accent-bright,#3ecf8e);'
+                       'outline-offset:-2px;border-radius:2px}\n'
+                       '}') if root_chrome else ""
+    bar_brand = "" if root_chrome else '<a class="brand" href="%s">%s</a>' % (home, brand)
+    bar_theme = "" if root_chrome else theme_button
+    legacy_foot = ("" if root_chrome else
+                   '<footer class="foot">\n'
+                   '    각 기사의 저작권은 원 매체에 있습니다. 제목과 요약, 그리고 원문 링크만 표시하며 원문 확인은 링크를 통해 해 주세요.<br>\n'
+                   '    자동 수집 결과이므로 표기 오류나 지연이 있을 수 있습니다. 투자 판단의 근거로 사용하지 마세요.\n'
+                   '    ' + privacy_link + '\n'
+                   '  </footer>')
     langbar = _langbar(lang, alt)
     language_filter = ('<select id="language-filter" aria-label="%s">'
                        '<option value="en" selected>%s</option><option value="all">%s</option></select>' %
@@ -1767,6 +1826,12 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
         ui_text.cats(lang)["global"], ensure_ascii=False, separators=(",", ":")))
     script = script.replace("__CATS_THAI__", json.dumps(
         ui_text.cats(lang)["thai"], ensure_ascii=False, separators=(",", ":")))
+    # The share-limit notice is baked per document: the English reader never sees the
+    # Korean branch of that ternary, and the English text scan must not find it either.
+    if lang == "en":
+        script = script.replace(
+            "공유 검색어는 최대 10개까지 사용할 수 있습니다.",
+            "You can share up to 10 keyword filters.")
     seed = seed_html or (seed_feed(seed_path, want_thai, lang) if seed_path else "")
     if not briefing_html and seed_path:
         try:
@@ -1792,18 +1857,21 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
 <link rel="icon" type="image/png" sizes="16x16" href="{icon_prefix}favicon-16.png">
 <link rel="apple-touch-icon" href="{icon_prefix}apple-touch-icon.png">
 <title>{title}</title>
+{site_head_script}
 {stylesheet}
+<style>{site_chrome_css}</style>
 </head>
-<body class="{"local" if admin else "public"}">
+<body class="{"local" if admin else "public"}{" site-roots" if root_chrome else ""}">
+{site_header}
 <header class="bar">
   <div class="bar-in">
     <div>
-      <a class="brand" href="{home}">{brand}</a>
+      {bar_brand}
       <h1>{heading}</h1>
     </div>
     <div class="spacer"></div>
     {langbar}
-    {theme_button}
+    {bar_theme}
     {stamp}<br><span id="stale" class="stale"></span></div>
   </div>
 </header>
@@ -1862,12 +1930,9 @@ __TABS__
     {side}
   </div>
 
-  <footer class="foot">
-    각 기사의 저작권은 원 매체에 있습니다. 제목과 요약, 그리고 원문 링크만 표시하며 원문 확인은 링크를 통해 해 주세요.<br>
-    자동 수집 결과이므로 표기 오류나 지연이 있을 수 있습니다. 투자 판단의 근거로 사용하지 마세요.
-    {privacy_link}
-  </footer>
+  {legacy_foot}
 </main>
+{site_footer}
 
 <style>
 .donate-link{{color:var(--accent);text-decoration:underline;text-underline-offset:3px}}
