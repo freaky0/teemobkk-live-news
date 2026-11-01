@@ -43,12 +43,12 @@ class SharedThemeContract(unittest.TestCase):
     def test_shared_header_background_follows_light_and_dark_tokens(self):
         self.assertIn("background:var(--bg)", theme.HEADER_CSS)
         self.assertIn("color-mix(in srgb,var(--bg) 94%,transparent)", theme.HEADER_CSS)
-        self.assertIn("--bg:#faf8f3", theme.CSS_CUSTOM_PROPERTIES)
-        self.assertIn("--bg:#101412", theme.DARK_THEME_CSS)
+        self.assertIn("--bg:#f0f0ee", theme.CSS_CUSTOM_PROPERTIES)
+        self.assertIn("--bg:#0f1411", theme.DARK_THEME_CSS)
         page = landing.render_landing()
         self.assertIn("background:var(--bg)", page)
-        self.assertIn("--bg:#faf8f3", page)
-        self.assertIn("--bg:#101412", page)
+        self.assertIn("--bg:#f0f0ee", page)
+        self.assertIn("--bg:#0f1411", page)
 
     def test_shared_module_exports_tokens_renderers_and_date_formatter(self):
         self.assertIn(":root{", theme.CSS_CUSTOM_PROPERTIES)
@@ -69,10 +69,13 @@ class SharedThemeContract(unittest.TestCase):
             "url": "https://teemobkk.substack.com/p/test",
             "summary": "고정 입력",
         }]
-        with patch.object(landing, "editorial_posts", return_value=posts):
+        with patch.object(page_build, "read_blog_posts", return_value=[{
+                "title": "검증용 관점", "date": "2026-10-03",
+                "original_slug": "test-post", "body": "고정 입력",
+        }]):
             html = landing.render_landing()
         for text in ("data-theme=dark", ".urow", 'localStorage.getItem("tbn-theme")',
-                     "teemo@bkk", "사이트 정보", "2026년 10월 3일"):
+                     "TeemoBKK", "사이트 정보", "2026년 10월 3일"):
             self.assertIn(text, html)
         self.assertNotIn("__THEME_HEAD__", html)
         self.assertNotIn("__SHARED_THEME_CSS__", html)
@@ -94,8 +97,8 @@ class SharedThemeContract(unittest.TestCase):
         indicators = landing.render_indicators_page()
 
         self.assertEqual(home.count('class="post"'), 3)
-        self.assertIn('href="/perspectives/">$ open /perspectives/ →', home)
-        self.assertIn('href="/indicators/">$ open /indicators/ →', home)
+        self.assertIn('href="/perspectives/"', home)
+        self.assertIn('href="/indicators/"', home)
         self.assertEqual(perspectives.count('class="page-post"'), 10)
         self.assertIn("관점 글 10", perspectives)
         self.assertNotIn("관점 글 11", perspectives)
@@ -148,8 +151,7 @@ class SharedThemeContract(unittest.TestCase):
             self.assertIn("perspectives/index.html", sizes)
             self.assertIn("indicators/index.html", sizes)
             self.assertEqual(perspectives.count('class="page-post"'), 10)
-            self.assertIn("관점 빌드 12", perspectives)
-            self.assertNotIn("관점 빌드 2</a>", perspectives)
+            self.assertIn('href="/perspectives/"', perspectives)
             self.assertEqual(indicators.count('class="indicator"'), len(landing.INDICATORS))
 
     def test_thai_landing_and_dashboards_use_shared_theme(self):
@@ -207,12 +209,12 @@ class SharedThemeContract(unittest.TestCase):
         homepage = landing.render_landing()
         self.assertIn(".retry{min-height:44px", homepage)
 
-    def test_public_mobile_header_is_single_row_and_filter_hint_fades(self):
-        mobile_rules = theme.DASHBOARD_CSS.rsplit("@media(max-width:767px){", 1)[1]
-        self.assertIn("body.public .bar-in{flex-wrap:nowrap", mobile_rules)
-        self.assertIn("body.public .bar-in>div:first-child{display:flex", mobile_rules)
-        self.assertIn("body.public .pills{-webkit-mask-image:linear-gradient", mobile_rules)
-        self.assertIn("mask-image:linear-gradient", mobile_rules)
+    def test_root_mobile_header_wraps_without_clipping_navigation(self):
+        page = page_build.render(public=True, datadir="", want_thai=False,
+                                 icon_prefix="/", admin=False, lang="ko")
+        self.assertIn("body.site-roots .nav.wrap .primary-nav{flex-wrap:wrap", page)
+        self.assertIn("body.site-roots .nav.wrap .primary-nav a{flex:0 0 auto;font-size:12px;min-height:44px", page)
+        self.assertIn("outline-offset:-2px", page)
 
 
 if __name__ == "__main__":

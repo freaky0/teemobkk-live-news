@@ -457,18 +457,22 @@ class Gate(unittest.TestCase):
             sitemap = ET.fromstring(response.read())
         namespace = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
         urls = [node.text or "" for node in sitemap.findall("sm:url/sm:loc", namespace)]
-        self.assertEqual(urls, ["https://teemobkk.io/", "https://teemobkk.io/about/",
-                                "https://teemobkk.io/tradingtalk/", "https://teemobkk.io/lab/",
-                                "https://teemobkk.io/thai/",
-                                "https://teemobkk.io/privacy/", "https://teemobkk.io/perspectives/",
-                                "https://teemobkk.io/indicators/", "https://teemobkk.io/blog/",
-                                "https://teemobkk.io/thai/news/", "https://teemobkk.io/thai/news/ko/",
-                                "https://teemobkk.io/privacy/en/", "https://teemobkk.io/news/",
-                                "https://teemobkk.io/news/ko/"])
+        url_set = set(urls)
+        self.assertTrue({"https://teemobkk.io/", "https://teemobkk.io/about/",
+                         "https://teemobkk.io/tradingtalk/", "https://teemobkk.io/lab/",
+                         "https://teemobkk.io/thai/", "https://teemobkk.io/perspectives/",
+                         "https://teemobkk.io/indicators/", "https://teemobkk.io/blog/",
+                         "https://teemobkk.io/privacy/", "https://teemobkk.io/privacy/en/"}
+                        .issubset(url_set))
+        self.assertEqual(len(urls), len(url_set), "sitemap URLs must be unique")
+        self.assertFalse(any("/news/" in url for url in urls),
+                         "noindex news dashboards must not be in the sitemap")
+        self.assertGreater(len(urls), 10, "canonical blog articles are also indexable")
+        self.assertTrue(all(url.startswith("https://teemobkk.io/") for url in urls))
         lastmods = [node.text or "" for node in sitemap.findall("sm:url/sm:lastmod", namespace)]
         ict = timezone(timedelta(hours=7))
         today = datetime.now(ict).date()
-        self.assertEqual(len(lastmods), 14)
+        self.assertEqual(len(lastmods), len(urls))
         self.assertTrue(all(datetime.fromisoformat(value).date() == today for value in lastmods))
 
     def test_privacy_pages_are_public_translated_and_canonical(self):

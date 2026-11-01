@@ -1,4 +1,220 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#0b1020"><meta name="description" content="차트 구조와 파동을 살펴보는 TeemoBKK 지표 연구 노트입니다."><link rel="canonical" href="https://teemobkk.io/lab/"><title>지표 연구 노트 · TeemoBKK</title><style>
-:root{color-scheme:dark;--bg:#0b1020;--panel:#111a2c;--line:#24334b;--text:#e7edf7;--muted:#9aa9bf;--accent:#55d6be}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.8 system-ui,-apple-system,'Noto Sans KR',sans-serif}.wrap{width:min(100% - 36px,900px);margin:auto}.top{border-bottom:1px solid var(--line)}.nav{min-height:68px;display:flex;align-items:center;justify-content:space-between;gap:18px}.brand{color:var(--accent);font:600 14px ui-monospace,monospace;text-decoration:none}.nav a:last-child{color:var(--muted);text-decoration:none}.main{padding:52px 0 72px}.eyebrow,.tag{color:var(--accent);font:12px ui-monospace,monospace;letter-spacing:.1em}.eyebrow{margin:0 0 12px}h1{font-size:clamp(34px,8vw,56px);line-height:1.2;letter-spacing:-.04em;margin:0 0 14px}.lead{font-size:18px;color:#c6d2e3;margin:0;max-width:740px}.section{padding:28px 0;border-bottom:1px solid var(--line)}h2{font-size:21px;line-height:1.45;margin:0 0 12px}.items{padding-left:22px;margin:0}.items li{padding:3px 0}.indicator{padding:20px;margin:18px 0;background:var(--panel);border:1px solid var(--line);border-radius:8px}.indicator h3{margin:0 0 8px;font-size:18px}.indicator p{margin:0 0 10px}.button{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:10px 16px;border:1px solid var(--line);border-radius:6px;color:var(--accent);text-decoration:none;font-weight:650}.button:focus-visible,a:focus-visible{outline:3px solid #fff;outline-offset:3px}.note{color:var(--muted);font-size:14px}.footer{border-top:1px solid var(--line);padding:20px 0;color:var(--muted);font-size:13px}.footer a{color:var(--accent);text-decoration:none}.skip{position:absolute;left:-9999px}.skip:focus{left:12px;top:12px;background:var(--panel);padding:8px;z-index:2}@media(min-width:700px){.main{padding-top:70px}.section{display:grid;grid-template-columns:180px 1fr;gap:24px}.section h2{margin:0}}
-</style></head><body><a class="skip" href="#main">본문으로 건너뛰기</a><header class="top"><div class="wrap nav"><a class="brand" href="/">teemo@bkk:~$ ./live-news</a><a href="/">← 홈으로</a></div></header><main class="wrap main" id="main"><section><p class="eyebrow">RESEARCH · INDICATORS</p><h1>지표 연구 노트</h1><p class="lead">차트의 구조와 파동을 살펴보는 도구를 연구하고 기록합니다. 완성된 지표는 TradingView에서 무료로 사용할 수 있습니다.</p></section><section class="section"><h2>연구 중인 지표</h2><div><article class="indicator"><h3>Teemo Composite Index 2.0</h3><ul class="items"><li>설계 의도: 여러 시장의 힘(추세·모멘텀·변동성)을 하나의 읽기로 합친 복합 지표</li><li>읽는 법: 기준선 위/아래에서의 위치와 기울기로 국면을 판단합니다</li><li>주의사항: 후행성 지표입니다. 단독 신호가 아니라 구조 판단의 보조로 사용하세요</li></ul><p><a class="button" href="https://kr.tradingview.com/u/TeemoBKK/" target="_blank" rel="noopener noreferrer">TradingView에서 보기 ↗</a></p></article><article class="indicator"><h3>Teemo BKK Momentum Index</h3><ul class="items"><li>설계 의도: 단기 모멘텀의 과열과 식음을 빠르게 포착하기 위한 지표</li><li>읽는 법: 과열 구간에서의 둔화와 다이버전스에 주목합니다</li><li>주의사항: 변동성이 큰 구간에서는 휩쏘가 잦습니다. 상위 시간대 구조와 함께 보세요</li></ul><p><a class="button" href="https://kr.tradingview.com/u/TeemoBKK/" target="_blank" rel="noopener noreferrer">TradingView에서 보기 ↗</a></p></article></div></section><section class="section"><h2>연구 중</h2><div><p>다음 지표가 정해지면 여기에 먼저 공개합니다. 아이디어 제안은 Trading Talk에서 받습니다.</p><p><a class="button" href="/tradingtalk/">Trading Talk 보기 →</a></p></div></section><p class="note">면책: 지표는 분석 보조 도구이며 수익을 보장하지 않습니다. 설정과 사용 조건은 각 TradingView 페이지에서 확인하세요.</p><p><a href="/">$ cd / → 홈으로</a></p></main><footer class="footer"><div class="wrap">© TeemoBKK · <a href="/privacy/">개인정보 처리방침</a></div></footer></body></html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0d1a15">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="차트 구조와 파동을 살펴보는 TeemoBKK 지표 연구 노트입니다.">
+<link rel="canonical" href="https://teemobkk.io/lab/">
+<title>지표 연구 노트 · TeemoBKK</title>
+<script>(function(){try{var t=localStorage.getItem("tbn-theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)}catch(e){}})();</script>
+<style>
+:root{color-scheme:light;--bg:#f0f0ee;--surface:#f7f7f6;--surface2:#e5e5e3;--text:#12211c;--muted:#3f4b44;--dim:#5b5f5d;--line:#d1d1ce;--ink:#0d1a15;--ink-2:#14231d;--accent:#0f7a52;--accent-bright:#3ecf8e;--accent-dim:rgba(15,122,82,.10);--up:#0f7a52;--down:#b23b3b;--rule:rgba(18,33,28,.12);--content:1180px;--radius:6px;--sans:system-ui,-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"D2Coding","JetBrains Mono","Courier New",monospace}
+[data-theme=dark]{color-scheme:dark;--bg:#0f1411;--surface:#161d18;--surface2:#1d2620;--text:#eef3ec;--muted:#c3cec4;--dim:#9faca2;--line:#2b3b34;--ink:#0a1511;--ink-2:#10201a;--accent:#46d69b;--accent-bright:#5ee6ae;--accent-dim:rgba(70,214,155,.14);--up:#5ee6ae;--down:#ff8a8a;--rule:rgba(238,243,236,.14)}
+*{box-sizing:border-box}
+html{scroll-padding-top:96px}
+body{margin:0;background:var(--bg);color:var(--text);font:17px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font:inherit;cursor:pointer}
+a,button{-webkit-tap-highlight-color:transparent}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+a:hover{color:var(--accent)}
+[hidden]{display:none!important}
+.wrap{max-width:var(--content);margin:auto;padding-inline:clamp(20px,4vw,40px)}
+.skip{position:fixed;left:16px;top:16px;z-index:60;transform:translateY(-160%);padding:11px 16px;border-radius:2px;background:var(--accent);color:#ffffff;font:650 14px/1.4 var(--sans);text-decoration:none;transition:transform .15s ease}
+.skip:focus,.skip:focus-visible{transform:none}
+.skip:focus-visible{outline:3px solid var(--text);outline-offset:2px}
+.top{--bg:var(--ink,#0d1a15);position:sticky;top:0;z-index:30;background:var(--bg);background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(10px);border:0;color:#f2f2f1}
+.nav.wrap{max-width:var(--content,1180px);margin-inline:auto;padding:0 clamp(20px,4vw,40px);min-height:68px;display:flex;align-items:center;gap:clamp(16px,2.4vw,30px)}
+.brand{display:inline-flex;align-items:center;color:#f2f2f1;white-space:nowrap;text-decoration:none}
+.brand-word{font-size:20px;font-weight:800;letter-spacing:-.04em}
+.brand:hover{color:var(--accent-bright,#3ecf8e)}
+.primary-nav{display:flex;align-items:center;gap:clamp(14px,2vw,26px);flex:1;min-width:0}
+.primary-nav a{display:inline-flex;align-items:center;min-height:44px;font-size:13.5px;font-weight:550;color:rgba(242,242,241,.76);white-space:nowrap;text-decoration:none}
+.primary-nav a:hover{color:#f2f2f1}
+.primary-nav a[aria-current=page]{color:#ffffff;font-weight:700}
+.site-switch{flex:0 0 auto;display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border:0;background:rgba(242,242,241,.08);font-family:var(--sans);font-size:13.5px;color:rgba(242,242,241,.88);white-space:nowrap;text-decoration:none}
+.site-switch:hover{background:rgba(62,207,142,.14);color:var(--accent-bright,#3ecf8e)}
+.theme-toggle{flex:0 0 auto;min-height:36px;padding:6px 12px;border-radius:2px;border:0;background:rgba(242,242,241,.08);color:rgba(242,242,241,.88);font-size:13.5px;font-weight:600;white-space:nowrap}
+.theme-toggle:hover{background:rgba(62,207,142,.14);color:var(--accent-bright,#3ecf8e)}
+.top a:focus-visible,.top button:focus-visible{outline:2px solid var(--accent-bright,#3ecf8e);outline-offset:3px}
+@media(min-width:861px) and (max-width:1060px){.nav.wrap{gap:14px}.primary-nav{gap:14px}.primary-nav a{font-size:13px}}
+@media(max-width:860px){
+ .nav.wrap{flex-wrap:wrap;gap:6px 12px;padding-block:10px;min-height:0}
+ .brand{order:1;flex:1 1 auto;min-width:0}
+ .site-switch{order:2;min-height:44px}
+ .theme-toggle{order:3;margin-left:auto;min-height:44px}
+ .primary-nav{order:4;flex:1 0 100%;display:flex;flex-wrap:wrap;gap:4px 16px;overflow:visible;padding-bottom:2px}
+ .primary-nav a{flex:0 0 auto;min-height:44px;font-size:13.5px}
+}
+@media(max-width:480px){
+ .nav.wrap{padding-inline:16px}
+ .primary-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;width:100%}
+ .primary-nav a{justify-content:flex-start;padding-inline:2px;font-size:13.5px;min-height:44px}
+ .site-switch{padding:0 9px;font-size:13.5px}
+ .theme-toggle{padding:6px 10px;font-size:13.5px}
+}
+@media(max-width:360px){
+ .nav.wrap{padding-inline:12px;gap:6px 8px}
+ .brand-word{font-size:18px}
+ .site-switch{padding:0 8px;font-size:12px}
+ .theme-toggle{padding:0 8px;font-size:12px;margin-left:0}
+}
+.page-main{max-width:1080px;margin:auto;padding:clamp(34px,5vw,58px) clamp(20px,4vw,40px) 96px}
+.page-head{padding:0 0 28px;border:0}
+.page-title{margin:0;font-size:clamp(34px,6vw,62px);line-height:1.06;letter-spacing:-.045em;font-weight:800;word-break:keep-all}
+.page-intro{max-width:60ch;margin:18px 0 0;color:var(--muted);font-size:17px;line-height:1.75;word-break:keep-all}
+.section-block{padding:clamp(26px,4vw,38px) 0;border:0}
+.section-block h2{margin:0;font-size:clamp(19px,2.4vw,24px);line-height:1.3;letter-spacing:-.025em;font-weight:750;word-break:keep-all}
+.section-block p{margin:0 0 14px;color:var(--text);font-size:17px;line-height:1.75;word-break:keep-all;max-width:60ch}
+.section-block p:last-child{margin-bottom:0}
+.section-block .items{margin:0;padding-left:20px;color:var(--muted);font-size:17px;line-height:1.75}
+.section-block .items li{margin:7px 0;padding-left:4px}
+.section-body{min-width:0}
+@media(min-width:760px){
+ .section-block{display:grid;grid-template-columns:190px minmax(0,1fr);gap:36px}
+ .section-block h2{margin:2px 0 0}
+}
+.indicators{display:grid;gap:20px}
+.indicator{border:0;border-radius:0;background:var(--surface);padding:22px}
+.indicator h3{margin:0 0 10px;font-size:20px;line-height:1.35;letter-spacing:-.02em;font-weight:750;word-break:keep-all}
+.indicator .items{margin:0 0 16px;padding-left:20px;color:var(--muted);font-size:17px;line-height:1.7}
+.indicator .items li{margin:6px 0}
+.button{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:11px 22px;border-radius:2px;border:0;font-size:17px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;background:var(--surface2);color:var(--text);transition:background-color .2s,color .2s}
+.button.primary{background:var(--accent);color:#ffffff}
+.button:hover{background:var(--text);color:var(--bg)}
+.button.primary:hover{background:var(--ink);color:var(--bg)}
+.button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.note{color:var(--muted);font-size:13.5px;line-height:1.75;margin:22px 0 0;max-width:60ch;word-break:keep-all}
+.page-back{display:inline-flex;align-items:center;min-height:44px;margin-top:34px;color:var(--accent);font:600 13.5px/1.5 var(--sans);text-decoration:none}
+.page-back:hover{text-decoration:underline;text-underline-offset:4px}
+.footer{background:var(--ink,#0d1a15);color:rgba(242,242,241,.74);font-size:13.5px;padding:48px 0 42px;border:0}
+.footer .wrap{max-width:var(--content,1180px);margin-inline:auto;padding-inline:clamp(20px,4vw,40px)}
+.footer-grid{display:flex;flex-wrap:wrap;justify-content:space-between;gap:22px 40px}
+.fbrand{display:inline-block;font-size:20px;font-weight:800;letter-spacing:-.04em;color:#f2f2f1;text-decoration:none}
+.fbrand:hover{color:var(--accent-bright,#3ecf8e)}
+.footer-nav{display:flex;flex-wrap:wrap;gap:4px 22px}
+.footer-nav a{display:inline-flex;align-items:center;min-height:40px;color:rgba(242,242,241,.82);text-decoration:none}
+.footer-nav a:hover{color:var(--accent-bright,#3ecf8e)}
+.footer > .wrap > p{margin:22px 0 0;max-width:64ch;font-size:13.5px;line-height:1.8;color:rgba(242,242,241,.76)}
+.footer-links{display:flex;flex-wrap:wrap;gap:10px 20px;margin-top:18px;font-size:13.5px}
+.footer-links a{display:inline-flex;align-items:center;min-height:36px;color:rgba(242,242,241,.82);text-decoration:underline;text-underline-offset:3px}
+.footer-links a:hover{color:var(--accent-bright,#3ecf8e)}
+.footer a:focus-visible{outline:2px solid var(--accent-bright,#3ecf8e);outline-offset:3px}
+.donate-dialog{width:min(440px,calc(100% - 24px));border:0;border-radius:var(--radius);background:var(--surface);color:var(--text);padding:0;box-shadow:0 24px 80px rgba(0,0,0,.28)}
+.donate-dialog::backdrop{background:rgba(12,26,21,.55)}
+.dialog-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px 0}
+.dialog-head p{margin:0;font-weight:750}
+.dialog-head button{min-height:36px;padding:0 10px;border:0;border-radius:2px;background:var(--surface2);color:var(--text);font-size:13.5px}
+.donate-body{display:grid;gap:16px;padding:18px 20px 20px}
+.donate-qr{width:100%;max-width:280px;aspect-ratio:1;object-fit:contain;background:#ffffff;border-radius:4px;display:block;margin:0 auto}
+.donate-bank{display:flex;justify-content:space-between;gap:12px;padding:12px 14px;border:0;border-radius:2px;background:var(--surface2)}
+.donate-bank p{margin:0}
+.donate-bank-name{margin:0 0 2px;font-size:13px;color:var(--muted)}
+@media(max-width:767px){
+ .page-main{padding:30px 20px 64px}
+ .page-title{letter-spacing:-.035em}
+ .page-intro{font-size:16.5px}
+ .section-block{padding:24px 0}
+ .section-block p,.section-block .items{font-size:17px}
+ .indicator{padding:18px}
+}
+@media(prefers-reduced-motion:reduce){
+ .skip{transition:none}
+ *,*::before,*::after{transition:none!important;animation:none!important}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="top">
+ <div class="wrap nav">
+  <a class="brand" href="/"><span class="brand-word">TeemoBKK</span></a>
+  <nav class="primary-nav" aria-label="주요 섹션">
+   <a href="/news/ko/">뉴스</a>
+   <a href="/perspectives/">관점</a>
+   <a href="/blog/">블로그</a>
+   <a href="/indicators/">지표</a>
+   <a href="/tradingtalk/">트레이딩 톡</a>
+   <a href="/lab/" aria-current="page">지표 연구</a>
+  </nav>
+  <a class="site-switch" href="/thai/" title="별도 사이트로 이동">태국 뉴스 ↗</a>
+  <button class="theme-toggle" id="landing-theme-toggle" type="button" aria-label="다크 모드 켜기" aria-pressed="false">다크 모드 켜기</button>
+ </div>
+</header>
+<main class="page-main" id="main">
+ <header class="page-head">
+  <h1 class="page-title">지표 연구 노트</h1>
+  <p class="page-intro">차트의 구조와 파동을 살펴보는 도구를 연구하고 기록합니다. 완성된 지표는 TradingView에서 무료로 사용할 수 있습니다.</p>
+ </header>
+ <section class="section-block" aria-labelledby="lab-indicators">
+  <h2 id="lab-indicators">연구 중인 지표</h2>
+  <div class="section-body">
+   <div class="indicators">
+    <article class="indicator">
+     <h3>Teemo Composite Index 2.0</h3>
+     <ul class="items">
+      <li>설계 의도: 여러 시장의 힘(추세·모멘텀·변동성)을 하나의 읽기로 합친 복합 지표</li>
+      <li>읽는 법: 기준선 위/아래에서의 위치와 기울기로 국면을 판단합니다</li>
+      <li>주의사항: 후행성 지표입니다. 단독 신호가 아니라 구조 판단의 보조로 사용하세요</li>
+     </ul>
+     <p><a class="button" href="https://kr.tradingview.com/u/TeemoBKK/" target="_blank" rel="noopener noreferrer">TradingView에서 보기 ↗</a></p>
+    </article>
+    <article class="indicator">
+     <h3>Teemo BKK Momentum Index</h3>
+     <ul class="items">
+      <li>설계 의도: 단기 모멘텀의 과열과 식음을 빠르게 포착하기 위한 지표</li>
+      <li>읽는 법: 과열 구간에서의 둔화와 다이버전스에 주목합니다</li>
+      <li>주의사항: 변동성이 큰 구간에서는 휩쏘가 잦습니다. 상위 시간대 구조와 함께 보세요</li>
+     </ul>
+     <p><a class="button" href="https://kr.tradingview.com/u/TeemoBKK/" target="_blank" rel="noopener noreferrer">TradingView에서 보기 ↗</a></p>
+    </article>
+   </div>
+  </div>
+ </section>
+ <section class="section-block" aria-labelledby="lab-next">
+  <h2 id="lab-next">연구 중</h2>
+  <div class="section-body">
+   <p>다음 지표가 정해지면 여기에 먼저 공개합니다. 아이디어 제안은 Trading Talk에서 받습니다.</p>
+   <p><a class="button primary" href="/tradingtalk/">Trading Talk 보기 →</a></p>
+  </div>
+ </section>
+ <p class="note">면책: 지표는 분석 보조 도구이며 수익을 보장하지 않습니다. 설정과 사용 조건은 각 TradingView 페이지에서 확인하세요.</p>
+ <a class="page-back" href="/">← 홈으로</a>
+</main>
+<footer class="footer">
+ <div class="wrap">
+  <div class="footer-grid">
+   <div><a class="fbrand" href="/">TeemoBKK</a></div>
+   <nav class="footer-nav" aria-label="사이트 섹션">
+    <a href="/news/ko/">뉴스</a>
+    <a href="/perspectives/">관점</a>
+    <a href="/blog/">블로그</a>
+    <a href="/indicators/">지표</a>
+    <a href="/tradingtalk/">트레이딩 톡</a>
+    <a href="/lab/">지표 연구</a>
+   </nav>
+  </div>
+  <p>뉴스는 자동 매매 신호가 아닙니다 · 중요한 사건은 원문과 공시로 확인하세요. 제공되는 글과 지표만으로 투자 결정을 내리지 마세요.</p>
+  <nav class="footer-links" aria-label="사이트 정보">
+   <a href="/privacy/">개인정보 처리방침</a>
+   <a href="https://kr.tradingview.com/u/TeemoBKK/" target="_blank" rel="noopener noreferrer me">트레이딩뷰 TeemoBKK 공식 프로필 ↗</a>
+   <a class="donate-link" href="#donate">후원하기</a>
+   <a href="/thai/">태국 뉴스 · 별도 사이트 ↗</a>
+  </nav>
+ </div>
+ <dialog class="donate-dialog" id="donate-dialog" aria-labelledby="donate-title">
+  <div class="dialog-head"><p id="donate-title">TeemoBKK 후원</p><button type="button" aria-label="후원 창 닫기" onclick="this.closest('dialog').close()">닫기</button></div>
+  <div class="donate-body">
+   <img class="donate-qr" src="/assets/donate-qr.jpg" alt="PromptPay 후원 QR 코드">
+   <div class="donate-bank"><div><p class="donate-bank-name">Bangkok Bank</p><p><strong>926-0-280236</strong></p></div></div>
+  </div>
+ </dialog>
+</footer>
+<script>
+document.addEventListener("DOMContentLoaded",function(){var r=document.documentElement,b=document.getElementById("landing-theme-toggle");if(!b)return;function update(){var d=r.getAttribute("data-theme")==="dark";b.textContent=d?"라이트 모드로 전환":"다크 모드로 전환";b.setAttribute("aria-label",b.textContent);b.setAttribute("aria-pressed",String(d))}b.addEventListener("click",function(){var t=r.getAttribute("data-theme")==="dark"?"light":"dark";r.setAttribute("data-theme",t);try{localStorage.setItem("tbn-theme",t)}catch(e){}update()});update()});
+document.querySelectorAll('a[href="#donate"]').forEach(function(a){a.addEventListener("click",function(e){e.preventDefault();document.getElementById("donate-dialog").showModal()})});
+</script>
+</body>
+</html>

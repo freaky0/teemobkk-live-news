@@ -134,10 +134,11 @@ PAGE = r'''<!doctype html>
 <head>
 <meta charset="utf-8">
 __THEME_HEAD__
+<script>try{if(!window.matchMedia||!window.matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("reveal-enabled");}catch(e){}</script>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TeemoBKK | 차트보다 먼저 읽는 뉴스</title>
 <meta name="description" content="시장이 움직이는 이유를 전합니다. 금리와 정책, 지정학과 수급까지. 트레이더의 경제 뉴스와 시장 관점, 무료 트레이딩뷰 지표.">
-<meta name="theme-color" content="#faf8f3">
+<meta name="theme-color" content="#f0f0ee">
 <meta name="color-scheme" content="light dark">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ko_KR">
@@ -151,276 +152,549 @@ __THEME_HEAD__
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <style>
 __SHARED_THEME_CSS__
-[data-theme=dark] .top{background:color-mix(in srgb,var(--bg) 94%,transparent)}
-*{box-sizing:border-box}html{scroll-padding-top:92px}body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.65;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}button{font:inherit}a,button{-webkit-tap-highlight-color:transparent}a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:4px}a:hover{color:var(--accent)}button{cursor:pointer}[hidden]{display:none!important}
-.wrap{max-width:1120px;margin:auto;padding-inline:28px}
-.skip{position:absolute;left:16px;top:-100px;background:var(--accent);color:#ffffff;padding:12px;z-index:50;font-weight:700}.skip:focus{top:12px}
-.ticker{background:var(--surface2);border-bottom:1px solid var(--line);overflow:hidden;white-space:nowrap}
-.ticker-inner{display:inline-flex;padding:7px 0;animation:tick 28s linear infinite}
-.ticker:hover .ticker-inner{animation-play-state:paused}
-.tick{display:inline-flex;align-items:center;gap:8px;padding:0 22px;font:12px/1.6 var(--mono);color:var(--muted);border-right:1px solid var(--line)}
-.tick b{color:var(--text);font-weight:700}
-.tick .up{color:var(--accent)}.tick .dn{color:var(--down)}
+/* Warm stone paper, deep ink, and a single editorial green. */
+*{box-sizing:border-box}html{scroll-padding-top:96px}body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.75;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}button{font:inherit}a,button{-webkit-tap-highlight-color:transparent}a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}a:hover{color:var(--accent)}button{cursor:pointer}[hidden]{display:none!important}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.wrap{max-width:var(--content);margin:auto;padding-inline:clamp(20px,4vw,40px)}
+.skip{position:fixed;left:16px;top:16px;z-index:60;transform:translateY(-160%);padding:11px 16px;border-radius:2px;background:var(--accent);color:#ffffff;font-weight:700;transition:transform .15s ease}
+.skip:focus,.skip:focus-visible{transform:none}
+.skip:focus-visible{outline:3px solid var(--text);outline-offset:2px}
+
+/* Motion is progressive enhancement: content is visible without it. */
+@keyframes hero-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:no-preference){
+ .hero-copy h1,.hero-copy .intro,.hero-actions,.hero-index{animation:hero-in .7s cubic-bezier(.2,.7,.2,1) both}
+ .hero-copy .intro{animation-delay:.08s}
+ .hero-actions{animation-delay:.16s}
+ .hero-index{animation-delay:.22s}
+}
+.reveal-enabled .section > *:not(noscript),.reveal-enabled .about > *{opacity:0;transform:translateY(14px);transition:opacity .55s ease,transform .55s ease}
+.reveal-enabled .section.is-visible > *:not(noscript),.reveal-enabled .about.is-visible > *{opacity:1;transform:none}
+.reveal-enabled .section > :nth-child(2),.reveal-enabled .about > :nth-child(2){transition-delay:70ms}
+.reveal-enabled .section > :nth-child(3),.reveal-enabled .about > :nth-child(3){transition-delay:140ms}
+.reveal-enabled .section > :nth-child(4),.reveal-enabled .about > :nth-child(4){transition-delay:210ms}
+.reveal-enabled .section > :nth-child(5),.reveal-enabled .about > :nth-child(5){transition-delay:280ms}
+.reveal-enabled .section > :nth-child(6),.reveal-enabled .about > :nth-child(6){transition-delay:350ms}
+.reveal-enabled .section > :nth-child(7),.reveal-enabled .about > :nth-child(7){transition-delay:420ms}
+.reveal-enabled .section > :nth-child(8),.reveal-enabled .about > :nth-child(8){transition-delay:490ms}
+.reveal-enabled .news-strip img{transform:scale(1.035);transition:transform 1.3s ease}
+.reveal-enabled .section.is-visible .news-strip img{transform:scale(1)}
+@media(prefers-reduced-motion:no-preference){
+ @keyframes image-settle{from{transform:scale(1.035)}to{transform:none}}
+ .hero-image img{animation:image-settle 1.3s ease both}
+}
+
+.ticker{display:flex;align-items:center;background:var(--ink-2);color:rgba(242,242,241,.78);overflow:hidden;white-space:nowrap}
+.ticker-state{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;padding:8px 14px;background:rgba(0,0,0,.14);font:600 13.5px/1.5 var(--sans);letter-spacing:0;color:rgba(242,242,241,.82)}
+.ticker-state .dot{width:6px;height:6px;flex:0 0 auto;border-radius:50%;background:#e6bd65}
+.ticker-state[data-state=live] .dot{background:var(--accent-bright);box-shadow:0 0 0 3px rgba(62,207,142,.16)}
+.ticker-state[data-state=stale] .dot,.ticker-state[data-state=reconnecting] .dot{background:#ff9d9d}
+.ticker-state[data-state=unsupported] .dot{background:rgba(242,242,241,.35)}
+.ticker-age{color:rgba(242,242,241,.58);font-weight:400}
+.ticker-viewport{flex:1 1 auto;min-width:0;overflow:hidden}
+.ticker-inner{display:inline-flex;padding:8px 0;animation:tick 36s linear infinite}
+.ticker-inner:empty{animation:none}
+.ticker-seq{display:inline-flex}
+.ticker:hover .ticker-inner,.ticker:focus-within .ticker-inner{animation-play-state:paused}
+.tick{display:inline-flex;align-items:center;gap:8px;padding:0 20px;font:13.5px/1.6 var(--sans);font-variant-numeric:tabular-nums;color:rgba(242,242,241,.72)}
+.tick b{color:#f2f2f1;font-weight:700}
+.tick .up{color:var(--accent-bright)}.tick .dn{color:#ff9d9d}.tick .flat{color:rgba(242,242,241,.65)}
 @keyframes tick{to{transform:translateX(-50%)}}
 
-.hero{display:grid;grid-template-columns:minmax(0,1.02fr) minmax(320px,.98fr);gap:34px;align-items:center;padding:48px 0 52px;max-width:none;overflow:visible}
+/* First viewport: what the publication is, in type. */
+.hero{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr);gap:clamp(28px,5vw,72px);align-items:start;padding:clamp(40px,6vw,78px) 0 clamp(36px,5vw,64px)}
 .hero-copy{min-width:0}
-.hero-visual,.section-visual,.perspective-visual{margin:0;overflow:hidden;background:var(--surface2)}
-.hero-visual{aspect-ratio:16/10;max-height:470px}
-.hero-visual img,.section-visual img,.perspective-visual img{display:block;width:100%;height:100%;object-fit:cover}
-.hero-visual img{object-position:center}
-.hero-visual figcaption,.section-visual figcaption,.perspective-visual figcaption{padding:9px 12px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);background:var(--surface)}
-.section-visual,.perspective-visual{margin:22px 0 18px;aspect-ratio:16/9}
-.perspective-visual{margin:20px 0;aspect-ratio:16/9}
-.hero-actions{margin:0 0 18px}
-.eyebrow{font-family:var(--mono);font-size:12.5px;color:var(--accent);margin:0 0 18px;letter-spacing:.02em}
-.eyebrow::before{content:"> "}
-h1{font-size:clamp(36px,5.2vw,64px);line-height:1.18;letter-spacing:-.04em;margin:0;font-weight:800;word-break:keep-all}
+.hero-aside{min-width:0;display:flex;flex-direction:column;gap:24px}
+.hero-image{margin:0;overflow:hidden;background:var(--surface2)}
+.hero-image img{display:block;width:100%;height:clamp(140px,14vw,180px);object-fit:cover;object-position:center 42%}
+h1{font-size:clamp(38px,6.4vw,76px);line-height:1.02;letter-spacing:-.055em;margin:0;font-weight:800;word-break:keep-all}
 h1 .hl{color:var(--accent)}
-.intro{max-width:640px;color:var(--muted);font-size:16.5px;line-height:1.75;margin:20px 0 28px;word-break:keep-all}
-.hero-tags{display:flex;gap:18px;flex-wrap:wrap;margin:0;font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--muted)}
-.hero-tags span{white-space:nowrap}
-.actions{display:flex;flex-wrap:wrap;gap:12px}
+.intro{max-width:56ch;color:var(--muted);font-size:17px;line-height:1.75;margin:22px 0 30px;word-break:keep-all}
+.hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin:0}
+.hero-index{list-style:none;margin:0;padding:0;display:grid;gap:18px}
+.hero-index a{display:flex;flex-direction:column;gap:4px;padding:0}
+.hero-index strong{font-size:17px;font-weight:750;letter-spacing:-.01em}
+.hero-index span:last-child{font-size:13.5px;line-height:1.55;color:var(--muted)}
+.hero-index a:hover strong{color:var(--accent)}
 
 section{scroll-margin-top:24px}
-.section{padding:40px 0 48px;border-top:1px solid var(--line)}
-.sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:6px}
-.sec-tag{font-family:var(--mono);font-size:12px;color:var(--accent)}
-h2{font-size:24px;line-height:1.3;letter-spacing:-.02em;margin:0;font-weight:700}
-.section-intro{margin:8px 0 0;color:var(--muted);font-size:14.5px;max-width:720px;word-break:keep-all}
-.section-link{display:inline-block;margin-top:16px;color:var(--accent);font-family:var(--mono);font-size:13px;font-weight:600}
-.news-status{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:20px 0 4px;color:var(--dim);font-family:var(--mono);font-size:11.5px}
+.section{padding:clamp(42px,5vw,68px) 0}
+.sec-head{display:block;margin-bottom:10px}
+h2{font-size:clamp(24px,3vw,34px);line-height:1.18;letter-spacing:-.035em;margin:0;font-weight:800}
+.section-intro{margin:10px 0 0;color:var(--muted);font-size:17px;max-width:60ch;word-break:keep-all}
+.section-link{display:inline-flex;align-items:center;min-height:44px;margin-top:14px;color:var(--accent);font:600 17px/1.5 var(--sans);letter-spacing:0}
+.section-link:hover{text-decoration:underline;text-underline-offset:5px}
+.news-status{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:20px 0 0;color:var(--muted);font-family:var(--sans);font-size:13.5px}
 .news-status .live{color:var(--accent)}
-.retry{background:transparent;color:var(--accent);border:1px solid var(--line);border-radius:4px;min-height:34px;padding:4px 12px;font-family:var(--mono);font-size:12px}
-.news-list{margin-top:8px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden}
-.news-row{display:flex;align-items:baseline;gap:14px;padding:13px 18px;border-bottom:1px solid var(--line);transition:background .2s}
-.news-row:last-child{border-bottom:0}
-.news-row:hover{background:var(--surface2)}
-.news-row a{display:flex;align-items:baseline;gap:14px;flex:1;min-width:0}
-.news-row a:hover{color:var(--text)}
-.ntime{font-family:var(--mono);font-size:11.5px;color:var(--dim);white-space:nowrap;flex-shrink:0}
-.ntopic{font-family:var(--mono);font-size:11px;color:var(--accent);white-space:nowrap;flex-shrink:0;border:1px solid rgba(0,229,160,.3);border-radius:3px;padding:1px 7px;background:var(--accent-dim)}
-.ntitle{font-size:15px;font-weight:500;line-height:1.55;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:keep-all}
-.ntitle .ext{color:var(--dim);font-size:12px}
-.empty{color:var(--muted);padding:26px 18px;font-size:14px}
-.loading-line{height:14px;background:var(--surface2);margin:14px 18px;border-radius:3px;max-width:88%}
+.retry{min-height:44px;background:var(--surface2);color:var(--text);border:0;border-radius:2px;padding:7px 14px;font-family:var(--sans);font-size:13.5px}
+.retry:hover{background:var(--text);color:var(--bg)}
+.news-list{display:grid;gap:16px;margin-top:14px}
+.news-row{display:flex;align-items:baseline;gap:16px}
+.news-row a{display:flex;align-items:baseline;gap:16px;flex:1;min-width:0}
+.news-row a:hover .ntitle{color:var(--accent)}
+.ntime{font-family:var(--sans);font-size:13.5px;color:var(--muted);white-space:nowrap;flex-shrink:0}
+.ntopic{font-family:var(--sans);font-size:13.5px;color:var(--accent);white-space:nowrap;flex-shrink:0}
+.ntitle{font-size:17px;font-weight:600;line-height:1.5;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:keep-all}
+.ntitle .ext{color:var(--muted);font-size:13.5px}
+.empty{color:var(--muted);padding:26px 0;font-size:17px}
+.loading-line{height:14px;background:var(--surface2);margin:14px 0;border-radius:2px;max-width:88%}
 .loading-line.short{max-width:40%;height:11px}
-.posts{display:grid;gap:0;margin-top:18px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden}
-.post{padding:22px 24px;border-bottom:1px solid var(--line);transition:background .2s}
-.post:last-child{border-bottom:0}
-.post:hover{background:var(--surface2)}
-.post time{font:11.5px/1.5 var(--mono);color:var(--dim)}
-.post h3{font-size:19px;line-height:1.45;letter-spacing:-.015em;margin:8px 0;font-weight:700}
+/* The news image is a compact strip below the headlines and the section link. */
+.news-strip{position:relative;margin:26px 0 0;height:160px;overflow:hidden;background:var(--surface2)}
+.news-strip img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 42%}
+.news-strip::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(13,26,21,0) 38%,rgba(13,26,21,.8))}
+.news-strip figcaption{position:absolute;left:0;right:0;bottom:0;z-index:1;padding:12px 16px;color:#f2f2f1;font-size:13.5px;line-height:1.5;word-break:keep-all}
+.posts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 40px;margin-top:26px}
+.post{display:flex;flex-direction:column;padding:0}
+.post:first-child{grid-column:1/-1;max-width:60ch}
+.post:first-child h3{font-size:20px;line-height:1.35}
+.post time{display:block;margin:0 0 10px;font:400 13.5px/1.5 var(--sans);color:var(--muted)}
+.post h3{font-size:20px;line-height:1.35;letter-spacing:-.025em;margin:0 0 8px;font-weight:750;word-break:keep-all}
 .post h3 a:hover{color:var(--accent)}
-.post p{font-size:14.5px;color:var(--muted);margin:0;word-break:keep-all}
-.post .read{display:inline-block;color:var(--accent);font-family:var(--mono);font-size:12.5px;margin-top:14px}
-.note{font-size:12px;color:var(--dim);margin-top:20px;max-width:820px}
+.post p{font-size:17px;color:var(--text);margin:0;line-height:1.75;max-width:60ch;word-break:keep-all}
+.post .read{display:inline-flex;align-items:center;min-height:40px;color:var(--accent);font:600 13.5px/1.5 var(--sans);margin-top:10px}
+.post .read:hover{text-decoration:underline;text-underline-offset:4px}
+.note{font-size:13.5px;color:var(--muted);margin-top:22px;max-width:60ch;line-height:1.75}
 __INDICATOR_CSS__
-.about{display:grid;grid-template-columns:1fr 1fr;gap:56px}
-.about p{color:var(--muted);font-size:14.5px;margin:10px 0;word-break:keep-all}
-.about h3{font-size:16px;margin:0 0 10px;font-family:var(--mono);color:var(--accent);font-weight:600}
-.about ul{list-style:none;padding:0;margin:0;color:var(--muted);font-size:13.5px}
-.about li{margin:10px 0;padding-left:18px;position:relative}
-.about li::before{content:"›";position:absolute;left:0;color:var(--accent)}
 
+/* The one kinetic moment: reading → a point of view → chart verification. */
+.kinetic{background:var(--ink);color:#f2f2f1;padding:clamp(44px,6vw,76px) 0}
+.kinetic-inner{max-width:var(--content);margin:auto;padding-inline:clamp(20px,4vw,40px);display:grid;gap:18px}
+.kinetic-line{margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:clamp(24px,3vw,34px);line-height:1.2;letter-spacing:-.04em;font-weight:800;word-break:keep-all}
+.k-step{color:#f2f2f1}
+.k-arrow{color:var(--accent-bright);font-weight:400;font-size:.8em}
+@keyframes k-step{
+ 0%,16%{color:#ffffff;transform:translateY(0)}
+ 24%{color:#ffffff;transform:translateY(-.14em)}
+ 32%,100%{color:rgba(242,242,241,.45);transform:translateY(0)}
+}
+.kinetic.motion-enabled .k-step{color:rgba(242,242,241,.45);animation:k-step 6s ease-in-out infinite}
+.kinetic.motion-enabled .k-step:nth-child(3){animation-delay:2s}
+.kinetic.motion-enabled .k-step:nth-child(5){animation-delay:4s}
+.kinetic.motion-enabled[data-paused="1"] .k-step{animation-play-state:paused}
+.kinetic-toggle{justify-self:start;display:inline-flex;align-items:center;min-height:40px;padding:0 14px;border:0;border-radius:2px;background:rgba(242,242,241,.12);color:rgba(242,242,241,.8);font:600 13.5px/1.4 var(--sans)}
+.kinetic-toggle:hover{background:rgba(62,207,142,.16);color:var(--accent-bright)}
+.kinetic-toggle:focus-visible{outline:2px solid var(--accent-bright);outline-offset:3px}
+.kinetic-toggle[disabled]{color:rgba(242,242,241,.55);background:rgba(242,242,241,.07);cursor:default}
+.kinetic-status{margin:0;min-height:1.5em;font:13.5px/1.5 var(--sans);color:rgba(242,242,241,.68);word-break:keep-all}
+.about{display:grid;grid-template-columns:1.1fr .9fr;gap:clamp(28px,6vw,72px);padding:clamp(42px,5vw,68px) 0 0}
+.about p{color:var(--text);font-size:17px;margin:10px 0;word-break:keep-all;max-width:58ch}
+.about h3{font-size:17px;margin:0 0 12px;font-family:var(--sans);letter-spacing:0;text-transform:none;color:var(--text);font-weight:700}
+.about ul{list-style:none;padding:0;margin:0;color:var(--muted);font-size:17px}
+.about li{margin:10px 0;padding-left:18px;position:relative;line-height:1.65}
+.about li::before{content:"";position:absolute;left:0;top:.72em;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+@media(max-width:1023px){
+ .hero{grid-template-columns:1fr;align-items:start;gap:34px}
+ .hero-index{max-width:520px}
+ .posts{grid-template-columns:1fr;gap:26px}
+ .post:first-child{grid-column:auto;max-width:none}
+ .post:first-child h3{font-size:20px}
+ .about{grid-template-columns:1fr;gap:28px}
+}
 @media(max-width:767px){
-.wrap{padding-inline:18px}
-.nav{min-height:60px;gap:16px;flex-wrap:wrap;padding-block:10px}
-.brand{font-size:16px}
-.nav nav{gap:4px 12px;flex-basis:100%;order:2;flex-wrap:wrap}
-.nav nav a{font-size:12px;padding:4px 2px;min-height:44px}
-.nav nav a.secondary{margin-left:0}
-.theme-toggle{margin-left:auto;min-height:44px;padding:6px 9px;font-size:11px}
-.hero{grid-template-columns:1fr;gap:22px;padding:34px 0 36px}
-.hero-visual{aspect-ratio:16/10;max-height:none}
-.section-visual,.perspective-visual{aspect-ratio:16/9}
-.intro{font-size:14.5px}
-.intro br{display:none}
-.section{padding:30px 0 36px}
-h2{font-size:21px}
-.about{grid-template-columns:1fr;gap:28px}
-.news-row{gap:10px;padding:12px 14px}
-.news-row a{flex-wrap:wrap;gap:6px 10px}
-.ntime{font-size:10.5px}
-.ntitle{font-size:14px;flex-basis:100%}
-.tick{font-size:11px;padding:0 14px}
-.retry{min-height:44px;padding:8px 12px}
+ .wrap{padding-inline:20px}
+ .hero{padding:32px 0 36px}
+ h1{letter-spacing:-.045em}
+ .intro{font-size:17px;margin:18px 0 24px}
+ .section{padding:34px 0}
+ .news-row{gap:10px}
+ .news-row a{flex-wrap:wrap;gap:4px 10px}
+ .ntime{font-size:13.5px}
+ .ntitle{font-size:17px;flex-basis:100%}
+ .news-strip{height:120px;margin-top:20px}
+ .news-strip figcaption{font-size:13.5px;padding:9px 12px}
+ .post h3{font-size:20px;line-height:1.35}
+ .post:first-child h3{font-size:20px}
+ .post p{font-size:17px}
+ .ticker-state{padding:7px 10px;font-size:13.5px;gap:6px}
+ .ticker-age{font-size:13.5px}
+ .tick{font-size:13.5px;padding:0 14px}
+}
+@media(max-width:480px){
+ /* The price track gets the full width once the status has its own line. */
+ .ticker{display:block}
+ .ticker-state{padding:7px 10px}
+ .ticker-viewport{width:100%}
 }
 @media(prefers-reduced-motion:reduce){
-.ticker-inner{animation:none}
-.brand .cursor{animation:none}
-*,*::before,*::after{transition:none!important}
+ .ticker-inner{animation:none}
+ .reveal-enabled .section > *:not(noscript),.reveal-enabled .about > *{opacity:1;transform:none;transition:none}
+ .reveal-enabled .news-strip img,.hero-image img{transform:none;transition:none;animation:none}
+ .kinetic.motion-enabled .k-step,
+ .kinetic.motion-enabled .k-step:nth-child(3),
+ .kinetic.motion-enabled .k-step:nth-child(5){animation:none;color:#f2f2f1;transform:none}
+ *,*::before,*::after{transition:none!important;animation:none!important}
 }
 
-/* Editorial homepage: clear paper, ink and leaf-green; the shared dark theme remains available. */
-:root{color-scheme:light;--bg:#f5f8f5;--surface:#fff;--surface2:#eef4ef;--text:#15231b;--muted:#405146;--dim:#526158;--line:#dce6dd;--accent:#28714f;--accent-dim:rgba(40,113,79,.1);--down:#bc4c4c;--radius:14px;--type-meta:13px;--type-body:16px;--type-subhead:20px;--type-heading:30px;--type-display:clamp(44px,6vw,86px)}
-[data-theme=dark]{color-scheme:dark;--bg:#111914;--surface:#18231c;--surface2:#202e25;--text:#ebf1ec;--muted:#bac8bd;--dim:#aebbb2;--line:#33443a;--accent:#66cc91;--accent-dim:rgba(102,204,145,.14);--down:#ff8585}
-body{line-height:1.72}
-.wrap{max-width:1240px;padding-inline:clamp(22px,5vw,68px)}
-.brand,.nav nav a.secondary,.footer-row .fbrand,.ticker .tick,.eyebrow,.hero-tags,.sec-tag,.section-link,.news-status,.retry,.ntime,.ntopic,.post time,.post .read,.note,.about h3{font-family:var(--sans)}
-.brand{font-size:0;letter-spacing:0}
-.brand::before{content:"TeemoBKK";display:inline-block;font:700 18px/1 var(--sans);letter-spacing:-.04em;color:var(--text)}
-.brand .prompt,.brand .cursor{display:none}
-.nav nav a.secondary{font-size:var(--type-meta)}
-.nav nav a{font-size:var(--type-meta)}
-.top{border:0;backdrop-filter:none;background:var(--bg)}
-.footer{border:0;font-size:var(--type-meta);color:var(--muted)}
-.footer-links{font-size:13px}
-.footer p{max-width:70ch}
-.footer-row .fbrand{font-size:0!important;font-family:var(--sans)}
-.footer-row .fbrand::before{content:"TeemoBKK";display:inline-block;font-size:var(--type-meta);font-weight:700;letter-spacing:-.02em}
-.theme-toggle{border:0;border-radius:999px;background:var(--surface2);font-size:var(--type-meta)}
-.button{min-height:48px;padding:11px 22px;border:0;border-radius:999px;font-size:var(--type-body);transition:background-color .2s,color .2s}
-.button:hover,.button.primary:hover{transform:none}
-.hero{display:grid;grid-template-columns:minmax(0,1.16fr) minmax(0,.84fr);align-items:center;gap:clamp(22px,3.5vw,44px);padding:38px 0 46px;max-width:none}
-.hero-visual{order:1;position:relative;height:clamp(280px,31vw,400px);max-height:none;aspect-ratio:auto;border-radius:20px}
-.hero-visual img{position:absolute;inset:0;width:100%;height:100%;border-radius:inherit;object-fit:cover}
-.hero-visual figcaption,.section-visual figcaption,.perspective-visual figcaption{position:absolute;right:0;bottom:0;border:0!important;outline:0!important;box-shadow:none!important;border-radius:12px 0 20px 0;padding:8px 13px;font-size:var(--type-meta);background:var(--bg);color:var(--muted)}
-.hero-copy{order:0;display:block;min-width:0;padding-top:0}
-.hero-copy .eyebrow,.hero-tags,.sec-tag,.indicator .icode{display:none!important}
-.hero-copy h1{font-size:var(--type-display);line-height:1.04;letter-spacing:-.045em;max-width:15ch}
-.hero-copy .intro{font-size:var(--type-body);line-height:1.7;max-width:540px;margin:20px 0 26px}
-.section{padding:64px 0 0;border-top:0}
-.sec-head{gap:0;margin-bottom:10px}
-.sec-head::before{content:"";width:5px;height:26px;flex:0 0 5px;margin-right:14px;border-radius:5px;background:var(--accent)}
-h2{font-size:var(--type-heading);line-height:1.2;letter-spacing:-.035em}
-.section-intro{max-width:60ch;font-size:var(--type-body);line-height:1.7}
-.section-visual,.perspective-visual{position:relative;aspect-ratio:2.15/1;margin:24px 0 20px;border-radius:18px}
-.section-visual img,.perspective-visual img{border-radius:inherit}
-.section-link{margin-top:18px;font-size:var(--type-body);font-weight:650}
-.section-link::after{content:"  →"}
-.news-status{font-size:var(--type-meta);gap:10px 16px}
-.retry{border:0;border-radius:999px;background:var(--surface2);font-size:var(--type-meta);padding:8px 14px}
-.news-list{display:flex;flex-direction:column;gap:0;margin-top:14px;border:0;border-radius:0;background:transparent;overflow:visible}
-.news-row{display:flex;align-items:baseline;gap:12px;padding:14px 0;border:0;transition:color .2s}
-.news-row:last-child{border:0}
-.news-row:hover{background:transparent}
-.news-row a{gap:12px}
-.ntime{font-size:13px;color:var(--muted)}
-.ntopic{border:0;border-radius:999px;padding:3px 9px;background:var(--accent-dim);font-size:13px;color:var(--accent)}
-.ntitle{font-size:var(--type-body);font-weight:550;line-height:1.55}
-.ntitle .ext{font-size:var(--type-meta)}
-.empty{padding:20px 0;font-size:16px}
-.posts{grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin-top:24px;border:0;border-radius:0;background:transparent;overflow:visible}
-.post{padding:4px 0 0;border:0;background:transparent}
-.post:hover{background:transparent}
-.post time{font-size:13px;color:var(--muted)}
-.post h3{font-size:var(--type-subhead);line-height:1.4;margin:10px 0}
-.post p{max-width:60ch;font-size:var(--type-body);line-height:1.7}
-.post .read{font-size:var(--type-meta);font-weight:650;margin-top:16px}
-.note{max-width:60ch;font-size:var(--type-body);line-height:1.7;color:var(--muted)}
-.about{gap:clamp(32px,7vw,88px)}
-.about p,.about ul{max-width:60ch;font-size:var(--type-body);line-height:1.75}
-.about h3{font-size:var(--type-subhead)}
-.about li{padding-left:18px}
-.about li::before{content:"";top:.72em;width:6px;height:6px;border-radius:50%;background:var(--accent)}
-.indicator{border:0!important;border-radius:16px!important;background:var(--surface)!important;box-shadow:none!important}
-.indicator .chart-open{border:0!important;outline:0!important;box-shadow:none!important}
-.indicator .icode{font-family:var(--sans)!important;font-size:var(--type-meta)!important}
-.indicator .chart-caption,.indicator .free{border:0!important;outline:0!important;box-shadow:none!important;font-family:var(--sans)!important;font-size:var(--type-meta)!important}
-.indicator h3{font-size:var(--type-subhead)!important}
-.indicator p{max-width:60ch;font-size:var(--type-body)!important;line-height:1.65}
-.ticker{border:0;background:var(--surface2);}
-.ticker-inner{animation-duration:42s}
-.tick{border:0;font-size:13px;padding-inline:18px}
-.tick b{font-weight:700}
-@media(min-width:768px) and (max-width:900px){
-.nav{gap:12px;flex-wrap:wrap;padding-block:8px}
-.nav nav{order:2;flex-basis:100%;gap:4px 14px;flex-wrap:wrap}
-.nav nav a{white-space:nowrap}
-.theme-toggle{margin-left:auto}
-}
-@media(max-width:767px){
-:root{--type-display:clamp(36px,9vw,44px)}
-.wrap{padding-inline:20px}
-.hero{grid-template-columns:minmax(0,1fr);gap:22px;padding:26px 0 30px}
-.hero-visual{order:1;height:clamp(210px,62vw,270px);border-radius:16px}
-.hero-copy{order:0;padding-top:0}
-.hero-copy h1{font-size:var(--type-display);max-width:15ch}
-.hero-copy .intro{font-size:var(--type-body);margin:15px 0 21px}
-.hero-visual figcaption,.section-visual figcaption,.perspective-visual figcaption{font-size:13px;padding:7px 10px}
-.nav nav a{font-size:13px}
-.section{padding:46px 0 0}
-.section-visual,.perspective-visual{aspect-ratio:16/9;border-radius:15px;margin:20px 0 16px}
-.section-intro{font-size:var(--type-body)}
-.sec-head::before{height:24px}
-.news-row{padding:12px 0}
-.news-row a{gap:6px 9px}
-.ntime{font-size:13px}
-.ntopic{font-size:13px}
-.ntitle{font-size:var(--type-body);flex-basis:100%}
-.posts{grid-template-columns:1fr;gap:22px}
-.post h3{font-size:var(--type-subhead)}
-.about{gap:24px}
-.tick{font-size:var(--type-meta);padding-inline:14px}
-}
+/* Page-level duplication of the shared type scale, brand and section rules was retired;
+   the newsroom identity now comes from theme.shared_css() once. */
+/* Section rhythm and type scale live once above; retired page-level overrides removed. */
 </style>
 </head>
 <body>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
-<div class="ticker" id="ticker" hidden aria-label="실시간 암호화폐 시세"><div class="ticker-inner" id="ticker-inner"></div></div>
 __HEADER__
-<main id="main" class="wrap">
-<section class="hero" aria-labelledby="headline"><div class="hero-copy"><p class="eyebrow">뉴스를 읽고, 관점을 세우고, 차트로 살펴봅니다.</p><h1 id="headline">차트보다 먼저 읽는 뉴스</h1><p class="intro">시장이 움직이는 이유를 전합니다.<br>금리와 정책, 지정학과 수급까지.</p><div class="actions hero-actions"><a class="button primary" href="/news/ko/">오늘의 시장 보기</a></div><p class="hero-tags"><span>• MACRO</span><span>• CRYPTO</span><span>• MARKET STRUCTURE</span></p></div><figure class="hero-visual"><img src="/assets/landing/hero-editorial.webp" width="1672" height="941" fetchpriority="high" decoding="async" alt="방콕의 저녁, 금융 뉴스와 시장 자료를 살펴보는 책상"><figcaption>경제 뉴스와 시장 관점을 읽는 자리</figcaption></figure></section>
-<section class="section" id="news" aria-labelledby="news-title"><div class="sec-head"><span class="sec-tag">01</span><h2 id="news-title">최근 경제 뉴스</h2></div><p class="section-intro">금리와 경기, 기업과 정책, 지정학까지. 시장에 연결되는 소식을 확인하세요.</p><figure class="section-visual"><img src="/assets/landing/news-editorial.webp" width="1536" height="1024" loading="lazy" decoding="async" alt="방콕의 편집 데스크에서 경제 뉴스와 시장 자료를 살펴보는 장면"><figcaption>뉴스는 원문과 게시 시각을 확인해 읽습니다.</figcaption></figure><div class="news-status"><span class="live">● 자동 수집 · 한국어로 표시</span><span id="update-status" role="status">수집 상태 확인 중</span><button class="retry" id="retry" type="button" hidden>다시 불러오기</button></div><div class="news-list" id="news-list" aria-busy="true"><div class="loading-line short"></div><div class="loading-line"></div><div class="loading-line"></div></div><noscript><p>뉴스 목록을 불러오려면 자바스크립트가 필요합니다. <a href="/news/ko/">경제 뉴스 페이지에서 확인하세요.</a></p></noscript><a class="section-link" href="/news/ko/">$ open /news/ko/ →</a></section>
-<section class="section" id="perspectives" aria-labelledby="perspectives-title"><div class="sec-head"><span class="sec-tag">02</span><h2 id="perspectives-title">시장 관점</h2></div><p class="section-intro">뉴스와 차트를 어떻게 읽는지, 어떤 조건에서 생각을 바꾸는지. 트레이더로서의 판단을 기록합니다.</p><figure class="perspective-visual"><img src="/assets/landing/btc-analysis.webp" width="1536" height="1024" loading="lazy" decoding="async" alt="비트코인 가격 구조를 살펴보는 분석 화면과 노트"><figcaption>차트 이미지는 시장 분석의 참고 시각 자료입니다.</figcaption></figure><div class="posts">__POSTS__</div><a class="section-link" href="/blog/">$ open /blog/ →</a><p class="note">각 글은 작성 당시의 개인적인 관점입니다. 가격과 시나리오는 현재 시점과 다를 수 있습니다.</p></section>
-<section class="section" id="indicators" aria-labelledby="indicators-title"><div class="sec-head"><span class="sec-tag">03</span><h2 id="indicators-title">직접 만든 트레이딩뷰 지표</h2></div><p class="section-intro">차트의 구조와 파동을 살펴보는 도구입니다. 공식 트레이딩뷰 페이지에서 무료로 사용할 수 있습니다.</p><div class="indicators">__INDICATORS__</div><a class="section-link" href="/indicators/">$ open /indicators/ →</a><a class="section-link" href="https://kr.tradingview.com/u/TeemoBKK/#published-scripts" target="_blank" rel="noopener noreferrer me">$ open profile → 전체 지표 보기 ↗</a><p class="note">파동 카운팅과 목표 구간은 진행 중인 가격에 따라 달라질 수 있습니다. 사용 조건과 설정은 각 지표 페이지에서 확인하세요.</p></section>
-<section class="section about" aria-labelledby="about-title"><div><div class="sec-head"><span class="sec-tag">04</span><h2 id="about-title">TeemoBKK에 대하여</h2></div><p>경제 뉴스를 모으고, 시장을 바라보는 관점을 쓰며, 차트에서 사용하는 지표를 만듭니다.</p><p>뉴스는 시장의 맥락을 살피는 출발점입니다. 해석과 시나리오는 사실과 구분해 기록하겠습니다.</p><a class="section-link" href="/about/">$ open /about/ → 자세히 보기</a></div><div><h3>읽기 전에</h3><ul><li>뉴스는 자동 수집한 원문 제목과 출처를 제공합니다.</li><li>시장 관점은 운영자의 개인적인 해석입니다.</li><li>지표는 분석 보조 도구이며 수익을 보장하지 않습니다.</li></ul></div></section>
+<div class="ticker" id="ticker" role="region" aria-label="암호화폐와 주요 지수 시세" hidden>
+ <div class="ticker-state" id="ticker-state" data-state="connecting" title="MEXC 연결 상태">
+  <span class="dot" aria-hidden="true"></span><span id="ticker-state-text" role="status" aria-live="polite">MEXC 연결 중</span><span class="ticker-age" id="ticker-age"></span>
+ </div>
+ <div class="ticker-viewport"><div class="ticker-inner" id="ticker-inner"></div></div>
+</div>
+<main id="main">
+<div class="wrap">
+<section class="hero" aria-labelledby="headline">
+  <div class="hero-copy">
+    <h1 id="headline">차트보다 먼저<br><span class="hl">읽는 뉴스</span></h1>
+    <p class="intro">방콕에서 읽는 시장 테이프. 금리와 정책, 지정학과 수급을 모아 오늘 시장이 움직인 이유를 설명하고, 관점과 차트로 다시 검증합니다.</p>
+    <div class="hero-actions"><a class="button primary" href="/news/ko/">오늘의 시장 보기</a><a class="button" href="/perspectives/">관점 읽기</a></div>
+  </div>
+  <div class="hero-aside">
+    <figure class="hero-image">
+      <img src="/assets/landing/hero-editorial.webp" width="1672" height="941" loading="eager" decoding="async" fetchpriority="high" alt="방콕의 편집 데스크에서 경제 뉴스와 시장 차트를 함께 살펴보는 장면">
+    </figure>
+    <ul class="hero-index" aria-label="TeemoBKK 구성">
+      <li><a href="/news/ko/"><strong>경제 뉴스</strong><span>5분마다 갱신되는 시장 헤드라인</span></a></li>
+      <li><a href="/perspectives/"><strong>시장 관점</strong><span>생각이 바뀌는 조건의 기록</span></a></li>
+      <li><a href="/indicators/"><strong>트레이딩뷰 지표</strong><span>구조를 읽는 무료 도구</span></a></li>
+    </ul>
+  </div>
+</section>
+<section class="section" id="news" aria-labelledby="news-title"><div class="sec-head"><h2 id="news-title">최근 경제 뉴스</h2></div><p class="section-intro">금리와 경기, 기업과 정책, 지정학까지. 시장에 연결되는 소식을 원문과 시각으로 확인하세요.</p><div class="news-status"><span class="live">● 자동 수집 · 한국어로 표시</span><span id="update-status" role="status">수집 상태 확인 중</span><button class="retry" id="retry" type="button" hidden>다시 불러오기</button></div><div class="news-list" id="news-list" aria-busy="true"><div class="loading-line short"></div><div class="loading-line"></div><div class="loading-line"></div></div><noscript><p>뉴스 목록을 불러오려면 자바스크립트가 필요합니다. <a href="/news/ko/">경제 뉴스 페이지에서 확인하세요.</a></p></noscript><a class="section-link" href="/news/ko/">전체 뉴스 보기 →</a><figure class="news-strip"><img src="/assets/landing/news-editorial.webp" width="1536" height="1024" loading="lazy" decoding="async" alt="방콕의 편집 데스크에서 경제 뉴스와 시장 자료를 살펴보는 장면"><figcaption>뉴스는 원문과 게시 시각을 확인해 읽습니다.</figcaption></figure></section>
+<section class="kinetic" id="kinetic" aria-label="시장을 읽는 방식"><div class="kinetic-inner"><p class="kinetic-line" aria-hidden="true"><span class="k-step">뉴스를 읽고</span><span class="k-arrow">→</span><span class="k-step">관점을 세우고</span><span class="k-arrow">→</span><span class="k-step">차트로 검증한다</span></p><p class="sr-only">뉴스를 읽고, 관점을 세우고, 차트로 검증한다</p><button class="kinetic-toggle" id="kinetic-toggle" type="button" aria-controls="kinetic" aria-pressed="false" hidden>일시정지</button><p class="kinetic-status" id="kinetic-status" role="status"></p></div></section>
+<section class="section" id="perspectives" aria-labelledby="perspectives-title"><div class="sec-head"><h2 id="perspectives-title">시장 관점</h2></div><p class="section-intro">뉴스와 차트를 어떻게 읽는지, 어떤 조건에서 생각을 바꾸는지. 트레이더로서의 판단을 기록합니다.</p><div class="posts">__POSTS__</div><a class="section-link" href="/blog/">관점 글 더 보기 →</a><p class="note">각 글은 작성 당시의 개인적인 관점입니다. 가격과 시나리오는 현재 시점과 다를 수 있습니다.</p></section>
+<section class="section" id="indicators" aria-labelledby="indicators-title"><div class="sec-head"><h2 id="indicators-title">직접 만든 트레이딩뷰 지표</h2></div><p class="section-intro">차트의 구조와 파동을 살펴보는 도구입니다. 공식 트레이딩뷰 페이지에서 무료로 사용할 수 있습니다.</p><div class="indicators">__INDICATORS__</div><a class="section-link" href="/indicators/">지표 전체 보기 →</a><a class="section-link" href="https://kr.tradingview.com/u/TeemoBKK/#published-scripts" target="_blank" rel="noopener noreferrer me">트레이딩뷰 전체 지표 보기 ↗</a><p class="note">파동 카운팅과 목표 구간은 진행 중인 가격에 따라 달라질 수 있습니다. 사용 조건과 설정은 각 지표 페이지에서 확인하세요.</p></section>
+<section class="about" aria-labelledby="about-title"><div><div class="sec-head"><h2 id="about-title">TeemoBKK에 대하여</h2></div><p>경제 뉴스를 모으고, 시장을 바라보는 관점을 쓰며, 차트에서 사용하는 지표를 만듭니다.</p><p>뉴스는 시장의 맥락을 살피는 출발점입니다. 해석과 시나리오는 사실과 구분해 기록하겠습니다.</p><a class="section-link" href="/about/">사이트 소개 보기 →</a></div><div><h3>읽기 전에</h3><ul><li>뉴스는 자동 수집한 원문 제목과 출처를 제공합니다.</li><li>시장 관점은 운영자의 개인적인 해석입니다.</li><li>지표는 분석 보조 도구이며 수익을 보장하지 않습니다.</li></ul></div></section>
+</div>
 </main>
 __FOOTER__
 <script>
 (function(){
 'use strict';
-var ticker=document.getElementById('ticker'),tickerInner=document.getElementById('ticker-inner');
-document.querySelectorAll('.section-link').forEach(function(link){
-var labels={'/news/ko/':'\uC804\uCCB4 \uB274\uC2A4 \uBCF4\uAE30','/blog/':'\uAD00\uC810 \uAE00 \uB354 \uBCF4\uAE30','/indicators/':'\uC9C0\uD45C \uC804\uCCB4 \uBCF4\uAE30','/about/':'\uC0AC\uC774\uD2B8 \uC18C\uAC1C \uBCF4\uAE30'};
-var href=link.getAttribute('href');
-if(labels[href])link.textContent=labels[href];
-else if(href&&href.indexOf('tradingview.com/u/')!==-1)link.textContent='\uD2B8\uB808\uC774\uB529\uBDF0 \uC804\uCCB4 \uC9C0\uD45C \uBCF4\uAE30';
-});
-document.querySelectorAll('.posts .read').forEach(function(link){
-var heading=link.closest('.post')&&link.closest('.post').querySelector('h3');
-var label='\uBE14\uB85C\uADF8 \uAE00 \uC77D\uAE30';
-link.textContent=label;
-if(heading)link.setAttribute('aria-label',label+': '+heading.textContent.trim());
-});
-function kfmt(p){var n=parseFloat(p);if(!isFinite(n))return '—';if(n>=1000)return (n/1000).toFixed(1)+'K';if(n>=100)return n.toFixed(1);return n.toFixed(2);}
-function pctfmt(p){var n=parseFloat(p);if(!isFinite(n))return '';return (n>=0?'+':'')+n.toFixed(1)+'%';}
-function tickHTML(sym,price,chg){var n=parseFloat(chg);var cls=n>=0?'up':(n<0?'dn':'');
-return '<span class="tick"><b>'+sym+'</b> '+kfmt(price)+' <span class="'+cls+'">'+pctfmt(chg)+'</span></span>';}
-async function loadTicker(){
-try{
-var ctrl=new AbortController();var to=setTimeout(function(){ctrl.abort();},8000);
-var res=await fetch('https://api.binance.com/api/v3/ticker/24hr?symbols=%5B%22BTCUSDT%22,%22ETHUSDT%22%5D',{signal:ctrl.signal});
-clearTimeout(to);
-if(!res.ok)throw new Error('http');
-var data=await res.json();
-if(!Array.isArray(data)||!data.length)throw new Error('schema');
-var rows=data.map(function(d){var sym=String(d.symbol||'').replace('USDT','');return tickHTML(sym+'/USD',d.lastPrice,d.priceChangePercent);}).join('');
-try{
-var ctrl2=new AbortController();var to2=setTimeout(function(){ctrl2.abort();},8000);
-var res2=await fetch('https://stooq.com/q/l/?s=%5Endq,%5Espx,xauusd,dx.f,%5Etnx,cl.f&f=sd2t2ohlcv&h&e=csv',{signal:ctrl2.signal});
-clearTimeout(to2);
-if(res2.ok){
-var txt=await res2.text();
-var lines=txt.trim().split('\n').slice(1);
-var names={'^ndq':'NASDAQ','^spx':'S&P 500','xauusd':'GOLD','dx.f':'DXY','^tnx':'US 10Y','cl.f':'WTI'};
-for(var i=0;i<lines.length;i++){
-var c=lines[i].split(',');
-if(c.length<7)continue;
-var sym=c[0].toLowerCase(),close=parseFloat(c[6]),open=parseFloat(c[3]);
-if(!isFinite(close)||!isFinite(open)||open===0)continue;
-var chg=((close-open)/open*100).toFixed(2);
-var label=names[sym]||sym.toUpperCase();
-rows+=tickHTML(label,close,chg);
+var ticker=document.getElementById('ticker'),tickerInner=document.getElementById('ticker-inner'),
+    stateBox=document.getElementById('ticker-state'),stateText=document.getElementById('ticker-state-text'),
+    ageText=document.getElementById('ticker-age');
+if(!ticker||!tickerInner||!stateBox||!stateText||!ageText)return;
+
+/* MEXC spot miniTicker, official protobuf wrapper:
+   PushDataV3ApiWrapper.publicMiniTicker = field 309, and inside it
+   symbol = 1, price = 2, zonedRate = 4. The @24H subscription makes
+   zonedRate the rolling 24-hour change. */
+var SYMBOLS=['BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT','BNBUSDT','DOGEUSDT','ADAUSDT','LINKUSDT'];
+var LABELS={BTCUSDT:'BTC/USDT',ETHUSDT:'ETH/USDT',SOLUSDT:'SOL/USDT',XRPUSDT:'XRP/USDT',
+            BNBUSDT:'BNB/USDT',DOGEUSDT:'DOGE/USDT',ADAUSDT:'ADA/USDT',LINKUSDT:'LINK/USDT'};
+var ALLOW=Object.create(null);
+SYMBOLS.forEach(function(symbol){ALLOW[symbol]=LABELS[symbol];});
+var WS_URL='wss://wbs-api.mexc.com/ws';
+var MACRO_URL='https://stooq.com/q/l/?s=%5Endq,%5Espx,xauusd,dx.f,%5Etnx,cl.f&f=sd2t2ohlcv&h&e=csv';
+var MACRO_NAMES={'^ndq':'NASDAQ','^spx':'S&P 500','xauusd':'GOLD','dx.f':'DXY','^tnx':'US 10Y','cl.f':'WTI'};
+var STALE_MS=45000,UI_MS=5000,PING_MS=25000,RETRY_BASE=2000,RETRY_MAX=60000,
+    ROTATE_MS=23*60*60*1000+50*60*1000;
+var cryptoRows=Object.create(null),macroRows=[],ws=null,reconnectTimer=null,pingTimer=null,
+    rotateTimer=null,lastValidAt=0,openedAt=0,retryAttempt=0;
+var decoder=typeof TextDecoder!=='undefined'?new TextDecoder('utf-8'):null;
+
+function decodeUtf8(bytes){
+  if(decoder)return decoder.decode(bytes);
+  var text='';
+  for(var i=0;i<bytes.length;i++)text+=String.fromCharCode(bytes[i]);
+  return text;
 }
+function readVarint(bytes,state){
+  var value=0,mult=1,b;
+  do{
+    if(state.i>=bytes.length)throw new Error('varint');
+    b=bytes[state.i++];
+    value+=(b&0x7f)*mult;
+    mult*=128;
+    if(mult>9007199254740992)throw new Error('varint');
+  }while(b&0x80);
+  return value;
 }
-}catch(e2){}
-tickerInner.innerHTML=rows+rows;
+function parseFields(bytes){
+  var fields=Object.create(null),state={i:0};
+  while(state.i<bytes.length){
+    var tag=readVarint(bytes,state),field=Math.floor(tag/8),wire=tag&7;
+    if(!field)throw new Error('field');
+    if(wire===0){fields[field]={wire:0,value:readVarint(bytes,state)};}
+    else if(wire===1){
+      if(state.i+8>bytes.length)throw new Error('fixed64');
+      state.i+=8;
+    }else if(wire===2){
+      var length=readVarint(bytes,state);
+      if(length<0||state.i+length>bytes.length)throw new Error('length');
+      fields[field]={wire:2,value:bytes.subarray(state.i,state.i+length)};
+      state.i+=length;
+    }else if(wire===5){
+      if(state.i+4>bytes.length)throw new Error('fixed32');
+      state.i+=4;
+    }else{
+      throw new Error('wire');
+    }
+  }
+  return fields;
+}
+function decimalField(entry,min,max){
+  if(!entry||entry.wire!==2)return null;
+  var raw=decodeUtf8(entry.value).trim();
+  if(!raw||raw.length>32||!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw))return null;
+  var value=Number(raw);
+  if(!isFinite(value)||value<min||value>max)return null;
+  return value;
+}
+function groupFixed(value,digits){
+  var parts=value.toFixed(digits).split('.');
+  parts[0]=parts[0].replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  return parts.join('.');
+}
+function formatPrice(value){
+  if(value>=1)return groupFixed(value,2);
+  if(value>=0.01)return groupFixed(value,4);
+  return groupFixed(value,8);
+}
+function formatChange(value){
+  if(Math.abs(value)<0.005)return '0.00%';
+  var sign=value>0?'+':(value<0?'':'');
+  var abs=Math.abs(value);
+  return sign+value.toFixed(abs>=100?0:(abs>=10?1:2))+'%';
+}
+function formatAge(ms){
+  if(ms<8000)return '방금';
+  var seconds=Math.round(ms/1000);
+  if(seconds<90)return seconds+'초 전';
+  var minutes=Math.round(seconds/60);
+  return minutes+'분 전';
+}
+function setState(kind,text){
+  if(stateBox.getAttribute('data-state')!==kind)stateBox.setAttribute('data-state',kind);
+  if(stateText.textContent!==text)stateText.textContent=text;
+}
+function makeTick(label,price,change,kind){
+  var row=document.createElement('span');row.className='tick';
+  var name=document.createElement('b');name.textContent=label;
+  var value=document.createElement('span');value.textContent=formatPrice(price);
+  var rate=document.createElement('span');rate.className=change>0?'up':(change<0?'dn':'flat');
+  rate.textContent=formatChange(change);
+  row.title=label+(kind==='crypto'?' · 24시간 변동':' · 당일 변동');
+  row.append(name,document.createTextNode(' '),value,document.createTextNode(' '),rate);
+  return row;
+}
+function renderTicker(){
+  var sequence=document.createElement('span');sequence.className='ticker-seq';
+  SYMBOLS.forEach(function(symbol){
+    var row=cryptoRows[symbol];
+    if(row)sequence.append(makeTick(ALLOW[symbol],row.price,row.change,'crypto'));
+  });
+  macroRows.forEach(function(row){
+    sequence.append(makeTick(row.label,row.price,row.change,'macro'));
+  });
+  if(!sequence.childNodes.length){tickerInner.replaceChildren();return;}
+  var duplicate=sequence.cloneNode(true);duplicate.setAttribute('aria-hidden','true');
+  tickerInner.replaceChildren(sequence,duplicate);
+}
+function readMiniTicker(buffer){
+  try{
+    var wrapper=parseFields(new Uint8Array(buffer)),body=wrapper[309];
+    if(!body||body.wire!==2)return;
+    var item=parseFields(body.value);
+    var symbol=item[1]&&item[1].wire===2?decodeUtf8(item[1].value).trim().toUpperCase():'';
+    if(!symbol&&wrapper[3]&&wrapper[3].wire===2)symbol=decodeUtf8(wrapper[3].value).trim().toUpperCase();
+    if(!ALLOW[symbol])return;
+    var price=decimalField(item[2],0,1000000000000);
+    var change=decimalField(item[4],-1,1000);
+    if(price===null||price<=0||change===null)return;
+    /* MEXC returns zonedRate as a fraction (0.0766 is 7.66%), so convert once. */
+    cryptoRows[symbol]={price:price,change:change*100};
+    lastValidAt=Date.now();retryAttempt=0;
+    renderTicker();updateFreshness();
+  }catch(error){}
+}
+function handleText(data){
+  var message;
+  try{message=JSON.parse(data);}catch(error){return;}
+  if(!message||typeof message!=='object')return;
+  if(message.msg==='PONG')return;
+}
+function handleMessage(data){
+  if(typeof data==='string'){handleText(data);return;}
+  if(data instanceof ArrayBuffer){readMiniTicker(data);return;}
+  if(typeof Blob!=='undefined'&&data instanceof Blob){
+    try{data.arrayBuffer().then(readMiniTicker).catch(function(){});}catch(error){}
+  }
+}
+function updateFreshness(){
+  var now=Date.now();
+  if(lastValidAt)ageText.textContent='· '+formatAge(now-lastValidAt);
+  else ageText.textContent='';
+  if(!ws||ws.readyState!==1)return;
+  if(lastValidAt&&now-lastValidAt>STALE_MS){setState('stale','MEXC 지연 · 24시간 변동');}
+  else if(lastValidAt){setState('live','MEXC 실시간 · 24시간 변동');}
+  else if(openedAt&&now-openedAt>STALE_MS){setState('stale','MEXC 연결됨 · 시세 대기');}
+}
+function clearSocketTimers(){
+  if(pingTimer){clearInterval(pingTimer);pingTimer=null;}
+  if(rotateTimer){clearTimeout(rotateTimer);rotateTimer=null;}
+}
+function closeSocket(){
+  clearSocketTimers();
+  if(ws){
+    ws.onopen=ws.onmessage=ws.onerror=ws.onclose=null;
+    try{ws.close();}catch(error){}
+    ws=null;
+  }
+}
+function scheduleRetry(){
+  clearSocketTimers();
+  retryAttempt+=1;
+  var delay=Math.min(RETRY_MAX,RETRY_BASE*Math.pow(1.8,retryAttempt-1));
+  delay=Math.round(delay*(0.85+Math.random()*0.3));
+  setState('reconnecting','MEXC 재연결 중');
+  if(reconnectTimer){clearTimeout(reconnectTimer);}
+  reconnectTimer=setTimeout(connect,delay);
+}
+function connect(){
+  closeSocket();
+  if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null;}
+  lastValidAt=0;openedAt=0;
+  setState('connecting',retryAttempt?'MEXC 재연결 중':'MEXC 연결 중');
+  if(typeof WebSocket==='undefined'){setState('unsupported','MEXC 실시간 미지원');return;}
+  var socket;
+  try{socket=new WebSocket(WS_URL);}catch(error){scheduleRetry();return;}
+  ws=socket;socket.binaryType='arraybuffer';
+  socket.onopen=function(){
+    if(ws!==socket)return;
+    openedAt=Date.now();
+    setState('connecting','MEXC 구독 중');
+    try{
+      socket.send(JSON.stringify({
+        method:'SUBSCRIPTION',
+        params:SYMBOLS.map(function(symbol){
+          return 'spot@public.miniTicker.v3.api.pb@'+symbol+'@24H';
+        })
+      }));
+    }catch(error){}
+    pingTimer=setInterval(function(){
+      if(ws===socket&&socket.readyState===1){try{socket.send('{"method":"PING"}');}catch(error){}}
+    },PING_MS);
+    /* The documented connection limit is 24 hours. Rotate at 23h50m so the
+       ticker reconnects before the server closes it. */
+    rotateTimer=setTimeout(function(){if(ws===socket)connect();},ROTATE_MS);
+  };
+  socket.onmessage=function(event){if(ws===socket)handleMessage(event.data);};
+  socket.onerror=function(){if(ws!==socket)return;try{socket.close();}catch(error){}};
+  socket.onclose=function(){
+    if(ws!==socket)return;
+    ws=null;clearSocketTimers();lastValidAt=0;openedAt=0;ageText.textContent='';
+    scheduleRetry();
+  };
+}
+async function loadMacro(){
+  try{
+    var controller=new AbortController(),timeout=setTimeout(function(){controller.abort();},8000);
+    var response=await fetch(MACRO_URL,{signal:controller.signal,cache:'no-store'});
+    clearTimeout(timeout);
+    if(!response.ok)return;
+    var text=await response.text(),lines=text.trim().split(/\r?\n/).slice(1),rows=[];
+    for(var i=0;i<lines.length;i++){
+      var cells=lines[i].split(',');
+      if(cells.length<7)continue;
+      var symbol=String(cells[0]||'').toLowerCase(),close=Number(cells[6]),open=Number(cells[3]);
+      if(!isFinite(close)||!isFinite(open)||open<=0||close<=0)continue;
+      var change=(close-open)/open*100;
+      if(!isFinite(change))continue;
+      rows.push({label:MACRO_NAMES[symbol]||symbol.toUpperCase(),price:close,change:change});
+    }
+    if(rows.length){macroRows=rows;renderTicker();}
+  }catch(error){}
+}
 ticker.hidden=false;
-}catch(e){ticker.hidden=true;}
+renderTicker();
+connect();
+updateFreshness();
+loadMacro();
+setInterval(updateFreshness,UI_MS);
+setInterval(function(){if(!document.hidden)loadMacro();},300000);
+window.addEventListener('online',function(){
+  if(!ws||ws.readyState>1){if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null;}connect();}
+});
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden)return;
+  updateFreshness();
+  if(!ws||ws.readyState>1){if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null;}connect();}
+});
+window.addEventListener('pagehide',function(){closeSocket();if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null;}});
+window.addEventListener('pageshow',function(event){if(event.persisted)connect();});
+})();
+</script>
+<script>
+(function(){
+'use strict';
+var section=document.getElementById('kinetic'),button=document.getElementById('kinetic-toggle'),
+    status=document.getElementById('kinetic-status');
+if(!section||!button||!status)return;
+var query=window.matchMedia?window.matchMedia('(prefers-reduced-motion: reduce)'):null;
+function setPaused(paused){
+  section.setAttribute('data-paused',paused?'1':'0');
+  button.textContent=paused?'다시 재생':'일시정지';
+  button.setAttribute('aria-pressed',String(paused));
+  status.textContent=paused?'애니메이션 일시정지됨':'애니메이션 재생 중';
 }
-if(ticker&&tickerInner){loadTicker();setInterval(function(){if(!document.hidden)loadTicker();},30000);}
+function applyPreference(){
+  var reduced=!!(query&&query.matches);
+  button.hidden=true;
+  if(reduced){
+    section.classList.remove('motion-enabled');
+    section.setAttribute('data-paused','1');
+    button.textContent='동작 줄임 · 정지';
+    button.setAttribute('aria-pressed','true');
+    button.disabled=true;
+    status.textContent='동작 줄임 설정이 켜져 있어 애니메이션을 재생하지 않습니다.';
+  }else{
+    button.disabled=false;
+    setPaused(false);
+    section.classList.add('motion-enabled');
+    button.hidden=false;
+  }
+}
+button.addEventListener('click',function(){
+  if(button.disabled||!section.classList.contains('motion-enabled'))return;
+  setPaused(section.getAttribute('data-paused')!=='1');
+});
+if(query){
+  if(query.addEventListener)query.addEventListener('change',applyPreference);
+  else if(query.addListener)query.addListener(applyPreference);
+}
+applyPreference();
+})();
+</script>
+<script>
+(function(){
+'use strict';
+var root=document.documentElement;
+try{
+  if(!root.classList.contains('reveal-enabled'))return;
+  if(!('IntersectionObserver' in window)){root.classList.remove('reveal-enabled');return;}
+  var items=[].slice.call(document.querySelectorAll('.section,.about'));
+  if(!items.length){root.classList.remove('reveal-enabled');return;}
+  var observer=new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(!entry.isIntersecting)return;
+      entry.target.classList.add('is-visible');
+      observer.unobserve(entry.target);
+    });
+  },{threshold:.08,rootMargin:'0px 0px -8% 0px'});
+  items.forEach(function(item){observer.observe(item);});
+  var query=window.matchMedia?window.matchMedia('(prefers-reduced-motion: reduce)'):null;
+  function stopReveal(){
+    if(!query||!query.matches)return;
+    observer.disconnect();
+    root.classList.remove('reveal-enabled');
+    items.forEach(function(item){item.classList.add('is-visible');});
+  }
+  if(query){
+    if(query.addEventListener)query.addEventListener('change',stopReveal);
+    else if(query.addListener)query.addListener(stopReveal);
+  }
+}catch(error){root.classList.remove('reveal-enabled');}
 })();
 </script>
 <script>
@@ -438,7 +712,7 @@ function selectNews(articles){const seen=new Set();return articles.filter(a=>{if
 function hostOf(u){try{const h=new URL(u).hostname.toLowerCase().replace(/^www[.]/,'');return h}catch(e){return ''}}
 function srcLabel(a){if(!a.original_link)return a.source||'';return String(a.original_source||'').trim()||hostOf(a.original_link)||a.source||''}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
-function render(articles){list.replaceChildren();if(!articles.length){const p=document.createElement('p');p.className='empty';p.textContent='$ no results — 최근 24시간 뉴스가 없습니다.';list.append(p);return;}
+function render(articles){list.replaceChildren();if(!articles.length){const p=document.createElement('p');p.className='empty';p.textContent='최근 24시간에 표시할 뉴스가 없습니다.';list.append(p);return;}
 for(const a of articles){const row=document.createElement('div');row.className='news-row';const link=document.createElement('a');link.href=safeLink(a.original_link||a.link);link.target='_blank';link.rel='noopener noreferrer';
 const time=document.createElement('span');time.className='ntime';time.textContent=displayStamp(a.published_at);
 const topic=document.createElement('span');topic.className='ntopic';topic.textContent=a.category||'경제';
@@ -446,7 +720,7 @@ const title=document.createElement('span');title.className='ntitle';title.innerH
 const src=document.createElement('span');src.className='ntime';src.textContent=srcLabel(a)||'';
 link.append(time,topic,title);if(src.textContent)link.append(src);row.append(link);list.append(row);}hasNews=true;}
 async function refresh(){if(busy)return;busy=true;retry.disabled=true;list.setAttribute('aria-busy','true');const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),12000);try{const response=await fetch('/api/news?region='+encodeURIComponent('글로벌')+'&hours=24&limit=100&lang=ko',{cache:'no-cache',signal:controller.signal});if(!response.ok)throw new Error('http');const data=await response.json();if(!Array.isArray(data.articles))throw new Error('schema');render(selectNews(data.articles));const updated=Date.parse(data.updated_at);if(Number.isFinite(updated)&&updated<=Date.now()+60000){const age=Date.now()-updated;status.textContent=(age>35*60000?'! 갱신 지연 · ':'✓ ')+displayStamp(updated);retry.hidden=age<=35*60000;}else{status.textContent='? 수집 시각 확인 불가';retry.hidden=false;}}
-catch(error){status.textContent=hasNews?'! 갱신 실패 · 이전 목록 표시 중':'! 뉴스 로드 실패';retry.hidden=false;if(!hasNews){list.replaceChildren();const p=document.createElement('p');p.className='empty';p.textContent='$ retry — 잠시 후 다시 시도하세요.';list.append(p);}}
+catch(error){status.textContent=hasNews?'! 갱신 실패 · 이전 목록 표시 중':'! 뉴스 로드 실패';retry.hidden=false;if(!hasNews){list.replaceChildren();const p=document.createElement('p');p.className='empty';p.textContent='잠시 후 다시 시도해 주세요.';list.append(p);}}
 finally{clearTimeout(timeout);busy=false;retry.disabled=false;list.setAttribute('aria-busy','false');}}
 retry.addEventListener('click',refresh);refresh();setInterval(()=>{if(!document.hidden)refresh();},120000);
 })();
@@ -480,7 +754,7 @@ def render_indicator_cards() -> str:
             '<article class="indicator"><a class="chart-open" href="{url}" target="_blank" rel="noopener noreferrer">'
             '<img src="{image}" width="1404" height="1281" loading="lazy" decoding="async" alt="{alt}">'
             '<span class="chart-caption">적용 예시 · 눌러서 지표 페이지로</span></a>'
-            '<span class="icode">SCRIPT · {code}</span><h3>{title}</h3><p>{description}</p>'
+            '<h3>{title}</h3><p>{description}</p>'
             '<span class="free">무료 공개</span><br><a class="button" href="{url}" target="_blank" rel="noopener noreferrer">'
             '트레이딩뷰에서 보기 ↗</a></article>'.format(**fields)
         )
@@ -516,6 +790,17 @@ def _blog_teaser_summary(markdown: str) -> str:
     return " ".join(text.split())[:180]
 
 
+def _homepage_title(title: str) -> str:
+    """Drop only the redundant dated suffix from a homepage headline.
+
+    The full title stays on /blog/<slug>/; the homepage already prints the date
+    below the headline, so repeating it in the title only pushes the text wider.
+    """
+    value = str(title or "")
+    shortened = re.sub(r"\s*[|·]\s*\d{1,2}월\s*\d{1,2}일.*$", "", value).strip()
+    return shortened or value
+
+
 def _homepage_post_cards(posts) -> str:
     from urllib.parse import quote
 
@@ -526,7 +811,7 @@ def _homepage_post_cards(posts) -> str:
             continue
         cards.append({
             "date": str(post.get("date") or ""),
-            "title": str(post.get("title") or ""),
+            "title": _homepage_title(str(post.get("title") or "")),
             "url": "/blog/{}/".format(quote(slug, safe="-._~")),
             "summary": _blog_teaser_summary(post.get("body") or ""),
         })
@@ -539,16 +824,16 @@ def _render_post_cards(posts) -> str:
         fields = {key: escape(str(value or ""), quote=True) for key, value in post.items()}
         fields["visible_date"] = escape(theme.display_date(str(post.get("date", ""))))
         cards.append(
-            '<article class="post"><time datetime="{date}">{visible_date}</time>'
-            '<h3><a href="{url}">{title}</a></h3>'
+            '<article class="post"><h3><a href="{url}">{title}</a></h3>'
+            '<time datetime="{date}">{visible_date}</time>'
             '<p>{summary}</p><a class="read" href="{url}">블로그 글 읽기 →</a></article>'.format(**fields)
         )
     return "".join(cards)
 
 
-def _standalone_page(title: str, eyebrow: str, description: str, content: str, extra_css: str = "") -> str:
+def _standalone_page(title: str, description: str, content: str, extra_css: str = "",
+                     active: str = "") -> str:
     safe_title = escape(title)
-    safe_eyebrow = escape(eyebrow)
     safe_description = escape(description)
     return (
         '<!doctype html><html lang="ko"><head><meta charset="utf-8">'
@@ -557,9 +842,9 @@ def _standalone_page(title: str, eyebrow: str, description: str, content: str, e
         '<style>{shared_css}{extra_css}{page_css}</style>{head_script}</head><body>'
         '<a class="skip" href="#main">본문으로 건너뛰기</a>{header}'
         '<main class="page-main" id="main"><header class="page-head">'
-        '<p class="page-eyebrow">{eyebrow}</p><h1 class="page-title">{title}</h1>'
+        '<h1 class="page-title">{title}</h1>'
         '<p class="page-intro">{description}</p></header>{content}'
-        '<a class="page-back" href="/">$ cd / → 홈으로</a></main>{footer}</body></html>'
+        '<a class="page-back" href="/">← 홈으로</a></main>{footer}</body></html>'
     ).format(
         description=safe_description,
         title=safe_title,
@@ -567,8 +852,7 @@ def _standalone_page(title: str, eyebrow: str, description: str, content: str, e
         extra_css=extra_css,
         page_css=theme.SUBPAGE_CSS,
         head_script=theme.theme_head_script(),
-        header=theme.render_header(),
-        eyebrow=safe_eyebrow,
+        header=theme.render_header(active),
         content=content,
         footer=theme.render_footer(),
     )
@@ -589,8 +873,8 @@ def render_perspectives_page(posts=None) -> str:
         fields["visible_date"] = escape(theme.display_date(date))
         fields["date"] = escape(date, quote=True)
         entries.append(
-            '<article class="page-post"><time datetime="{date}">{visible_date}</time>'
-            '<h2><a href="{url}">{title}</a></h2>'
+            '<article class="page-post"><h2><a href="{url}">{title}</a></h2>'
+            '<time datetime="{date}">{visible_date}</time>'
             '<p>{summary}</p><a class="read" href="{url}">'
             '블로그 글 읽기 →</a></article>'.format(**fields)
         )
@@ -598,7 +882,8 @@ def render_perspectives_page(posts=None) -> str:
         entries.append('<p class="empty">현재 표시할 관점 글이 없습니다.</p>')
     content = '<div class="page-posts">{}</div>'.format("".join(entries))
     return _standalone_page(
-        "시장 관점", "BLOG · 관점 브리핑", "시장 관점은 짧은 요약으로 살펴보고, 전체 글은 블로그에서 읽을 수 있습니다.", content
+        "시장 관점", "시장 관점은 짧은 요약으로 살펴보고, 전체 글은 블로그에서 읽을 수 있습니다.", content,
+        active="perspectives",
     )
 
 
@@ -660,14 +945,15 @@ def _render_blog_list(posts) -> str:
         date = escape(str(post.get("date", "")), quote=True)
         visible = escape(theme.display_date(str(post.get("date", ""))))
         entries.append(
-            '<article class="page-post"><time datetime="{date}">{visible}</time>'
-            '<h2><a href="/blog/{slug}/">{title}</a></h2></article>'.format(
+            '<article class="page-post"><h2><a href="/blog/{slug}/">{title}</a></h2>'
+            '<time datetime="{date}">{visible}</time></article>'.format(
                 date=date, visible=visible, slug=slug, title=title))
     if not entries:
         entries.append('<p class="empty">현재 표시할 블로그 글이 없습니다.</p>')
     return _standalone_page(
-        "블로그", "BLOG · 관점 브리핑", "공개된 관점 브리핑 글을 모았습니다.",
-        '<div class="page-posts">{}</div>'.format("".join(entries))
+        "블로그", "공개된 관점 브리핑 글을 모았습니다.",
+        '<div class="page-posts">{}</div>'.format("".join(entries)),
+        active="blog",
     )
 
 
@@ -685,7 +971,7 @@ def _render_blog_post(post, body_html: str) -> str:
             body=body_html,
         )
     )
-    return _standalone_page(title, "BLOG · 관점 브리핑", title, content)
+    return _standalone_page(title, title, content, active="blog")
 
 
 def _with_canonical(page: str, url: str) -> str:
@@ -717,12 +1003,12 @@ def render_indicators_page() -> str:
     content = (
         '<div class="indicators">{}</div>'
         '<a class="page-back" href="{}" target="_blank" rel="noopener noreferrer me">'
-        '$ open profile → 전체 지표 보기 ↗</a>'
+        '트레이딩뷰 프로필에서 전체 지표 보기 ↗</a>'
     ).format(render_indicator_cards(), escape(INDICATOR_PROFILE_URL, quote=True))
     return _standalone_page(
-        "트레이딩뷰 지표", "INDICATORS · TRADINGVIEW",
+        "트레이딩뷰 지표",
         "차트 구조와 파동을 살펴보는 공개 지표입니다. 분석 보조 도구로 활용하세요.",
-        content, extra_css=theme.INDICATOR_CSS,
+        content, extra_css=theme.INDICATOR_CSS, active="indicators",
     )
 
 
@@ -738,5 +1024,5 @@ def render_landing(posts=None) -> str:
             .replace('__INDICATOR_CSS__', theme.INDICATOR_CSS)
             .replace('__INDICATORS__', render_indicator_cards())
             .replace('__THEME_HEAD__', theme.theme_head_script())
-            .replace('__HEADER__', theme.render_header())
+            .replace('__HEADER__', theme.render_header("home"))
             .replace('__FOOTER__', theme.render_footer()))

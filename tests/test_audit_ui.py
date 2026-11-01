@@ -32,11 +32,11 @@ class AuditUI(unittest.TestCase):
 
     def test_date_is_human_readable_without_changing_machine_date(self):
         self.assertEqual(landing.display_date('2026-09-30'), '2026년 9월 30일')
-        with mock.patch.object(landing, 'editorial_posts', return_value=[{
+        with mock.patch.object(page_build, 'read_blog_posts', return_value=[{
                 'date': '2026-09-30', 'title': '제목',
-                'url': 'https://teemobkk.substack.com/p/example', 'summary': '요약'}]):
+                'original_slug': 'example', 'body': '요약'}]):
             page = landing.render_landing()
-        self.assertIn('<time datetime="2026-09-30">2026년 9월 30일</time>', page)
+        self.assertRegex(page, r'<time[^>]*datetime="2026-09-30"[^>]*>2026년 9월 30일</time>')
 
     def test_korean_dates_agree_on_all_page_variants(self):
         for page in (landing.render_landing(), landing_thai.render_thai_landing()):
