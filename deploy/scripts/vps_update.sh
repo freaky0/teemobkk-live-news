@@ -122,16 +122,20 @@ done
 say "publishing ROOT landing and news pages"
 PAGE_TMP="$APP_DIR/.landing.html.$COMMIT.tmp"
 remote "runuser -u '$APP_USER' -- cp -p '$BUILD_DIR/index.html' '$PAGE_TMP' && runuser -u '$APP_USER' -- mv -f '$PAGE_TMP' '$APP_DIR/landing.html'"
-remote "runuser -u '$APP_USER' -- mkdir -p '$NEWS_DEST' '$SERVICE_ROOT/blog' '$SERVICE_ROOT/perspectives' '$SERVICE_ROOT/indicators' '$SERVICE_ROOT/pages/build' '$SERVICE_ROOT/pages/static/lab' '$SERVICE_ROOT/pages/static/tradingtalk'"
+# The news static root is writable by APP_USER. The active service release is deliberately
+# read-only, so root writes only the whitelisted ROOT page files/directories below without changing
+# existing release directory permissions or ownership.
+remote "runuser -u '$APP_USER' -- mkdir -p '$NEWS_DEST'"
 remote "runuser -u '$APP_USER' -- cp -a '$BUILD_DIR/news/.' '$NEWS_DEST/'"
-remote "runuser -u '$APP_USER' -- cp -a '$BUILD_DIR/blog/.' '$SERVICE_ROOT/blog/' &&
-        runuser -u '$APP_USER' -- cp -a '$BUILD_DIR/perspectives/.' '$SERVICE_ROOT/perspectives/' &&
-        runuser -u '$APP_USER' -- cp -a '$BUILD_DIR/indicators/.' '$SERVICE_ROOT/indicators/' &&
-        runuser -u '$APP_USER' -- cp -p '$BUILD_DIR/index.html' '$SERVICE_ROOT/index.html' &&
-        runuser -u '$APP_USER' -- cp -p '$BUILD_DIR/sitemap.xml' '$SERVICE_ROOT/sitemap.xml'"
-remote "runuser -u '$APP_USER' -- cp -p '$BUILD_DIR/pages/build/landing.py' '$BUILD_DIR/pages/build/theme.py' '$BUILD_DIR/pages/build/page_build.py' '$SERVICE_ROOT/pages/build/' &&
-        runuser -u '$APP_USER' -- cp -p '$BUILD_DIR/pages/static/lab/index.html' '$SERVICE_ROOT/pages/static/lab/index.html' &&
-        runuser -u '$APP_USER' -- cp -p '$BUILD_DIR/pages/static/tradingtalk/index.html' '$SERVICE_ROOT/pages/static/tradingtalk/index.html'"
+remote "mkdir -p '$SERVICE_ROOT/blog' '$SERVICE_ROOT/perspectives' '$SERVICE_ROOT/indicators' '$SERVICE_ROOT/pages/build' '$SERVICE_ROOT/pages/static/lab' '$SERVICE_ROOT/pages/static/tradingtalk' &&
+        cp -a '$BUILD_DIR/blog/.' '$SERVICE_ROOT/blog/' &&
+        cp -a '$BUILD_DIR/perspectives/.' '$SERVICE_ROOT/perspectives/' &&
+        cp -a '$BUILD_DIR/indicators/.' '$SERVICE_ROOT/indicators/' &&
+        cp -p '$BUILD_DIR/index.html' '$SERVICE_ROOT/index.html' &&
+        cp -p '$BUILD_DIR/sitemap.xml' '$SERVICE_ROOT/sitemap.xml' &&
+        cp -p '$BUILD_DIR/pages/build/landing.py' '$BUILD_DIR/pages/build/theme.py' '$BUILD_DIR/pages/build/page_build.py' '$SERVICE_ROOT/pages/build/' &&
+        cp -p '$BUILD_DIR/pages/static/lab/index.html' '$SERVICE_ROOT/pages/static/lab/index.html' &&
+        cp -p '$BUILD_DIR/pages/static/tradingtalk/index.html' '$SERVICE_ROOT/pages/static/tradingtalk/index.html'"
 
 # The live handlers reread these files for each request; backend code and service state are unchanged.
 say "runtime status (no restart)"
