@@ -27,12 +27,36 @@ APP_USER="${APP_USER:-teemo}"
 STAGING_DIR="${STAGING_DIR:-/var/lib/teemo-live-news}"
 SERVICE="${SERVICE:-teemo-live-news}"
 PORT="${PORT:-8765}"
-# The address list below is the whole public surface, including the dashboard itself, so there is
-# no separate "the site URL" variable to keep in sync with it.
-SECTIONS="https://teemobkk.io/ https://teemobkk.io/news/ https://teemobkk.io/news/ko/ https://teemobkk.io/thai/ https://teemobkk.io/thai/news/ https://teemobkk.io/thai/news/ko/ https://teemobkk.io/privacy/ https://teemobkk.io/privacy/en/ https://teemobkk.io/robots.txt https://teemobkk.io/sitemap.xml https://teemobkk.io/admin"
+# Public routes checked after deploy, including each ROOT News section and the admin dashboard.
+SECTIONS=(
+  "https://teemobkk.io/"
+  "https://teemobkk.io/about/"
+  "https://teemobkk.io/blog/"
+  "https://teemobkk.io/tradingtalk/"
+  "https://teemobkk.io/lab/"
+  "https://teemobkk.io/perspectives/"
+  "https://teemobkk.io/indicators/"
+  "https://teemobkk.io/news/"
+  "https://teemobkk.io/news/ko/"
+  "https://teemobkk.io/thai/"
+  "https://teemobkk.io/thai/news/"
+  "https://teemobkk.io/thai/news/ko/"
+  "https://teemobkk.io/privacy/"
+  "https://teemobkk.io/privacy/en/"
+  "https://teemobkk.io/robots.txt"
+  "https://teemobkk.io/sitemap.xml"
+  "https://teemobkk.io/admin"
+)
 
 say() { printf '  %s\n' "$*"; }
 remote() { ssh -o BatchMode=yes "$HOST" "$@"; }
+
+# Ownership repair for ordinary app files and directories. A plain `chown -R` on the host fails on
+# a credential file such as $APP_DIR/.env.push (operation not permitted) and would also reassign
+# credentials, SQLite files and backups. Stay on APP_DIR's filesystem, prune those paths before
+# touching anything, and pass only regular files/directories to chown (so symlinks and special files
+# are never followed or changed).
+OWN_APP_TREE="find '$APP_DIR' -xdev \( -name '.env*' -o -name '.admin_password' -o -name '*.db*' -o -name '*.sqlite*' -o -type d \( -iname '*backup*' -o -name 'releases' \) -o -name '*.bak' -o -name '*.bak-*' -o -name '*.backup' -o -name '*.backup-*' \) -prune -o \( -type d -o -type f \) -exec chown '$APP_USER:$APP_USER' {} +"
 
 say "local commit: $(git log -1 --format=%h)"
 
@@ -63,7 +87,7 @@ remote "cd $APP_DIR && [ -s index.html ] && runuser -u $APP_USER -- cp -p index.
   || say "no served page to stage (a host that has never built one)"
 if remote "test -d $APP_DIR/.git" 2>/dev/null; then
   say "host has a checkout: restoring ownership, then pulling"
-  if remote "chown -R $APP_USER:$APP_USER $APP_DIR &&
+  if remote "$OWN_APP_TREE &&
              runuser -u $APP_USER -- git -C $APP_DIR fetch -q origin main &&
              runuser -u $APP_USER -- git -C $APP_DIR reset --hard -q origin/main"; then
     pulled=1
@@ -76,7 +100,7 @@ fi
 if [ "$pulled" -eq 0 ]; then
   say "uploading this commit"
   git archive --format=tar HEAD | remote "tar -x -C $APP_DIR"
-  remote "chown -R $APP_USER:$APP_USER $APP_DIR"
+  remote "$OWN_APP_TREE"
 fi
 
 # Put the staged page back only when the update removed it: a page that is still there is the newer of
@@ -87,9 +111,17 @@ if remote "cd $APP_DIR && [ ! -s index.html ] && [ -s $STAGED ]"; then
 fi
 
 say "rebuilding the served page, then restarting"
+if [ "${SKIP_DB_INIT:-0}" = "1" ]; then
+  # For code-only releases, set this only after confirming the target already has the required
+  # schema. The default remains the normal migration path for releases that add DB requirements.
+  say "database initialization: skipped (SKIP_DB_INIT=1; schema was checked for this release)"
+  DB_INIT_CMD="true"
+else
+  DB_INIT_CMD="runuser -u $APP_USER -- python3 -c 'import live_news_dashboard as core; core.init_db()' >/dev/null"
+fi
 remote "cd $APP_DIR &&
-        chown -R $APP_USER:$APP_USER $APP_DIR &&
-        runuser -u $APP_USER -- python3 -c 'import live_news_dashboard as core; core.init_db()' >/dev/null &&
+        $OWN_APP_TREE &&
+        $DB_INIT_CMD &&
         runuser -u $APP_USER -- python3 -c 'import page_build; page_build.build_server()' >/dev/null &&
         systemctl restart $SERVICE.service &&
         sleep 5 &&
@@ -111,7 +143,7 @@ say "source check (from the host, not fatal)"
 remote "cd $APP_DIR && runuser -u $APP_USER -- python3 tools/probe_sources.py --listed 2>/dev/null |
         grep -vE '^  (ok|dead) ' | tail -6" || true
 
-for url in $SECTIONS; do
+for url in "${SECTIONS[@]}"; do
   code=$(curl -s -o /dev/null -w '%{http_code}' "$url" --max-time 15 || true)
   printf '  %-40s %s\n' "$url" "$code"
   [ "$code" = "200" ] || missing="$missing $url($code)"
