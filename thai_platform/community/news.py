@@ -264,3 +264,20 @@ def get_article(article_id):
         conditions.append('public_id(a.link)=?')
         row=conn.execute('SELECT '+fields+' FROM articles a WHERE '+' AND '.join(conditions),params+[article_id]).fetchone()
         return project(row) if row else None
+
+
+def sitemap_articles(limit=50000):
+    limit=max(1,min(int(limit),50000))
+    with open_news() as conn:
+        conn.execute('BEGIN')
+        conditions,params=visibility(conn)
+        rows=conn.execute(
+            'SELECT public_id(a.link) AS id,a.published_at AS published_at FROM articles a WHERE '
+            +' AND '.join(conditions)
+            +' ORDER BY a.published_at DESC,a.link LIMIT ?',
+            params+[limit],
+        ).fetchall()
+        return [
+            {'id':row['id'],'published_at':parse_datetime(row['published_at'])}
+            for row in rows
+        ]

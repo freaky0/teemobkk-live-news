@@ -1,0 +1,153 @@
+{% extends "admin/index.html" %}
+{% load static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'assets/font.css' %}">
+  <link rel="stylesheet" href="{% static 'typography.css' %}">
+  <link rel="stylesheet" href="{% static 'admin-dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+  <div class="site-dashboard">
+    <header class="site-dashboard__hero">
+      <div>
+        <h1>사이트 운영 대시보드</h1>
+        <p>회원 현황과 커뮤니티 운영 상태를 한곳에서 확인합니다.</p>
+      </div>
+      <a class="site-dashboard__primary-link" href="{% url 'home' %}" target="_blank" rel="noopener">사이트 열기 <span aria-hidden="true">↗</span></a>
+    </header>
+
+    <section class="site-dashboard__metrics" aria-label="주요 운영 지표">
+      {% if can_view_members %}
+        <article class="site-dashboard__metric" aria-label="전체 가입 계정 {{ total_members|default:0 }}">
+          <strong>{{ total_members|default:0 }}</strong>
+          <span class="site-dashboard__metric-label">전체 가입 계정</span>
+          <span class="site-dashboard__metric-note">가입 후 프로필 작성 중인 계정 포함</span>
+        </article>
+        <article class="site-dashboard__metric" aria-label="최근 30일 가입 {{ new_members_30d|default:0 }}">
+          <strong>{{ new_members_30d|default:0 }}</strong>
+          <span class="site-dashboard__metric-label">최근 30일 가입</span>
+          <span class="site-dashboard__metric-note">오늘 기준 최근 30일</span>
+        </article>
+        <article class="site-dashboard__metric" aria-label="이메일 확인 완료 {{ verified_members|default:0 }}">
+          <strong>{{ verified_members|default:0 }}</strong>
+          <span class="site-dashboard__metric-label">이메일 확인 완료</span>
+          <span class="site-dashboard__metric-note">가입 계정 중 이메일 인증을 마친 회원</span>
+        </article>
+        <article class="site-dashboard__metric" aria-label="활성 계정 {{ active_members|default:0 }}">
+          <strong>{{ active_members|default:0 }}</strong>
+          <span class="site-dashboard__metric-label">활성 계정</span>
+          <span class="site-dashboard__metric-note">계정 상태가 활성인 회원</span>
+        </article>
+      {% endif %}
+      {% if can_view_posts %}
+        <article class="site-dashboard__metric site-dashboard__metric--compact" aria-label="커뮤니티 게시물 {{ post_count|default:0 }}">
+          <strong>{{ post_count|default:0 }}</strong>
+          <span class="site-dashboard__metric-label">커뮤니티 게시물</span>
+          <span class="site-dashboard__metric-note">전체 게시물</span>
+        </article>
+      {% endif %}
+    </section>
+
+    <div class="site-dashboard__columns">
+      {% if can_view_members %}
+        <section class="site-dashboard__panel site-dashboard__growth" aria-labelledby="signup-chart-title">
+          <div class="site-dashboard__panel-heading">
+            <div>
+              <h2 id="signup-chart-title">최근 6개월 가입 추이</h2>
+            </div>
+            <a class="site-dashboard__text-link" href="{% url 'admin:member-directory' %}">회원 전체 보기 <span aria-hidden="true">→</span></a>
+          </div>
+          <ol class="site-dashboard__chart" aria-label="월별 신규 가입 계정 수">
+            {% for month in signup_months %}
+              <li>
+                <span class="site-dashboard__chart-month">{{ month.label }}</span>
+                <span class="site-dashboard__chart-track"><span class="site-dashboard__chart-bar site-dashboard__chart-bar--{{ month.width_bucket }}"></span></span>
+                <strong>{{ month.count }}</strong>
+              </li>
+            {% empty %}
+              <li class="site-dashboard__empty">가입 데이터가 없습니다.</li>
+            {% endfor %}
+          </ol>
+        </section>
+
+        <section class="site-dashboard__panel site-dashboard__recent" aria-labelledby="recent-members-title">
+          <div class="site-dashboard__panel-heading">
+            <div>
+              <h2 id="recent-members-title">최근 가입 회원</h2>
+            </div>
+            <a class="site-dashboard__text-link" href="{% url 'admin:member-directory' %}">목록 <span aria-hidden="true">→</span></a>
+          </div>
+          {% if recent_members %}
+            <ul class="site-dashboard__recent-list">
+              {% for member in recent_members %}
+                <li>
+                  <span class="site-dashboard__avatar" aria-hidden="true">{{ member.nickname|slice:":1"|upper }}</span>
+                  <span class="site-dashboard__recent-identity">
+                    <strong>{{ member.nickname }}</strong>
+                    <span>{{ member.email|default:member.username }}</span>
+                  </span>
+                  <span class="site-dashboard__recent-meta">
+                    <time datetime="{{ member.date_joined|date:'c' }}">{{ member.date_joined|date:'Y.m.d' }}</time>
+                    {% if member.email_verified %}<span class="site-dashboard__badge site-dashboard__badge--verified">인증</span>{% else %}<span class="site-dashboard__badge">미인증</span>{% endif %}
+                  </span>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="site-dashboard__empty">아직 가입 회원이 없습니다.</p>
+          {% endif %}
+        </section>
+      {% endif %}
+    </div>
+
+    {% if can_view_reports or can_view_closures %}
+      <section class="site-dashboard__queues" aria-label="검토가 필요한 항목">
+        {% if can_view_reports %}
+          <a class="site-dashboard__queue" href="{% url 'admin:community_report_changelist' %}">
+            <span><strong>열린 신고</strong></span>
+            <b>{{ open_report_count|default:0 }}</b>
+          </a>
+          <a class="site-dashboard__queue" href="{% url 'admin:community_moderationappeal_changelist' %}">
+            <span><strong>검토 대기 이의제기</strong></span>
+            <b>{{ pending_appeal_count|default:0 }}</b>
+          </a>
+        {% endif %}
+        {% if can_view_closures %}
+          <a class="site-dashboard__queue" href="{% url 'admin:members_accountclosurerequest_changelist' %}">
+            <span><strong>계정 비활성화 검토</strong></span>
+            <b>{{ pending_closure_count|default:0 }}</b>
+          </a>
+        {% endif %}
+      </section>
+    {% endif %}
+
+    <section class="site-dashboard__management" aria-labelledby="management-title">
+      <div class="site-dashboard__panel-heading">
+        <div>
+          <h2 id="management-title">관리 메뉴</h2>
+        </div>
+        <span class="site-dashboard__updated">기준 {{ dashboard_updated_at|date:'Y.m.d H:i' }}</span>
+      </div>
+      {% if app_list %}
+        <div class="site-dashboard__app-grid">
+          {% for app in app_list %}
+            <article class="site-dashboard__app-card">
+              <h3>{{ app.name }}</h3>
+              <ul>
+                {% for model in app.models %}
+                  <li>
+                    {% if model.admin_url %}<a href="{{ model.admin_url }}">{{ model.name }} <span aria-hidden="true">→</span></a>{% else %}<span>{{ model.name }}</span>{% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="site-dashboard__empty">현재 계정에 표시할 관리 메뉴 권한이 없습니다.</p>
+      {% endif %}
+    </section>
+  </div>
+{% endblock %}

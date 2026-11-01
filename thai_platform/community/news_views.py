@@ -10,6 +10,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied as APIPermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from config.seo import render_seo
 from . import news, services
 from .forms import NewsCommentForm
 from .models import NewsComment, NewsLike
@@ -38,7 +39,13 @@ def listing(request):
         result=news.list_articles(page=page,query=query,category=category,region_group=region_group,include_categories=True)
     except news.NewsUnavailable:
         return render(request,'news/error.html',{'news_error':NOTICE},status=503)
-    return render(request,'news/list.html',{'news_page':result,'query':query,'category':result.category,'region_group':result.region_group,'list_query':('?'+request.GET.urlencode()) if request.GET else ''})
+    return render_seo(
+        request,
+        'news/list.html',
+        {'news_page':result,'query':query,'category':result.category,'region_group':result.region_group,'list_query':('?'+request.GET.urlencode()) if request.GET else ''},
+        title='태국 최신 뉴스 | 태국 교민 뉴스 | TeemoBKK POST',
+        description='태국 각지의 주요 소식을 한국어로 모았습니다. 방콕과 태국 북부·중부·남부의 최신 뉴스를 확인하세요.',
+    )
 
 
 def _detail_context(request, article, back_url, comment_form=None):
@@ -63,7 +70,15 @@ def detail(request,article_id,comment_form=None,status=200):
     origin=request.GET.get('from','')
     news_url=reverse('news-list')
     back_url=news_url+origin if origin.startswith('?') and len(origin)<2000 else news_url
-    return render(request,'news/detail.html',_detail_context(request,article,back_url,comment_form),status=status)
+    return render_seo(
+        request,
+        'news/detail.html',
+        _detail_context(request,article,back_url,comment_form),
+        title=f"{article['title']} | 태국 뉴스 | TeemoBKK POST",
+        description=article.get('summary', ''),
+        status=status,
+        allow_from=True,
+    )
 
 
 def _require_active_member(user):

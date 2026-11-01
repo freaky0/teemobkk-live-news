@@ -5,7 +5,9 @@ from community import web, news_views
 from community import private_messages
 from members import views as member_views
 from django.views.generic import RedirectView
+from config.sitemaps import sitemap_xml
 urlpatterns = [
+    path("sitemap.xml", sitemap_xml, name="sitemap"),
     path("health/", lambda request: JsonResponse({"status": "ok", "service": "teemobkk-post"})),
     path("admin/", admin.site.urls),
     path("accounts/login/options/", member_views.login_choice, name="login-options"),

@@ -10,5 +10,5 @@ class SecurityHeadersMiddleware:
         response.setdefault("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https:; media-src 'self' https:; frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com https://www.google.com https://maps.google.com; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self' https://accounts.google.com")
         response.setdefault("Referrer-Policy", "same-origin")
         response.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-        response.setdefault("X-Robots-Tag", "noindex, nofollow")
+        response.setdefault("X-Robots-Tag", "noindex, follow")
         return response

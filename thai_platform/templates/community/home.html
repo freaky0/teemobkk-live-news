@@ -2,12 +2,11 @@
 <section class="hero home-hero" aria-labelledby="home-title">
   <img src="{% static 'assets/cat-hero.webp' %}" alt="태국 모자와 카메라를 쓴 고양이의 방콕 일러스트">
   <div class="hero-copy home-hero-copy">
-    <p class="hero-label">TeemoBKK POST</p>
-    <h1 id="home-title" class="home-title">태국의 소식이, 우리의 일상이 되도록.</h1>
-    <p class="home-hero-description">오늘의 태국을 읽고, 도움이 된 경험을 나눠요.</p>
+    <h1 id="home-title" class="home-title">태국 교민 뉴스와 생활정보</h1>
+    <p class="home-hero-description">태국 소식은 한국어로 읽고, 비자·집·생활 정보는 이웃의 경험에서 찾아요.</p>
     <div class="actions home-actions">
-      <a class="btn primary home-primary-action" href="{% url 'news-list' %}">태국 뉴스 보기</a>
-      <a class="btn home-secondary-action" href="{% url 'post-list' %}">커뮤니티 둘러보기</a>
+      <a class="btn primary home-primary-action" href="{% url 'news-list' %}">태국 뉴스 읽기</a>
+      <a class="btn home-secondary-action" href="{% url 'post-list' %}?category=questions">생활정보 찾기</a>
     </div>
   </div>
 </section>
@@ -15,7 +14,6 @@
 <section class="home-start" aria-labelledby="home-start-title">
   <div class="home-start-heading">
     <div>
-      <p class="home-start-kicker">처음 오셨나요?</p>
       <h2 id="home-start-title">태국 생활, 무엇이 궁금하세요?</h2>
     </div>
     <p class="home-start-intro">비자·집·생활, 중고거래, 구인·구직과 맛집·여행까지, 지금 필요한 정보를 찾아보세요.</p>

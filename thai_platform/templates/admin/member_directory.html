@@ -1,0 +1,86 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'assets/font.css' %}">
+  <link rel="stylesheet" href="{% static 'typography.css' %}">
+  <link rel="stylesheet" href="{% static 'admin-dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+  <div class="member-directory">
+    <header class="member-directory__heading">
+      <div>
+        <h1>회원 관리</h1>
+        <p>회원 정보는 조회 전용입니다. 계정 권한 변경은 기존 사용자 관리 메뉴에서 진행하세요.</p>
+      </div>
+      <a class="site-dashboard__text-link" href="{% url 'admin:index' %}">대시보드로 돌아가기 <span aria-hidden="true">→</span></a>
+    </header>
+
+    <section class="site-dashboard__panel member-directory__panel" aria-label="회원 검색 및 목록">
+      <form class="member-directory__filters" method="get" role="search">
+        <label class="member-directory__search">
+          <span>회원 검색</span>
+          <input type="search" name="q" value="{{ search_query }}" placeholder="닉네임, 아이디 또는 이메일">
+        </label>
+        <label>
+          <span>계정 상태</span>
+          <select name="active">
+            <option value="all"{% if active_filter == "all" %} selected{% endif %}>전체 상태</option>
+            <option value="active"{% if active_filter == "active" %} selected{% endif %}>활성</option>
+            <option value="inactive"{% if active_filter == "inactive" %} selected{% endif %}>비활성</option>
+          </select>
+        </label>
+        <label>
+          <span>이메일 인증</span>
+          <select name="verified">
+            <option value="all"{% if verified_filter == "all" %} selected{% endif %}>전체 인증 상태</option>
+            <option value="verified"{% if verified_filter == "verified" %} selected{% endif %}>인증 완료</option>
+            <option value="unverified"{% if verified_filter == "unverified" %} selected{% endif %}>미인증</option>
+          </select>
+        </label>
+        <button class="button" type="submit">검색</button>
+      </form>
+
+      <div class="member-directory__summary">
+        <strong>{{ page_obj.paginator.count }}</strong>명
+        <span>· 페이지당 30명</span>
+      </div>
+
+      <div class="member-directory__table-wrap">
+        <table class="member-directory__table">
+          <thead>
+            <tr><th scope="col">회원</th><th scope="col">이메일</th><th scope="col">가입일</th><th scope="col">최근 로그인</th><th scope="col">상태</th></tr>
+          </thead>
+          <tbody>
+            {% for member in members %}
+              <tr>
+                <td data-label="회원"><strong>{{ member.nickname }}</strong><span class="member-directory__username">@{{ member.username }}</span></td>
+                <td data-label="이메일">{{ member.email|default:"—" }}</td>
+                <td data-label="가입일"><time datetime="{{ member.date_joined|date:'c' }}">{{ member.date_joined|date:'Y.m.d H:i' }}</time></td>
+                <td data-label="최근 로그인">{% if member.last_login %}<time datetime="{{ member.last_login|date:'c' }}">{{ member.last_login|date:'Y.m.d H:i' }}</time>{% else %}<span class="member-directory__muted">로그인 기록 없음</span>{% endif %}</td>
+                <td data-label="상태">
+                  {% if member.is_active %}<span class="site-dashboard__badge site-dashboard__badge--active">활성</span>{% else %}<span class="site-dashboard__badge site-dashboard__badge--inactive">비활성</span>{% endif %}
+                  {% if member.email_verified %}<span class="site-dashboard__badge site-dashboard__badge--verified">이메일 인증</span>{% else %}<span class="site-dashboard__badge">미인증</span>{% endif %}
+                </td>
+              </tr>
+            {% empty %}
+              <tr><td class="member-directory__empty" colspan="5">검색 조건에 맞는 회원이 없습니다.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if page_obj.paginator.num_pages > 1 %}
+        <nav class="member-directory__pagination" aria-label="회원 목록 페이지">
+          {% if page_obj.has_previous %}<a href="?{{ page_query }}page={{ page_obj.previous_page_number }}" aria-label="이전 페이지">이전</a>{% endif %}
+          {% for page_number in page_numbers %}
+            {% if page_number == page_obj.number %}<span aria-current="page">{{ page_number }}</span>{% else %}<a href="?{{ page_query }}page={{ page_number }}">{{ page_number }}</a>{% endif %}
+          {% endfor %}
+          {% if page_obj.has_next %}<a href="?{{ page_query }}page={{ page_obj.next_page_number }}" aria-label="다음 페이지">다음</a>{% endif %}
+        </nav>
+      {% endif %}
+    </section>
+  </div>
+{% endblock %}
