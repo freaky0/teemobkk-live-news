@@ -49,6 +49,7 @@ class BlogBuild(unittest.TestCase):
         html = landing.render_blog_list(posts)
         self.assertIn('/blog/sample-post/', html)
         self.assertIn('datetime="2026-10-07"', html)
+        self.assertIn('<link rel="canonical" href="https://teemobkk.io/blog/">', html)
 
     def test_blog_post_keeps_body_numbers_verbatim(self):
         posts = page_build.read_blog_posts(self.tmp.name)
@@ -56,6 +57,10 @@ class BlogBuild(unittest.TestCase):
             posts[0], landing.blog_markdown_to_html(posts[0]["body"]))
         self.assertIn("<strong>bold</strong>", html)
         self.assertIn('href="/blog/"', html)
+        self.assertIn(
+            '<link rel="canonical" href="https://teemobkk.io/blog/sample-post/">',
+            html,
+        )
 
     def test_markdown_escapes_raw_html(self):
         html = landing.blog_markdown_to_html('<script>alert(1)</script>')

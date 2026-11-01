@@ -485,7 +485,7 @@ def _blog_inline(text: str) -> str:
     return safe
 
 
-def render_blog_list(posts) -> str:
+def _render_blog_list(posts) -> str:
     """Render /blog/ list from imported posts (frontmatter date order)."""
     entries = []
     for post in sorted(posts, key=lambda p: str(p.get("date", "")), reverse=True):
@@ -505,7 +505,7 @@ def render_blog_list(posts) -> str:
     )
 
 
-def render_blog_post(post, body_html: str) -> str:
+def _render_blog_post(post, body_html: str) -> str:
     """Render one /blog/<slug>/ page. Title/date come from frontmatter."""
     title = str(post.get("title", ""))
     date = str(post.get("date", ""))
@@ -520,6 +520,30 @@ def render_blog_post(post, body_html: str) -> str:
         )
     )
     return _standalone_page(title, "BLOG · 관점 브리핑", title, content)
+
+
+def _with_canonical(page: str, url: str) -> str:
+    tag = '<link rel="canonical" href="{}">'.format(escape(url, quote=True))
+    return page.replace("</head>", tag + "</head>", 1)
+
+
+def render_blog_list(posts) -> str:
+    """Render the blog index with its stable apex-domain canonical URL."""
+    return _with_canonical(
+        _render_blog_list(posts),
+        "https://teemobkk.io/blog/",
+    )
+
+
+def render_blog_post(post, body_html: str) -> str:
+    """Render a post with a host-independent canonical URL."""
+    from urllib.parse import quote
+
+    slug = quote(str(post.get("original_slug", "")), safe="-._~")
+    return _with_canonical(
+        _render_blog_post(post, body_html),
+        "https://teemobkk.io/blog/{}/".format(slug),
+    )
 
 
 def render_indicators_page() -> str:
