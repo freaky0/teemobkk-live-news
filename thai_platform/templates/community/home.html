@@ -1,5 +1,17 @@
-{% extends 'base.html' %}{% load static %}{% block content %}
-<section class="hero home-hero" aria-labelledby="home-title"><img src="{% static 'assets/cat-hero.webp' %}" alt="태국 모자와 카메라를 쓴 고양이의 방콕 일러스트"><div class="hero-copy home-hero-copy"><p class="hero-label">TeemoBKK POST</p><h1 id="home-title" class="home-title">태국의 소식이, 우리의 일상이 되도록.</h1><p class="home-hero-description">오늘의 태국을 읽고, 도움이 된 경험을 나눠요.</p><div class="actions home-actions"><a class="btn primary home-primary-action" href="{% url 'news-list' %}">태국 뉴스 보기</a><a class="btn home-secondary-action" href="{% url 'post-list' %}">커뮤니티 둘러보기</a></div></div></section>
+{% extends 'base.html' %}{% load static %}{% load post_body %}{% block content %}
+<section class="hero home-hero" aria-labelledby="home-title">
+  <img src="{% static 'assets/cat-hero.webp' %}" alt="태국 모자와 카메라를 쓴 고양이의 방콕 일러스트">
+  <div class="hero-copy home-hero-copy">
+    <p class="hero-label">TeemoBKK POST</p>
+    <h1 id="home-title" class="home-title">태국의 소식이, 우리의 일상이 되도록.</h1>
+    <p class="home-hero-description">오늘의 태국을 읽고, 도움이 된 경험을 나눠요.</p>
+    <div class="actions home-actions">
+      <a class="btn primary home-primary-action" href="{% url 'news-list' %}">태국 뉴스 보기</a>
+      <a class="btn home-secondary-action" href="{% url 'post-list' %}">커뮤니티 둘러보기</a>
+    </div>
+  </div>
+</section>
+
 <section class="home-start" aria-labelledby="home-start-title">
   <div class="home-start-heading">
     <div>
@@ -10,34 +22,36 @@
   </div>
   <nav class="home-start-grid" aria-label="태국 생활 주제">
     <a class="home-start-card" href="{% url 'post-list' %}?category=visa">
-      <span class="home-start-card-top"><span class="home-start-number">01</span><span aria-hidden="true">↗</span></span>
       <strong>비자·체류</strong>
       <span class="home-start-card-description">체류 준비와 비자 경험을 확인해요.</span>
     </a>
     <a class="home-start-card" href="{% url 'post-list' %}?category=living">
-      <span class="home-start-card-top"><span class="home-start-number">02</span><span aria-hidden="true">↗</span></span>
       <strong>집·생활</strong>
       <span class="home-start-card-description">집, 통신, 은행 등 생활 정보를 찾아요.</span>
     </a>
     <a class="home-start-card" href="{% url 'post-list' %}?category=market">
-      <span class="home-start-card-top"><span class="home-start-number">03</span><span aria-hidden="true">↗</span></span>
       <strong>중고거래</strong>
       <span class="home-start-card-description">필요한 물건을 사고팔고, 거래 정보를 나눠요.</span>
     </a>
     <a class="home-start-card" href="{% url 'post-list' %}?category=jobs">
-      <span class="home-start-card-top"><span class="home-start-number">04</span><span aria-hidden="true">↗</span></span>
       <strong>구인·구직</strong>
       <span class="home-start-card-description">태국에서 일자리를 찾거나 직원을 모집해요.</span>
     </a>
     <a class="home-start-card" href="{% url 'post-list' %}?category=foodtravel">
-      <span class="home-start-card-top"><span class="home-start-number">05</span><span aria-hidden="true">↗</span></span>
       <strong>맛집·여행</strong>
       <span class="home-start-card-description">이웃이 다녀온 곳과 이동 정보를 확인해요.</span>
     </a>
   </nav>
 </section>
+
 {% if member_home %}<section class="home-member panel" aria-labelledby="home-member-title">
-  <div class="home-member-head"><div><p class="hero-label">회원 활동</p><h2 id="home-member-title">내 활동 한눈에 보기</h2></div><a class="btn" href="{% url 'notifications' %}">새 답변 알림 <span class="home-unread-count">{{ member_home.unread_answers }}</span></a></div>
+  <div class="home-member-head">
+    <div>
+      <p class="hero-label">회원 활동</p>
+      <h2 id="home-member-title">내 활동 한눈에 보기</h2>
+    </div>
+    <a class="btn" href="{% url 'notifications' %}">새 답변 알림 <span class="home-unread-count">{{ member_home.unread_answers }}</span></a>
+  </div>
   <nav class="home-member-grid" aria-label="내 커뮤니티 활동">
     <a href="{% url 'my-activity' %}?kind=posts"><strong>{{ member_home.questions }}</strong><span>내 질문</span></a>
     <a href="{% url 'my-activity' %}?kind=comments"><strong>{{ member_home.answers }}</strong><span>내 답변</span></a>
@@ -45,6 +59,90 @@
   </nav>
   {% if member_home.saved_posts %}<div class="home-saved-posts"><h3>다시 볼 저장 글</h3><ul>{% for post in member_home.saved_posts %}<li><a href="{% url 'post-detail' post.pk %}">{{ post.display_title }}</a><span>{{ post.get_category_display }}</span></li>{% endfor %}</ul></div>{% endif %}
 </section>{% endif %}
-<div class="grid home-content-grid"><section class="section home-news" aria-labelledby="home-news-title"><div class="section-head home-section-head"><h2 id="home-news-title">태국 주요 소식</h2><a class="btn home-news-more" href="{% url 'news-list' %}">뉴스 전체</a></div><p class="meta home-news-intro">공개 조건을 충족한 뉴스 · 최신 발행순</p><div class="news-list home-news-list">{% if news_error %}<div class="panel"><p role="status">{{ news_error }}</p></div>{% else %}{% for article in news_page.items %}<div class="home-news-card{% if forloop.first %} is-featured{% endif %}">{% include 'news/row.html' %}</div>{% empty %}<div class="panel empty"><h3>표시할 한국어 뉴스가 없습니다.</h3><p>최근 30일의 공개·번역 조건을 충족한 기사만 표시합니다.</p></div>{% endfor %}{% endif %}</div></section><aside class="home-sidebar"><section class="panel"><p class="hero-label">함께 사는 태국</p><h2>이웃에게 묻고 답하기</h2><p>비자, 집, 여행, 중고거래, 일상.<br>혼자 찾기 어려운 답을 함께 나눠요.</p><nav class="home-community-nav" aria-label="커뮤니티 바로가기"><a href="{% url 'post-list' %}">커뮤니티 전체 보기 →</a>{% if user.is_authenticated %}<a class="home-my-activity" href="{% url 'my-activity' %}">내 활동 보기 →</a>{% endif %}</nav></section><section class="panel news-sidebar" aria-labelledby="home-news-bridge-title"><p class="hero-label">뉴스에서 생활로</p><h2 id="home-news-bridge-title">뉴스를 넘어, 태국 생활의 답까지</h2><p class="meta">기사에 없는 생활 정보는 이웃의 질문과 답변에서 찾아보세요.</p><a class="btn" href="{% url 'post-list' %}?category=questions">생활 질문과 답변 보기</a></section></aside></div>
-<section class="section"><div class="section-head"><h2>이웃의 최근 질문</h2><a class="btn" href="{% url 'post-list' %}">질문 전체</a></div><div class="panel">{% for post in posts %}{% include 'community/row.html' %}{% empty %}<div class="empty"><h3>아직 등록된 질문이 없습니다.</h3><p>첫 질문을 남겨보세요. 작성에는 로그인이 필요합니다.</p></div>{% endfor %}</div></section>{% if helpful_posts %}<section class="section" aria-labelledby="helpful-questions-title"><div class="section-head"><h2 id="helpful-questions-title">도움을 받은 질문</h2></div><div class="panel">{% for post in helpful_posts %}{% include 'community/row.html' %}{% endfor %}</div></section>{% endif %}
+
+<div class="grid home-content-grid">
+  <section class="section home-news" aria-labelledby="home-news-title">
+    <div class="section-head home-section-head">
+      <h2 id="home-news-title">태국 주요 소식</h2>
+      <a class="btn home-news-more" href="{% url 'news-list' %}">뉴스 전체</a>
+    </div>
+    <p class="meta home-news-intro">공개 조건을 충족한 뉴스 · 최신 발행순</p>
+    <div class="news-list home-news-list">
+      {% if news_error %}
+      <div class="panel"><p role="status">{{ news_error }}</p></div>
+      {% else %}
+      {% for article in news_page.items %}
+      <div class="home-news-card{% if forloop.first %} is-featured{% endif %}">{% include 'news/row.html' %}</div>
+      {% empty %}
+      <div class="panel empty"><h3>표시할 한국어 뉴스가 없습니다.</h3><p>최근 30일의 공개·번역 조건을 충족한 기사만 표시합니다.</p></div>
+      {% endfor %}
+      {% endif %}
+    </div>
+  </section>
+  <aside class="home-sidebar panel">
+    <section class="home-sidebar-section" aria-labelledby="home-sidebar-community-title">
+      <p class="hero-label">함께 사는 태국</p>
+      <h2 id="home-sidebar-community-title">이웃에게 묻고 답하기</h2>
+      <p>비자, 집, 여행, 중고거래, 일상.<br>혼자 찾기 어려운 답을 함께 나눠요.</p>
+      <nav class="home-community-nav" aria-label="커뮤니티 바로가기">
+        <a href="{% url 'post-list' %}">커뮤니티 전체 보기</a>
+        {% if user.is_authenticated %}<a class="home-my-activity" href="{% url 'my-activity' %}">내 활동 보기</a>{% endif %}
+      </nav>
+    </section>
+    <section class="home-sidebar-section" aria-labelledby="home-news-bridge-title">
+      <p class="hero-label">뉴스에서 생활로</p>
+      <h2 id="home-news-bridge-title">뉴스를 넘어, 태국 생활의 답까지</h2>
+      <p class="meta">기사에 없는 생활 정보는 이웃의 질문과 답변에서 찾아보세요.</p>
+      <a class="btn" href="{% url 'post-list' %}?category=questions">생활 질문과 답변 보기</a>
+    </section>
+  </aside>
+</div>
+
+<section class="section home-questions" aria-labelledby="home-questions-title">
+  <div class="section-head">
+    <h2 id="home-questions-title">이웃의 최근 질문</h2>
+    <a class="btn" href="{% url 'post-list' %}">질문 전체</a>
+  </div>
+  <div class="home-questions-grid{% if not helpful_posts %} is-single{% endif %}">
+    <section class="panel home-question-panel" aria-labelledby="recent-questions-title">
+      <h3 id="recent-questions-title">최근 질문</h3>
+      <ul class="home-question-list">
+        {% for post in posts %}
+        {% with thumbnail=post|community_thumbnail %}
+        <li class="home-question-item{% if thumbnail %} has-image{% endif %}">
+          {% if thumbnail %}<a class="home-question-media" href="{% url 'post-detail' post.pk %}" aria-label="게시글 대표 사진 보기"><img src="{{ thumbnail }}" alt="{{ post.display_title }} 대표 사진" loading="lazy" decoding="async" referrerpolicy="no-referrer"></a>{% endif %}
+          <div class="home-question-copy">
+            <a class="home-question-title" href="{% url 'post-detail' post.pk %}">{{ post.display_title }}</a>
+            <p class="home-question-meta"><span class="tag">{{ post.get_category_display }}</span><span class="tag">{{ post.get_region_display }}</span>{% if post.has_resolution_status %}<span class="tag">{{ post.get_resolution_display }}</span>{% endif %}<span class="meta">도움 반응 {{ post.helpful_count }}개</span></p>
+          </div>
+        </li>
+        {% endwith %}
+        {% empty %}
+        <li class="home-question-empty">
+          <p>아직 등록된 질문이 없습니다.</p>
+          <p class="meta">첫 질문을 남겨보세요. 작성에는 로그인이 필요합니다.</p>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% if helpful_posts %}
+    <section class="panel home-question-panel" aria-labelledby="helpful-questions-title">
+      <h3 id="helpful-questions-title">도움을 받은 질문</h3>
+      <ul class="home-question-list">
+        {% for post in helpful_posts %}
+        {% with thumbnail=post|community_thumbnail %}
+        <li class="home-question-item{% if thumbnail %} has-image{% endif %}">
+          {% if thumbnail %}<a class="home-question-media" href="{% url 'post-detail' post.pk %}" aria-label="게시글 대표 사진 보기"><img src="{{ thumbnail }}" alt="{{ post.display_title }} 대표 사진" loading="lazy" decoding="async" referrerpolicy="no-referrer"></a>{% endif %}
+          <div class="home-question-copy">
+            <a class="home-question-title" href="{% url 'post-detail' post.pk %}">{{ post.display_title }}</a>
+            <p class="home-question-meta"><span class="tag">{{ post.get_category_display }}</span><span class="tag">{{ post.get_region_display }}</span>{% if post.has_resolution_status %}<span class="tag">{{ post.get_resolution_display }}</span>{% endif %}<span class="meta">도움 반응 {{ post.helpful_count }}개</span></p>
+          </div>
+        </li>
+        {% endwith %}
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  </div>
+</section>
 {% endblock %}
