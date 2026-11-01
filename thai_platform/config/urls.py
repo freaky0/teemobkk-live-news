@@ -5,9 +5,17 @@ from community import web, news_views
 from community import private_messages
 from members import views as member_views
 from django.views.generic import RedirectView
-from config.sitemaps import sitemap_xml
+from config.sitemaps import (
+    sitemap_community_xml,
+    sitemap_news_xml,
+    sitemap_static_xml,
+    sitemap_xml,
+)
 urlpatterns = [
     path("sitemap.xml", sitemap_xml, name="sitemap"),
+    path("sitemap-static.xml", sitemap_static_xml, name="sitemap-static"),
+    path("sitemap-news-<int:part>.xml", sitemap_news_xml, name="sitemap-news"),
+    path("sitemap-community-<int:part>.xml", sitemap_community_xml, name="sitemap-community"),
     path("health/", lambda request: JsonResponse({"status": "ok", "service": "teemobkk-post"})),
     path("admin/", admin.site.urls),
     path("accounts/login/options/", member_views.login_choice, name="login-options"),

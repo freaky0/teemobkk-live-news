@@ -63,6 +63,22 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
         ident=sha256(public.encode()).hexdigest()
         self.assertEqual(self.client.get('/newsroom/'+ident+'/').status_code,200)
         self.assertEqual(self.client.get('/api/v1/news/'+ident+'/').status_code,200)
+        self.assertEqual(news.sitemap_article_count(),2)
+
+    def test_sitemap_article_pages_use_stable_offsets(self):
+        links=[
+            self.add(f'sitemap-{index}',published_at='2026-11-01T00:00:00+00:00')
+            for index in range(3)
+        ]
+        first=news.sitemap_articles(limit=2)
+        second=news.sitemap_articles(limit=2,offset=2)
+        self.assertEqual(news.sitemap_article_count(),3)
+        self.assertEqual(len(first),2)
+        self.assertEqual(len(second),1)
+        self.assertEqual(
+            [item['id'] for item in first+second],
+            [sha256(link.encode()).hexdigest() for link in links],
+        )
 
     def test_public_categories_filter_newsroom_and_stay_in_page_results(self):
         self.add('life-category', category='생활')
@@ -164,6 +180,11 @@ CREATE TABLE settings(name TEXT PRIMARY KEY,value TEXT);''')
         self.assertIn(('og:image:width', '1200'), home)
         self.assertIn(('og:image:height', '630'), home)
         detail = metadata(self.client.get('/newsroom/'+ident+'/'))
+        article_html=self.client.get('/newsroom/'+ident+'/').content.decode()
+        self.assertIn('itemscope itemtype="https://schema.org/NewsArticle"',article_html)
+        self.assertIn('itemprop="headline"',article_html)
+        self.assertIn('itemprop="datePublished"',article_html)
+        self.assertIn('itemprop="image"',article_html)
         self.assertEqual([v for k, v in detail if k == 'og:image'], [image])
         self.assertIn(('twitter:image', image), detail)
         self.assertIn(('og:title', '검증용 태국 뉴스 social-story | 태국 뉴스 | TeemoBKK POST'), detail)
