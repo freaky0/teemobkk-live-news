@@ -6,8 +6,10 @@ document.querySelector('[data-close-report]')?.addEventListener('click',()=>dial
 dialog?.addEventListener('close',()=>trigger?.focus());
 document.querySelectorAll('form[data-confirm]').forEach(f=>f.addEventListener('submit',e=>{if(!confirm(f.dataset.confirm))e.preventDefault();}));
 function removeFailedNewsImage(image){if(!(image instanceof HTMLImageElement)||!image.classList.contains('news-image'))return;const item=image.closest('.news-item');const thumbnail=image.closest('.news-thumbnail');image.remove();if(item?.classList.contains('has-video'))thumbnail?.classList.add('no-poster');else{thumbnail?.remove();item?.classList.remove('has-image');}}
-document.addEventListener('error',e=>removeFailedNewsImage(e.target),true);
+function showFailedCommunityImage(image){if(!(image instanceof HTMLImageElement)||!image.classList.contains('community-post-image'))return;const media=image.closest('.community-post-media');if(!media||media.classList.contains('is-unavailable'))return;image.remove();media.classList.add('is-unavailable');const fallback=document.createElement('span');fallback.className='community-image-fallback';fallback.textContent='사진을 불러올 수 없습니다';media.append(fallback);}
+document.addEventListener('error',e=>{removeFailedNewsImage(e.target);showFailedCommunityImage(e.target);},true);
 document.querySelectorAll('img.news-image').forEach(image=>{if(image.complete&&image.naturalWidth===0)removeFailedNewsImage(image);});
+document.querySelectorAll('img.community-post-image').forEach(image=>{if(image.complete&&image.naturalWidth===0)showFailedCommunityImage(image);});
 const shareButton=document.querySelector('[data-share-article]');
 shareButton?.addEventListener('click',async()=>{
 const status=document.querySelector('[data-share-status]');
