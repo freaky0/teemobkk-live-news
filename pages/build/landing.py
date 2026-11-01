@@ -1,6 +1,6 @@
 """Market-first public homepage, independent of dashboard templates.
 
-Keep external publishing links in EDITORIAL_POSTS, not in navigation labels.
+Homepage market-view teasers use the canonical Markdown posts under content/blog.
 Script previews are actual publication images, never reconstructed charts.
 """
 import sys
@@ -16,6 +16,7 @@ from html import escape
 
 
 import json
+import re
 import time
 from urllib.request import Request, urlopen
 from pages.build import theme
@@ -250,6 +251,109 @@ h2{font-size:21px}
 .brand .cursor{animation:none}
 *,*::before,*::after{transition:none!important}
 }
+
+/* Editorial homepage: clear paper, ink and leaf-green; the shared dark theme remains available. */
+:root{color-scheme:light;--bg:#f5f8f5;--surface:#fff;--surface2:#eef4ef;--text:#15231b;--muted:#405146;--dim:#526158;--line:#dce6dd;--accent:#28714f;--accent-dim:rgba(40,113,79,.1);--down:#bc4c4c;--radius:14px;--type-meta:13px;--type-body:16px;--type-subhead:20px;--type-heading:30px;--type-display:clamp(44px,6vw,86px)}
+[data-theme=dark]{color-scheme:dark;--bg:#111914;--surface:#18231c;--surface2:#202e25;--text:#ebf1ec;--muted:#bac8bd;--dim:#aebbb2;--line:#33443a;--accent:#66cc91;--accent-dim:rgba(102,204,145,.14);--down:#ff8585}
+body{line-height:1.72}
+.wrap{max-width:1240px;padding-inline:clamp(22px,5vw,68px)}
+.brand,.nav nav a.secondary,.footer-row .fbrand,.ticker .tick,.eyebrow,.hero-tags,.sec-tag,.section-link,.news-status,.retry,.ntime,.ntopic,.post time,.post .read,.note,.about h3{font-family:var(--sans)}
+.brand{font-size:0;letter-spacing:0}
+.brand::before{content:"TeemoBKK";display:inline-block;font:700 18px/1 var(--sans);letter-spacing:-.04em;color:var(--text)}
+.brand .prompt,.brand .cursor{display:none}
+.nav nav a.secondary{font-size:var(--type-meta)}
+.nav nav a{font-size:var(--type-meta)}
+.top{border:0;backdrop-filter:none;background:var(--bg)}
+.footer{border:0;font-size:var(--type-meta);color:var(--muted)}
+.footer-links{font-size:13px}
+.footer p{max-width:70ch}
+.footer-row .fbrand{font-size:0!important;font-family:var(--sans)}
+.footer-row .fbrand::before{content:"TeemoBKK";display:inline-block;font-size:var(--type-meta);font-weight:700;letter-spacing:-.02em}
+.theme-toggle{border:0;border-radius:999px;background:var(--surface2);font-size:var(--type-meta)}
+.button{min-height:48px;padding:11px 22px;border:0;border-radius:999px;font-size:var(--type-body);transition:background-color .2s,color .2s}
+.button:hover,.button.primary:hover{transform:none}
+.hero{display:grid;grid-template-columns:minmax(0,1.16fr) minmax(0,.84fr);align-items:center;gap:clamp(22px,3.5vw,44px);padding:38px 0 46px;max-width:none}
+.hero-visual{order:1;position:relative;height:clamp(280px,31vw,400px);max-height:none;aspect-ratio:auto;border-radius:20px}
+.hero-visual img{position:absolute;inset:0;width:100%;height:100%;border-radius:inherit;object-fit:cover}
+.hero-visual figcaption,.section-visual figcaption,.perspective-visual figcaption{position:absolute;right:0;bottom:0;border:0!important;outline:0!important;box-shadow:none!important;border-radius:12px 0 20px 0;padding:8px 13px;font-size:var(--type-meta);background:var(--bg);color:var(--muted)}
+.hero-copy{order:0;display:block;min-width:0;padding-top:0}
+.hero-copy .eyebrow,.hero-tags,.sec-tag,.indicator .icode{display:none!important}
+.hero-copy h1{font-size:var(--type-display);line-height:1.04;letter-spacing:-.045em;max-width:15ch}
+.hero-copy .intro{font-size:var(--type-body);line-height:1.7;max-width:540px;margin:20px 0 26px}
+.section{padding:64px 0 0;border-top:0}
+.sec-head{gap:0;margin-bottom:10px}
+.sec-head::before{content:"";width:5px;height:26px;flex:0 0 5px;margin-right:14px;border-radius:5px;background:var(--accent)}
+h2{font-size:var(--type-heading);line-height:1.2;letter-spacing:-.035em}
+.section-intro{max-width:60ch;font-size:var(--type-body);line-height:1.7}
+.section-visual,.perspective-visual{position:relative;aspect-ratio:2.15/1;margin:24px 0 20px;border-radius:18px}
+.section-visual img,.perspective-visual img{border-radius:inherit}
+.section-link{margin-top:18px;font-size:var(--type-body);font-weight:650}
+.section-link::after{content:"  →"}
+.news-status{font-size:var(--type-meta);gap:10px 16px}
+.retry{border:0;border-radius:999px;background:var(--surface2);font-size:var(--type-meta);padding:8px 14px}
+.news-list{display:flex;flex-direction:column;gap:0;margin-top:14px;border:0;border-radius:0;background:transparent;overflow:visible}
+.news-row{display:flex;align-items:baseline;gap:12px;padding:14px 0;border:0;transition:color .2s}
+.news-row:last-child{border:0}
+.news-row:hover{background:transparent}
+.news-row a{gap:12px}
+.ntime{font-size:13px;color:var(--muted)}
+.ntopic{border:0;border-radius:999px;padding:3px 9px;background:var(--accent-dim);font-size:13px;color:var(--accent)}
+.ntitle{font-size:var(--type-body);font-weight:550;line-height:1.55}
+.ntitle .ext{font-size:var(--type-meta)}
+.empty{padding:20px 0;font-size:16px}
+.posts{grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin-top:24px;border:0;border-radius:0;background:transparent;overflow:visible}
+.post{padding:4px 0 0;border:0;background:transparent}
+.post:hover{background:transparent}
+.post time{font-size:13px;color:var(--muted)}
+.post h3{font-size:var(--type-subhead);line-height:1.4;margin:10px 0}
+.post p{max-width:60ch;font-size:var(--type-body);line-height:1.7}
+.post .read{font-size:var(--type-meta);font-weight:650;margin-top:16px}
+.note{max-width:60ch;font-size:var(--type-body);line-height:1.7;color:var(--muted)}
+.about{gap:clamp(32px,7vw,88px)}
+.about p,.about ul{max-width:60ch;font-size:var(--type-body);line-height:1.75}
+.about h3{font-size:var(--type-subhead)}
+.about li{padding-left:18px}
+.about li::before{content:"";top:.72em;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.indicator{border:0!important;border-radius:16px!important;background:var(--surface)!important;box-shadow:none!important}
+.indicator .chart-open{border:0!important;outline:0!important;box-shadow:none!important}
+.indicator .icode{font-family:var(--sans)!important;font-size:var(--type-meta)!important}
+.indicator .chart-caption,.indicator .free{border:0!important;outline:0!important;box-shadow:none!important;font-family:var(--sans)!important;font-size:var(--type-meta)!important}
+.indicator h3{font-size:var(--type-subhead)!important}
+.indicator p{max-width:60ch;font-size:var(--type-body)!important;line-height:1.65}
+.ticker{border:0;background:var(--surface2);}
+.ticker-inner{animation-duration:42s}
+.tick{border:0;font-size:13px;padding-inline:18px}
+.tick b{font-weight:700}
+@media(min-width:768px) and (max-width:900px){
+.nav{gap:12px;flex-wrap:wrap;padding-block:8px}
+.nav nav{order:2;flex-basis:100%;gap:4px 14px;flex-wrap:wrap}
+.nav nav a{white-space:nowrap}
+.theme-toggle{margin-left:auto}
+}
+@media(max-width:767px){
+:root{--type-display:clamp(36px,9vw,44px)}
+.wrap{padding-inline:20px}
+.hero{grid-template-columns:minmax(0,1fr);gap:22px;padding:26px 0 30px}
+.hero-visual{order:1;height:clamp(210px,62vw,270px);border-radius:16px}
+.hero-copy{order:0;padding-top:0}
+.hero-copy h1{font-size:var(--type-display);max-width:15ch}
+.hero-copy .intro{font-size:var(--type-body);margin:15px 0 21px}
+.hero-visual figcaption,.section-visual figcaption,.perspective-visual figcaption{font-size:13px;padding:7px 10px}
+.nav nav a{font-size:13px}
+.section{padding:46px 0 0}
+.section-visual,.perspective-visual{aspect-ratio:16/9;border-radius:15px;margin:20px 0 16px}
+.section-intro{font-size:var(--type-body)}
+.sec-head::before{height:24px}
+.news-row{padding:12px 0}
+.news-row a{gap:6px 9px}
+.ntime{font-size:13px}
+.ntopic{font-size:13px}
+.ntitle{font-size:var(--type-body);flex-basis:100%}
+.posts{grid-template-columns:1fr;gap:22px}
+.post h3{font-size:var(--type-subhead)}
+.about{gap:24px}
+.tick{font-size:var(--type-meta);padding-inline:14px}
+}
 </style>
 </head>
 <body>
@@ -259,7 +363,7 @@ __HEADER__
 <main id="main" class="wrap">
 <section class="hero" aria-labelledby="headline"><div class="hero-copy"><p class="eyebrow">뉴스를 읽고, 관점을 세우고, 차트로 살펴봅니다.</p><h1 id="headline">차트보다 먼저 읽는 뉴스</h1><p class="intro">시장이 움직이는 이유를 전합니다.<br>금리와 정책, 지정학과 수급까지.</p><div class="actions hero-actions"><a class="button primary" href="/news/ko/">오늘의 시장 보기</a></div><p class="hero-tags"><span>• MACRO</span><span>• CRYPTO</span><span>• MARKET STRUCTURE</span></p></div><figure class="hero-visual"><img src="/assets/landing/hero-editorial.webp" width="1672" height="941" fetchpriority="high" decoding="async" alt="방콕의 저녁, 금융 뉴스와 시장 자료를 살펴보는 책상"><figcaption>경제 뉴스와 시장 관점을 읽는 자리</figcaption></figure></section>
 <section class="section" id="news" aria-labelledby="news-title"><div class="sec-head"><span class="sec-tag">01</span><h2 id="news-title">최근 경제 뉴스</h2></div><p class="section-intro">금리와 경기, 기업과 정책, 지정학까지. 시장에 연결되는 소식을 확인하세요.</p><figure class="section-visual"><img src="/assets/landing/news-editorial.webp" width="1536" height="1024" loading="lazy" decoding="async" alt="방콕의 편집 데스크에서 경제 뉴스와 시장 자료를 살펴보는 장면"><figcaption>뉴스는 원문과 게시 시각을 확인해 읽습니다.</figcaption></figure><div class="news-status"><span class="live">● 자동 수집 · 한국어로 표시</span><span id="update-status" role="status">수집 상태 확인 중</span><button class="retry" id="retry" type="button" hidden>다시 불러오기</button></div><div class="news-list" id="news-list" aria-busy="true"><div class="loading-line short"></div><div class="loading-line"></div><div class="loading-line"></div></div><noscript><p>뉴스 목록을 불러오려면 자바스크립트가 필요합니다. <a href="/news/ko/">경제 뉴스 페이지에서 확인하세요.</a></p></noscript><a class="section-link" href="/news/ko/">$ open /news/ko/ →</a></section>
-<section class="section" id="perspectives" aria-labelledby="perspectives-title"><div class="sec-head"><span class="sec-tag">02</span><h2 id="perspectives-title">시장 관점</h2></div><p class="section-intro">뉴스와 차트를 어떻게 읽는지, 어떤 조건에서 생각을 바꾸는지. 트레이더로서의 판단을 기록합니다.</p><figure class="perspective-visual"><img src="/assets/landing/btc-analysis.webp" width="1536" height="1024" loading="lazy" decoding="async" alt="비트코인 가격 구조를 살펴보는 분석 화면과 노트"><figcaption>차트 이미지는 시장 분석의 참고 시각 자료입니다.</figcaption></figure><div class="posts">__POSTS__</div><a class="section-link" href="/perspectives/">$ open /perspectives/ →</a><p class="note">각 글은 작성 당시의 개인적인 관점입니다. 가격과 시나리오는 현재 시점과 다를 수 있습니다.</p></section>
+<section class="section" id="perspectives" aria-labelledby="perspectives-title"><div class="sec-head"><span class="sec-tag">02</span><h2 id="perspectives-title">시장 관점</h2></div><p class="section-intro">뉴스와 차트를 어떻게 읽는지, 어떤 조건에서 생각을 바꾸는지. 트레이더로서의 판단을 기록합니다.</p><figure class="perspective-visual"><img src="/assets/landing/btc-analysis.webp" width="1536" height="1024" loading="lazy" decoding="async" alt="비트코인 가격 구조를 살펴보는 분석 화면과 노트"><figcaption>차트 이미지는 시장 분석의 참고 시각 자료입니다.</figcaption></figure><div class="posts">__POSTS__</div><a class="section-link" href="/blog/">$ open /blog/ →</a><p class="note">각 글은 작성 당시의 개인적인 관점입니다. 가격과 시나리오는 현재 시점과 다를 수 있습니다.</p></section>
 <section class="section" id="indicators" aria-labelledby="indicators-title"><div class="sec-head"><span class="sec-tag">03</span><h2 id="indicators-title">직접 만든 트레이딩뷰 지표</h2></div><p class="section-intro">차트의 구조와 파동을 살펴보는 도구입니다. 공식 트레이딩뷰 페이지에서 무료로 사용할 수 있습니다.</p><div class="indicators">__INDICATORS__</div><a class="section-link" href="/indicators/">$ open /indicators/ →</a><a class="section-link" href="https://kr.tradingview.com/u/TeemoBKK/#published-scripts" target="_blank" rel="noopener noreferrer me">$ open profile → 전체 지표 보기 ↗</a><p class="note">파동 카운팅과 목표 구간은 진행 중인 가격에 따라 달라질 수 있습니다. 사용 조건과 설정은 각 지표 페이지에서 확인하세요.</p></section>
 <section class="section about" aria-labelledby="about-title"><div><div class="sec-head"><span class="sec-tag">04</span><h2 id="about-title">TeemoBKK에 대하여</h2></div><p>경제 뉴스를 모으고, 시장을 바라보는 관점을 쓰며, 차트에서 사용하는 지표를 만듭니다.</p><p>뉴스는 시장의 맥락을 살피는 출발점입니다. 해석과 시나리오는 사실과 구분해 기록하겠습니다.</p><a class="section-link" href="/about/">$ open /about/ → 자세히 보기</a></div><div><h3>읽기 전에</h3><ul><li>뉴스는 자동 수집한 원문 제목과 출처를 제공합니다.</li><li>시장 관점은 운영자의 개인적인 해석입니다.</li><li>지표는 분석 보조 도구이며 수익을 보장하지 않습니다.</li></ul></div></section>
 </main>
@@ -268,6 +372,18 @@ __FOOTER__
 (function(){
 'use strict';
 var ticker=document.getElementById('ticker'),tickerInner=document.getElementById('ticker-inner');
+document.querySelectorAll('.section-link').forEach(function(link){
+var labels={'/news/ko/':'\uC804\uCCB4 \uB274\uC2A4 \uBCF4\uAE30','/blog/':'\uAD00\uC810 \uAE00 \uB354 \uBCF4\uAE30','/indicators/':'\uC9C0\uD45C \uC804\uCCB4 \uBCF4\uAE30','/about/':'\uC0AC\uC774\uD2B8 \uC18C\uAC1C \uBCF4\uAE30'};
+var href=link.getAttribute('href');
+if(labels[href])link.textContent=labels[href];
+else if(href&&href.indexOf('tradingview.com/u/')!==-1)link.textContent='\uD2B8\uB808\uC774\uB529\uBDF0 \uC804\uCCB4 \uC9C0\uD45C \uBCF4\uAE30';
+});
+document.querySelectorAll('.posts .read').forEach(function(link){
+var heading=link.closest('.post')&&link.closest('.post').querySelector('h3');
+var label='\uBE14\uB85C\uADF8 \uAE00 \uC77D\uAE30';
+link.textContent=label;
+if(heading)link.setAttribute('aria-label',label+': '+heading.textContent.trim());
+});
 function kfmt(p){var n=parseFloat(p);if(!isFinite(n))return '—';if(n>=1000)return (n/1000).toFixed(1)+'K';if(n>=100)return n.toFixed(1);return n.toFixed(2);}
 function pctfmt(p){var n=parseFloat(p);if(!isFinite(n))return '';return (n>=0?'+':'')+n.toFixed(1)+'%';}
 function tickHTML(sym,price,chg){var n=parseFloat(chg);var cls=n>=0?'up':(n<0?'dn':'');
@@ -371,6 +487,52 @@ def render_indicator_cards() -> str:
     return "".join(cards)
 
 
+def _blog_teaser_summary(markdown: str) -> str:
+    """Choose the first market-condition paragraph and flatten it for a short teaser."""
+    lines = str(markdown or "").splitlines()
+    preferred = False
+    fallback = ""
+    for raw in lines:
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("#"):
+            heading = line.lstrip("# ").strip()
+            if heading == "관점 전환 조건":
+                preferred = True
+            elif preferred:
+                break
+            continue
+        if not fallback:
+            fallback = line
+        if preferred:
+            text = re.sub(r"!\[([^\]]*)\]\([^)]*\)", r"\1", line)
+            text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)
+            text = re.sub(r"[*_~]", "", text).replace("\x60", "")
+            return " ".join(text.split())[:180]
+    text = re.sub(r"!\[([^\]]*)\]\([^)]*\)", r"\1", fallback)
+    text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)
+    text = re.sub(r"[*_~]", "", text).replace("\x60", "")
+    return " ".join(text.split())[:180]
+
+
+def _homepage_post_cards(posts) -> str:
+    from urllib.parse import quote
+
+    cards = []
+    for post in posts:
+        slug = str(post.get("original_slug") or "").strip()
+        if not slug:
+            continue
+        cards.append({
+            "date": str(post.get("date") or ""),
+            "title": str(post.get("title") or ""),
+            "url": "/blog/{}/".format(quote(slug, safe="-._~")),
+            "summary": _blog_teaser_summary(post.get("body") or ""),
+        })
+    return _render_post_cards(cards[:3])
+
+
 def _render_post_cards(posts) -> str:
     cards = []
     for post in posts:
@@ -378,9 +540,8 @@ def _render_post_cards(posts) -> str:
         fields["visible_date"] = escape(theme.display_date(str(post.get("date", ""))))
         cards.append(
             '<article class="post"><time datetime="{date}">{visible_date}</time>'
-            '<h3><a href="{url}" target="_blank" rel="noopener noreferrer">{title}</a></h3>'
-            '<p>{summary}</p><a class="read" href="{url}" target="_blank" rel="noopener noreferrer">'
-            '관점 읽기 · 외부 글 ↗</a></article>'.format(**fields)
+            '<h3><a href="{url}">{title}</a></h3>'
+            '<p>{summary}</p><a class="read" href="{url}">블로그 글 읽기 →</a></article>'.format(**fields)
         )
     return "".join(cards)
 
@@ -414,8 +575,13 @@ def _standalone_page(title: str, eyebrow: str, description: str, content: str, e
 
 
 def render_perspectives_page(posts=None) -> str:
-    """Render a standalone page with the ten latest available Substack posts."""
-    selected = editorial_posts(limit=10) if posts is None else list(posts)[:10]
+    """Render the market-perspective archive from canonical blog posts."""
+    if posts is None:
+        from pages.build.page_build import editorial_snapshot_from_blog
+
+        selected = editorial_snapshot_from_blog()[:10]
+    else:
+        selected = list(posts)[:10]
     entries = []
     for post in selected:
         fields = {key: escape(str(value or ""), quote=True) for key, value in post.items()}
@@ -424,15 +590,15 @@ def render_perspectives_page(posts=None) -> str:
         fields["date"] = escape(date, quote=True)
         entries.append(
             '<article class="page-post"><time datetime="{date}">{visible_date}</time>'
-            '<h2><a href="{url}" target="_blank" rel="noopener noreferrer">{title}</a></h2>'
-            '<p>{summary}</p><a class="read" href="{url}" target="_blank" rel="noopener noreferrer">'
-            '원문 읽기 ↗</a></article>'.format(**fields)
+            '<h2><a href="{url}">{title}</a></h2>'
+            '<p>{summary}</p><a class="read" href="{url}">'
+            '블로그 글 읽기 →</a></article>'.format(**fields)
         )
     if not entries:
         entries.append('<p class="empty">현재 표시할 관점 글이 없습니다.</p>')
     content = '<div class="page-posts">{}</div>'.format("".join(entries))
     return _standalone_page(
-        "시장 관점", "PERSPECTIVES · SUBSTACK", "뉴스와 차트를 읽는 관점과 판단 기록입니다.", content
+        "시장 관점", "BLOG · 관점 브리핑", "시장 관점은 짧은 요약으로 살펴보고, 전체 글은 블로그에서 읽을 수 있습니다.", content
     )
 
 
@@ -561,8 +727,12 @@ def render_indicators_page() -> str:
 
 
 def render_landing(posts=None) -> str:
-    selected = editorial_posts(limit=10) if posts is None else list(posts)
-    cards = _render_post_cards(selected[:3])
+    selected = [] if posts is None else list(posts)
+    if not selected or not any(post.get("original_slug") for post in selected):
+        from pages.build.page_build import read_blog_posts
+
+        selected = read_blog_posts()
+    cards = _homepage_post_cards(selected[:3])
     return (PAGE.replace('__POSTS__', cards)
             .replace('__SHARED_THEME_CSS__', theme.shared_css())
             .replace('__INDICATOR_CSS__', theme.INDICATOR_CSS)
