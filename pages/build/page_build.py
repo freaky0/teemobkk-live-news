@@ -85,7 +85,96 @@ function cleanTitle(value,source){let text=String(value||'').replace(/(?:https?:
 const shown=(s,label)=>{const t=String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   return '실제 <b class="'+label+'">'+t+'</b>'};
 
-var V={tab:CFG.wantThai?'thai':'global',cats:[],hours:24,q:'',terms:[],limit:PAGE,tag:null,mode:'all',value:'',offset:0,pickOnly:false,language:CFG.lang==='en'&&!CFG.wantThai?'en':'all'};
+var V={tab:CFG.wantThai?'thai':'global',lastNews:CFG.wantThai?'thai':'global',cats:[],hours:24,q:'',terms:[],limit:PAGE,tag:null,mode:'all',value:'',offset:0,pickOnly:false,language:CFG.lang==='en'&&!CFG.wantThai?'en':'all'};
+const SHARE_LIMITS={categories:24,terms:10,category:120,term:160,query:160,source:160};
+function uniqueValues(values,maxLength,maxItems){
+  const seen=new Set(),out=[];
+  for(const value of values){
+    const text=String(value||'').trim().slice(0,maxLength);
+    if(!text||seen.has(text))continue;
+    seen.add(text);out.push(text);if(out.length>=maxItems)break}
+  return out}
+function restoreUrlState(){
+  const url=new URL(location.href),params=url.searchParams,hash=new URLSearchParams(url.hash.slice(1));
+  const requested=hash.get('tab')||params.get('tab');
+  // The Thailand list is restored in place only on a page that carries the tab: the Thai
+  // dashboards (wantThai) and the operator page (ADMIN). A legacy #tab=thai on a public global
+  // dashboard is ignored - that link predates the /thai/news/ split, so a reader following it
+  // still expects global news, and the page has no Thailand list to show them.
+  const initialTab=requested==='cal'?'cal'
+    :(requested==='thai'&&(CFG.wantThai||ADMIN)?'thai':(CFG.wantThai?'thai':'global'));
+  // Keep the fragment only in the shape this page writes it back: a Thailand dashboard already
+  // implies its tab, and a global page without the tab has nothing to remember. Anything else
+  // (the legacy #tab=thai, an explicit #tab=global) is stale, so it is dropped here rather than
+  // carried into a shared link.
+  const keepTab=initialTab==='cal'?'cal':(initialTab==='thai'&&!CFG.wantThai?'thai':'');
+  // A `?tab=` search parameter is never kept: the tab lives in the fragment. It is read above
+  // only so old links still land on the tab they asked for.
+  let dropTab=params.has('tab');
+  params.delete('tab');
+  if((requested||'')!==keepTab&&hash.has('tab')){hash.delete('tab');dropTab=true}
+  setTab(initialTab,true,true);
+  const hours=document.querySelector('#hours');
+  const allowedHours=hours?Array.from(hours.options).map(option=>Number(option.value)):[24];
+  const requestedHours=Number(params.get('hours'));
+  V.hours=allowedHours.includes(requestedHours)?requestedHours:24;
+  V.q=String(params.get('q')||'').trim().slice(0,SHARE_LIMITS.query);
+  V.cats=uniqueValues(params.getAll('category').concat(hash.getAll('cat')),SHARE_LIMITS.category,SHARE_LIMITS.categories)
+    .filter(value=>value!=='전체');
+  V.terms=uniqueValues(params.getAll('term'),SHARE_LIMITS.term,SHARE_LIMITS.terms);
+  const source=String(params.get('source')||'').trim().slice(0,SHARE_LIMITS.source);
+  V.tag=source?{k:'src',v:source}:null;
+  V.pickOnly=params.get('picked')==='1';
+  const language=params.get('language');let dropLanguage=false;
+  if(language==='all'||language==='en'){
+    if(CFG.lang==='en'&&!CFG.wantThai)V.language=language;
+    else{params.delete('language');dropLanguage=true}}
+  else if(language){params.delete('language');dropLanguage=true}
+  const priority=params.get('priority');
+  if(priority){V.mode='priority';V.value=priority.slice(0,8)}
+  else if(params.get('source_type')==='official')V.mode='official';
+  const q=document.querySelector('#q'),languageFilter=document.querySelector('#language-filter');
+  if(q)q.value=V.q;
+  if(hours)hours.value=String(V.hours);
+  if(languageFilter)languageFilter.value=V.language;
+  if(dropTab||dropLanguage){
+    const fragment=hash.toString();
+    url.hash=fragment?'#'+fragment:'';
+    history.replaceState(history.state,'',url.pathname+url.search+url.hash)}
+  renderGuide();syncLanguageLinks()}
+function syncLanguageLinks(){
+  document.querySelectorAll('.langbar a').forEach(link=>{
+    try{
+      const target=new URL(link.getAttribute('href'),location.href),params=new URLSearchParams(location.search);
+      if(target.pathname.indexOf('/news/ko')>=0)params.delete('language');
+      target.search=params.toString();target.hash=location.hash;
+      link.href=target.pathname+target.search+target.hash
+    }catch(e){}})}
+function writeUrlState(){
+  const url=new URL(location.href),params=url.searchParams,hash=new URLSearchParams(url.hash.slice(1));
+  ['tab','hours','category','term','q','source','picked','language','priority','source_type'].forEach(key=>params.delete(key));
+  if(Number(V.hours)!==24)params.set('hours',String(V.hours));
+  const categories=uniqueValues(V.cats.concat(V.tag&&V.tag.k==='cat'?[V.tag.v]:[]),SHARE_LIMITS.category,SHARE_LIMITS.categories);
+  if(categories.length>1)categories.forEach(value=>params.append('category',value));
+  uniqueValues(V.terms,SHARE_LIMITS.term,SHARE_LIMITS.terms).forEach(value=>params.append('term',value));
+  const query=String(V.q||'').trim().slice(0,SHARE_LIMITS.query);
+  if(query)params.set('q',query);
+  if(V.tag&&V.tag.k==='src')params.set('source',String(V.tag.v||'').slice(0,SHARE_LIMITS.source));
+  if(V.pickOnly)params.set('picked','1');
+  if(V.language&&V.language!=='all')params.set('language',V.language);
+  if(V.mode==='priority')params.set('priority',V.value||'5');
+  else if(V.mode==='official')params.set('source_type','official');
+  hash.delete('tab');hash.delete('cat');
+  if(V.tab==='cal')hash.set('tab','cal');
+  else if(V.tab==='thai'&&!CFG.wantThai)hash.set('tab','thai');
+  if(categories.length===1)hash.set('cat',categories[0]);
+  const fragment=hash.toString();
+  url.hash=fragment?'#'+fragment:'';
+  history.replaceState(history.state,'',url.pathname+url.search+url.hash);
+  syncLanguageLinks()}
+function announceShareLimit(){
+  const live=document.querySelector('#live');
+  if(live)live.textContent=CFG.lang==='en'?'You can share up to 10 keyword filters.':'공유 검색어는 최대 10개까지 사용할 수 있습니다.'}
 var MEM={},LATEST={},PENDING={},INDEX={},SEEN={},FULL={},DATA={articles:[],sources:{},total:0,has_more:false};
 var BRIEF_CACHE={},BRIEF_PENDING={};
 var archiveTotal=0,refreshTimer=null,hidden=false,lastRegion={};
@@ -195,13 +284,13 @@ function renderBriefing(){
   const list=document.querySelector('#briefing'),source=document.querySelector('#brief-src');if(!list)return;
   const result=briefingItems(),items=result.items||[];
   if(!items.length){
-    list.innerHTML='<li class="brief"><span class="bnum">00</span><div><p class="btitle">'+esc(CFG.briefing.briefingEmpty)+'</p></div></li>';
+  list.innerHTML='<li class="brief"><div><p class="btitle">'+esc(CFG.briefing.briefingEmpty)+'</p></div></li>';
     if(source)source.textContent=CFG.briefing.briefingNoEligible;return}
-  list.innerHTML=items.map((a,i)=>{
+  list.innerHTML=items.map(a=>{
     const href=storyHref(a.original_link||a.link),title=esc(cleanTitle(a.title,a.source)),summary=esc(a.summary||'');
     const cats=catList(a).map(catLabel).join(' · ');
     const note=a.picked&&a.pick_note?'<p class="bnote">'+esc(a.pick_note)+'</p>':'';
-    return '<li class="brief'+(a.picked?' picked':'')+'"><span class="bnum">'+String(i+1).padStart(2,'0')+'</span><div>'+
+    return '<li class="brief'+(a.picked?' picked':'')+'"><div>'+
       '<p class="btitle">'+(href?'<a href="'+esc(href)+'" target="_blank" rel="noopener nofollow">'+title+'</a>':title)+'</p>'+
       (summary?'<p class="bsum">'+summary+'</p>':'')+note+
       '<p class="bmeta"><span>'+esc(srcLabel(a))+'</span><span>'+briefingDate(a.published_at)+'</span>'+
@@ -237,8 +326,9 @@ function visible(){return articles().filter(a=>(CFG.lang!=='en'||CFG.wantThai||V
 function summaryBlock(a){
   const s=a.summary||'';if(!s)return '';
   const long=s.length>220;
+  const title=cleanTitle(a.title,a.source);
   return '<div class="summary'+(long?' clamp':'')+'"'+langAttr(a.summary_lang)+'>'+hl(s)+'</div>'+
-    (long?'<button class="expand" type="button" aria-expanded="false">펼쳐보기</button>':'')}
+    (long?'<button class="expand" type="button" data-title="'+esc(title)+'" aria-label="'+esc(CFG.briefing.expand+': '+title)+'" aria-expanded="false">'+esc(CFG.briefing.expand)+'</button>':'')}
 // The language of each part, from the collector. A browser translating a page decides per element
 // with this attribute; without it, a Thai headline with an English summary is guessed wrong and the
 // translator mangles the half it misread.
@@ -324,8 +414,9 @@ function renderPills(){
   row.innerHTML=pickPill+items.map(pair=>{
     const n=PUBLIC?pillCount(pair[0]):0;
     const badge=(PUBLIC&&n&&pair[0]!=='전체')?'<i>'+n+'</i>':'';
-    return '<button type="button" class="pill'+(th?' th':'')+(catOn(pair[0])?' active':'')+
-      '" data-cat="'+esc(pair[0])+'">'+esc(pair[1])+badge+'</button>'}).join('')+
+    const on=catOn(pair[0]);
+    return '<button type="button" class="pill'+(th?' th':'')+(on?' active':'')+
+      '" data-cat="'+esc(pair[0])+'" aria-pressed="'+(on?'true':'false')+'">'+esc(pair[1])+badge+'</button>'}).join('')+
     (srcs.length?'<span class="pillsep"></span>':'')+
     srcs.map(s=>{
       const on=V.tag&&V.tag.k==='src'&&V.tag.v===s;
@@ -334,7 +425,7 @@ function renderPills(){
     (V.tag?'<button type="button" class="pill on" id="clrtag">✕ '+esc(V.tag.v)+'</button>':'');
   row.hidden=false;
   const pickBtn=row.querySelector('button[data-pick]');
-  if(pickBtn)pickBtn.onclick=()=>{V.pickOnly=!V.pickOnly;V.limit=PAGE;V.offset=0;renderPills();fetchFeed()};
+  if(pickBtn)pickBtn.onclick=()=>{V.pickOnly=!V.pickOnly;V.limit=PAGE;V.offset=0;renderPills();writeUrlState();fetchFeed()};
   row.querySelectorAll('button[data-cat]').forEach(b=>b.onclick=()=>{
     // A category and a source are different axes and now compose: several conditions are ANDed,
     // which is what a reader gets from "FinancialJuice + Trump". Selecting one no longer releases
@@ -343,22 +434,22 @@ function renderPills(){
     // 전체 is the one control that clears the lot and shows the whole list, so it releases the
     // source tag and the keywords as well; a single category toggles and composes with the rest.
     if(v==='전체'){V.cats=[];V.tag=null;V.pickOnly=false;clearText()}
-    else{const i=V.cats.indexOf(v);if(i>=0)V.cats.splice(i,1);else V.cats.push(v)}
+    else{const i=V.cats.indexOf(v);if(i>=0)V.cats.splice(i,1);else if(V.cats.length<SHARE_LIMITS.categories)V.cats.push(v)}
     V.mode='all';V.value='';
-    V.limit=PAGE;V.offset=0;renderPills();fetchFeed()});
+    V.limit=PAGE;V.offset=0;renderPills();writeUrlState();fetchFeed()});
   row.querySelectorAll('button[data-src]').forEach(b=>b.onclick=()=>{
     const v=b.dataset.src;
     V.tag=(V.tag&&V.tag.k==='src'&&V.tag.v===v)?null:{k:'src',v:v};
     V.mode='all';V.value='';
-    V.limit=PAGE;V.offset=0;renderPills();fetchFeed()});
+    V.limit=PAGE;V.offset=0;renderPills();writeUrlState();fetchFeed()});
   const clr=row.querySelector('#clrtag');
   // Releases this value only: the other conditions stay, because each one now has its own place in
   // the condition row above the feed.
-  if(clr)clr.onclick=()=>{V.tag=null;V.limit=PAGE;V.offset=0;renderPills();fetchFeed()};
+  if(clr)clr.onclick=()=>{V.tag=null;V.limit=PAGE;V.offset=0;renderPills();writeUrlState();fetchFeed()};
   document.querySelectorAll('.tab[data-tab]').forEach(b=>{
     const on=b.dataset.tab===V.tab;
     b.classList.toggle('active',on);
-    b.setAttribute('aria-selected',on?'true':'false')});
+    b.setAttribute('aria-pressed',on?'true':'false')});
 }
 
 // --- trend strip ------------------------------------------------------------------
@@ -478,15 +569,17 @@ function renderTrends(){
       +V.terms.length+esc(CFG.clearTerms)+'</button>':'')+'</span>'; }
 document.querySelector('#trend').onclick=ev=>{
   if(ev.target.closest('[data-trend-clear]')){
-    V.terms=[];V.limit=PAGE;V.offset=0;renderTrends();fetchFeed();return}
+    V.terms=[];V.limit=PAGE;V.offset=0;renderTrends();writeUrlState();fetchFeed();return}
   const b=ev.target.closest('[data-trend]');if(!b)return;
   // A keyword is a toggle and several can be on at once. Pressing the same one again releases it,
   // so a reader never has to go back a page to undo a click. Categories are left alone: 트럼프 and
   // 거시경제 are two axes and are asked for together.
   const term=b.dataset.trend,i=V.terms.indexOf(term);
-  if(i>=0)V.terms.splice(i,1);else V.terms.push(term);
+  if(i>=0)V.terms.splice(i,1);
+  else if(V.terms.length<SHARE_LIMITS.terms)V.terms.push(term);
+  else{announceShareLimit();return}
   const q=document.querySelector('#q');if(q&&q.value)q.value='';V.q='';
-  V.limit=PAGE;V.offset=0;renderTrends();fetchFeed();
+  V.limit=PAGE;V.offset=0;renderTrends();writeUrlState();fetchFeed();
 };
 
 function renderFeed(){
@@ -682,7 +775,7 @@ function dropCond(key){
   if(kind==='pick')V.pickOnly=false;
   else if(i>=0){if(kind==='cat')V.cats.splice(i,1);else V.terms.splice(i,1)}
   else if(V.tag&&V.tag.v===value)V.tag=null;
-  V.limit=PAGE;V.offset=0;renderTrends();renderPills();fetchFeed()}
+  V.limit=PAGE;V.offset=0;renderTrends();renderPills();writeUrlState();fetchFeed()}
 
 async function writeJSON(path,body){
   const r=await fetch(API+path,{method:'POST',headers:writeHeaders(),body:JSON.stringify(body||{})});
@@ -953,16 +1046,16 @@ function renderGuide(){
     ?'<h2>태국 소식</h2><p class="note">방콕포스트·카오솟·타이인콰이어러·프라차타이·더타이거·아세안나우(영문), 타이랏·마티촌·MGR·프라차차트·더스탠다드(태국어), 구글뉴스 태국·방콕·교민 검색을 모읍니다.</p><p class="note">비자·이민과 사고·재난을 우선 표시하며, 확정되지 않은 속보는 원문 확인 전까지 단정하지 않습니다.</p>'
     :'<h2>관찰 기준</h2><p class="note">금리·유동성, 미국 정책·트럼프, 지정학, ETF·기관 수급, 파생상품, 온체인, 스테이블코인, X 발언을 우선 수집합니다.</p><p class="note">뉴스 사실과 시장 해석을 분리합니다. X 게시물과 속보는 공식 발표나 원문 확인 전까지 확정 사실로 취급하지 않습니다.</p>'}
 
-function setTab(next,silent){
+function setTab(next,silent,deferFetch){
   // The indicator tab toggles: pressing it again closes the panel and returns to the
   // last news tab. Previously the calendar stayed open above the feed once visited,
   // because it was shown with an inline style that the tab class could not undo.
-  if(next==='cal'&&V.tab==='cal'&&!silent){setTab(V.lastNews||'global');return}
+  if(next==='cal'&&V.tab==='cal'&&!silent){setTab(V.lastNews||(CFG.wantThai?'thai':'global'));return}
   if(next!=='cal')V.lastNews=next;
   V.tab=next;V.cats=[];V.tag=null;V.limit=PAGE;V.offset=0;V.mode='all';V.value='';V.pickOnly=false;clearText();
   document.body.classList.toggle('tab-cal',next==='cal');
   document.querySelectorAll('.tab[data-tab]').forEach(b=>{
-    const on=b.dataset.tab===next;b.classList.toggle('active',on);b.setAttribute('aria-selected',on?'true':'false')});
+    const on=b.dataset.tab===next;b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});
   const gRow=document.querySelector('#filters-global'),tRow=document.querySelector('#filters-thai');
   const gHide=next!=='global',tHide=next!=='thai';
   gRow.hidden=gHide;tRow.hidden=tHide;
@@ -970,9 +1063,8 @@ function setTab(next,silent){
   renderGuide();
   // Reflect the tab in the URL so a view can be linked. Written on every change, but
   // not on the silent first call: /thai/ already implies the Thailand tab.
-  if(!silent&&history.replaceState){
-    const hash=next==='cal'?'#tab=cal':next==='thai'?'#tab=thai':'';
-    history.replaceState(null,'',hash||location.pathname+location.search)};
+  if(!silent)writeUrlState();
+  if(deferFetch)return;
   if(next==='cal'){loadCalendar();return}
   if(PUBLIC){if(MEM[region()]&&MEM[region()].length){renderPills();renderFeed()}else{skeleton();fetchFeed()}}
   else{fetchFeed()}}
@@ -1040,17 +1132,26 @@ document.querySelector('#q').oninput=()=>{clearTimeout(window.__qt);
     // Typing no longer releases the keyword chips: a typed word and the chips are conditions on the
     // same axis and they are ANDed, which is what a reader selecting three things expects. The box
     // stays the immediate filter and "+ 조건 추가" turns what is in it into a chip.
-    V.limit=PAGE;V.offset=0;fetchFeed()},350)};
+    V.limit=PAGE;V.offset=0;writeUrlState();fetchFeed()},350)};
 document.querySelector('#qadd').onclick=()=>{
   const box=document.querySelector('#q'),value=(box.value||'').trim();
   if(!value)return;
-  if(V.terms.indexOf(value)<0)V.terms.push(value);
+  if(V.terms.indexOf(value)<0){
+    if(V.terms.length>=SHARE_LIMITS.terms){announceShareLimit();return}
+    V.terms.push(value.slice(0,SHARE_LIMITS.term))}
   box.value='';V.q='';
-  V.limit=PAGE;V.offset=0;renderTrends();fetchFeed()};
+  V.limit=PAGE;V.offset=0;renderTrends();writeUrlState();fetchFeed()};
+const filterToggle=document.querySelector('#filter-toggle');
+if(filterToggle)filterToggle.onclick=()=>{
+  const open=!document.body.classList.contains('filters-open');
+  document.body.classList.toggle('filters-open',open);
+  filterToggle.setAttribute('aria-expanded',String(open));
+  filterToggle.textContent=open?CFG.filterClose:CFG.filterOpen;
+};
 document.querySelector('#hours').onchange=()=>{V.hours=Number(document.querySelector('#hours').value)||24;
-  V.limit=PAGE;V.offset=0;fetchFeed()};
+  V.limit=PAGE;V.offset=0;writeUrlState();fetchFeed()};
 const languageFilter=document.querySelector('#language-filter');
-if(languageFilter)languageFilter.onchange=()=>{V.language=languageFilter.value==='all'?'all':'en';V.limit=PAGE;V.offset=0;renderBriefing();renderFeed();if(!PUBLIC)fetchFeed()};
+if(languageFilter)languageFilter.onchange=()=>{V.language=languageFilter.value==='all'?'all':'en';V.limit=PAGE;V.offset=0;writeUrlState();renderBriefing();renderFeed();if(!PUBLIC)fetchFeed()};
 document.querySelector('#more').onclick=async()=>{
   if(PUBLIC){
     if(V.limit+PAGE>articles().length&&!FULL[region()])await loadFull();
@@ -1080,12 +1181,16 @@ document.querySelector('#feed').addEventListener('click',ev=>{
     // Chips compose with the pill rows and the keywords: everything selected is ANDed, so a card
     // chip is one more condition rather than a replacement for the rest.
     V.mode='all';V.value='';
-    V.limit=PAGE;V.offset=0;renderPills();fetchFeed();return}
+    V.limit=PAGE;V.offset=0;renderPills();writeUrlState();fetchFeed();return}
   const btn=ev.target.closest('.expand');
   if(!btn)return;
-  const s=btn.previousElementSibling;
+  const s=btn.closest('.body')?.querySelector('.summary');
+  if(!s)return;
   const open=s.classList.toggle('clamp')===false;
-  btn.textContent=open?'접기':'펼쳐보기';
+  const title=btn.dataset.title||'';
+  const label=open?CFG.briefing.collapse:CFG.briefing.expand;
+  btn.textContent=label;
+  btn.setAttribute('aria-label',label+': '+title);
   btn.setAttribute('aria-expanded',open?'true':'false')});
 const intervalEl=document.querySelector('#interval');
 if(intervalEl)intervalEl.onchange=async()=>{
@@ -1111,20 +1216,7 @@ document.addEventListener('visibilitychange',()=>{hidden=document.hidden;
   if(!hidden)fetchFeed()});
 
 (function start(){
-  const hash=location.hash||'';
-  renderGuide();
-  if(CFG.wantThai||hash.indexOf('tab=thai')>=0)setTab('thai',true);
-  else if(hash.indexOf('tab=cal')>=0)setTab('cal',true);
-  // A section landing links straight to a category: #cat=<stored value>. The filter state is
-  // set before the first fetch rather than by pressing a pill, because the pills are only
-  // built once data arrives and a click at this point would land on nothing.
-  const catMatch=hash.match(/[#&]cat=([^&]+)/);
-  if(catMatch){
-    const wantFilter=decodeURIComponent(catMatch[1]);
-    if(wantFilter&&wantFilter!=='전체'){V.cats=[wantFilter];V.tag=null;V.mode='all';V.value=''}
-  }
-  // The search box starts empty on every load. Restoring the last query meant a reload
-  // silently kept filtering the list, which reads as the dashboard being stuck.
+  restoreUrlState();
   skeleton();
   if(CFG.admin)loadHidden();
   if(CFG.admin)loadUsage();
@@ -1384,7 +1476,7 @@ def _clean_title(title: object) -> str:
 def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str:
     rows = []
     labels = ui_text.cat_labels(lang)
-    expand_label = "Show more" if lang == "en" else "요약 펼치기"
+    expand_label = ui_text.UI[lang]["expand"]
     original_label = ui_text.UI[lang]["openOriginal"]
     visible_items = items if lang != "en" else [item for item in items if _article_language(item) == "en"]
     for item in visible_items[:limit]:
@@ -1427,7 +1519,9 @@ def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str
         long_summary = len(summary) > 220
         source = google_news.display_source(item)
         actions = '<div class="acts">' + (
-            '<button class="expand" type="button" aria-expanded="false">' + expand_label + '</button>'
+            '<button class="expand" type="button" data-title="' + html.escape(title, quote=True)
+            + '" aria-label="' + html.escape(expand_label + ': ' + title, quote=True)
+            + '" aria-expanded="false">' + html.escape(expand_label) + '</button>'
             if long_summary else "") + (
             '<a class="open" href="' + html.escape(href, quote=True) +
             '" target="_blank" rel="noopener nofollow">' + original_label + ' ↗</a>'
@@ -1486,9 +1580,9 @@ def _seed_briefing(items: list[dict], lang: str = "ko") -> tuple[str, str]:
     visible_items = items if lang != "en" else [item for item in items if _article_language(item) == "en"]
     mode, selected = _briefing_items(visible_items)
     if not selected:
-        return copy["briefingNoEligible"], '<li class="brief"><span class="bnum">00</span><div><p class="btitle">%s</p></div></li>' % copy["briefingEmpty"]
+        return copy["briefingNoEligible"], '<li class="brief"><div><p class="btitle">%s</p></div></li>' % copy["briefingEmpty"]
     rows = []
-    for index, item in enumerate(selected, 1):
+    for item in selected:
         title = _clean_title(item.get("title"))
         link = str(item.get("original_link") or item.get("link") or "")
         if not link.startswith(("https://", "http://")):
@@ -1503,8 +1597,7 @@ def _seed_briefing(items: list[dict], lang: str = "ko") -> tuple[str, str]:
                         + '" target="_blank" rel="noopener nofollow">' + html.escape(title) + '</a>'
                         if link else html.escape(title))
         rows.append(
-            '<li class="brief' + (' picked' if item.get("picked") else '') + '"><span class="bnum">'
-            + ("%02d" % index) + '</span><div><p class="btitle"' + title_attr + '>' + linked_title + '</p>'
+            '<li class="brief' + (' picked' if item.get("picked") else '') + '"><div><p class="btitle"' + title_attr + '>' + linked_title + '</p>'
             + ('<p class="bsum"' + summary_attr + '>' + html.escape(summary) + '</p>' if summary else "")
             + note + '<p class="bmeta"><span>' + html.escape(google_news.display_source(item))
             + '</span><span>' + html.escape(_ict_stamp(item.get("published_at"), lang)) + ' ICT</span>'
@@ -1522,9 +1615,8 @@ def _seed_briefing(items: list[dict], lang: str = "ko") -> tuple[str, str]:
 def _briefing_skeleton(lang: str = "ko") -> str:
     text = ui_text.UI.get(lang, ui_text.UI["en"])["briefingLoading"]
     return "".join(
-        '<li class="brief skel"><span class="bnum">%02d</span><div><p class="btitle">%s</p></div></li>'
-        % (index, text)
-        for index in range(1, 4))
+        '<li class="brief skel"><div><p class="btitle">%s</p></div></li>' % text
+        for _ in range(3))
 
 
 def _langbar(lang: str, alt: str) -> str:
@@ -1563,7 +1655,8 @@ def localize(page: str, lang: str) -> str:
 
 def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, admin: bool,
            lang: str = "ko", alt: str = "", seed_path: str = "",
-           seed_html: str = "", briefing_html: str = "", briefing_source: str = "") -> str:
+           seed_html: str = "", briefing_html: str = "", briefing_source: str = "",
+           css_href: str = "") -> str:
     config = {
         "public": public,
         "datadir": datadir,
@@ -1579,7 +1672,9 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
             "briefingTitle", "briefingAuto", "briefingPicked", "briefingPickedTag",
             "briefingBreaking", "briefingEmpty", "briefingNoEligible", "briefingLoading",
             "verifOfficial", "verifOfficialTitle", "verifSns", "verifSnsTitle",
-            "openOriginal", "expand", "timeUnknown", "dayUnknown")},
+            "openOriginal", "expand", "collapse", "timeUnknown", "dayUnknown")},
+        "filterOpen": {"ko": "주제·출처 보기", "en": "Topics & sources", "th": "หมวดหมู่และแหล่งข่าว"}[lang],
+        "filterClose": {"ko": "필터 접기", "en": "Hide filters", "th": "ซ่อนตัวกรอง"}[lang],
         "trendLabel": ui_text.UI[lang]["trendLabel"],
         "trendAliases": taxonomy.TREND_ALIASES,
         "trendThaiSource": "태국어: " if lang == "ko" else "Thai: ",
@@ -1625,12 +1720,15 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
             '<div class="box" id="tguide"></div></aside>')
     undobar = ('' if not admin else
                '<section class="undobar" id="undobar" hidden></section>')
+    news_path = ("/thai/news/" if want_thai else "/news/") + ("ko/" if lang == "ko" else "")
+    og_url = "https://teemobkk.io" + news_path
     og = ('' if admin else
           '<meta name="description" content="비트코인·매크로·태국 뉴스를 5분마다 모아 보여주는 실시간 대시보드. 경제지표와 주요 일정 포함.">\n'
           '<meta property="og:title" content="TeemoBKK Live News">\n'
           '<meta property="og:description" content="비트코인·매크로·태국 뉴스 실시간 대시보드. 경제지표·연설·실적 일정 포함.">\n'
           '<meta property="og:type" content="website">\n'
-          '<meta property="og:image" content="' + icon_prefix + 'og-image.png">\n'
+          '<meta property="og:url" content="' + og_url + '">\n'
+          '<meta property="og:image" content="https://teemobkk.io/assets/landing/hero-editorial.webp">\n'
           '<meta name="twitter:card" content="summary_large_image">\n')
     reader_names = {
         "ko": ("오늘의 시장", "태국의 오늘"),
@@ -1639,6 +1737,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
     }
     reader_name = reader_names.get(lang, reader_names["en"])[int(want_thai)]
     heading = "뉴스 편집실" if admin else reader_name
+    tabs_aria = {"ko": "뉴스 화면", "en": "News views", "th": "มุมมองข่าว"}[lang]
     title = f"{heading} | TeemoBKK" if admin else f"{reader_name} | TeemoBKK"
     brand = ('<span class="brand-accent">티모</span> 라이브뉴스' if lang == "ko"
              else "TeemoBKK Live News")
@@ -1660,6 +1759,8 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
                        (html.escape(ui_text.UI[lang]["languageFilterAria"], quote=True),
                         html.escape(ui_text.UI[lang]["languageEnglish"]),
                         html.escape(ui_text.UI[lang]["languageAll"]))) if lang == "en" and not want_thai else ""
+    stylesheet = ('<link rel="stylesheet" href="%s">' % html.escape(css_href, quote=True)
+                  if css_href else '<style>\n%s</style>' % CSS)
     script = SCRIPT.replace("__CONFIG__", json.dumps(config, ensure_ascii=False, separators=(",", ":")))
     script = script.replace("__EVENT_RULES__", semantic_event.browser_source())
     script = script.replace("__CATS_GLOBAL__", json.dumps(
@@ -1691,8 +1792,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
 <link rel="icon" type="image/png" sizes="16x16" href="{icon_prefix}favicon-16.png">
 <link rel="apple-touch-icon" href="{icon_prefix}apple-touch-icon.png">
 <title>{title}</title>
-<style>
-{CSS}</style>
+{stylesheet}
 </head>
 <body class="{"local" if admin else "public"}">
 <header class="bar">
@@ -1709,7 +1809,7 @@ def render(*, public: bool, datadir: str, want_thai: bool, icon_prefix: str, adm
 </header>
 
 <main class="wrap">
-  <div class="tabs" role="tablist">
+  <div class="tabs" role="group" aria-label="{html.escape(tabs_aria, quote=True)}">
 __TABS__
   </div>
 
@@ -1726,7 +1826,7 @@ __TABS__
   </section>
 
   <section class="toolbar">
-    <input id="q" type="search" placeholder="제목·요약·출처 검색 ( / )" aria-label="뉴스 검색">
+    <input id="q" type="search" maxlength="160" placeholder="제목·요약·출처 검색 ( / )" aria-label="뉴스 검색">
     <button id="qadd" class="qadd" type="button" title="검색어를 조건으로 고정합니다">+ 조건 추가</button>
     <select id="hours" aria-label="기간">
       <option value="1">최근 1시간</option>
@@ -1738,6 +1838,7 @@ __TABS__
     </select>
     {language_filter}
     {admin_toolbar}
+    <button id="filter-toggle" class="filter-toggle" type="button" aria-controls="filters-global filters-thai" aria-expanded="false">{html.escape(config['filterOpen'])}</button>
     <button id="newpill" class="newpill" type="button"></button>
     <span class="count" id="counts"></span>
   </section>
@@ -1795,17 +1896,17 @@ __TABS__
     if want_thai:
         tabs_html = (
             '    <a id="tab-global" class="tab" href="%s">경제 소식</a>\n'
-            '    <button id="tab-cal" class="tab" data-tab="cal" role="tab" aria-selected="false">경제 지표</button>\n'
-            '    <button id="tab-thai" class="tab th active" data-tab="thai" role="tab" aria-selected="true">태국 소식</button>'
+            '    <button id="tab-cal" class="tab" data-tab="cal" aria-pressed="false">경제 지표</button>\n'
+            '    <button id="tab-thai" class="tab th active" data-tab="thai" aria-pressed="true">태국 소식</button>'
         ) % global_href
     else:
         # 018: public dashboards hide the Thai tab; admin keeps it as an
         # in-place tab (same as the other tabs) so the operator stays on
         # /admin/ instead of navigating away to /thai/news/ko/.
-        _thai_tab = ('    <button id="tab-thai" class="tab th" data-tab="thai" role="tab" aria-selected="false">태국 소식</button>') if admin else ""
+        _thai_tab = ('    <button id="tab-thai" class="tab th" data-tab="thai" aria-pressed="false">태국 소식</button>') if admin else ""
         tabs_html = (
-            '    <button id="tab-global" class="tab active" data-tab="global" role="tab" aria-selected="true">경제 소식</button>\n'
-            '    <button id="tab-cal" class="tab" data-tab="cal" role="tab" aria-selected="false">경제 지표</button>\n'
+            '    <button id="tab-global" class="tab active" data-tab="global" aria-pressed="true">경제 소식</button>\n'
+            '    <button id="tab-cal" class="tab" data-tab="cal" aria-pressed="false">경제 지표</button>\n'
             + _thai_tab
         )
     page = page.replace("__TABS__", tabs_html)
@@ -1927,6 +2028,42 @@ def read_blog_posts(content_dir=None) -> list:
     return posts
 
 
+def editorial_snapshot_from_blog(posts=None) -> list[dict[str, str]]:
+    """Map the canonical blog archive into the card schema used by home/perspectives."""
+    from urllib.parse import quote
+
+    source = read_blog_posts() if posts is None else list(posts)
+    cards = []
+    for post in source:
+        if "관점" not in str(post.get("category") or ""):
+            continue
+        slug = str(post.get("original_slug") or "").strip()
+        title = str(post.get("title") or "").strip()
+        date = str(post.get("date") or "").strip()
+        if not slug or not title or not date:
+            continue
+        summary = str(post.get("summary") or post.get("subtitle") or "").strip()
+        if not summary:
+            for line in str(post.get("body") or "").splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                summary = re.sub(r"\s+", " ", re.sub(r"[*_`]+", "", line)).strip()
+                if summary:
+                    break
+        if len(summary) > 240:
+            summary = summary[:237].rsplit(" ", 1)[0].rstrip(".,;:!?—–-") + "…"
+        cards.append({
+            "title": title,
+            "date": date,
+            "url": "/blog/{}/".format(quote(slug, safe="-._~")),
+            "summary": summary,
+        })
+        if len(cards) >= 10:
+            break
+    return cards
+
+
 def build_blog(content_dir=None) -> dict:
     """Write /blog/ list plus one page per post. Returns {path: bytes}."""
     posts = read_blog_posts(content_dir)
@@ -1960,6 +2097,8 @@ def build_public() -> dict[str, int]:
 
 def sitemap_xml(now: datetime.datetime | None = None) -> str:
     """Render indexable URLs with the actual ICT build timestamp as lastmod."""
+    from urllib.parse import quote
+
     ict = datetime.timezone(datetime.timedelta(hours=7))
     moment = now or datetime.datetime.now(ict)
     if moment.tzinfo is None:
@@ -1967,8 +2106,11 @@ def sitemap_xml(now: datetime.datetime | None = None) -> str:
     lastmod = moment.astimezone(ict).isoformat(timespec="seconds")
     locations = ("/", "/about/", "/tradingtalk/", "/lab/", "/thai/", "/privacy/",
                  "/perspectives/", "/indicators/", "/blog/",
-                 "/thai/news/", "/thai/news/ko/",
-                 "/privacy/en/", "/news/", "/news/ko/")
+                 "/privacy/en/")
+    blog_locations = tuple(
+        "/blog/{}/".format(quote(str(post["original_slug"]), safe="-._~"))
+        for post in read_blog_posts())
+    locations += blog_locations
     rows = "\n".join(
         "  <url><loc>https://teemobkk.io%s</loc><lastmod>%s</lastmod></url>" % (path, lastmod)
         for path in locations)
@@ -2021,7 +2163,7 @@ def build_server(db_path: str = "news.db") -> dict[str, int]:
     pruned = _prune_sections(ROOT / t for t in targets)
     for gone in pruned:
         print("removed stale section %s (its address now redirects)" % gone)
-    editorial_snapshot = landing.editorial_posts(limit=10)
+    editorial_snapshot = editorial_snapshot_from_blog()
     sizes["index.html"] = write(ROOT / "index.html", landing.render_landing(editorial_snapshot))
     sizes.update(build_blog())
     sizes["perspectives/index.html"] = write(
@@ -2030,6 +2172,7 @@ def build_server(db_path: str = "news.db") -> dict[str, int]:
         ROOT / "indicators" / "index.html", landing.render_indicators_page())
     sizes["thai/index.html"] = write(ROOT / "thai" / "index.html",
                                      landing_thai.render_thai_landing())
+    sizes["news/assets/dashboard.css"] = write(ROOT / "news" / "assets" / "dashboard.css", CSS)
     # Sections: /news is the market dashboard, /thai introduces the Thailand material and
     # /thai/news is its dashboard. Each has an English default and a Korean copy one level
     # down, so the language switcher stays a plain relative link.
@@ -2044,7 +2187,8 @@ def build_server(db_path: str = "news.db") -> dict[str, int]:
             ROOT / section / "index.html",
             render(public=False, datadir="", want_thai=want_thai, icon_prefix="/",
                    admin=False, lang=code, alt=alt, seed_html=seed,
-                   briefing_html=briefing_html, briefing_source=briefing_source))
+                   briefing_html=briefing_html, briefing_source=briefing_source,
+                   css_href="/news/assets/dashboard.css" if not want_thai else ""))
     return sizes
 
 
