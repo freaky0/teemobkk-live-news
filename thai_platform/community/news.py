@@ -266,16 +266,28 @@ def get_article(article_id):
         return project(row) if row else None
 
 
-def sitemap_articles(limit=50000):
+def sitemap_article_count():
+    with open_news() as conn:
+        conn.execute('BEGIN')
+        conditions,params=visibility(conn)
+        row=conn.execute(
+            'SELECT COUNT(*) FROM articles a WHERE '+' AND '.join(conditions),
+            params,
+        ).fetchone()
+        return int(row[0])
+
+
+def sitemap_articles(limit=50000, offset=0):
     limit=max(1,min(int(limit),50000))
+    offset=max(0,int(offset))
     with open_news() as conn:
         conn.execute('BEGIN')
         conditions,params=visibility(conn)
         rows=conn.execute(
             'SELECT public_id(a.link) AS id,a.published_at AS published_at FROM articles a WHERE '
             +' AND '.join(conditions)
-            +' ORDER BY a.published_at DESC,a.link LIMIT ?',
-            params+[limit],
+            +' ORDER BY a.published_at DESC,a.link LIMIT ? OFFSET ?',
+            params+[limit,offset],
         ).fetchall()
         return [
             {'id':row['id'],'published_at':parse_datetime(row['published_at'])}
