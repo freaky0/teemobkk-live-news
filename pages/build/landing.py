@@ -257,19 +257,23 @@ h2{font-size:clamp(24px,3vw,34px);line-height:1.18;letter-spacing:-.035em;margin
 .note{font-size:13.5px;color:var(--muted);margin-top:22px;max-width:60ch;line-height:1.75}
 __INDICATOR_CSS__
 
-/* A three-step editorial sequence: motion shows how news becomes a tested view. */
+/* A three-step editorial sequence: a restrained left-to-right spring repeats at an unhurried pace. */
 .kinetic{background:var(--ink);color:#f2f2f1;padding:clamp(54px,7vw,92px) 0;overflow:hidden}
 .kinetic-inner{max-width:var(--content);margin:auto;padding-inline:clamp(20px,4vw,40px)}
 .kinetic-flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(18px,3vw,42px);list-style:none;margin:0;padding:0}
 .kinetic-step{position:relative;min-width:0;margin:0;color:#f2f2f1;font-size:clamp(32px,4.6vw,62px);line-height:1.08;letter-spacing:-.055em;font-weight:800;word-break:keep-all}
 .kinetic-step span{display:block}
 .kinetic-step:not(:last-child)::after{content:"→";position:absolute;right:-18px;top:50%;color:var(--accent-bright);font-size:.56em;font-weight:500;transform:translate(50%,-50%)}
-@keyframes kinetic-arrive{from{opacity:.55;transform:translate3d(var(--enter-x,0),var(--enter-y,16px),0)}to{opacity:1;transform:translate3d(0,0,0)}}
+@keyframes kinetic-arrive{
+ 0%,14%,28%,88%,100%{opacity:1;transform:translate3d(0,0,0) scale(1)}
+ 18%{opacity:.72;transform:translate3d(-22px,0,0) scale(.975)}
+ 21%{opacity:1;transform:translate3d(5px,0,0) scale(1.025)}
+ 24%{transform:translate3d(-2px,0,0) scale(.995)}
+}
 @media(prefers-reduced-motion:no-preference){
- .kinetic-step{animation:kinetic-arrive .78s cubic-bezier(.16,1,.3,1) both}
- .kinetic-step:nth-child(1){--enter-x:-22px;animation-delay:0s}
- .kinetic-step:nth-child(2){--enter-y:20px;animation-delay:.16s}
- .kinetic-step:nth-child(3){--enter-x:22px;animation-delay:.32s}
+ .kinetic-step{animation:kinetic-arrive 6.6s cubic-bezier(.16,1,.3,1) infinite}
+ .kinetic-step:nth-child(2){animation-delay:.2s}
+ .kinetic-step:nth-child(3){animation-delay:.4s}
 }
 .about{display:grid;grid-template-columns:1.1fr .9fr;gap:clamp(28px,6vw,72px);padding:clamp(42px,5vw,68px) 0 0}
 .about p{color:var(--text);font-size:17px;margin:10px 0;word-break:keep-all;max-width:58ch}
