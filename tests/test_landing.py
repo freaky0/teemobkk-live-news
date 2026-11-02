@@ -93,7 +93,11 @@ class LandingContract(unittest.TestCase):
         self.assertNotIn('api.binance.com', page)
         self.assertIn('data-state=stale', page)
         self.assertIn('data-state=reconnecting', page)
-        self.assertIn('id="kinetic-toggle"', page)
+        self.assertIn('<ol class="kinetic-flow">', page)
+        self.assertNotIn('kinetic-toggle', page)
+        self.assertNotIn('kinetic-status', page)
+        self.assertNotIn('애니메이션 재생 중', page)
+        self.assertIn('@media(prefers-reduced-motion:no-preference)', page)
         self.assertIn('@media(prefers-reduced-motion:reduce)', page)
 
     def test_tradingview_invite_is_removed_but_official_profile_remains(self):

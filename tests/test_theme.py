@@ -44,11 +44,12 @@ class SharedThemeContract(unittest.TestCase):
         self.assertIn("background:var(--bg)", theme.HEADER_CSS)
         self.assertIn("color-mix(in srgb,var(--bg) 94%,transparent)", theme.HEADER_CSS)
         self.assertIn("--bg:#f0f0ee", theme.CSS_CUSTOM_PROPERTIES)
-        self.assertIn("--bg:#0f1411", theme.DARK_THEME_CSS)
+        self.assertIn("--bg:#111513", theme.DARK_THEME_CSS)
         page = landing.render_landing()
         self.assertIn("background:var(--bg)", page)
         self.assertIn("--bg:#f0f0ee", page)
-        self.assertIn("--bg:#0f1411", page)
+        self.assertIn("--bg:#111513", page)
+        self.assertIn("--ink:#171b19", page)
 
     def test_shared_module_exports_tokens_renderers_and_date_formatter(self):
         self.assertIn(":root{", theme.CSS_CUSTOM_PROPERTIES)
