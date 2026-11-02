@@ -31,7 +31,7 @@ USAGE_BAR_CSS = ('.urow{display:flex;align-items:center;gap:8px}\n'
 
 # The masthead is one ink field on every root page, independent of the page palette below it:
 # the newsroom reads as a single publication from the home page to the dashboards.
-HEADER_CSS = ('.top{--bg:var(--ink,#171b19);position:sticky;top:0;z-index:30;background:var(--bg);'
+HEADER_CSS = ('.top{--bg:var(--ink,#171b19);position:sticky;top:var(--market-ticker-height,38px);z-index:30;background:var(--bg);'
               'background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(10px);'
               'border:0;color:#f2f2f1}\n'
               '.nav.wrap{max-width:var(--content,1180px);margin-inline:auto;padding:0 clamp(20px,4vw,40px);'
@@ -172,7 +172,8 @@ def shared_css() -> str:
 
 def theme_head_script() -> str:
     """Restore the saved theme before first paint and localize root controls."""
-    return ('<script>(function(){try{var t=localStorage.getItem("tbn-theme");'
+    return ('<link rel="stylesheet" href="/assets/landing/mexc-ticker.css">'
+            '<script>(function(){try{var t=localStorage.getItem("tbn-theme");'
             'if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)'
             '}catch(e){}})();</script>'
             '<script>document.addEventListener("DOMContentLoaded",function(){'
@@ -220,13 +221,18 @@ def render_header(active: str = "", lang: str = "ko") -> str:
         for key, href, ko_label, en_label in NAV_SECTIONS)
     brand_current = ' aria-current="page"' if active == "home" else ""
     theme_label = "Switch to dark mode" if english else "다크 모드 켜기"
-    return ('<header class="top"><div class="wrap nav">'
+    ticker = ('<div class="ticker" id="ticker" role="region" aria-label="암호화폐와 주요 지수 시세">'
+              '<div class="ticker-state" id="ticker-state" data-state="connecting" title="MEXC 연결 상태">'
+              '<span class="dot" aria-hidden="true"></span><span id="ticker-state-text" role="status" '
+              'aria-live="polite">MEXC 연결 중</span><span class="ticker-age" id="ticker-age"></span></div>'
+              '<div class="ticker-viewport"><div class="ticker-inner" id="ticker-inner"></div></div></div>')
+    return (ticker + '<header class="top"><div class="wrap nav">'
             '<a class="brand" href="/"%s><span class="brand-word">TeemoBKK</span></a>'
             '<nav class="primary-nav" aria-label="%s">%s</nav>'
             '<a class="site-switch" href="/thai/" title="%s">%s</a>'
             '<button class="theme-toggle" id="landing-theme-toggle" type="button" '
             'aria-label="%s" aria-pressed="false">%s</button>'
-            '</div></header>') % (
+            '</div></header><script src="/assets/landing/mexc-ticker.js" defer></script>') % (
                 brand_current, "Main sections" if english else "주요 섹션", links,
                 "Opens the separate Thailand site" if english else "별도 사이트로 이동",
                 "Thailand news ↗" if english else "태국 뉴스 ↗",

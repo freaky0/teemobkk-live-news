@@ -84,15 +84,20 @@ class LandingContract(unittest.TestCase):
 
     def test_market_ticker_is_live_accessible_and_limited_to_supported_symbols(self):
         page = landing.render_landing()
-        self.assertIn('wss://wbs-api.mexc.com/ws', page)
-        self.assertIn('spot@public.miniTicker.v3.api.pb@', page)
-        self.assertIn("socket.binaryType='arraybuffer'", page)
+        ticker_js = (Path(__file__).resolve().parents[1] / "assets/landing/mexc-ticker.js").read_text(encoding="utf-8")
+        runtime = page + ticker_js
+        self.assertIn('<link rel="stylesheet" href="/assets/landing/mexc-ticker.css">', page)
+        self.assertIn('<script src="/assets/landing/mexc-ticker.js" defer></script>', page)
+        self.assertLess(page.index('id="ticker"'), page.index('<header class="top">'))
+        self.assertIn('wss://wbs-api.mexc.com/ws', runtime)
+        self.assertIn('spot@public.miniTicker.v3.api.pb@', runtime)
+        self.assertIn("socket.binaryType='arraybuffer'", runtime)
         for symbol in ('BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT',
                        'BNBUSDT', 'DOGEUSDT', 'ADAUSDT', 'LINKUSDT'):
-            self.assertIn(symbol, page)
-        self.assertNotIn('api.binance.com', page)
-        self.assertIn('data-state=stale', page)
-        self.assertIn('data-state=reconnecting', page)
+            self.assertIn(symbol, runtime)
+        self.assertNotIn('api.binance.com', runtime)
+        self.assertIn("setState('stale'", ticker_js)
+        self.assertIn("setState('reconnecting'", ticker_js)
         self.assertIn('<ol class="kinetic-flow">', page)
         self.assertNotIn('kinetic-toggle', page)
         self.assertNotIn('kinetic-status', page)

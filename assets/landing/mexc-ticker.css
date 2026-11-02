@@ -1,0 +1,21 @@
+:root{--market-ticker-height:38px}
+html{scroll-padding-top:calc(var(--market-ticker-height,38px) + 112px)}
+.ticker{position:sticky;top:0;z-index:31;display:flex;align-items:center;height:38px;overflow:hidden;white-space:nowrap;background:var(--ink-2,#222825);color:rgba(242,242,241,.78);box-sizing:border-box}
+.ticker-state{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;padding:8px 14px;background:rgba(0,0,0,.14);font:600 13.5px/1.5 var(--sans,system-ui,sans-serif);letter-spacing:0;color:rgba(242,242,241,.82);white-space:nowrap}
+.ticker-state .dot{width:6px;height:6px;flex:0 0 auto;border-radius:50%;background:#e6bd65}
+.ticker-state[data-state=live] .dot{background:var(--accent-bright,#3ecf8e);box-shadow:0 0 0 3px rgba(62,207,142,.16)}
+.ticker-state[data-state=stale] .dot,.ticker-state[data-state=reconnecting] .dot{background:#ff9d9d}
+.ticker-state[data-state=unsupported] .dot{background:rgba(242,242,241,.35)}
+.ticker-age{color:rgba(242,242,241,.58);font-weight:400}
+.ticker-viewport{flex:1 1 auto;min-width:0;overflow:hidden}
+.ticker-inner{display:inline-flex;padding:8px 0;animation:tick 36s linear infinite}
+.ticker-inner:empty{animation:none}
+.ticker-seq{display:inline-flex}
+.ticker:hover .ticker-inner,.ticker:focus-within .ticker-inner{animation-play-state:paused}
+.tick{display:inline-flex;align-items:center;gap:8px;padding:0 20px;font:13.5px/1.6 var(--sans,system-ui,sans-serif);font-variant-numeric:tabular-nums;color:rgba(242,242,241,.72)}
+.tick b{color:#f2f2f1;font-weight:700}
+.tick .up{color:var(--accent-bright,#3ecf8e)}.tick .dn{color:#ff9d9d}.tick .flat{color:rgba(242,242,241,.65)}
+@keyframes tick{to{transform:translateX(-50%)}}
+@media(max-width:767px){.ticker-state{padding:7px 10px;font-size:13.5px;gap:6px}.ticker-age{font-size:13.5px}.tick{font-size:13.5px;padding:0 14px}}
+@media(max-width:480px){:root{--market-ticker-height:72px}.ticker{display:block;height:72px}.ticker-state{padding:7px 10px}.ticker-viewport{width:100%}}
+@media(prefers-reduced-motion:reduce){.ticker-inner{animation:none!important}}
