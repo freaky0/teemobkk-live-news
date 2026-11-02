@@ -18,6 +18,7 @@ KNOWN_NEWS_STATIC_ROOT="${KNOWN_NEWS_STATIC_ROOT:-/opt/teemo-live-news/releases/
 KNOWN_SERVICE_ROOT="${KNOWN_SERVICE_ROOT:-/opt/teemo-live-news/releases/codex-korean-20261031}"
 NEWS_STATIC_ROOT="${NEWS_STATIC_ROOT:-}"
 SERVICE_ROOT="${SERVICE_ROOT:-}"
+DATA_ROOT="${DATA_ROOT:-$APP_DIR}"
 COMMIT="$(git rev-parse --short HEAD)"
 
 SECTIONS=(
@@ -85,9 +86,16 @@ validate_release_path() {
 }
 validate_release_path "news destination" "$NEWS_DEST"
 validate_release_path "service root" "$SERVICE_ROOT"
+case "$DATA_ROOT" in
+  "$APP_DIR"|"$APP_DIR"/releases/*) ;;
+  *) say "refusing ROOT data destination outside $APP_DIR: $DATA_ROOT"; exit 1 ;;
+esac
+case "$DATA_ROOT" in
+  */thai|*/thai/*) say "refusing a Thai path for ROOT data: $DATA_ROOT"; exit 1 ;;
+esac
 
-say "active roots: landing=$APP_DIR/landing.html news=$NEWS_DEST service=$SERVICE_ROOT"
-if ! remote "systemctl is-active --quiet '$SERVICE.service' && test -d '$APP_DIR' && test -d '$NEWS_STATIC_ROOT' && test -d '$SERVICE_ROOT'"; then
+say "active roots: landing=$APP_DIR/landing.html news=$NEWS_DEST service=$SERVICE_ROOT pages=$DATA_ROOT"
+if ! remote "systemctl is-active --quiet '$SERVICE.service' && test -d '$APP_DIR' && test -d '$NEWS_STATIC_ROOT' && test -d '$SERVICE_ROOT' && test -d '$DATA_ROOT'"; then
   say "service or active publish directory is unavailable; nothing was published"
   exit 1
 fi
@@ -136,6 +144,18 @@ remote "mkdir -p '$SERVICE_ROOT/blog' '$SERVICE_ROOT/perspectives' '$SERVICE_ROO
         cp -p '$BUILD_DIR/pages/build/landing.py' '$BUILD_DIR/pages/build/theme.py' '$BUILD_DIR/pages/build/page_build.py' '$SERVICE_ROOT/pages/build/' &&
         cp -p '$BUILD_DIR/pages/static/lab/index.html' '$SERVICE_ROOT/pages/static/lab/index.html' &&
         cp -p '$BUILD_DIR/pages/static/tradingtalk/index.html' '$SERVICE_ROOT/pages/static/tradingtalk/index.html'"
+
+# The running handler reads public section files from TEEMO_DATA_ROOT (APP_DIR in production),
+# while its Python code lives in SERVICE_ROOT. Publish only these ROOT News page outputs there.
+# This deliberately does not touch the database, news release, Caddy config, or Thai tree.
+remote "mkdir -p '$DATA_ROOT/blog' '$DATA_ROOT/perspectives' '$DATA_ROOT/indicators' '$DATA_ROOT/pages/static/lab' '$DATA_ROOT/pages/static/tradingtalk' &&
+        cp -a '$BUILD_DIR/blog/.' '$DATA_ROOT/blog/' &&
+        cp -a '$BUILD_DIR/perspectives/.' '$DATA_ROOT/perspectives/' &&
+        cp -a '$BUILD_DIR/indicators/.' '$DATA_ROOT/indicators/' &&
+        cp -p '$BUILD_DIR/index.html' '$DATA_ROOT/index.html' &&
+        cp -p '$BUILD_DIR/sitemap.xml' '$DATA_ROOT/sitemap.xml' &&
+        cp -p '$BUILD_DIR/pages/static/lab/index.html' '$DATA_ROOT/pages/static/lab/index.html' &&
+        cp -p '$BUILD_DIR/pages/static/tradingtalk/index.html' '$DATA_ROOT/pages/static/tradingtalk/index.html'"
 
 # The live handlers reread these files for each request; backend code and service state are unchanged.
 say "runtime status (no restart)"

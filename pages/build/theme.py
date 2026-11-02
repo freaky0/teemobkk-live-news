@@ -6,7 +6,7 @@ def _lang_code(value) -> str:
     return "en" if str(value or "").strip().lower().startswith("en") else "ko"
 
 
-CSS_CUSTOM_PROPERTIES = (':root{color-scheme:light;--bg:#f0f0ee;--paper:#f0f0ee;--surface:#f7f7f6;--surface2:#e5e5e3;--text:#12211c;--muted:#3f4b44;--dim:#5b5f5d;--line:#d1d1ce;--ink:#0d1a15;--ink-2:#14231d;--accent:#0f7a52;--accent-bright:#3ecf8e;--accent-dim:rgba(15,122,82,.10);--up:#0f7a52;--down:#b23b3b;--rule:rgba(18,33,28,.12);--content:1180px;--radius:6px;--sans:system-ui,-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"D2Coding","JetBrains Mono","Courier New",monospace}')
+CSS_CUSTOM_PROPERTIES = (':root{color-scheme:light;--bg:#f0f0ee;--paper:#f0f0ee;--surface:#f7f7f6;--surface2:#e5e5e3;--text:#12211c;--muted:#3f4b44;--dim:#5b5f5d;--line:#d1d1ce;--ink:#171b19;--ink-2:#222825;--accent:#0f7a52;--accent-bright:#3ecf8e;--accent-dim:rgba(15,122,82,.10);--up:#0f7a52;--down:#b23b3b;--rule:rgba(18,33,28,.12);--content:1180px;--radius:6px;--sans:system-ui,-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"D2Coding","JetBrains Mono","Courier New",monospace}')
 
 BUTTON_CSS = ('.button{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:11px 22px;border-radius:2px;border:0;font-size:17px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;background:var(--surface2);color:var(--text);transition:background-color .2s,color .2s}\n'
               '.button.primary{background:var(--accent);color:#ffffff}\n'
@@ -16,9 +16,9 @@ BUTTON_CSS = ('.button{display:inline-flex;align-items:center;justify-content:ce
               '.button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}')
 
 DARK_THEME_CSS = (':root{color-scheme:light}\n'
-                  '[data-theme=dark]{color-scheme:dark;--bg:#0f1411;--paper:#0f1411;--surface:#161d18;'
-                  '--surface2:#1d2620;--text:#eef3ec;--muted:#c3cec4;--dim:#9faca2;--line:#2b3b34;'
-                  '--ink:#0a1511;--ink-2:#10201a;--accent:#46d69b;--accent-bright:#5ee6ae;'
+                  '[data-theme=dark]{color-scheme:dark;--bg:#111513;--paper:#111513;--surface:#191f1b;'
+                  '--surface2:#242b26;--text:#eef3ec;--muted:#c3cec4;--dim:#9faca2;--line:#343d37;'
+                  '--ink:#101412;--ink-2:#1a211d;--accent:#46d69b;--accent-bright:#5ee6ae;'
                   '--accent-dim:rgba(70,214,155,.14);--up:#5ee6ae;--down:#ff8a8a;'
                   '--rule:rgba(238,243,236,.14)}')
 
@@ -31,7 +31,7 @@ USAGE_BAR_CSS = ('.urow{display:flex;align-items:center;gap:8px}\n'
 
 # The masthead is one ink field on every root page, independent of the page palette below it:
 # the newsroom reads as a single publication from the home page to the dashboards.
-HEADER_CSS = ('.top{--bg:var(--ink,#0d1a15);position:sticky;top:0;z-index:30;background:var(--bg);'
+HEADER_CSS = ('.top{--bg:var(--ink,#171b19);position:sticky;top:0;z-index:30;background:var(--bg);'
               'background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(10px);'
               'border:0;color:#f2f2f1}\n'
               '.nav.wrap{max-width:var(--content,1180px);margin-inline:auto;padding:0 clamp(20px,4vw,40px);'
@@ -80,7 +80,7 @@ HEADER_CSS = ('.top{--bg:var(--ink,#0d1a15);position:sticky;top:0;z-index:30;bac
               '.theme-toggle{padding:0 8px;font-size:12px;margin-left:0}\n'
               '}')
 
-FOOTER_CSS = ('.footer{background:var(--ink,#0d1a15);color:rgba(242,242,241,.74);font-size:13.5px;'
+FOOTER_CSS = ('.footer{background:var(--ink,#171b19);color:rgba(242,242,241,.74);font-size:13.5px;'
               'padding:48px 0 42px;border:0}\n'
               '.footer .wrap{max-width:var(--content,1180px);margin-inline:auto;padding-inline:clamp(20px,4vw,40px)}\n'
               '.footer-grid{display:flex;flex-wrap:wrap;justify-content:space-between;gap:22px 40px}\n'
@@ -153,7 +153,7 @@ INDICATOR_CSS = """\
 
 DIALOG_CSS = ('.donate-dialog{width:min(440px,calc(100% - 24px));border:0;border-radius:var(--radius);'
               'background:var(--surface);color:var(--text);padding:0;box-shadow:0 24px 80px rgba(0,0,0,.28)}\n'
-              '.donate-dialog::backdrop{background:rgba(12,26,21,.55)}\n'
+              '.donate-dialog::backdrop{background:rgba(16,20,18,.55)}\n'
               '.dialog-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px 0}\n'
               '.dialog-head p{margin:0;font-weight:750}\n'
               '.dialog-head button{min-height:36px;padding:0 10px;border:0;border-radius:2px;background:var(--surface2);color:var(--text);font-size:13.5px}\n'
