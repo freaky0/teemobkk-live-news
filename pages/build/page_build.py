@@ -2219,6 +2219,13 @@ def build_server(db_path: str = "news.db") -> dict[str, int]:
     indicator pages later. Each has an English default and a Korean copy one directory down,
     which keeps the language switcher a plain relative link.
     """
+    # Production releases are read-only. The systemd pre-start hook imports this module from the
+    # active release, while the publish script builds pages in a writable staging directory and
+    # copies only the approved ROOT outputs into place. Never rebuild under releases/ at startup.
+    if ROOT.parent.name == "releases":
+        print("build_server skipped: active release tree is read-only")
+        return {}
+
     sizes = {"sitemap.xml": write(ROOT / "sitemap.xml", sitemap_xml())}
     global_seed = seed_from_db(db_path, "\uae00\ub85c\ubc8c", False, "en")
     thai_seed = seed_from_db(db_path, "\ud0dc\uad6d", True, "en")
