@@ -209,9 +209,10 @@ h2{font-size:clamp(24px,3vw,34px);line-height:1.18;letter-spacing:-.035em;margin
 .section-link:hover{text-decoration:underline;text-underline-offset:5px}
 .news-status{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:20px 0 0;color:var(--muted);font-family:var(--sans);font-size:13.5px}
 .news-status .live{color:var(--accent)}
-.news-new{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:7px 16px;border:1px solid var(--accent);border-radius:999px;background:var(--surface2);color:var(--accent);font-family:var(--sans);font-size:13.5px;font-weight:700;cursor:pointer;transition:background .18s ease,color .18s ease,transform .18s ease}
-.news-new:hover{background:var(--accent);color:var(--bg);transform:translateY(-1px)}
+.news-new{position:fixed;z-index:140;top:calc(env(safe-area-inset-top,0px) + 140px);left:50%;transform:translateX(-50%);display:inline-flex;align-items:center;justify-content:center;min-height:48px;max-width:calc(100vw - 28px);padding:9px 18px;border:1px solid transparent;border-radius:999px;background:var(--surface2);color:var(--accent);font-family:var(--sans);font-size:14px;font-weight:700;white-space:nowrap;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.24);transition:background .18s ease,color .18s ease,transform .18s ease}
+.news-new:hover{background:var(--accent);color:var(--bg);transform:translate(-50%,-1px)}
 .news-new[hidden]{display:none}
+.news-new:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .retry{min-height:44px;background:var(--surface2);color:var(--text);border:0;border-radius:2px;padding:7px 14px;font-family:var(--sans);font-size:13.5px}
 .retry:hover{background:var(--text);color:var(--bg)}
 .news-list{display:grid;gap:16px;margin-top:14px}
@@ -298,6 +299,7 @@ __INDICATOR_CSS__
  .ntitle{font-size:17px;flex-basis:100%}
  .news-strip{height:120px;margin-top:20px}
  .news-strip figcaption{font-size:13.5px;padding:9px 12px}
+ .news-new{top:calc(env(safe-area-inset-top,0px) + 96px);min-height:46px;padding:8px 15px;font-size:13.5px}
  .post h3{font-size:20px;line-height:1.35}
  .post:first-child h3{font-size:20px}
  .post p{font-size:17px}
