@@ -10,4 +10,5 @@
 .account-menu-panel a { display: flex; align-items: center; min-height: 44px; padding: 8px 12px; border-radius: 5px; }
 .account-menu-panel a:hover, .account-menu-panel a:focus-visible { background: var(--color-bg-subtle); }
 .footer p { margin-bottom: 4px; }
+.footer-policy-links { white-space: nowrap; }
 @media (max-width: 600px) { .header { gap: 8px; } .header .account-profile { display: flex; } }
