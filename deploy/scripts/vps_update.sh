@@ -119,6 +119,11 @@ git archive --format=tar HEAD | remote "runuser -u '$APP_USER' -- tar -x -C '$BU
 say "building ROOT News pages with the production database opened read-only"
 remote "cd '$BUILD_DIR' && runuser -u '$APP_USER' -- python3 -c 'from pages.build import page_build; page_build.build_server(db_path=\"$APP_DIR/news.db\")' >/dev/null"
 
+# These two ROOT sections are older standalone HTML pages with their own donation dialog. Apply
+# the shared floating tab in the isolated staging copy so the source templates stay untouched.
+say "adding the donation tab to ROOT static sections"
+remote "cd '$BUILD_DIR' && runuser -u '$APP_USER' -- python3 -c 'from pathlib import Path; from pages.build.theme import with_donation; paths=(Path(\"pages/static/lab/index.html\"), Path(\"pages/static/tradingtalk/index.html\")); [path.write_text(with_donation(path.read_text(encoding=\"utf-8\")), encoding=\"utf-8\") for path in paths]'"
+
 for staged in index.html news/index.html news/ko/index.html news/assets/dashboard.css blog/index.html perspectives/index.html indicators/index.html sitemap.xml pages/static/lab/index.html pages/static/tradingtalk/index.html assets/landing/mexc-ticker.css assets/landing/mexc-ticker.js; do
   if ! remote "test -s '$BUILD_DIR/$staged'"; then
     say "missing staged ROOT output: $staged"
