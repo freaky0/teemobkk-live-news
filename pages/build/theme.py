@@ -346,7 +346,7 @@ def donation_floater(lang="ko") -> str:
             'var link=tab&&tab.querySelector("a");if(!tab||!sentinel||!link)return;'
             'var show=function(value){tab.classList.toggle("is-visible",value)};'
             'if("IntersectionObserver" in window){new IntersectionObserver(function(entries){'
-            'show(entries.some(function(entry){return entry.isIntersecting}))},{threshold:0}).observe(sentinel)}'
+            'show(entries.some(function(entry){return entry.isIntersecting}))},{rootMargin:"0px 0px 8px 0px",threshold:0}).observe(sentinel)}'
             'else{var update=function(){var rect=sentinel.getBoundingClientRect();'
             'show(rect.top<window.innerHeight&&rect.bottom>=0)};'
             'window.addEventListener("scroll",update,{passive:true});window.addEventListener("resize",update);update()} '
