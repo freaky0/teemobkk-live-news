@@ -280,6 +280,7 @@ def render_footer(with_dialog: bool = True, lang: str = "ko") -> str:
 
 DONATION_CSS_URL = "/thai/static/donation-tab-csp-20261104.css"
 DONATION_JS_URL = "/thai/static/donation-tab-csp-20261104.js"
+DONATION_NEWS_CSS_URL = "/thai/static/donation-tab-news-contrast-20261104.css"
 
 
 def with_donation(html: str) -> str:
@@ -304,6 +305,10 @@ def with_donation(html: str) -> str:
         if head_end >= 0 and "donation-tab-csp-20261104.css" not in html.lower():
             css = f'<link rel="stylesheet" href="{DONATION_CSS_URL}">'
             html = html[:head_end] + css + html[head_end:]
+        head_end = html.lower().rfind("</head>")
+        if head_end >= 0 and "donation-tab-news-contrast-20261104.css" not in html.lower():
+            news_css = f'<link rel="stylesheet" href="{DONATION_NEWS_CSS_URL}">'
+            html = html[:head_end] + news_css + html[head_end:]
         body_end = html.lower().rfind("</body>")
         if body_end >= 0 and "donation-tab-csp-20261104.js" not in html.lower():
             script = f'<script src="{DONATION_JS_URL}" defer></script>'

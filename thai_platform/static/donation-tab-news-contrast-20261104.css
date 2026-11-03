@@ -1,0 +1,38 @@
+#donate-peek.donate-peek--news a {
+  border-color: var(--line, #34405a);
+  border-left-color: var(--accent, #64d7ff);
+  background: var(--panel, #111a2c);
+  color: #eef3ff;
+}
+
+#donate-peek.donate-peek--news .donate-peek-icon {
+  color: var(--accent, #64d7ff);
+}
+
+#donate-dialog {
+  border-color: var(--line, #34405a);
+  background: var(--panel, #111a2c);
+  color: #eef3ff;
+}
+
+#donate-dialog .dialog-head,
+#donate-dialog .donate-dialog-head {
+  border-bottom-color: var(--line, #34405a);
+}
+
+#donate-dialog .dialog-head button,
+#donate-dialog .donate-dialog-head button {
+  border-color: var(--line, #34405a);
+  background: var(--panel2, #16213a);
+  color: #eef3ff;
+}
+
+#donate-dialog .donate-bank {
+  border-color: var(--line, #34405a);
+  background: var(--panel2, #16213a);
+  color: #eef3ff;
+}
+
+#donate-dialog .donate-bank-name {
+  color: var(--muted, #8b9bbd);
+}
