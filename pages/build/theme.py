@@ -163,6 +163,24 @@ DIALOG_CSS = ('.donate-dialog{width:min(440px,calc(100% - 24px));border:0;border
               '.donate-bank p{margin:0}\n'
               '.donate-bank-name{margin:0 0 2px;font-size:13px;color:var(--muted)}')
 
+DONATION_PEEK_CSS = ('#donate-peek{position:fixed;right:0;bottom:calc(18px + env(safe-area-inset-bottom,0px));'
+                     'z-index:80;transform:translateX(50%);visibility:hidden;opacity:0;pointer-events:none;'
+                     'transition:transform .22s cubic-bezier(.2,.8,.2,1),opacity .16s ease,visibility .16s}\n'
+                     '#donate-peek.is-visible{visibility:visible;opacity:1;pointer-events:auto}\n'
+                     '#donate-peek.is-visible:hover,#donate-peek.is-visible:focus-within{transform:translateX(0)}\n'
+                     '#donate-peek a{display:flex;align-items:center;gap:9px;box-sizing:border-box;width:164px;'
+                     'min-height:54px;padding:0 16px;border:1px solid var(--line,#343d37);border-right:0;'
+                     'border-left:3px solid var(--accent,#46d69b);border-radius:8px 0 0 8px;'
+                     'background:var(--surface,#191f1b);color:var(--text,#eef3ec);'
+                     'font:600 14px/1.2 var(--sans,system-ui,sans-serif);text-decoration:none;white-space:nowrap;'
+                     'box-shadow:0 8px 28px rgba(0,0,0,.25)}\n'
+                     '#donate-peek .donate-peek-icon{font-size:18px;line-height:1;color:var(--accent,#46d69b)}\n'
+                     '#donate-peek a:focus-visible{outline:2px solid var(--accent,#46d69b);outline-offset:3px}\n'
+                     '#donate-bottom-sentinel{display:block;width:1px;height:1px}\n'
+                     '@media(prefers-reduced-motion:reduce){#donate-peek{transition:none}}\n'
+                     '@media(max-width:480px){#donate-peek{bottom:calc(12px + env(safe-area-inset-bottom,0px))}'
+                     '#donate-peek a{min-height:52px}}')
+
 
 def shared_css() -> str:
     """Return the common tokens and components included in page stylesheets."""
@@ -276,7 +294,7 @@ def render_footer(with_dialog: bool = True, lang: str = "ko") -> str:
               '</nav></div>') % (
                   sections_label, links, disclaimer, info_label,
                   privacy_href, privacy_label, profile_label, donate_label, thai_label)
-    return footer + (donation_dialog(code) if with_dialog else "") + '</footer>'
+    return footer + donation_floater(code) + (donation_dialog(code) if with_dialog else "") + '</footer>'
 
 
 def with_donation(html: str) -> str:
@@ -290,6 +308,12 @@ def with_donation(html: str) -> str:
         body_end = html.lower().rfind("</body>")
         if body_end >= 0:
             html = html[:body_end] + donation_dialog() + html[body_end:]
+    if 'id="donate-peek"' not in html:
+        body_end = html.lower().rfind("</body>")
+        if body_end >= 0:
+            head = html[:body_end].lower()
+            lang = "en" if '<html lang="en' in head or "<html lang='en" in head else "ko"
+            html = html[:body_end] + donation_floater(lang) + html[body_end:]
     return html
 
 
@@ -307,6 +331,29 @@ def donation_dialog(lang="ko") -> str:
             '<p><strong>926-0-280236</strong></p></div></div></div></dialog>'
             '<script>document.querySelectorAll(\'a[href="#donate"]\').forEach(a=>a.addEventListener(\'click\',e=>{e.preventDefault();document.getElementById("donate-dialog").showModal()}))</script>'
             ) % (title, close_label, close_text, qr_alt)
+
+
+def donation_floater(lang="ko") -> str:
+    english = _lang_code(lang) == "en"
+    label = "Support" if english else "후원하기"
+    aria_label = "Support TeemoBKK" if english else "TeemoBKK 후원하기"
+    return ('<style id="donate-peek-style">%s</style>'
+            '<div id="donate-peek"><a href="#donate-dialog" aria-label="%s">'
+            '<span class="donate-peek-icon" aria-hidden="true">♥</span>'
+            '<span>%s</span></a></div><span id="donate-bottom-sentinel" aria-hidden="true"></span>'
+            '<script>(function(){function init(){var tab=document.getElementById("donate-peek");'
+            'var sentinel=document.getElementById("donate-bottom-sentinel");'
+            'var link=tab&&tab.querySelector("a");if(!tab||!sentinel||!link)return;'
+            'var show=function(value){tab.classList.toggle("is-visible",value)};'
+            'if("IntersectionObserver" in window){new IntersectionObserver(function(entries){'
+            'show(entries.some(function(entry){return entry.isIntersecting}))},{threshold:0}).observe(sentinel)}'
+            'else{var update=function(){var rect=sentinel.getBoundingClientRect();'
+            'show(rect.top<window.innerHeight&&rect.bottom>=0)};'
+            'window.addEventListener("scroll",update,{passive:true});window.addEventListener("resize",update);update()} '
+            'link.addEventListener("click",function(event){var dialog=document.getElementById("donate-dialog");'
+            'if(!dialog)return;event.preventDefault();if(!dialog.open)dialog.showModal()})}'
+            'if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",init,{once:true})}'
+            'else{init()}})();</script>') % (DONATION_PEEK_CSS, aria_label, label)
 
 
 def display_date(value: str) -> str:
