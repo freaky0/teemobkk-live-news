@@ -19,7 +19,7 @@ class SubpathMountTests(TestCase):
         response = self.client.get("/", SCRIPT_NAME="/thai")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'data-script-prefix="/thai"')
-        self.assertContains(response, 'href="/thai/static/app.css"')
+        self.assertContains(response, 'href="/thai/static/app.css?v=root-news-link-20261104"')
         self.assertContains(response, 'href="/thai/newsroom/"')
         self.assertContains(response, 'href="/thai/community/"')
         self.assertContains(response, 'href="/thai/accounts/login/?next=/thai/"')
