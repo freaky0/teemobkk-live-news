@@ -1989,6 +1989,8 @@ __TABS__
             .replace("__BRIEFING__", briefing_html)
             .replace("__BRIEF_SRC__", html.escape(briefing_source))
             .replace("__BRIEFING_TITLE__", html.escape(briefing_title)))
+    if want_thai and not admin:
+        page = theme.with_donation(page)
     return page
 
 
