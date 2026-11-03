@@ -388,6 +388,7 @@ try{
 (function(){
 'use strict';
 const list=document.getElementById('news-list'), status=document.getElementById('update-status'), retry=document.getElementById('retry'), newsNew=document.getElementById('news-new');
+if(newsNew)document.body.append(newsNew);
 let busy=false, hasNews=false, currentNews=[], pendingNews=[], loadedOnce=false;
 const fmt=new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Bangkok',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
 function displayStamp(value){const p=fmt.formatToParts(new Date(value)),get=k=>(p.find(x=>x.type===k)||{}).value||'';

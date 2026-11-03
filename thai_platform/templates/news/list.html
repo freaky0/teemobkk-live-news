@@ -45,5 +45,5 @@
   {% if news_page.has_next %}<a class="btn" href="?q={{ query|urlencode }}&amp;category={{ category|urlencode }}&amp;region={{ region_group|urlencode }}&amp;page={{ news_page.page|add:'1' }}">다음</a>{% endif %}
 </nav>
 <aside class="news-followup"><div><strong>태국 생활에서 궁금한 점이 생겼나요?</strong><p>이웃에게 질문하고 실제 경험을 나눠 보세요.</p></div><a class="btn primary" href="{% url 'post-create' %}?category=questions">이웃에게 질문하기</a></aside>
-<script src="{% static 'news-unread.js' %}" defer></script>
+<script src="{% static 'news-unread.js' %}?v=news-alert-20261104" defer></script>
 {% endblock %}
