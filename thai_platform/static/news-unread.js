@@ -30,8 +30,10 @@
   };
 
   roots.forEach((root) => {
-    const button = root.querySelector('[data-news-update]');
-    const list = root.querySelector('[data-news-list]');
+    const button = root.matches('[data-news-update]') ? root : root.querySelector('[data-news-update]');
+    const list = root.dataset.newsListTarget
+      ? document.querySelector(root.dataset.newsListTarget)
+      : root.querySelector('[data-news-list]');
     const api = root.dataset.newsApi;
     const view = root.dataset.newsView;
     if (!button || !list || !api || (view === 'list' && Number(root.dataset.newsPage) !== 1)) return;
@@ -43,7 +45,7 @@
     let baselineReady = false;
     let busy = false;
     let pendingTotal = null;
-    const seen = new Set(Array.from(root.querySelectorAll('[data-news-article]'))
+    const seen = new Set(Array.from(list.querySelectorAll('[data-news-article]'))
       .map((article) => String(article.dataset.newsId || '')).filter(Boolean));
     const pending = new Map();
     const query = new URLSearchParams({ page: '1' });
@@ -175,7 +177,7 @@
     button.addEventListener('click', () => {
       if (!pending.size) return;
       const arrivals = Array.from(pending.values()).sort((a, b) => timestamp(b) - timestamp(a));
-      const existingIds = new Set(Array.from(root.querySelectorAll('[data-news-article]'))
+      const existingIds = new Set(Array.from(list.querySelectorAll('[data-news-article]'))
         .map((article) => String(article.dataset.newsId || '')).filter(Boolean));
       const additions = arrivals.filter((article) => !existingIds.has(keyFor(article)));
       list.querySelector('.panel.empty')?.remove();
