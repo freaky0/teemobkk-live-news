@@ -65,6 +65,7 @@
       <a class="btn home-news-more" href="{% url 'news-list' %}">뉴스 전체</a>
     </div>
     <p class="meta home-news-intro">공개 조건을 충족한 뉴스 · 최신 발행순</p>
+    <button class="news-live-update" type="button" data-news-live data-news-update data-news-view="home" data-news-api="{% url 'news-api-list' %}" data-news-detail-template="{% url 'news-detail' 'news-placeholder' %}" data-news-since="{% if news_page.items %}{{ news_page.items.0.published_at|date:'c' }}{% endif %}" data-news-limit="5" data-news-list-target=".home-news-list" hidden aria-live="polite" aria-atomic="true"></button>
     <div class="news-list home-news-list">
       {% if news_error %}
       <div class="panel"><p role="status">{{ news_error }}</p></div>
@@ -136,4 +137,5 @@
     </ul>
   </div>
 </section>
+<script src="{% static 'news-unread.js' %}" defer></script>
 {% endblock %}
