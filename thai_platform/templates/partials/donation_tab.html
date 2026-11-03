@@ -1,0 +1,31 @@
+<style>
+#donate-peek{position:fixed;right:0;bottom:calc(74px + env(safe-area-inset-bottom,0px));z-index:80;transform:translateX(50%);visibility:hidden;opacity:0;pointer-events:none;transition:transform .22s cubic-bezier(.2,.8,.2,1),opacity .16s ease,visibility .16s}
+#donate-peek.is-visible{visibility:visible;opacity:1;pointer-events:auto}
+#donate-peek.is-visible:hover,#donate-peek.is-visible:focus-within{transform:translateX(0)}
+#donate-peek a{display:flex;align-items:center;gap:9px;box-sizing:border-box;width:164px;min-height:54px;padding:0 16px;border:1px solid var(--color-border-default,#d0dde6);border-right:0;border-left:3px solid var(--color-accent-warm,#ffc347);border-radius:8px 0 0 8px;background:var(--color-bg-surface,#fff);color:var(--color-text-primary,#14304d);font:inherit;font-size:14px;line-height:1.2;font-weight:700;text-decoration:none;white-space:nowrap;box-shadow:0 8px 28px rgba(0,0,0,.2)}
+#donate-peek a:hover{text-decoration:none}
+#donate-peek .donate-peek-icon{font-size:18px;line-height:1;color:var(--color-accent-warm,#ffc347)}
+#donate-peek a:focus-visible{outline:3px solid var(--color-focus-ring,#b16b00);outline-offset:3px}
+#donate-bottom-sentinel{display:block;width:1px;height:1px}
+#donate-dialog{width:min(440px,calc(100% - 24px));border:1px solid var(--color-border-default,#d0dde6);border-radius:14px;background:var(--color-bg-surface,#fff);color:var(--color-text-primary,#14304d);padding:0;box-shadow:0 24px 80px rgba(0,0,0,.28)}
+#donate-dialog::backdrop{background:var(--color-surface-backdrop,#122b42aa)}
+#donate-dialog .donate-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 20px;border-bottom:1px solid var(--color-border-default,#d0dde6)}
+#donate-dialog .donate-dialog-head p{margin:0;font-size:1.05rem;font-weight:800}
+#donate-dialog .donate-dialog-head button{min-height:44px;padding:8px 12px;border:1px solid var(--color-border-default,#d0dde6);border-radius:8px;background:var(--color-bg-surface,#fff);color:inherit;font-weight:700}
+#donate-dialog .donate-body{display:grid;gap:16px;padding:18px 20px 20px}
+#donate-dialog .donate-qr{display:block;width:min(100%,280px);aspect-ratio:1;object-fit:contain;margin:0 auto;background:#fff;border-radius:8px}
+#donate-dialog .donate-bank{padding:12px 14px;border:1px solid var(--color-border-default,#d0dde6);border-radius:9px;background:var(--color-bg-subtle,#eaf4fa)}
+#donate-dialog .donate-bank p{margin:0}
+#donate-dialog .donate-bank-name{margin-bottom:4px;color:var(--color-text-muted,#53677a);font-size:.8rem}
+@media(min-width:601px){#donate-peek{bottom:calc(18px + env(safe-area-inset-bottom,0px))}}
+@media(prefers-reduced-motion:reduce){#donate-peek{transition:none}}
+</style>
+<div id="donate-peek"><a href="#donate-dialog" aria-label="TeemoBKK 후원하기"><span class="donate-peek-icon" aria-hidden="true">♥</span><span>후원하기</span></a></div>
+<span id="donate-bottom-sentinel" aria-hidden="true"></span>
+<dialog id="donate-dialog" aria-labelledby="donate-title">
+  <div class="donate-dialog-head"><p id="donate-title">TeemoBKK 후원</p><form method="dialog"><button aria-label="후원 창 닫기">닫기</button></form></div>
+  <div class="donate-body"><img class="donate-qr" src="https://teemobkk.io/assets/donate-qr.jpg" alt="PromptPay 후원 QR 코드"><div class="donate-bank"><p class="donate-bank-name">Bangkok Bank</p><p><strong>926-0-280236</strong></p></div></div>
+</dialog>
+<script>
+(function(){function init(){var tab=document.getElementById("donate-peek"),sentinel=document.getElementById("donate-bottom-sentinel"),link=tab&&tab.querySelector("a");if(!tab||!sentinel||!link)return;var show=function(value){tab.classList.toggle("is-visible",value)};if("IntersectionObserver" in window){new IntersectionObserver(function(entries){show(entries.some(function(entry){return entry.isIntersecting}))},{threshold:0}).observe(sentinel)}else{var update=function(){var rect=sentinel.getBoundingClientRect();show(rect.top<window.innerHeight&&rect.bottom>=0)};window.addEventListener("scroll",update,{passive:true});window.addEventListener("resize",update);update()}document.querySelectorAll('a[href="#donate-dialog"]').forEach(function(trigger){trigger.addEventListener("click",function(event){var dialog=document.getElementById("donate-dialog");if(!dialog)return;event.preventDefault();if(!dialog.open)dialog.showModal()})})}if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",init,{once:true})}else{init()}})();
+</script>

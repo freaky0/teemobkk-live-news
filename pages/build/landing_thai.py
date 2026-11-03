@@ -396,4 +396,4 @@ def render_thai_landing() -> str:
     page = page.replace("__LABELS__", _json(labels))
     page = page.replace("__CAT_IMGS__", _json(CAT_IMGS))
     page = page.replace("__DONATION__", theme.donation_dialog())
-    return page
+    return theme.with_donation(page)
