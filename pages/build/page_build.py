@@ -613,7 +613,7 @@ function renderFeed(){
     ? all.length>view.length
     : (DATA.has_more&&(CFG.lang==='en'&&V.language==='en'||view.length>=V.limit)));
   const pend=PENDING[region()]||0,np=document.querySelector('#newpill');
-  if(pend>0){np.textContent=fmt('새 글 {n}건 보기',pend);np.dataset.show='1'}
+  if(pend>0){np.textContent=fmt('새 뉴스 {n}건 보기',pend);np.dataset.show='1'}
   else{np.dataset.show='0';np.textContent=''}
 }
 function skeleton(){

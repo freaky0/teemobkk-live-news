@@ -131,8 +131,16 @@ def news_comment_create(request,article_id):
 def api_list(request):
     page=request_page(request)
     query=request.GET.get('q','').strip()[:200]
+    category=request.GET.get('category','').strip()[:200]
+    region_group=request.GET.get('region','').strip()[:32]
     try:
-        result=news.list_articles(page=page,query=query)
+        result=news.list_articles(
+            page=page,
+            query=query,
+            category=category,
+            region_group=region_group,
+            include_categories=bool(category),
+        )
     except news.NewsUnavailable:
         return Response({'detail':NOTICE},status=503)
     return Response({'count':result.total,'page':result.page,'page_size':result.page_size,'has_next':result.has_next,'results':result.items})

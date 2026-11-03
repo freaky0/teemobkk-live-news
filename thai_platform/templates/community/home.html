@@ -59,13 +59,14 @@
 </section>{% endif %}
 
 <div class="grid home-content-grid">
-  <section class="section home-news" aria-labelledby="home-news-title">
+  <section class="section home-news" aria-labelledby="home-news-title" data-news-live data-news-view="home" data-news-api="{% url 'news-api-list' %}" data-news-detail-template="{% url 'news-detail' 'news-placeholder' %}" data-news-since="{% if news_page.items %}{{ news_page.items.0.published_at|date:'c' }}{% endif %}" data-news-limit="5">
     <div class="section-head home-section-head">
       <h2 id="home-news-title">태국 주요 소식</h2>
       <a class="btn home-news-more" href="{% url 'news-list' %}">뉴스 전체</a>
     </div>
     <p class="meta home-news-intro">공개 조건을 충족한 뉴스 · 최신 발행순</p>
-    <div class="news-list home-news-list">
+    <button class="news-live-update" type="button" data-news-update hidden aria-live="polite" aria-atomic="true"></button>
+    <div class="news-list home-news-list" data-news-list>
       {% if news_error %}
       <div class="panel"><p role="status">{{ news_error }}</p></div>
       {% else %}
@@ -136,4 +137,5 @@
     </ul>
   </div>
 </section>
+<script src="{% static 'news-unread.js' %}" defer></script>
 {% endblock %}
