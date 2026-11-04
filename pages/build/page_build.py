@@ -32,6 +32,7 @@ if str(_REPO_ROOT) not in sys.path:
 
 
 import datetime
+import hashlib
 import html
 import io
 import json
@@ -242,6 +243,18 @@ function termMatch(text,needle){
   return false}
 function catList(a){const c=a.categories;return (Array.isArray(c)&&c.length)?c:(a.category?[a.category]:[])}
 function storyHref(value){try{const u=new URL(String(value||''),location.href);return u.protocol==='http:'||u.protocol==='https:'?u.href:''}catch(e){return ''}}
+function newsroomHref(article){const id=String(article&&article.article_id||'');return /^[a-f0-9]{64}$/.test(id)?'/thai/newsroom/'+id+'/':''}
+async function ensureNewsroomIds(items){
+  if(CFG.admin||!Array.isArray(items)||!window.crypto||!crypto.subtle)return items||[];
+  await Promise.all(items.map(async article=>{
+    if(!article||/^[a-f0-9]{64}$/.test(String(article.article_id||'')))return;
+    const link=String(article.link||'');if(!link)return;
+    try{
+      const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(link));
+      article.article_id=Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join('');
+    }catch(e){}
+  }));
+  return items}
 function briefingKey(){return region()+'|'+String(V.hours)}
 function loadBriefingRows(){
   if(PUBLIC)return Promise.resolve(articles());
@@ -251,7 +264,7 @@ function loadBriefingRows(){
   const query=new URLSearchParams({region:region(),hours:String(V.hours),limit:'300',offset:'0'});
   BRIEF_PENDING[key]=getJSON(API+'/api/news?'+query.toString()).then(data=>{
     const rows=Array.isArray(data.articles)?data.articles:[];
-    BRIEF_CACHE[key]={at:Date.now(),items:rows};return rows
+    return ensureNewsroomIds(rows).then(items=>{BRIEF_CACHE[key]={at:Date.now(),items};return items})
   }).catch(()=>articles()).then(rows=>{delete BRIEF_PENDING[key];return rows});
   return BRIEF_PENDING[key]}
 function briefingDate(value){const d=new Date(value);if(!Number.isFinite(d.getTime()))return CFG.briefing.timeUnknown;
@@ -287,11 +300,12 @@ function renderBriefing(){
   list.innerHTML='<li class="brief"><div><p class="btitle">'+esc(CFG.briefing.briefingEmpty)+'</p></div></li>';
     if(source)source.textContent=CFG.briefing.briefingNoEligible;return}
   list.innerHTML=items.map(a=>{
-    const href=storyHref(a.original_link||a.link),title=esc(cleanTitle(a.title,a.source)),summary=esc(a.summary||'');
+    const internal=CFG.admin?'':newsroomHref(a);
+    const href=internal||storyHref(a.original_link||a.link),target=internal?'':' target="_blank" rel="noopener nofollow"',title=esc(cleanTitle(a.title,a.source)),summary=esc(a.summary||'');
     const cats=catList(a).map(catLabel).join(' · ');
     const note=a.picked&&a.pick_note?'<p class="bnote">'+esc(a.pick_note)+'</p>':'';
     return '<li class="brief'+(a.picked?' picked':'')+'"><div>'+
-      '<p class="btitle">'+(href?'<a href="'+esc(href)+'" target="_blank" rel="noopener nofollow">'+title+'</a>':title)+'</p>'+
+      '<p class="btitle">'+(href?'<a href="'+esc(href)+'"'+target+'>'+title+'</a>':title)+'</p>'+
       (summary?'<p class="bsum">'+summary+'</p>':'')+note+
       '<p class="bmeta"><span>'+esc(srcLabel(a))+'</span><span>'+briefingDate(a.published_at)+'</span>'+
       (cats?'<span>'+esc(cats)+'</span>':'')+(a.picked?'<span class="tag-pick">'+esc(CFG.briefing.briefingPickedTag)+'</span>':'')+'</p>'+
@@ -381,9 +395,14 @@ function card(a,th,lead,first,last){
       '<button type="button" class="'+srcCls+'" data-k="src" data-v="'+esc(a.source)+'" aria-pressed="'+(srcOn?'true':'false')+'">'+esc(srcLabel(a))+'</button>'+
       catList(a).map(v=>{const on=tag.k==='cat'&&tag.v===v;
         return '<button type="button" class="chip tap'+(on?' on':'')+'" data-k="cat" data-v="'+esc(v)+'" aria-pressed="'+(on?'true':'false')+'">'+esc(catLabel(v))+'</button>'}).join('');
-  const href=storyHref(a.original_link||a.link);
-  const title=href?'<a href="'+esc(href)+'" target="_blank" rel="noopener nofollow">'+hl(cleanTitle(view.title,a.source))+'</a>':hl(cleanTitle(view.title,a.source));
-  const actions=CFG.admin?cardActs(a):(href?'<div class="acts"><a class="open" href="'+esc(href)+'" target="_blank" rel="noopener nofollow">'+esc(CFG.briefing.openOriginal)+' ↗</a></div>':'');
+  const internal=CFG.admin?'':newsroomHref(a);
+  const href=internal||storyHref(a.original_link||a.link),target=internal?'':' target="_blank" rel="noopener nofollow"';
+  const title=href?'<a href="'+esc(href)+'"'+target+'>'+hl(cleanTitle(view.title,a.source))+'</a>':hl(cleanTitle(view.title,a.source));
+  const openLabel=CFG.lang==='en'?'Read article':CFG.lang==='th'?'อ่านข่าว':'본문 보기';
+  const original=storyHref(a.original_link||a.link);
+  const sourceLink=original?'<a class="open" href="'+esc(original)+'" target="_blank" rel="noopener nofollow">'+esc(CFG.briefing.openOriginal)+' ↗</a>':'';
+  const actions=CFG.admin?cardActs(a):(internal?'<div class="acts"><a class="open" href="'+esc(internal)+'">'+openLabel+'</a>'+sourceLink+'</div>':
+    (href?'<div class="acts"><a class="open" href="'+esc(href)+'" target="_blank" rel="noopener nofollow">'+esc(CFG.briefing.openOriginal)+' ↗</a></div>':''));
   return '<article class="card timeline-row'+(th?' th':'')+(a.fresh?' new':'')+(lead?' lead':'')+
       (first?' first-in-day':'')+(last?' last-in-day':'')+'">'+
     '<p class="t"><time datetime="'+esc(a.published_at||'')+'">'+ictClock(a.published_at)+'</time></p>'+
@@ -645,7 +664,7 @@ function regionFile(suffix){return DATADIR+(region()==='태국'?'thai':'global')
 function regionMeta(){return (INDEX.regions||{})[region()]||{}}
 async function loadFull(){
   const payload=await getJSON(regionFile('.json'));
-  MEM[region()]=payload.articles||[];LATEST[region()]=MEM[region()];FULL[region()]=true;
+  MEM[region()]=await ensureNewsroomIds(payload.articles||[]);LATEST[region()]=MEM[region()];FULL[region()]=true;
   const meta=regionMeta();SEEN[region()]={stamp:meta.stamp,recent_stamp:meta.recent_stamp};
   renderPills();renderFeed()}
 
@@ -659,7 +678,7 @@ async function loadPublic(force){
   const key=FULL[region()]?'stamp':'recent_stamp';
   if(!force&&seen&&seen[key]&&meta[key]===seen[key]){renderPills();renderFeed();return}
   const payload=await getJSON(regionFile(FULL[region()]?'.json':'-recent.json'));
-  const fresh=payload.articles||[],current=MEM[region()];
+  const fresh=await ensureNewsroomIds(payload.articles||[]),current=MEM[region()];
   if(current&&current.length&&!FULL[region()]){
     const links=new Set(current.map(a=>a.link));
     LATEST[region()]=fresh;
@@ -995,7 +1014,8 @@ async function fetchLocal(){
   if(!r.ok)throw Error(r.status);
   return r.json()}
 
-function applyLocal(fresh){
+async function applyLocal(fresh){
+  fresh.articles=await ensureNewsroomIds(fresh.articles||[]);
   if(V.offset>0&&(DATA.articles||[]).length)fresh.articles=(DATA.articles||[]).concat(fresh.articles||[]);
   const before=(DATA.articles||[]).length?String(DATA.articles[0].published_at||''):'';
   if(before&&V.offset===0)(fresh.articles||[]).forEach(a=>{
@@ -1021,7 +1041,7 @@ async function fetchFeed(){
   try{fresh=await fetchLocal()}
   catch(e){document.querySelector('#state')&&(document.querySelector('#state').textContent='재시도 중');
     renderFeed();return}
-  applyLocal(fresh)}
+  await applyLocal(fresh)}
 function offline(){
   if(!articles().length){
     setStamp('연결 실패');
@@ -1473,6 +1493,14 @@ def _clean_title(title: object) -> str:
     return re.sub(r"\s+", " ", re.sub(r"\s+-\s+[^-]+$", "", text)).strip()
 
 
+def _newsroom_href(item: dict) -> str:
+    link = str(item.get("link") or "")
+    if not link:
+        return ""
+    article_id = hashlib.sha256(link.encode("utf-8")).hexdigest()
+    return "/thai/newsroom/" + article_id + "/"
+
+
 def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str:
     rows = []
     labels = ui_text.cat_labels(lang)
@@ -1511,9 +1539,12 @@ def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str
             '<span class="chip">' + html.escape(labels.get(name, name)) + '</span>'
             for name in _seed_labels(item))
         badge = _pick_badge(item)
-        href = str(item.get("original_link") or item.get("link") or "")
-        if not href.startswith(("https://", "http://")):
-            href = ""
+        detail_href = _newsroom_href(item)
+        source_href = str(item.get("original_link") or item.get("link") or "")
+        if not source_href.startswith(("https://", "http://")):
+            source_href = ""
+        href = detail_href or source_href
+        target = "" if detail_href else ' target="_blank" rel="noopener nofollow"'
         stamp = _ict_stamp(published, lang)
         clock = stamp[-5:] if len(stamp) >= 5 else stamp
         long_summary = len(summary) > 220
@@ -1523,8 +1554,13 @@ def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str
             + '" aria-label="' + html.escape(expand_label + ': ' + title, quote=True)
             + '" aria-expanded="false">' + html.escape(expand_label) + '</button>'
             if long_summary else "") + (
-            '<a class="open" href="' + html.escape(href, quote=True) +
-            '" target="_blank" rel="noopener nofollow">' + original_label + ' ↗</a>'
+            ('<a class="open" href="' + html.escape(detail_href, quote=True) + '">' +
+             {"ko": "본문 보기", "en": "Read article", "th": "อ่านข่าว"}.get(lang, "본문 보기") + '</a>'
+             + ('<a class="open" href="' + html.escape(source_href, quote=True) +
+                '" target="_blank" rel="noopener nofollow">' + original_label + ' ↗</a>' if source_href else '')
+             if detail_href else
+             '<a class="open" href="' + html.escape(source_href, quote=True) + '"' + target + '>' +
+             original_label + ' ↗</a>')
             if href else "") + '</div>'
         rows.append(
             '<article class="card seed timeline-row' + (" th" if want_thai else "") + '">'
@@ -1534,7 +1570,7 @@ def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str
             + _seed_status(item, lang) + chips
             + '</p>' + badge +
             '<h2 class="title"' + title_attr + '>'
-            + (('<a href="' + html.escape(href, quote=True) + '" target="_blank" rel="noopener nofollow">')
+            + (('<a href="' + html.escape(href, quote=True) + '"' + target + '>')
                if href else "") + html.escape(title) + ('</a>' if href else "") + '</h2>'
             + ('<div class="summary clamp"' if long_summary else '<div class="summary"')
             + summary_attr + '>' + html.escape(summary) + '</div>' + original_html + actions + '</div></article>')
@@ -1584,17 +1620,20 @@ def _seed_briefing(items: list[dict], lang: str = "ko") -> tuple[str, str]:
     rows = []
     for item in selected:
         title = _clean_title(item.get("title"))
-        link = str(item.get("original_link") or item.get("link") or "")
-        if not link.startswith(("https://", "http://")):
-            link = ""
+        detail_href = _newsroom_href(item)
+        source_href = str(item.get("original_link") or item.get("link") or "")
+        if not source_href.startswith(("https://", "http://")):
+            source_href = ""
+        link = detail_href or source_href
+        target = "" if detail_href else ' target="_blank" rel="noopener nofollow"'
         title_attr = _lang_attr(taxonomy.detect_lang(title))
         summary = str(item.get("summary") or "")
         summary_attr = _lang_attr(taxonomy.detect_lang(summary))
         categories = " · ".join(labels.get(name, name) or name for name in _seed_labels(item))
         note = ('<p class="bnote">' + html.escape(str(item.get("pick_note") or "")) + '</p>'
                 if item.get("picked") and item.get("pick_note") else "")
-        linked_title = ('<a href="' + html.escape(link, quote=True)
-                        + '" target="_blank" rel="noopener nofollow">' + html.escape(title) + '</a>'
+        linked_title = ('<a href="' + html.escape(link, quote=True) + '"' + target
+                        + '>' + html.escape(title) + '</a>'
                         if link else html.escape(title))
         rows.append(
             '<li class="brief' + (' picked' if item.get("picked") else '') + '"><div><p class="btitle"' + title_attr + '>' + linked_title + '</p>'
