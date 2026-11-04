@@ -2,17 +2,17 @@
 {% block title %}{{ seo_title }}{% endblock %}
 {% block social_meta %}
 <link rel="canonical" href="{{ canonical_url }}">
-<meta name="description" content="{{ article.summary|striptags|truncatechars:160 }}">
+<meta name="description" content="{{ summary_preview|striptags|truncatechars:160 }}">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="TeemoBKK POST">
 <meta property="og:title" content="{{ seo_title }}">
-<meta property="og:description" content="{{ article.summary|striptags|truncatechars:160 }}">
+<meta property="og:description" content="{{ summary_preview|striptags|truncatechars:160 }}">
 <meta property="og:url" content="{{ canonical_url }}">
 <meta property="og:image" content="{% if article.image_url %}{{ article.image_url }}{% else %}{{ share_image_url }}{% endif %}">
 <meta property="og:image:alt" content="{% if article.image_url %}{{ article.title }}{% else %}방콕을 여행하는 TEEMOBKK 고양이와 태국 소식{% endif %}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{{ seo_title }}">
-<meta name="twitter:description" content="{{ article.summary|striptags|truncatechars:160 }}">
+<meta name="twitter:description" content="{{ summary_preview|striptags|truncatechars:160 }}">
 <meta name="twitter:image" content="{% if article.image_url %}{{ article.image_url }}{% else %}{{ share_image_url }}{% endif %}">
 {% endblock %}
 {% block content %}
@@ -20,19 +20,27 @@
 <article class="news-detail panel" itemscope itemtype="https://schema.org/NewsArticle">
   <meta itemprop="mainEntityOfPage" content="{{ canonical_url }}">
   <meta itemprop="datePublished" content="{{ article.published_at|date:'c' }}">
-  <meta itemprop="description" content="{{ article.summary|striptags|truncatechars:160 }}">
+  <meta itemprop="description" content="{{ summary_preview|striptags|truncatechars:160 }}">
   <meta itemprop="image" content="{% if article.image_url %}{{ article.image_url }}{% else %}{{ share_image_url }}{% endif %}">
   {% if article.video_kind == 'file' %}<div class="news-video-frame"><video class="news-video-player" controls playsinline preload="none" aria-label="{{ article.title }} 동영상"{% if article.image_url %} poster="{{ article.image_url }}"{% endif %}><source src="{{ article.video_url }}">이 브라우저는 동영상 재생을 지원하지 않습니다.</video></div>{% elif article.video_kind == 'embed' %}<div class="news-video-frame"><iframe src="{{ article.video_embed_url }}" title="{{ article.title }} 동영상" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>{% elif article.image_url %}<img class="news-image news-detail-image" src="{{ article.image_url }}" alt="" decoding="async" referrerpolicy="no-referrer">{% endif %}
   <div class="news-meta"><span class="tag">{{ article.category|default:'태국 소식' }}</span><time datetime="{{ article.published_at|date:'c' }}">{{ article.published_at|date:'Y.m.d H:i' }} ICT</time></div>
   <h1 itemprop="headline">{{ article.title }}</h1>
   <a class="news-source" href="{{ article.source_url }}" target="_blank" rel="noopener noreferrer">{{ article.source }} · 원문 보기 ↗</a>
-  <div class="news-body" itemprop="articleBody">{{ article.summary|linebreaks }}</div>
-  <p class="note">기존 뉴스 DB의 한국어 제목과 요약입니다. 기사 전체 본문이 아닙니다. 발행 시각은 ICT 기준입니다.</p>
+  <div class="news-body" itemprop="articleBody">
+    {{ summary_preview|linebreaks }}
+    {% if has_summary_continuation %}
+    <div class="news-continuation-teaser" aria-label="기사 이어보기">
+      <span class="news-continuation-ellipsis" aria-hidden="true">···</span>
+      <p>이어서 기사 내용을 확인하려면 로그인하세요.</p>
+    </div>
+    {% endif %}
+  </div>
+  <p class="note">{% if user.is_authenticated %}뉴스 DB의 한국어 요약입니다. 기사 전문은 원문 보기에서 확인하세요.{% elif has_summary_continuation %}뉴스 DB의 한국어 요약 일부입니다. 로그인하면 요약의 나머지 부분을 이어서 볼 수 있습니다. 기사 전문은 원문 보기에서 확인하세요.{% else %}뉴스 DB의 한국어 요약입니다. 기사 전문은 원문 보기에서 확인하세요.{% endif %} 발행 시각은 ICT 기준입니다.</p>
   <div class="news-engagement" data-news-actions aria-label="기사 반응">
     {% if user.is_authenticated %}<form method="post" action="{% url 'news-like-toggle' article.id %}">{% csrf_token %}<button class="btn{% if liked_by_user %} primary{% endif %}" type="submit" aria-pressed="{{ liked_by_user|yesno:'true,false' }}">{% if liked_by_user %}♥{% else %}♡{% endif %} 좋아요 {{ like_count }}</button></form>{% else %}<a class="btn" href="{% url 'member-login' %}?next={{ request.path|urlencode }}">♡ 좋아요 {{ like_count }} · 로그인</a>{% endif %}
     <button class="btn" type="button" data-share-article data-share-title="{{ article.title }}">공유하기</button>
     <a class="btn" href="{{ back_url }}">뉴스 목록</a>
-    <a class="btn primary" href="{% url 'post-create' %}">{% if user.is_authenticated %}이웃에게 질문하기{% else %}로그인 후 질문하기{% endif %}</a>
+    {% if user.is_authenticated %}<a class="btn primary" href="{% url 'post-create' %}">이웃에게 질문하기</a>{% elif has_summary_continuation %}<a class="btn primary" href="{% url 'member-login' %}?next={{ request.path|urlencode }}">로그인 후 기사 계속 보기</a>{% else %}<a class="btn primary" href="{% url 'member-login' %}?next={{ request.path|urlencode }}">로그인 후 의견 나누기</a>{% endif %}
   </div>
   <span class="share-status" data-share-status role="status" aria-live="polite"></span>
 </article>
