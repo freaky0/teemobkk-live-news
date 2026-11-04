@@ -199,12 +199,19 @@
       const rows = view === 'home'
         ? Array.from(list.children).filter((node) => node.classList.contains('home-news-card'))
         : Array.from(list.children).filter((node) => node.matches('[data-news-article]'));
-      rows.slice(limit).forEach((node) => node.remove());
-      if (view === 'home') rows.slice(0, limit).forEach((node, index) => node.classList.toggle('is-featured', index === 0));
+      if (view === 'home') {
+        rows.slice(limit).forEach((node) => node.remove());
+        rows.slice(0, limit).forEach((node, index) => node.classList.toggle('is-featured', index === 0));
+      }
 
       if (pendingTotal != null) {
         const count = document.querySelector('[data-news-count]');
-        if (count) count.textContent = `${pendingTotal}개 기사 · 1페이지`;
+        if (count) {
+          count.dataset.total = String(pendingTotal);
+          count.textContent = view === 'list'
+            ? `${list.querySelectorAll('[data-news-article]').length.toLocaleString('ko-KR')} / ${Number(pendingTotal).toLocaleString('ko-KR')}개 기사 표시 중`
+            : `${pendingTotal}개 기사 · 1페이지`;
+        }
       }
       additions.forEach((article) => {
         const time = timestamp(article);
