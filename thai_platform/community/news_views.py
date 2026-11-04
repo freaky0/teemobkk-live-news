@@ -48,10 +48,38 @@ def listing(request):
     )
 
 
+def _summary_preview(summary, authenticated):
+    text=str(summary or '').strip()
+    if authenticated or len(text)<=100:
+        return text,False
+
+    limit=min(220,max(50,len(text)//2))
+    if len(text)-limit<60:
+        limit=max(50,len(text)-60)
+    sentence_end=max(
+        text.rfind('. ',0,limit),
+        text.rfind('! ',0,limit),
+        text.rfind('? ',0,limit),
+        text.rfind('。',0,limit),
+    )
+    if sentence_end>=int(limit*.6) and len(text)-(sentence_end+1)>=60:
+        limit=sentence_end+1
+    else:
+        word_end=text.rfind(' ',0,limit)
+        if word_end>=int(limit*.7):
+            limit=word_end
+    return text[:limit].rstrip(),True
+
+
 def _detail_context(request, article, back_url, comment_form=None):
     article_id=article['id']
+    summary_preview,has_summary_continuation=_summary_preview(
+        article.get('summary',''),request.user.is_authenticated,
+    )
     return {
         'article':article,
+        'summary_preview':summary_preview,
+        'has_summary_continuation':has_summary_continuation,
         'back_url':back_url,
         'like_count':NewsLike.objects.filter(article_id=article_id).count(),
         'liked_by_user':request.user.is_authenticated and NewsLike.objects.filter(article_id=article_id,user=request.user).exists(),
