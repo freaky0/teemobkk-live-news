@@ -77,7 +77,7 @@ def open_news():
             conn.close()
 
 
-def visibility(conn):
+def visibility(conn, region='태국'):
     required={'articles','hidden_links','settings','filter_rules','filter_hits','filter_keeps'}
     tables={r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     if not required.issubset(tables):
@@ -101,7 +101,7 @@ def visibility(conn):
         'NOT EXISTS (SELECT 1 FROM hidden_links h WHERE h.link=a.link)',
         'NOT EXISTS (SELECT 1 FROM filter_hits h JOIN filter_rules r ON r.id=h.rule_id WHERE h.link=a.link AND r.enabled=1 AND NOT EXISTS (SELECT 1 FROM filter_keeps k WHERE k.link=a.link))',
     ]
-    params=['태국',(now-timedelta(days=30)).isoformat(),(now+timedelta(minutes=1)).isoformat()]
+    params=[region,(now-timedelta(days=30)).isoformat(),(now+timedelta(minutes=1)).isoformat()]
     if off:
         conditions.append('a.source NOT IN ('+','.join('?' for _ in off)+')')
         params.extend(off)
@@ -149,6 +149,10 @@ REGION_ALIASES = {
 
 def projection_fields(conn):
     columns={row['name'] for row in conn.execute('PRAGMA table_info(articles)')}
+    source_url=(
+        "CASE WHEN safe_url(a.original_link)=1 THEN a.original_link ELSE a.link END AS source_url"
+        if 'original_link' in columns else 'a.link AS source_url'
+    )
     if 'image_url' in columns:
         image="CASE WHEN safe_url(a.image_url)=1 AND lower(a.image_url) LIKE 'https://%' THEN a.image_url ELSE '' END AS image_url"
     else:
@@ -157,7 +161,7 @@ def projection_fields(conn):
         video="CASE WHEN safe_url(a.video_url)=1 AND lower(a.video_url) LIKE 'https://%' THEN a.video_url ELSE '' END AS video_url"
     else:
         video="'' AS video_url"
-    return FIELDS+','+image+','+video
+    return FIELDS+','+source_url+','+image+','+video
 
 
 def project_video(value):
@@ -202,7 +206,7 @@ def project(row):
         'source':(row['original_source'] or row['source'] or '').strip(),
         'category':(row['category'] or '').strip(),
         'published_at':published,
-        'source_url':row['link'],
+        'source_url':row['source_url'],
         'image_url':row['image_url'] or '',
         'video_kind':video['kind'],
         'video_url':video['url'],
@@ -259,11 +263,20 @@ def get_article(article_id):
         return None
     with open_news() as conn:
         conn.execute('BEGIN')
-        conditions,params=visibility(conn)
         fields=projection_fields(conn)
-        conditions.append('public_id(a.link)=?')
-        row=conn.execute('SELECT '+fields+' FROM articles a WHERE '+' AND '.join(conditions),params+[article_id]).fetchone()
-        return project(row) if row else None
+        # The same database contains Thai-local and root/global news. The newsroom
+        # listing stays Thai-focused, while a root story can reuse this member detail
+        # page, likes, and comments through its stable public ID.
+        for region in ('태국','글로벌'):
+            conditions,params=visibility(conn,region=region)
+            conditions.append('public_id(a.link)=?')
+            row=conn.execute(
+                'SELECT '+fields+' FROM articles a WHERE '+' AND '.join(conditions),
+                params+[article_id],
+            ).fetchone()
+            if row:
+                return project(row)
+        return None
 
 
 def sitemap_article_count():
