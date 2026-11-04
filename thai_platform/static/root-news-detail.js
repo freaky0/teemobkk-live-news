@@ -15,8 +15,8 @@
     if (!button) return;
     const dark = root.dataset.theme === 'dark';
     const label = dark ? '라이트 모드로 전환' : '다크 모드 켜기';
-    button.textContent = label;
     button.setAttribute('aria-label', label);
+    button.setAttribute('title', label);
     button.setAttribute('aria-pressed', String(dark));
   }
 
