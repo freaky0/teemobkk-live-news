@@ -52,6 +52,7 @@
     if (root.dataset.newsQuery) query.set('q', root.dataset.newsQuery);
     if (root.dataset.newsCategory) query.set('category', root.dataset.newsCategory);
     if (root.dataset.newsRegion) query.set('region', root.dataset.newsRegion);
+    if (root.dataset.newsFeed) query.set('feed', root.dataset.newsFeed);
     const url = `${api}?${query.toString()}`;
 
     const updateButton = () => {
@@ -119,8 +120,10 @@
       const heading = document.createElement('h3');
       const link = document.createElement('a');
       const detailHref = detailTemplate.replace('news-placeholder', encodeURIComponent(id));
-      const back = view === 'list' && window.location.search
-        ? `?from=${encodeURIComponent(window.location.search)}` : '';
+      const backQuery = new URLSearchParams(window.location.search);
+      if (root.dataset.newsFeed) backQuery.set('feed', root.dataset.newsFeed);
+      const back = view === 'list' && backQuery.size
+        ? `?from=${encodeURIComponent(`?${backQuery.toString()}`)}` : '';
       link.href = detailHref + back;
       link.textContent = article.title;
       heading.append(link);

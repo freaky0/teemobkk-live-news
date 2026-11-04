@@ -88,6 +88,7 @@ def sitemap_static_xml(request):
     return _xml_response(_urlset([
         ("/", None),
         ("/newsroom/", None),
+        ("/economic-news/", None),
         ("/community/", None),
     ]))
 
