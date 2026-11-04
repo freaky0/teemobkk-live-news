@@ -32,18 +32,23 @@
   </div>
   <p class="news-search-note">기사 제목과 한국어 요약에 나온 지역명을 기준으로 분류합니다.</p>
 </form>
-<p class="meta" data-news-count>{{ news_page.total }}개 기사 · {{ news_page.page }}페이지</p>
+<p class="meta" id="news-count" data-news-count data-total="{{ news_page.total }}">{{ news_page.items|length }} / {{ news_page.total }}개 기사 표시 중</p>
 <div data-news-live data-news-view="list" data-news-api="{% url 'news-api-list' %}" data-news-detail-template="{% url 'news-detail' 'news-placeholder' %}" data-news-since="{% if news_page.items %}{{ news_page.items.0.published_at|date:'c' }}{% endif %}" data-news-page="{{ news_page.page }}" data-news-query="{{ query }}" data-news-category="{{ category }}" data-news-region="{{ region_group }}" data-news-limit="20">
   <button class="news-live-update" type="button" data-news-update hidden aria-live="polite" aria-atomic="true"></button>
-  <section class="news-list" data-news-list aria-label="태국 뉴스 목록">
+  <section class="news-list" id="news-list" data-news-list aria-label="태국 뉴스 목록">
     {% for article in news_page.items %}{% include 'news/row.html' %}
     {% empty %}<div class="panel empty"><h2>표시할 뉴스가 없습니다.</h2><p>검색어 또는 지역을 바꾸거나 잠시 후 다시 확인해 주세요.</p></div>{% endfor %}
   </section>
 </div>
-<nav class="news-pagination" aria-label="뉴스 페이지 이동">
-  {% if news_page.has_previous %}<a class="btn" href="?q={{ query|urlencode }}&amp;category={{ category|urlencode }}&amp;region={{ region_group|urlencode }}&amp;page={{ news_page.page|add:'-1' }}">이전</a>{% endif %}
-  {% if news_page.has_next %}<a class="btn" href="?q={{ query|urlencode }}&amp;category={{ category|urlencode }}&amp;region={{ region_group|urlencode }}&amp;page={{ news_page.page|add:'1' }}">다음</a>{% endif %}
+<nav class="news-pagination" aria-label="뉴스 더 보기">
+  {% if news_page.has_next %}<a class="btn" id="news-load-more" data-label="더 보기" aria-controls="news-list" href="?q={{ query|urlencode }}&amp;category={{ category|urlencode }}&amp;region={{ region_group|urlencode }}&amp;page={{ news_page.page|add:'1' }}">더 보기</a>{% endif %}
 </nav>
+<p class="sr-only" id="news-load-status" role="status" aria-live="polite" aria-atomic="true"></p>
+<button class="news-back-to-top" id="news-back-to-top" type="button" aria-label="맨 위로" title="맨 위로" hidden>
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+  <span class="sr-only">맨 위로</span>
+</button>
 <aside class="news-followup"><div><strong>태국 생활에서 궁금한 점이 생겼나요?</strong><p>이웃에게 질문하고 실제 경험을 나눠 보세요.</p></div><a class="btn primary" href="{% url 'post-create' %}?category=questions">이웃에게 질문하기</a></aside>
-<script src="{% static 'news-unread.js' %}?v=news-alert-20261104" defer></script>
+<script src="{% static 'news-unread.js' %}?v=news-alert-20261104-infinite-scroll" defer></script>
+<script src="{% static 'news-load-more.js' %}?v=thai-news-load-more-20261104" defer></script>
 {% endblock %}
