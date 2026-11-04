@@ -6,6 +6,7 @@ from django.http import Http404
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
+from urllib.parse import urlsplit
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied as APIPermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny
@@ -71,8 +72,11 @@ def _summary_preview(summary, authenticated):
     return text[:limit].rstrip(),True
 
 
-def _detail_context(request, article, back_url, comment_form=None):
+def _detail_context(request, article, back_url, comment_form=None, root_news_layout=False):
     article_id=article['id']
+    detail_next_url=request.get_full_path()
+    if root_news_layout and request.GET.get('presentation')!='root':
+        detail_next_url+=('&' if '?' in detail_next_url else '?')+'presentation=root'
     summary_preview,has_summary_continuation=_summary_preview(
         article.get('summary',''),request.user.is_authenticated,
     )
@@ -85,7 +89,23 @@ def _detail_context(request, article, back_url, comment_form=None):
         'liked_by_user':request.user.is_authenticated and NewsLike.objects.filter(article_id=article_id,user=request.user).exists(),
         'comments':NewsComment.objects.filter(article_id=article_id,status=NewsComment.Status.PUBLISHED).select_related('author'),
         'comment_form':comment_form or NewsCommentForm(),
+        'root_news_layout':root_news_layout,
+        'detail_next_url':detail_next_url,
     }
+
+
+def _from_root_news_site(request):
+    referrer=request.META.get('HTTP_REFERER','')
+    try:
+        parsed=urlsplit(referrer)
+    except ValueError:
+        return False
+    if (parsed.scheme not in {'http','https'} or parsed.username or parsed.password
+            or parsed.netloc.lower()!=request.get_host().lower()):
+        return False
+    path=parsed.path.rstrip('/') or '/'
+    root_sections=('/news','/perspectives','/blog','/indicators','/tradingtalk','/lab')
+    return path=='/' or any(path==section or path.startswith(section+'/') for section in root_sections)
 
 
 def detail(request,article_id,comment_form=None,status=200):
@@ -95,14 +115,17 @@ def detail(request,article_id,comment_form=None,status=200):
         return render(request,'news/error.html',{'news_error':NOTICE},status=503)
     if not article:
         raise Http404
+    root_news_layout=request.GET.get('presentation')=='root' or _from_root_news_site(request)
     origin=request.GET.get('from','')
     news_url=reverse('news-list')
-    back_url=news_url+origin if origin.startswith('?') and len(origin)<2000 else news_url
+    back_url=('/news/' if root_news_layout else
+              news_url+origin if origin.startswith('?') and len(origin)<2000 else news_url)
     return render_seo(
         request,
         'news/detail.html',
-        _detail_context(request,article,back_url,comment_form),
-        title=f"{article['title']} | 태국 뉴스 | TeemoBKK POST",
+        _detail_context(request,article,back_url,comment_form,root_news_layout),
+        title=(f"{article['title']} | TeemoBKK" if root_news_layout else
+               f"{article['title']} | 태국 뉴스 | TeemoBKK POST"),
         description=article.get('summary', ''),
         status=status,
         allow_from=True,
@@ -114,6 +137,13 @@ def _require_active_member(user):
         services.require_active(user)
     except APIPermissionDenied as exc:
         raise PermissionDenied from exc
+
+
+def _detail_redirect(request, article_id):
+    url=reverse('news-detail',kwargs={'article_id':article_id})
+    if request.GET.get('presentation')=='root':
+        url+='?presentation=root'
+    return redirect(url)
 
 
 @login_required
@@ -132,7 +162,7 @@ def news_like_toggle(request,article_id):
         like.delete()
     else:
         NewsLike.objects.get_or_create(article_id=article_id,user=request.user)
-    return redirect('news-detail',article_id=article_id)
+    return _detail_redirect(request,article_id)
 
 
 @login_required
@@ -151,7 +181,7 @@ def news_comment_create(request,article_id):
         return detail(request,article_id,comment_form=form,status=400)
     NewsComment.objects.create(article_id=article_id,author=request.user,body=form.cleaned_data['body'])
     messages.success(request,'댓글을 등록했습니다.')
-    return redirect('news-detail',article_id=article_id)
+    return _detail_redirect(request,article_id)
 
 
 @api_view(['GET'])
