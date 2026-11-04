@@ -49,6 +49,10 @@ HEADER_CSS = ('.top{--bg:var(--ink,#171b19);position:sticky;top:var(--market-tic
               'border:0;background:rgba(242,242,241,.08);font-family:var(--sans,system-ui,sans-serif);'
               'font-size:13.5px;color:rgba(242,242,241,.88);white-space:nowrap;text-decoration:none}\n'
               '.site-switch:hover{background:rgba(62,207,142,.14);color:var(--accent-bright,#3ecf8e)}\n'
+              '.account-link{flex:0 0 auto;display:inline-flex;align-items:center;min-height:36px;padding:0 10px;'
+              'border:1px solid rgba(242,242,241,.2);color:rgba(242,242,241,.92);font-size:13.5px;'
+              'font-weight:650;white-space:nowrap;text-decoration:none}\n'
+              '.account-link:hover{border-color:var(--accent-bright,#3ecf8e);color:var(--accent-bright,#3ecf8e)}\n'
               '.theme-toggle{flex:0 0 auto;min-height:36px;padding:6px 12px;border-radius:2px;'
               'border:0;background:rgba(242,242,241,.08);color:rgba(242,242,241,.88);'
               'font-size:13.5px;font-weight:600;white-space:nowrap}\n'
@@ -59,8 +63,9 @@ HEADER_CSS = ('.top{--bg:var(--ink,#171b19);position:sticky;top:var(--market-tic
               '.nav.wrap{flex-wrap:wrap;gap:6px 12px;padding-block:10px;min-height:0}\n'
               '.top a.brand{order:1;flex:1 1 auto;min-width:0}\n'
               '.site-switch{order:2;min-height:44px}\n'
-              '.theme-toggle{order:3;margin-left:auto;min-height:44px}\n'
-              '.primary-nav{order:4;flex:1 0 100%;display:flex;flex-wrap:wrap;gap:4px 16px;'
+              '.account-link{order:3;min-height:44px}\n'
+              '.theme-toggle{order:4;margin-left:auto;min-height:44px}\n'
+              '.primary-nav{order:5;flex:1 0 100%;display:flex;flex-wrap:wrap;gap:4px 16px;'
               'overflow:visible;padding-bottom:2px}\n'
               '.primary-nav a{flex:0 0 auto;min-height:44px;font-size:13.5px}\n'
               '}\n'
@@ -71,12 +76,14 @@ HEADER_CSS = ('.top{--bg:var(--ink,#171b19);position:sticky;top:var(--market-tic
               '.primary-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;width:100%}\n'
               '.primary-nav a{justify-content:flex-start;padding-inline:2px;font-size:13.5px;min-height:44px}\n'
               '.site-switch{padding:0 9px;font-size:13.5px}\n'
+              '.account-link{padding:0 9px;font-size:13px}\n'
               '.theme-toggle{padding:6px 10px;font-size:13.5px}\n'
               '}\n'
               '@media(max-width:360px){\n'
               '.nav.wrap{padding-inline:12px;gap:6px 8px}\n'
               '.top .brand-word{font-size:18px}\n'
               '.site-switch{padding:0 8px;font-size:12px}\n'
+              '.account-link{padding:0 8px;font-size:12px}\n'
               '.theme-toggle{padding:0 8px;font-size:12px;margin-left:0}\n'
               '}')
 
@@ -229,12 +236,15 @@ def render_header(active: str = "", lang: str = "ko") -> str:
             '<a class="brand" href="/"%s><span class="brand-word">TeemoBKK</span></a>'
             '<nav class="primary-nav" aria-label="%s">%s</nav>'
             '<a class="site-switch" href="/thai/" title="%s">%s</a>'
+            '<a class="account-link" href="/thai/accounts/login/?next=/" title="%s">%s</a>'
             '<button class="theme-toggle" id="landing-theme-toggle" type="button" '
             'aria-label="%s" aria-pressed="false">%s</button>'
             '</div></header><script src="/assets/landing/mexc-ticker.js" defer></script>') % (
                 brand_current, "Main sections" if english else "주요 섹션", links,
                 "Opens the separate Thailand site" if english else "별도 사이트로 이동",
                 "Thailand news ↗" if english else "태국 뉴스 ↗",
+                "Sign in with your TeemoBKK account" if english else "태국 교민 사이트와 같은 계정으로 로그인",
+                "Log in" if english else "로그인",
                 theme_label, theme_label)
 
 

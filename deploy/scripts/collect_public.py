@@ -70,9 +70,8 @@ def public_row(row: dict[str, Any], cache: dict[str, str] | None = None) -> dict
     summary_ko = str(out.get("summary_ko") or "")
     if len(summary_ko) > SUMMARY_CHARS:
         out["summary_ko"] = summary_ko[:SUMMARY_CHARS].rstrip() + "…"
-    # What the reader clicks. A Google News row is published with the publisher's own URL beside the
-    # aggregator one, so the page can send a reader to the article instead of to the redirect - and a
-    # reader who lands on a story still sees the link the row is filed under.
+    # Keep a stable ID for the internal POST article detail route. A Google News row also carries
+    # its verified publisher URL so the reader can still open the original source from that detail.
     #
     # Three cases, in this order:
     #   * the current cache has a mapping - it wins, because it comes from Google's own answer;
@@ -83,6 +82,7 @@ def public_row(row: dict[str, Any], cache: dict[str, str] | None = None) -> dict
     #   * neither holds - the field is dropped, so an unverifiable or Google-pointing value can never
     #     be republished just because some earlier run wrote it.
     link = str(out.get("link") or "")
+    out["article_id"] = hashlib.sha256(link.encode("utf-8")).hexdigest() if link else ""
     published_before = str(out.get("original_link") or "")
     from_cache = str((cache or {}).get(link) or "")
     if google_news.valid_original(from_cache):
@@ -103,7 +103,14 @@ def read_articles(path: Path) -> list[dict[str, Any]]:
     except (OSError, json.JSONDecodeError):
         return []
     items = payload.get("articles")
-    return items if isinstance(items, list) else []
+    if not isinstance(items, list):
+        return []
+    # Backfill IDs for retained rows written before articles opened in the POST detail view.
+    for item in items:
+        if isinstance(item, dict):
+            link = str(item.get("link") or "")
+            item["article_id"] = hashlib.sha256(link.encode("utf-8")).hexdigest() if link else ""
+    return items
 
 
 def fetch_window() -> list[dict[str, Any]]:
