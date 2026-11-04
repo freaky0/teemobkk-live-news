@@ -1,0 +1,29 @@
+<div class="ticker" id="ticker" role="region" aria-label="암호화폐와 주요 지수 시세">
+  <div class="ticker-state" id="ticker-state" data-state="connecting" title="MEXC 연결 상태">
+    <span class="dot" aria-hidden="true"></span>
+    <span id="ticker-state-text" role="status" aria-live="polite">MEXC 연결 중</span>
+    <span class="ticker-age" id="ticker-age"></span>
+  </div>
+  <div class="ticker-viewport"><div class="ticker-inner" id="ticker-inner"></div></div>
+</div>
+<header class="top">
+  <div class="wrap nav">
+    <a class="brand" href="/" aria-label="TeemoBKK 홈"><span class="brand-word">TeemoBKK</span></a>
+    <nav class="primary-nav" aria-label="주요 섹션">
+      <a href="/news/" aria-current="page">뉴스</a>
+      <a href="/perspectives/">관점</a>
+      <a href="/blog/">블로그</a>
+      <a href="/indicators/">지표</a>
+      <a href="/tradingtalk/">트레이딩 톡</a>
+      <a href="/lab/">지표 연구</a>
+    </nav>
+    <a class="site-switch" href="/thai/" title="별도 태국 교민 사이트로 이동">태국 뉴스 ↗</a>
+    {% if user.is_authenticated %}
+      <a class="account-link" href="{% url 'member-profile' %}">내 계정</a>
+    {% else %}
+      <a class="account-link" href="{% url 'member-login' %}?next={{ request.get_full_path|urlencode }}" title="TeemoBKK 계정으로 로그인">로그인</a>
+    {% endif %}
+    <button class="theme-toggle" id="landing-theme-toggle" type="button" aria-label="다크 모드로 전환" aria-pressed="false">다크 모드 켜기</button>
+  </div>
+</header>
+<script src="/assets/landing/mexc-ticker.js" defer></script>
