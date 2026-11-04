@@ -62,10 +62,10 @@ def open_news():
     try:
         # mode=ro refuses creation and writes. query_only is an additional guard.
         path = Path(value).expanduser().resolve(strict=True)
-        conn = sqlite3.connect(path.as_uri()+'?mode=ro',uri=True,timeout=1)
+        conn = sqlite3.connect(path.as_uri()+'?mode=ro',uri=True,timeout=3)
         conn.row_factory = sqlite3.Row
         conn.execute('PRAGMA query_only=ON')
-        deadline = time.monotonic()+2
+        deadline = time.monotonic()+5
         conn.set_progress_handler(lambda: int(time.monotonic()>deadline),1000)
         conn.create_function('public_id',1,public_id,deterministic=True)
         conn.create_function('safe_url',1,safe_url,deterministic=True)
