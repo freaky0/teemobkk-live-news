@@ -3,7 +3,7 @@
 .news-engagement{display:flex;align-items:center;flex-wrap:wrap;gap:10px;border-top:1px solid var(--color-border-default);padding-top:18px;margin-top:22px}
 .news-engagement form{margin:0}
 .news-continuation-ellipsis{margin:0 0 14px;color:var(--color-action-primary);font-size:1.25rem;font-weight:800;letter-spacing:.18em;line-height:1}
-.news-continuation-action{display:flex;flex:1 1 230px;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center}
+.news-continuation-action{display:flex;flex:0 0 100%;width:100%;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center}
 .news-continuation-action p{margin:0;color:var(--color-text-muted);font-size:13px;line-height:1.5}
 .share-status{color:var(--color-text-muted);font-size:14px;margin-top:8px}.share-status:empty{display:none}
 .news-comments{width:100%;max-width:850px;margin:0 auto 40px;padding:24px}
