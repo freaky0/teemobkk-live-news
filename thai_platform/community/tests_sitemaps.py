@@ -73,7 +73,7 @@ class SitemapTests(SimpleTestCase):
         locations = [node.text for node in root.findall("sm:url/sm:loc", NS)]
         self.assertEqual(locations, ["https://teemobkk.io/thai/community/42/"])
 
-    def test_static_sitemap_keeps_the_three_public_entry_points(self):
+    def test_static_sitemap_keeps_the_public_entry_points(self):
         response = sitemaps.sitemap_static_xml(self.request)
         root = ET.fromstring(response.content)
         locations = [node.text for node in root.findall("sm:url/sm:loc", NS)]
@@ -82,6 +82,7 @@ class SitemapTests(SimpleTestCase):
             [
                 "https://teemobkk.io/thai/",
                 "https://teemobkk.io/thai/newsroom/",
+                "https://teemobkk.io/thai/economic-news/",
                 "https://teemobkk.io/thai/community/",
             ],
         )

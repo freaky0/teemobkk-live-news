@@ -214,12 +214,14 @@ def project(row):
     }
 
 
-def list_articles(page=1,query='',page_size=20,category='',region_group='',include_categories=False):
+def list_articles(page=1,query='',page_size=20,category='',region_group='',include_categories=False,region='태국'):
     page=max(1,min(int(page),10000))
     page_size=max(1,min(int(page_size),20))
+    if region not in {'태국','글로벌'}:
+        raise ValueError('Unsupported news region.')
     with open_news() as conn:
         conn.execute('BEGIN') # Consistent policy, count and rows in one read snapshot.
-        conditions,params=visibility(conn)
+        conditions,params=visibility(conn,region=region)
         fields=projection_fields(conn)
         if include_categories:
             category_rows=conn.execute(
@@ -255,7 +257,8 @@ def list_articles(page=1,query='',page_size=20,category='',region_group='',inclu
         clause=' AND '.join(conditions)
         total=conn.execute('SELECT COUNT(*) FROM articles a WHERE '+clause,params).fetchone()[0]
         rows=conn.execute('SELECT '+fields+' FROM articles a WHERE '+clause+' ORDER BY a.published_at DESC,a.link LIMIT ? OFFSET ?',params+[page_size,(page-1)*page_size]).fetchall()
-        return NewsPage([project(row) for row in rows],total,page,page_size,categories,category,REGION_GROUPS,region_group)
+        region_groups=REGION_GROUPS if region=='태국' else ()
+        return NewsPage([project(row) for row in rows],total,page,page_size,categories,category,region_groups,region_group)
 
 
 def get_article(article_id):

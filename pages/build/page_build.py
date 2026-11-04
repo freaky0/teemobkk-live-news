@@ -243,7 +243,7 @@ function termMatch(text,needle){
   return false}
 function catList(a){const c=a.categories;return (Array.isArray(c)&&c.length)?c:(a.category?[a.category]:[])}
 function storyHref(value){try{const u=new URL(String(value||''),location.href);return u.protocol==='http:'||u.protocol==='https:'?u.href:''}catch(e){return ''}}
-function newsroomHref(article){const id=String(article&&article.article_id||'');return /^[a-f0-9]{64}$/.test(id)?'/thai/newsroom/'+id+'/':''}
+function newsroomHref(article){const id=String(article&&article.article_id||'');return /^[a-f0-9]{64}$/.test(id)?'/thai/newsroom/'+id+'/?presentation=root':''}
 async function ensureNewsroomIds(items){
   if(CFG.admin||!Array.isArray(items)||!window.crypto||!crypto.subtle)return items||[];
   await Promise.all(items.map(async article=>{
@@ -1498,7 +1498,7 @@ def _newsroom_href(item: dict) -> str:
     if not link:
         return ""
     article_id = hashlib.sha256(link.encode("utf-8")).hexdigest()
-    return "/thai/newsroom/" + article_id + "/"
+    return "/thai/newsroom/" + article_id + "/?presentation=root"
 
 
 def _seed_cards(items: list, want_thai: bool, lang: str, limit: int = 25) -> str:

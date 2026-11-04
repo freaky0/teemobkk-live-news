@@ -49,7 +49,7 @@ POST_LOCAL_DEVELOPMENT=1 POST_NEWS_DB=/opt/teemo-live-news/news.db uv run python
 - 한국어 제목과 요약을 그대로 재사용합니다. 사실 재검증이나 새 번역을 수행한 결과가 아닙니다. 뉴스 상세에 원문 링크와 요약임을 표시합니다.
 - 기사 대표 이미지는 원 발행사의 HTTPS 이미지 주소를 그대로 사용합니다. 후보 앱은 이미지를 내려받아 자체 저장하지 않으며, 브라우저가 발행사 서버에 직접 요청합니다. 공개 `/thai/`에서 확인한 외부 이미지 호스트는 `assets.aseannow.com`, `www.matichon.co.th`, `mpics2.mgronline.com`입니다. 이미지 표시를 유지하며, 실제 권리·처리 지역은 공개 전 별도 확인이 필요합니다.
 
-웹 경로는 `/newsroom/`, `/newsroom/{id}/`입니다. `/thai/news/`와 `/thai/news/ko/`의 기존 운영 페이지와 겹치지 않도록 분리했습니다. 앱 공통 API는 `GET /api/v1/news/`, `GET /api/v1/news/{id}/`입니다.
+웹 경로는 `/newsroom/`, `/newsroom/{id}/`, `/economic-news/`입니다. `/economic-news/`는 읽기 전용 뉴스 DB의 `글로벌` 기사를 태국 사이트 화면으로 표시합니다. 앱 공통 API는 `GET /api/v1/news/`, `GET /api/v1/news/{id}/`이며 `feed=global`을 지정하면 같은 글로벌 기사를 반환합니다.
 
 ## 링크 공유 미리보기
 
