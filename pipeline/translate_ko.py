@@ -197,7 +197,8 @@ def translate_pending(limit: int = COLLECT_BATCH, throttle_seconds: float = 0.0,
                 query = (
                     "SELECT link, title, summary FROM articles "
                     f"WHERE {incomplete} "
-                    "ORDER BY collected_at DESC, published_at DESC, link DESC LIMIT ?"
+                    "ORDER BY CASE WHEN source = 'FinancialJuice' THEN 0 ELSE 1 END, "
+                    "collected_at DESC, published_at DESC, link DESC LIMIT ?"
                 )
                 rows = [dict(row) for row in connection.execute(query, (limit,))]
         finally:

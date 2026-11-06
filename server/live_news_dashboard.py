@@ -111,6 +111,7 @@ RSS_SOURCES = [
     ("CryptoSlate", "crypto", "https://cryptoslate.com/feed/"),
     ("Decrypt", "crypto", "https://decrypt.co/feed"),
     ("Bitcoin Magazine", "crypto", "https://bitcoinmagazine.com/.rss/full/"),
+    ("Protos", "crypto", "https://protos.com/feed/"),
     ("SEC", "official", "https://www.sec.gov/news/pressreleases.rss"),
     ("Federal Reserve", "official", "https://www.federalreserve.gov/feeds/press_all.xml"),
     ("Fed Speeches", "official", "https://www.federalreserve.gov/feeds/speeches.xml"),
@@ -120,7 +121,6 @@ RSS_SOURCES = [
     # a day, so they are alive rather than cached shells (tools/probe_sources.py).
     ("MarketWatch", "news", "https://feeds.marketwatch.com/marketwatch/topstories/"),
     ("CNBC Finance", "news", "https://www.cnbc.com/id/10000664/device/rss/rss.html"),
-    ("Yahoo Finance", "news", "https://finance.yahoo.com/news/rssindex"),
     ("Investing.com", "news", "https://www.investing.com/rss/news.rss"),
     ("Seeking Alpha", "news", "https://seekingalpha.com/market_currents.xml"),
     ("FinancialJuice", "breaking", "https://www.financialjuice.com/feed.ashx?xy=rss"),
@@ -131,13 +131,19 @@ RSS_SOURCES = [
 _last_source_status: dict[str, Any] = {}
 _cycle = {"count": 0}
 
-# Sources that answer a datacenter address differently from a home connection, or that rate-limit a
-# single host: fetched every Nth cycle instead of every cycle. Measured facts behind this list:
-# FinancialJuice answered 429 intermittently (14 refusals in 24 hours while being fetched once a
-# minute), and it is a wire that repeats itself, so a slower poll loses nothing. FXStreet was dropped
-# instead of slowed: it answers 403 to the deployed host and 200 to a home connection, so it passed
-# the check when it was added and never produced a single row in production.
-SLOW_SOURCES = {"FinancialJuice": 5}
+# FinancialJuice is the priority breaking-news feed. Poll it once per collector cycle (normally
+# every 60 seconds), ahead of the other feeds, and back off only after an actual failure/429.
+# A successful response includes a rolling RSS window, so the next successful cycle catches up
+# after a transient outage. FXStreet was dropped: it answers 403 from the deployed host.
+SLOW_SOURCES: dict[str, int] = {}
+_FINANCIALJUICE_MIN_POLL_SECONDS = 60
+_FINANCIALJUICE_MAX_BACKOFF_SECONDS = 300
+_financialjuice_poll: dict[str, Any] = {
+    "next_poll_at": 0.0,
+    "consecutive_failures": 0,
+    "last_success_at": "",
+    "last_inserted_at": "",
+}
 
 # 태국 교민용 일반 뉴스. 영문 매체와 태국어 매체를 함께 수집한다.
 #
@@ -145,12 +151,14 @@ SLOW_SOURCES = {"FinancialJuice": 5}
 # 집에서는 200인데 호스트에서 403인 곳이 여럿이라 시험 위치가 결과를 바꾼다). 각 줄의 숫자는
 # 하루 발행량 / 그중 이미 창에 있던 기사 / 순증이다. 24시간 동안의 실측:
 #
-#   태국어 매체  MGR Online 20/0/20 · Prachachat 30/0/30 · The Standard 20/0/20 ·
+#   태국어 매체  MGR Online 20/0/20 · Prachachat 30/0/30 ·
 #                Thaiger Thai 20/0/20
 #   교민·영문    ASEAN NOW Thailand 15/0/15 · The Thaiger 8/1/7 · The Pattaya News 8/0/8 ·
 #                Chiang Rai Times 10/0/10 · Thai Examiner 5/0/5 · Kaohoon International 10/0/10
 #   생활·지역    TAT Newsroom 1/0/1 · Phuket Express 1/0/1 · Hua Hin Today (느림) ·
 #                Bangkok Post Breaking 10/8/2
+# The Standard's general feed returned malformed XML in the 2026-11-06 source audit; use its
+# business-category feed instead.
 #
 # 영문 태국 매체는 Google News와 크게 겹친다(Bangkok Post는 10건이 10건 모두 이미 창에 있었다).
 # 순증이 작은 곳은 그래도 태국 탭의 출처가 Google News 한 곳뿐이던 상태를 깨는 값이 있고,
@@ -165,6 +173,7 @@ SLOW_SOURCES = {"FinancialJuice": 5}
 THAI_RSS_SOURCES = [
     ("Bangkok Post", "thai", "https://www.bangkokpost.com/rss/data/topstories.xml"),
     ("Bangkok Post Business", "thai", "https://www.bangkokpost.com/rss/data/business.xml"),
+    ("Thailand Business News", "thai", "https://www.thailand-business-news.com/feed/"),
     ("Bangkok Post Breaking", "thai", "https://www.bangkokpost.com/rss/data/breakingnews.xml"),
     ("Khaosod English", "thai", "https://www.khaosodenglish.com/feed/"),
     ("Thai Enquirer", "thai", "https://www.thaienquirer.com/feed/"),
@@ -182,7 +191,7 @@ THAI_RSS_SOURCES = [
     ("Matichon", "thai", "https://www.matichon.co.th/feed"),
     ("MGR Online", "thai", "https://mgronline.com/store/rss/index.xml"),
     ("Prachachat", "thai", "https://www.prachachat.net/feed"),
-    ("The Standard", "thai", "https://thestandard.co/feed/"),
+    ("The Standard", "thai", "https://thestandard.co/category/business/feed/"),
     ("Thaiger Thai", "thai", "https://thethaiger.com/th/feed"),
 ]
 
@@ -274,6 +283,24 @@ def parse_date(value: str) -> str:
             return parsed.astimezone(timezone.utc).isoformat()
         except ValueError:
             return ""
+
+
+def _retry_after_seconds(error: Exception) -> int:
+    """Read an HTTP Retry-After value when an upstream sends one."""
+    headers = getattr(error, "headers", None)
+    value = headers.get("Retry-After", "") if headers else ""
+    if not value:
+        return 0
+    try:
+        return max(0, int(value.strip()))
+    except (AttributeError, TypeError, ValueError):
+        try:
+            retry_at = email.utils.parsedate_to_datetime(value)
+            if retry_at.tzinfo is None:
+                retry_at = retry_at.replace(tzinfo=timezone.utc)
+            return max(0, int((retry_at.astimezone(timezone.utc) - datetime.now(timezone.utc)).total_seconds()))
+        except (TypeError, ValueError, OverflowError):
+            return 0
 
 
 def parse_rss(payload: bytes, source: str, source_type: str, region: str = "글로벌") -> list[dict[str, Any]]:
@@ -660,14 +687,19 @@ def dedupe_rows(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         keys, urls = seen.setdefault(region, (set(), set()))
         links = seen_links.setdefault(region, set())
         link = canonical_link(str(item.get("link") or ""))
+        priority_source = str(item.get("source") or "") == "FinancialJuice"
         if link and link in links:
             continue
         key, url = _story_identity(item, str(item.get("original_link") or ""))
-        if _identity_equal(key, url, keys, urls):
-            continue
         events = seen_events.setdefault(region, [])
-        if any(semantic_event.same_event(item, previous) for previous in events):
-            continue
+        # Keep FinancialJuice's own alert visible even when another publisher carries a similar
+        # headline. The feed is the priority source for time-sensitive economic releases; merging it
+        # away would hide the very alert its fast lane is intended to preserve.
+        if not priority_source:
+            if _identity_equal(key, url, keys, urls):
+                continue
+            if any(semantic_event.same_event(item, previous) for previous in events):
+                continue
         if link:
             links.add(link)
         if key:
@@ -1649,17 +1681,55 @@ def collect_news() -> dict[str, Any]:
     _cycle["count"] += 1
     turn = _cycle["count"]
     rss_jobs, held_over = poll_plan(turn)
+    # FinancialJuice gets a dedicated fast lane. Fetch and persist it before waiting for the
+    # slower RSS, Google News, CoinNess, and media work later in this cycle.
+    financialjuice_job = next((job for job in rss_jobs if job[0] == "FinancialJuice"), None)
+    rss_jobs = [job for job in rss_jobs if job[0] != "FinancialJuice"]
     google_jobs = [(source, query, GLOBAL_REGION, ()) for source, query in GOOGLE_QUERIES]
     google_jobs += [(source, query, THAI_REGION, terms) for source, query, terms in THAI_GOOGLE_QUERIES]
 
     def run_rss(job: tuple[str, str, str, str]) -> tuple[str, dict[str, Any], list[dict[str, Any]]]:
         source, source_type, url, region = job
+        if source == "FinancialJuice":
+            remaining = _financialjuice_poll["next_poll_at"] - time.monotonic()
+            if remaining > 0:
+                held = dict(_last_source_status.get(source) or {"ok": False, "count": 0, "url": url})
+                held.update({"deferred": True, "retry_in_seconds": int(remaining + 0.999),
+                             "last_success_at": _financialjuice_poll["last_success_at"],
+                             "last_inserted_at": _financialjuice_poll["last_inserted_at"],
+                             "note": "upstream backoff" if _financialjuice_poll["consecutive_failures"] else "minimum poll interval"})
+                return source, held, []
         try:
             fetched = parse_rss(fetch_bytes(url), source, source_type, region)
-            return source, {"ok": True, "count": len(fetched), "url": url}, fetched
+            info: dict[str, Any] = {"ok": True, "count": len(fetched), "url": url,
+                                    "fetched_at": datetime.now(timezone.utc).isoformat()}
+            published = [str(item.get("published_at") or "") for item in fetched if item.get("published_at")]
+            if published:
+                info["newest_published_at"] = max(published)
+            if source == "FinancialJuice":
+                _financialjuice_poll["consecutive_failures"] = 0
+                _financialjuice_poll["last_success_at"] = info["fetched_at"]
+                _financialjuice_poll["next_poll_at"] = time.monotonic() + _FINANCIALJUICE_MIN_POLL_SECONDS
+                info.update({"last_success_at": info["fetched_at"], "last_inserted_at": _financialjuice_poll["last_inserted_at"],
+                             "consecutive_failures": 0})
+            return source, info, fetched
         except Exception as exc:
             logging.warning("RSS failed (%s): %s", source, exc)
-            return source, {"ok": False, "count": 0, "url": url, "error": str(exc)[:180]}, []
+            info = {"ok": False, "count": 0, "url": url, "error": str(exc)[:180],
+                    "failed_at": datetime.now(timezone.utc).isoformat()}
+            if source == "FinancialJuice":
+                failures = int(_financialjuice_poll["consecutive_failures"]) + 1
+                _financialjuice_poll["consecutive_failures"] = failures
+                backoff = min(_FINANCIALJUICE_MAX_BACKOFF_SECONDS,
+                              _FINANCIALJUICE_MIN_POLL_SECONDS * (2 ** min(failures - 1, 4)))
+                retry_after = _retry_after_seconds(exc)
+                delay = max(backoff, retry_after)
+                _financialjuice_poll["next_poll_at"] = time.monotonic() + delay
+                info.update({"consecutive_failures": failures, "retry_in_seconds": delay,
+                             "retry_after_seconds": retry_after,
+                             "last_success_at": _financialjuice_poll["last_success_at"],
+                             "last_inserted_at": _financialjuice_poll["last_inserted_at"]})
+            return source, info, []
 
     def run_google(job: tuple[str, str, str, tuple[str, ...]]) -> tuple[str, dict[str, Any], list[dict[str, Any]]]:
         source, query, region, require_terms = job
@@ -1668,6 +1738,43 @@ def collect_news() -> dict[str, Any]:
         if region == THAI_REGION:
             info["region"] = THAI_REGION
         return source, info, fetched
+
+    financialjuice_fresh_count = 0
+    financialjuice_inserted_count = 0
+    if financialjuice_job is not None:
+        source, info, items = run_rss(financialjuice_job)
+        status[source] = info
+        _last_source_status[source] = info
+        if info.get("ok") and not info.get("deferred"):
+            # Never let cross-publisher similarity heuristics suppress this priority feed. Keep
+            # every recent FinancialJuice item, removing only duplicate URLs from this same payload;
+            # INSERT OR IGNORE still prevents an already-stored link from appearing twice.
+            timestamp_fallback_count = 0
+            for item in items:
+                if not item.get("published_at"):
+                    item["published_at"] = item.get("collected_at") or datetime.now(timezone.utc).isoformat()
+                    timestamp_fallback_count += 1
+            recent = keep_recent(items)
+            unique_by_link: list[dict[str, Any]] = []
+            seen_links: set[str] = set()
+            for item in recent:
+                link = canonical_link(str(item.get("link") or ""))
+                if not link or link in seen_links:
+                    continue
+                seen_links.add(link)
+                item["link"] = link
+                unique_by_link.append(item)
+            financialjuice_fresh_count = len(recent)
+            financialjuice_inserted_count = insert_articles(unique_by_link)
+            if financialjuice_inserted_count:
+                _financialjuice_poll["last_inserted_at"] = datetime.now(timezone.utc).isoformat()
+            info.update({"recent_count": len(recent), "inserted_count": financialjuice_inserted_count,
+                         "timestamp_fallback_count": timestamp_fallback_count,
+                         "last_inserted_at": _financialjuice_poll["last_inserted_at"],
+                         "newest_published_at": max((str(item.get("published_at") or "") for item in recent), default="")})
+            logging.info("FinancialJuice fast lane fetched=%d recent=%d inserted=%d newest=%s",
+                         len(items), len(recent), financialjuice_inserted_count,
+                         info.get("newest_published_at", ""))
 
     with ThreadPoolExecutor(max_workers=10) as pool:
         rss_results = list(pool.map(run_rss, rss_jobs))
@@ -1699,7 +1806,7 @@ def collect_news() -> dict[str, Any]:
     # Twice: inside the cycle, and against what the window already holds - the same wire story
     # arriving in a later cycle under another outlet's link is the repetition a reader notices.
     deduped = drop_already_stored(dedupe_by_region(fresh_articles))
-    inserted = insert_articles(deduped)
+    inserted = financialjuice_inserted_count + insert_articles(deduped)
     # Translation is deliberately best-effort: if providers are unavailable, originals stay readable
     # and the next collection cycle can retry the pending rows.
     if os.environ.get("TEEMO_TRANSLATE_KO_ENABLED", "1").strip().lower() not in {"0", "false", "no"}:
@@ -1725,7 +1832,7 @@ def collect_news() -> dict[str, Any]:
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "updated_at_ict": datetime.now(ICT).strftime("%Y-%m-%d %H:%M:%S ICT"),
         "window_hours": RETENTION_HOURS,
-        "fresh_article_count": len(fresh_articles),
+        "fresh_article_count": financialjuice_fresh_count + len(fresh_articles),
         "inserted_article_count": inserted,
         "article_count": window_total,
         "region_counts": region_counts,
