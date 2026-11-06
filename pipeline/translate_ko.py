@@ -54,6 +54,12 @@ def _complete_with_api(title: str, summary: str) -> str:
     return tg_push.api_complete_translation(_messages(title, summary))
 
 
+def _complete_with_deepseek(title: str, summary: str) -> str:
+    from deploy import tg_push
+
+    return tg_push.api_complete_translation(_messages(title, summary), provider="deepseek")
+
+
 def _parse_translation(content: str) -> dict[str, str] | None:
     text = str(content or "").strip()
     if not text.startswith("{"):
@@ -134,30 +140,21 @@ def _preserves_currency_and_amounts(title: str, summary: str,
 
 
 def _provider_order() -> list:
-    """Order providers by TG_TRANSLATE_PROVIDER, mirroring tg_push.py.
+    """Prefer the configured provider, with DeepSeek after Codex as the service fallback.
 
-    The Codex subscription route needs the hermes CLI and its profile, which the
-    collector service does not have; the API route needs OPENAI_API_KEY from the
-    service environment. The env var decides which is tried first.
+    The collector host may not have the Hermes CLI profile, so the configured DeepSeek API key
+    must remain available when the Codex subscription route fails.
     """
-    import os
-
     provider = (os.environ.get("TG_TRANSLATE_PROVIDER") or "").strip().lower()
     if provider == "openai":
-        return [_complete_with_api, _complete_with_codex]
-    return [_complete_with_codex, _complete_with_api]
+        return [_complete_with_api, _complete_with_codex, _complete_with_deepseek]
+    if provider == "deepseek":
+        return [_complete_with_deepseek, _complete_with_codex, _complete_with_api]
+    return [_complete_with_codex, _complete_with_deepseek, _complete_with_api]
 
 
 def translate_one(title: str, summary: str) -> dict[str, str] | None:
-    """Try the configured provider first, then fall back to the other one."""
-    if os.environ.get("TG_TRANSLATE_PROVIDER", "").strip().lower() == "openai-codex":
-        translated = _parse_translation(_complete_with_codex(title, summary))
-        if translated is None or (summary.strip() and not translated["summary"]):
-            raise RuntimeError("openai-codex returned invalid translation")
-        if not _preserves_currency_and_amounts(title, summary, translated):
-            raise RuntimeError("openai-codex omitted or changed a baht amount")
-        return translated
-
+    """Try the configured provider first, then Codex/DeepSeek/OpenAI fallbacks."""
     for provider in _provider_order():
         try:
             translated = _parse_translation(provider(title, summary))

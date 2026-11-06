@@ -261,7 +261,7 @@ function loadBriefingRows(){
   const key=briefingKey(),cached=BRIEF_CACHE[key];
   if(cached&&Date.now()-cached.at<120000)return Promise.resolve(cached.items);
   if(BRIEF_PENDING[key])return BRIEF_PENDING[key];
-  const query=new URLSearchParams({region:region(),hours:String(V.hours),limit:'300',offset:'0'});
+  const query=new URLSearchParams({region:region(),hours:String(V.hours),limit:'300',offset:'0',lang:CFG.lang});
   BRIEF_PENDING[key]=getJSON(API+'/api/news?'+query.toString()).then(data=>{
     const rows=Array.isArray(data.articles)?data.articles:[];
     return ensureNewsroomIds(rows).then(items=>{BRIEF_CACHE[key]={at:Date.now(),items};return items})
@@ -1360,11 +1360,24 @@ def seed_briefing_from_db(db_path: str, region: str, lang: str = "ko",
             categories = "categories" if "categories" in columns else "NULL AS categories"
             source_type = "source_type" if "source_type" in columns else "'' AS source_type"
             priority = "priority" if "priority" in columns else "0 AS priority"
-            rows = connection.execute(
-                "SELECT title, summary, source, %s, %s, category, %s, link, published_at "
-                "FROM articles WHERE region = ? AND title IS NOT NULL AND title != '' "
-                "AND published_at >= ? %s ORDER BY priority DESC, published_at DESC LIMIT 500"
-                % (source_type, priority, categories, hidden), (region, cutoff)).fetchall()
+            title_column, summary_column, translation_filter = "title", "summary", ""
+            if lang == "ko":
+                if not {"title_ko", "summary_ko"}.issubset(columns):
+                    rows = []
+                else:
+                    title_column, summary_column = "title_ko", "summary_ko"
+                    translation_filter = (
+                        "AND TRIM(COALESCE(title_ko, '')) <> '' "
+                        "AND (TRIM(COALESCE(summary, '')) = '' OR TRIM(COALESCE(summary_ko, '')) <> '') "
+                    )
+            if lang != "ko" or {"title_ko", "summary_ko"}.issubset(columns):
+                rows = connection.execute(
+                    "SELECT %s AS title, %s AS summary, source, %s, %s, category, %s, link, published_at "
+                    "FROM articles WHERE region = ? AND %s IS NOT NULL AND %s != '' "
+                    "AND published_at >= ? %s %s ORDER BY priority DESC, published_at DESC LIMIT 500"
+                    % (title_column, summary_column, source_type, priority, categories,
+                       title_column, title_column, hidden, translation_filter),
+                    (region, cutoff)).fetchall()
         finally:
             connection.close()
     except sqlite3.Error:
