@@ -14,6 +14,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import time
 from typing import Any
 
@@ -31,7 +32,7 @@ SYSTEM_PROMPT = (
 )
 MODEL = "gpt-6-luna"
 MAX_BATCH = 50
-COLLECT_BATCH = 10
+COLLECT_BATCH = 50
 
 
 def _messages(title: str, summary: str) -> list[dict[str, str]]:
@@ -147,10 +148,24 @@ def _provider_order() -> list:
     """
     provider = (os.environ.get("TG_TRANSLATE_PROVIDER") or "").strip().lower()
     if provider == "openai":
-        return [_complete_with_api, _complete_with_codex, _complete_with_deepseek]
-    if provider == "deepseek":
-        return [_complete_with_deepseek, _complete_with_codex, _complete_with_api]
-    return [_complete_with_codex, _complete_with_deepseek, _complete_with_api]
+        order = ["openai", "codex", "deepseek"]
+    elif provider == "deepseek":
+        order = ["deepseek", "codex", "openai"]
+    else:
+        order = ["codex", "deepseek", "openai"]
+
+    implementations = {
+        "codex": _complete_with_codex,
+        "deepseek": _complete_with_deepseek,
+        "openai": _complete_with_api,
+    }
+    available = {
+        "codex": bool(shutil.which(os.environ.get("HERMES_CLI", "hermes"))),
+        "deepseek": bool(os.environ.get("DEEPSEEK_API_KEY", "").strip()),
+        "openai": bool(os.environ.get("OPENAI_API_KEY", "").strip()),
+    }
+    ready = [implementations[name] for name in order if available[name]]
+    return ready or [implementations[name] for name in order]
 
 
 def translate_one(title: str, summary: str) -> dict[str, str] | None:
