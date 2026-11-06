@@ -1569,7 +1569,8 @@ def _as_list(value: Any) -> list[str]:
 def query_articles(hours: int = RETENTION_HOURS, region: str = "", category: Any = "", source: Any = "",
                    source_type: str = "", minimum_priority: int = 0, text: Any = "",
                    picked_only: bool = False,
-                   limit: int = DEFAULT_LIMIT, offset: int = 0, lang: str = "") -> tuple[list[dict[str, Any]], int, dict[str, int]]:
+                   limit: int = DEFAULT_LIMIT, offset: int = 0, lang: str = "",
+                   require_korean_translation: bool = False) -> tuple[list[dict[str, Any]], int, dict[str, int]]:
     """Articles in the window, with every selected condition applied.
 
     `category` and `text` accept one value or a list, and a list means ALL of them: that is what a
@@ -1579,6 +1580,12 @@ def query_articles(hours: int = RETENTION_HOURS, region: str = "", category: Any
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=max(1, min(int(hours), 24 * ARCHIVE_DAYS)))).isoformat()
     where = ["published_at >= ?"]
     params: list[Any] = [cutoff]
+    # Korean public article links resolve in the Thai newsroom, which only exposes complete
+    # Korean records. Keep untranslated rows out of the public Korean feed so their titles never
+    # point to a detail page that cannot exist yet. Admins keep the full queue for monitoring.
+    if require_korean_translation:
+        where.append("TRIM(COALESCE(title_ko, '')) <> ''")
+        where.append("(TRIM(COALESCE(summary, '')) = '' OR TRIM(COALESCE(summary_ko, '')) <> '')")
     # A hidden story is skipped on every read path, with no opt-out: the operator's own filters must
     # not be able to bring back the row that was hidden, or hiding would only work on the screen it
     # was done from. The restore path reads hidden_links directly instead.
@@ -2089,6 +2096,7 @@ class Handler(BaseHTTPRequestHandler):
                 "minimum_priority": minimum_priority, "text": pick_all("q"),
                 "picked_only": pick("picked") in ("1", "true", "yes"),
                 "lang": "ko" if pick("lang") == "ko" else "",
+                "require_korean_translation": pick("lang") == "ko" and not self.is_admin(),
             }
             articles, total, region_counts = self.state.query(**filters, limit=limit, offset=offset)
             # The reader is sent to the publisher, the operator keeps the stored link: the row's
