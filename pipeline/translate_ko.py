@@ -183,6 +183,16 @@ def translate_one(title: str, summary: str) -> dict[str, str] | None:
     return None
 
 
+def _fetch_pending_group(connection, incomplete: str, condition: str,
+                         params: tuple[Any, ...], limit: int) -> list[dict[str, Any]]:
+    query = (
+        "SELECT link, title, summary FROM articles "
+        f"WHERE {incomplete} AND ({condition}) "
+        "ORDER BY collected_at DESC, published_at DESC, link DESC LIMIT ?"
+    )
+    return [dict(row) for row in connection.execute(query, (*params, limit))]
+
+
 def translate_pending(limit: int = COLLECT_BATCH, throttle_seconds: float = 0.0,
                      links: list[str] | None = None) -> int:
     """Translate recent ingest rows, or only the explicitly selected backfill links."""
@@ -206,13 +216,52 @@ def translate_pending(limit: int = COLLECT_BATCH, throttle_seconds: float = 0.0,
                 )
                 rows = [dict(row) for row in connection.execute(query, (*selected_links, limit))]
             else:
-                query = (
-                    "SELECT link, title, summary FROM articles "
-                    f"WHERE {incomplete} "
-                    "ORDER BY CASE WHEN source = 'FinancialJuice' THEN 0 ELSE 1 END, "
-                    "collected_at DESC, published_at DESC, link DESC LIMIT ?"
+                # Keep a majority for the real-time FinancialJuice fast lane while reserving
+                # translation capacity for both Thailand feeds and other global publishers.
+                # Without these quotas its high-volume stream can occupy the whole batch, and
+                # the Korean-only public feeds then hide every untranslated article from other
+                # sources even though collection is working.
+                financialjuice_quota = min(limit, (limit * 3 + 4) // 5)
+                thai_quota = min(limit - financialjuice_quota, limit // 5)
+                global_other_quota = limit - financialjuice_quota - thai_quota
+                groups = (
+                    ("source = ?", ("FinancialJuice",), financialjuice_quota),
+                    ("region = ? AND source <> ?", ("태국", "FinancialJuice"), thai_quota),
+                    ("COALESCE(region, '') <> ? AND source <> ?",
+                     ("태국", "FinancialJuice"), global_other_quota),
                 )
-                rows = [dict(row) for row in connection.execute(query, (limit,))]
+                rows = []
+                selected_links: set[str] = set()
+                for condition, params, quota in groups:
+                    if quota <= 0:
+                        continue
+                    for row in _fetch_pending_group(connection, incomplete, condition, params, quota):
+                        link = str(row.get("link") or "")
+                        if link and link not in selected_links:
+                            selected_links.add(link)
+                            rows.append(row)
+
+                # If one source group has no pending rows, use its unused capacity for the
+                # freshest remaining items so the batch is still fully utilized.
+                remaining = limit - len(rows)
+                if remaining > 0:
+                    if selected_links:
+                        placeholders = ",".join("?" for _ in selected_links)
+                        query = (
+                            "SELECT link, title, summary FROM articles "
+                            f"WHERE {incomplete} AND link NOT IN ({placeholders}) "
+                            "ORDER BY collected_at DESC, published_at DESC, link DESC LIMIT ?"
+                        )
+                        fallback = connection.execute(
+                            query, (*selected_links, remaining))
+                    else:
+                        query = (
+                            "SELECT link, title, summary FROM articles "
+                            f"WHERE {incomplete} "
+                            "ORDER BY collected_at DESC, published_at DESC, link DESC LIMIT ?"
+                        )
+                        fallback = connection.execute(query, (remaining,))
+                    rows.extend(dict(row) for row in fallback)
         finally:
             connection.close()
 
