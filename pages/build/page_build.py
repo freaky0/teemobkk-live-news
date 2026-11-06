@@ -284,7 +284,7 @@ function briefingItems(){
     rows=rows.map(a=>current.get(String(a.link||''))||a)}
   const pool=rows.filter(a=>(CFG.lang!=='en'||CFG.wantThai||V.language==='all'||articleLang(a)==='en')&&
     (()=>{const t=Date.parse(a.published_at);return Number.isFinite(t)&&t<=Date.now()+60000&&t>=cutoff})());
-  const distinct=pool.filter((a,i)=>!pool.slice(0,i).some(b=>sameBriefingEvent(a,b)));
+  const distinct=pool.filter((a,i)=>a.source==='FinancialJuice'||!pool.slice(0,i).some(b=>sameBriefingEvent(a,b)));
   const picked=distinct.filter(a=>a.picked);
   if(picked.length===3)return {mode:'picked',items:picked};
   const ranked=distinct.filter(a=>a.source_type!=='social'&&Number(a.priority||0)>=3).slice().sort((a,b)=>{
