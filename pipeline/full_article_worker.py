@@ -447,7 +447,10 @@ def translate_chunk(source: str) -> str:
                 logging.warning("Full article translation %s attempt %d rejected: untranslated script remains",
                                 provider, attempt + 1)
                 continue
-            if len(translated) < max(20, int(len(source) * MIN_TRANSLATION_RATIO)):
+            # Some final article fragments are only a short sentence. A fixed 20-character
+            # floor rejects even a complete translation of those fragments, so scale the
+            # minimum with the chunk and keep only a small non-empty floor.
+            if len(translated) < max(8, int(len(source) * MIN_TRANSLATION_RATIO)):
                 logging.warning("Full article translation %s attempt %d rejected: output too short (%d/%d chars)",
                                 provider, attempt + 1, len(translated), len(source))
                 continue
