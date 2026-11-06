@@ -464,18 +464,25 @@ def codex_complete_translation(messages: list[dict[str, str]]) -> str:
     return result.stdout.strip()
 
 
-def api_complete_translation(messages: list[dict[str, str]]) -> str:
-    """Use the existing OpenAI API-key provider from this module's PROVIDERS map."""
-    url, key_name, default_model = PROVIDERS["openai"]
+def api_complete_translation(messages: list[dict[str, str]], provider: str = "openai") -> str:
+    """Use an OpenAI-compatible API provider from this module's PROVIDERS map."""
+    provider = str(provider or "openai").strip().lower()
+    if provider not in PROVIDERS:
+        raise RuntimeError("Unknown translation API provider")
+    url, key_name, default_model = PROVIDERS[provider]
     key = os.environ.get(key_name, "").strip()
     if not key:
-        raise RuntimeError("OPENAI_API_KEY is not configured")
+        raise RuntimeError(key_name + " is not configured")
+    model_env = "DEEPSEEK_TRANSLATE_MODEL" if provider == "deepseek" else "TG_TRANSLATE_MODEL"
     body = {
-        "model": os.environ.get("TG_TRANSLATE_MODEL", "").strip() or default_model,
+        "model": os.environ.get(model_env, "").strip() or default_model,
         "messages": messages,
         "temperature": 0,
         "max_tokens": 700,
     }
+    if provider == "deepseek":
+        body["reasoning_effort"] = "none"
+        body["response_format"] = {"type": "json_object"}
     request = urllib.request.Request(
         url, data=json.dumps(body).encode("utf-8"),
         headers={"Content-Type": "application/json", "Authorization": "Bearer " + key},
