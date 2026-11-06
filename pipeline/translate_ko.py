@@ -30,7 +30,6 @@ SYSTEM_PROMPT = (
     "예: 100 ล้านบาท은 1억 바트이며, 100억 원으로 바꾸면 안 된다. "
     '다른 말 없이 JSON 하나만 출력한다: {"title":"...","summary":"..."}'
 )
-MODEL = "gpt-6-luna"
 MAX_BATCH = 50
 COLLECT_BATCH = 50
 
@@ -44,15 +43,9 @@ def _messages(title: str, summary: str) -> list[dict[str, str]]:
 
 
 def _complete_with_codex(title: str, summary: str) -> str:
-    from deploy import tg_push
+    from pipeline import codex_cli
 
-    return tg_push.codex_complete_translation(_messages(title, summary))
-
-
-def _complete_with_api(title: str, summary: str) -> str:
-    from deploy import tg_push
-
-    return tg_push.api_complete_translation(_messages(title, summary))
+    return codex_cli.complete(_messages(title, summary))
 
 
 def _complete_with_deepseek(title: str, summary: str) -> str:
@@ -141,35 +134,27 @@ def _preserves_currency_and_amounts(title: str, summary: str,
 
 
 def _provider_order() -> list:
-    """Prefer the configured provider, with DeepSeek after Codex as the service fallback.
+    """Use Codex first and DeepSeek only as a per-request fallback.
 
-    The collector host may not have the Hermes CLI profile, so the configured DeepSeek API key
-    must remain available when the Codex subscription route fails.
+    TG_TRANSLATE_PROVIDER is intentionally not a sticky provider selector. A failed Codex
+    request must not make later articles start on DeepSeek.
     """
-    provider = (os.environ.get("TG_TRANSLATE_PROVIDER") or "").strip().lower()
-    if provider == "openai":
-        order = ["openai", "codex", "deepseek"]
-    elif provider == "deepseek":
-        order = ["deepseek", "codex", "openai"]
-    else:
-        order = ["codex", "deepseek", "openai"]
+    from pipeline import codex_cli
 
-    implementations = {
-        "codex": _complete_with_codex,
-        "deepseek": _complete_with_deepseek,
-        "openai": _complete_with_api,
-    }
-    available = {
-        "codex": bool(shutil.which(os.environ.get("HERMES_CLI", "hermes"))),
-        "deepseek": bool(os.environ.get("DEEPSEEK_API_KEY", "").strip()),
-        "openai": bool(os.environ.get("OPENAI_API_KEY", "").strip()),
-    }
-    ready = [implementations[name] for name in order if available[name]]
-    return ready or [implementations[name] for name in order]
+    codex_command = os.environ.get("CODEX_CLI", codex_cli.CODEX_CLI)
+    codex_available = bool(shutil.which(codex_command))
+    deepseek_available = bool(os.environ.get("DEEPSEEK_API_KEY", "").strip())
+    providers = []
+    if codex_available:
+        providers.append(_complete_with_codex)
+    if deepseek_available:
+        providers.append(_complete_with_deepseek)
+    # Keep an attempted Codex call when PATH is unusual so its concrete failure is logged.
+    return providers or [_complete_with_codex]
 
 
 def translate_one(title: str, summary: str) -> dict[str, str] | None:
-    """Try the configured provider first, then Codex/DeepSeek/OpenAI fallbacks."""
+    """Try Codex first, then DeepSeek for this article if Codex fails validation or execution."""
     for provider in _provider_order():
         try:
             translated = _parse_translation(provider(title, summary))

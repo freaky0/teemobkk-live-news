@@ -464,7 +464,8 @@ def codex_complete_translation(messages: list[dict[str, str]]) -> str:
     return result.stdout.strip()
 
 
-def api_complete_translation(messages: list[dict[str, str]], provider: str = "openai") -> str:
+def api_complete_translation(messages: list[dict[str, str]], provider: str = "openai",
+                             max_tokens: int = 700) -> str:
     """Use an OpenAI-compatible API provider from this module's PROVIDERS map."""
     provider = str(provider or "openai").strip().lower()
     if provider not in PROVIDERS:
@@ -478,7 +479,7 @@ def api_complete_translation(messages: list[dict[str, str]], provider: str = "op
         "model": os.environ.get(model_env, "").strip() or default_model,
         "messages": messages,
         "temperature": 0,
-        "max_tokens": 700,
+        "max_tokens": max(1, min(int(max_tokens), 8192)),
     }
     if provider == "deepseek":
         body["reasoning_effort"] = "none"
