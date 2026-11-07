@@ -1,5 +1,53 @@
 (function(){
 'use strict';
+function initRootAccount(){
+  var link=document.querySelector('a.account-link[href*="/accounts/login/"]');
+  if(!link)return;
+  var english=/^en(?:-|$)/i.test(document.documentElement.lang||'')||link.textContent.trim()==='Log in';
+  var next=window.location.pathname+window.location.search;
+  var loginUrl=new URL('/thai/accounts/login/',window.location.origin);
+  loginUrl.searchParams.set('next',next||'/');
+  link.href=loginUrl.pathname+loginUrl.search;
+  fetch('/thai/api/v1/me/',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}})
+    .then(function(response){if(!response.ok)throw new Error('anonymous');return response.json();})
+    .then(function(user){
+      if(!user||!user.id)return;
+      link.href='/thai/accounts/profile/';
+      var label=english?'Account':'내 계정';
+      link.setAttribute('aria-label',label);
+      link.title=label;
+      if(!link.querySelector('svg'))link.textContent=label;
+    })
+    .catch(function(){});
+}
+function initRootNewsUnread(){
+  var button=document.getElementById('root-news-detail-new');
+  if(!button||!window.fetch)return;
+  var endpoint='/api/news?region='+encodeURIComponent('글로벌')+'&hours=24&limit=100&lang=ko';
+  var seen=Object.create(null),pending=Object.create(null),baselineReady=false,busy=false;
+  function keyFor(article){if(!article)return '';return String(article.link||article.original_link||(article.title||'')+'|'+(article.published_at||'')).trim();}
+  function refresh(){
+    if(busy||document.hidden)return;
+    busy=true;
+    fetch(endpoint,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}})
+      .then(function(response){if(!response.ok)throw new Error('news api');return response.json();})
+      .then(function(data){
+        var articles=Array.isArray(data.articles)?data.articles:[];
+        if(!baselineReady){articles.forEach(function(article){var key=keyFor(article);if(key)seen[key]=true;});baselineReady=true;return;}
+        articles.forEach(function(article){var key=keyFor(article);if(key&&!seen[key]){seen[key]=true;pending[key]=true;}});
+        var count=Object.keys(pending).length;
+        if(count){button.textContent='새 뉴스 '+count+'건 보기';button.hidden=false;}
+      })
+      .catch(function(){})
+      .then(function(){busy=false;});
+  }
+  button.addEventListener('click',function(){window.location.href='/news/ko/';});
+  refresh();
+  window.setInterval(refresh,300000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh();});
+}
+initRootAccount();
+initRootNewsUnread();
 var ticker=document.getElementById('ticker'),tickerInner=document.getElementById('ticker-inner'),
     stateBox=document.getElementById('ticker-state'),stateText=document.getElementById('ticker-state-text'),
     ageText=document.getElementById('ticker-age');
