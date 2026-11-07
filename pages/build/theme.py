@@ -239,7 +239,7 @@ def render_header(active: str = "", lang: str = "ko") -> str:
             '<a class="account-link" href="/thai/accounts/login/?next=/" title="%s">%s</a>'
             '<button class="theme-toggle" id="landing-theme-toggle" type="button" '
             'aria-label="%s" aria-pressed="false">%s</button>'
-            '</div></header><script src="/assets/landing/mexc-ticker.js" defer></script>') % (
+            '</div></header><script src="/assets/landing/mexc-ticker.js?v=root-account-unread-20261107" defer></script>') % (
                 brand_current, "Main sections" if english else "주요 섹션", links,
                 "Opens the separate Thailand site" if english else "별도 사이트로 이동",
                 "Thailand news ↗" if english else "태국 뉴스 ↗",
