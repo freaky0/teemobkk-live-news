@@ -79,12 +79,12 @@ def economic_listing(request):
     return _listing(request,region='글로벌',economic_news=True)
 
 
-def _summary_preview(summary, authenticated):
+def _summary_preview(summary, authenticated, max_preview=220):
     text=str(summary or '').strip()
-    if authenticated or len(text)<=100:
+    if authenticated or len(text)<=max_preview:
         return text,False
 
-    limit=min(220,max(50,len(text)//2))
+    limit=min(max_preview,max(50,len(text)//2))
     if len(text)-limit<60:
         limit=max(50,len(text)-60)
     sentence_end=max(
@@ -111,10 +111,15 @@ def _detail_context(request, article, back_url, comment_form=None, root_news_lay
     summary_preview,has_summary_continuation=_summary_preview(
         article.get('summary',''),request.user.is_authenticated,
     )
+    article_body_preview,has_article_continuation=_summary_preview(
+        article.get('full_text',''),request.user.is_authenticated,max_preview=900,
+    )
     return {
         'article':article,
         'summary_preview':summary_preview,
         'has_summary_continuation':has_summary_continuation,
+        'article_body_preview':article_body_preview,
+        'has_article_continuation':has_article_continuation,
         'back_url':back_url,
         'like_count':NewsLike.objects.filter(article_id=article_id).count(),
         'liked_by_user':request.user.is_authenticated and NewsLike.objects.filter(article_id=article_id,user=request.user).exists(),
@@ -152,7 +157,7 @@ def _from_economic_news_list(origin):
 
 def detail(request,article_id,comment_form=None,status=200):
     try:
-        article=news.get_article(article_id)
+        article=news.get_article(article_id,include_full_text=True)
     except news.NewsUnavailable:
         return render(request,'news/error.html',{'news_error':NOTICE},status=503)
     if not article:

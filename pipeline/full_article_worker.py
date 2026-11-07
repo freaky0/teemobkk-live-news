@@ -41,7 +41,8 @@ CHUNK_CHARS = 1200
 MIN_TRANSLATION_RATIO = 0.35
 STAGE_RETRY_HOURS = 1
 SUMMARY_CHUNK_CHARS = 6000
-USER_AGENT = "TeemoBKK-NewsReader/1.0 (+https://teemobkk.io/)"
+USER_AGENT = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+              "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
 
 FULL_TEXT_SYSTEM_PROMPT = (
     "너는 권한을 받은 태국 뉴스 기사의 전문 번역가다. 입력된 기사 본문을 빠짐없이 한국어로 번역한다. "
@@ -339,6 +340,7 @@ def fetch_text(url: str) -> str:
     request = urllib.request.Request(url, headers={
         "User-Agent": USER_AGENT,
         "Accept": "text/html,application/xhtml+xml;q=0.9",
+        "Accept-Language": "th-TH,th;q=0.9,en-US;q=0.8,en;q=0.7",
     })
     try:
         opener = urllib.request.build_opener(PublicRedirectHandler())
