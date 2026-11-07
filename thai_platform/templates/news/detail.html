@@ -22,23 +22,25 @@
   <meta itemprop="datePublished" content="{{ article.published_at|date:'c' }}">
   <meta itemprop="description" content="{{ summary_preview|striptags|truncatechars:160 }}">
   <meta itemprop="image" content="{% if article.image_url %}{{ article.image_url }}{% else %}{{ share_image_url }}{% endif %}">
-  {% if not article.video_kind and article.image_url %}<img class="news-image news-detail-image" src="{{ article.image_url }}" alt="" decoding="async" referrerpolicy="no-referrer">{% endif %}
+  {% if not article.video_kind and article.image_url %}<img class="news-image news-detail-image" src="{{ article.image_url }}" alt="" decoding="async" referrerpolicy="strict-origin-when-cross-origin">{% endif %}
   <div class="news-meta"><span class="tag">{{ article.category|default:'태국 소식' }}</span><time datetime="{{ article.published_at|date:'c' }}">{{ article.published_at|date:'Y.m.d H:i' }} ICT</time></div>
   <h1 itemprop="headline">{{ article.title }}</h1>
   <a class="news-source" href="{{ article.source_url }}" target="_blank" rel="noopener noreferrer">{{ article.source }} · 원문 보기 ↗</a>
   <div class="news-body" itemprop="articleBody">
-    {{ summary_preview|linebreaks }}
+    {% if article.full_text %}{{ article_body_preview|linebreaks }}{% else %}<p>원문 전체 번역을 준비 중입니다.</p>{% endif %}
     {% if article.video_kind == 'file' %}<div class="news-video-frame"><video class="news-video-player" controls playsinline preload="none" aria-label="{{ article.title }} 동영상"{% if article.image_url %} poster="{{ article.image_url }}"{% endif %}><source src="{{ article.video_url }}">이 브라우저는 동영상 재생을 지원하지 않습니다.</video></div>{% elif article.video_kind == 'embed' %}<div class="news-video-frame"><iframe src="{{ article.video_embed_url }}" title="{{ article.title }} 동영상" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>{% endif %}
-    {% if has_summary_continuation %}
+    {% if has_article_continuation %}
     <p class="news-continuation-ellipsis" aria-hidden="true">···</p>
     {% endif %}
   </div>
-  <p class="note">{% if user.is_authenticated %}뉴스 DB의 한국어 요약입니다. 기사 전문은 원문 보기에서 확인하세요.{% elif has_summary_continuation %}뉴스 DB의 한국어 요약 일부입니다. 로그인하면 요약의 나머지 부분을 이어서 볼 수 있습니다. 기사 전문은 원문 보기에서 확인하세요.{% else %}뉴스 DB의 한국어 요약입니다. 기사 전문은 원문 보기에서 확인하세요.{% endif %} 발행 시각은 ICT 기준입니다.{% if not user.is_authenticated and has_summary_continuation %}<span class="news-continuation-action"><a class="btn primary" href="{% url 'member-login' %}?next={{ detail_next_url|urlencode }}">로그인 후 기사 계속 보기</a><span class="news-continuation-caption">이어서 기사 내용을 확인하려면 로그인하세요.</span></span>{% endif %}</p>
+  {% if article.full_text %}
+  <p class="note">{% if user.is_authenticated %}원문 기사의 전체 내용을 한국어로 번역했습니다.{% elif has_article_continuation %}원문 기사 내용을 번역한 일부입니다. 로그인하면 이어서 볼 수 있습니다.{% else %}원문 기사 전체를 한국어로 번역한 내용입니다.{% endif %} 발행 시각은 ICT 기준입니다.{% if not user.is_authenticated and has_article_continuation %}<span class="news-continuation-action"><a class="btn primary" href="{% url 'member-login' %}?next={{ detail_next_url|urlencode }}">로그인 후 기사 계속 보기</a><span class="news-continuation-caption">이어서 기사 내용을 확인하려면 로그인하세요.</span></span>{% endif %}</p>
+  {% else %}<p class="note">원문 전체 번역을 준비 중입니다. 기사 전문은 원문 보기에서 확인해 주세요. 발행 시각은 ICT 기준입니다.</p>{% endif %}
   <div class="news-engagement" data-news-actions aria-label="기사 반응">
     {% if user.is_authenticated %}<form method="post" action="{% url 'news-like-toggle' article.id %}{% if root_news_layout %}?presentation=root{% elif economic_news_context %}?from={{ origin_query|urlencode }}{% endif %}">{% csrf_token %}<button class="btn{% if liked_by_user %} primary{% endif %}" type="submit" aria-pressed="{{ liked_by_user|yesno:'true,false' }}">{% if liked_by_user %}♥{% else %}♡{% endif %} 좋아요 {{ like_count }}</button></form>{% else %}<a class="btn" href="{% url 'member-login' %}?next={{ detail_next_url|urlencode }}">♡ 좋아요 {{ like_count }} · 로그인</a>{% endif %}
     <button class="btn" type="button" data-share-article data-share-title="{{ article.title }}">공유하기</button>
     <a class="btn" href="{{ back_url }}">뉴스 목록</a>
-    {% if user.is_authenticated %}<a class="btn primary" href="{% url 'post-create' %}">이웃에게 질문하기</a>{% elif not has_summary_continuation %}<a class="btn primary" href="{% url 'member-login' %}?next={{ detail_next_url|urlencode }}">로그인 후 의견 나누기</a>{% endif %}
+    {% if user.is_authenticated %}<a class="btn primary" href="{% url 'post-create' %}">이웃에게 질문하기</a>{% elif not has_article_continuation and article.full_text %}<a class="btn primary" href="{% url 'member-login' %}?next={{ detail_next_url|urlencode }}">로그인 후 의견 나누기</a>{% endif %}
   </div>
   <span class="share-status" data-share-status role="status" aria-live="polite"></span>
 </article>

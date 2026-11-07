@@ -147,7 +147,7 @@ REGION_ALIASES = {
 }
 
 
-def projection_fields(conn):
+def projection_fields(conn, include_full_text=False):
     columns={row['name'] for row in conn.execute('PRAGMA table_info(articles)')}
     source_url=(
         "CASE WHEN safe_url(a.original_link)=1 THEN a.original_link ELSE a.link END AS source_url"
@@ -161,7 +161,11 @@ def projection_fields(conn):
         video="CASE WHEN safe_url(a.video_url)=1 AND lower(a.video_url) LIKE 'https://%' THEN a.video_url ELSE '' END AS video_url"
     else:
         video="'' AS video_url"
-    return FIELDS+','+source_url+','+image+','+video
+    fields=FIELDS+','+source_url+','+image+','+video
+    if include_full_text:
+        full_text="a.full_text_ko" if 'full_text_ko' in columns else "''"
+        fields+=','+full_text+' AS full_text'
+    return fields
 
 
 def project_video(value):
@@ -199,7 +203,7 @@ def project(row):
     if published and timezone.is_naive(published):
         published=published.replace(tzinfo=dt_timezone.utc)
     video=project_video(row['video_url'] or '')
-    return {
+    article = {
         'id':public_id(row['link']),
         'title':strip_tags(row['title_ko']).strip(),
         'summary':strip_tags(row['summary_ko'] or '').strip(),
@@ -212,6 +216,9 @@ def project(row):
         'video_url':video['url'],
         'video_embed_url':video['embed_url'],
     }
+    if 'full_text' in row.keys():
+        article['full_text']=strip_tags(row['full_text'] or '').strip()
+    return article
 
 
 def list_articles(page=1,query='',page_size=20,category='',region_group='',include_categories=False,region='태국'):
@@ -261,12 +268,12 @@ def list_articles(page=1,query='',page_size=20,category='',region_group='',inclu
         return NewsPage([project(row) for row in rows],total,page,page_size,categories,category,region_groups,region_group)
 
 
-def get_article(article_id):
+def get_article(article_id, include_full_text=False):
     if len(article_id)!=64 or any(c not in '0123456789abcdef' for c in article_id):
         return None
     with open_news() as conn:
         conn.execute('BEGIN')
-        fields=projection_fields(conn)
+        fields=projection_fields(conn,include_full_text=include_full_text)
         # The same database contains Thai-local and root/global news. The newsroom
         # listing stays Thai-focused, while a root story can reuse this member detail
         # page, likes, and comments through its stable public ID.

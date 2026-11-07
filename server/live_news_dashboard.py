@@ -264,6 +264,126 @@ def first_text(node: ET.Element, names: tuple[str, ...]) -> str:
     return ""
 
 
+class _RSSBodyParser(HTMLParser):
+    """Extract readable paragraphs from an RSS article body without retaining markup."""
+
+    BLOCKS = {"address", "blockquote", "br", "dd", "div", "h1", "h2", "h3", "h4",
+              "li", "ol", "p", "section", "table", "tr", "ul"}
+    EXCLUDED = {"aside", "button", "figcaption", "footer", "form", "header", "iframe",
+                "nav", "noscript", "script", "style", "svg", "template"}
+    EXCLUDED_HINT_RE = re.compile(
+        r"(?:share|social|advert|related|recommend|subscribe|newsletter|author|breadcrumb|"
+        r"sidebar|comment|footer|header|navigation|widget|popular|trending|promo|caption|outbrain)", re.I
+    )
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts: list[str] = []
+        self.stack: list[tuple[str, bool]] = []
+        self.skip_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        values = {key.lower(): value or "" for key, value in attrs}
+        labels = " ".join(values.get(key, "") for key in ("id", "class", "aria-label", "role"))
+        excluded = tag in self.EXCLUDED or bool(self.EXCLUDED_HINT_RE.search(labels))
+        self.stack.append((tag, excluded))
+        if excluded:
+            self.skip_depth += 1
+        if tag in self.BLOCKS:
+            self._break()
+
+    def handle_startendtag(self, tag, attrs):
+        self.handle_starttag(tag, attrs)
+        self.handle_endtag(tag)
+
+    def handle_endtag(self, tag):
+        index = next((i for i in range(len(self.stack) - 1, -1, -1)
+                      if self.stack[i][0] == tag), None)
+        if index is not None:
+            removed = self.stack[index:]
+            del self.stack[index:]
+            self.skip_depth = max(0, self.skip_depth - sum(1 for _tag, excluded in removed if excluded))
+        if tag in self.BLOCKS:
+            self._break()
+
+    def handle_data(self, data):
+        text = data.strip()
+        if text and not self.skip_depth:
+            self.parts.append(text + " ")
+
+    def _break(self):
+        if not self.skip_depth and (not self.parts or self.parts[-1] != "\n"):
+            self.parts.append("\n")
+
+
+class _RSSImageParser(HTMLParser):
+    """Collect image candidates from article HTML supplied by RSS feeds."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.images: list[str] = []
+
+    def handle_starttag(self, tag, attrs):
+        values = {key.lower(): value or "" for key, value in attrs}
+        if tag == "img":
+            candidates = []
+            for item in (values.get("data-lazy-srcset") or values.get("srcset") or "").split(","):
+                bits = item.strip().rsplit(None, 1)
+                if not bits or not bits[0]:
+                    continue
+                width = 0
+                if len(bits) == 2:
+                    match = re.fullmatch(r"(\d+)w", bits[1])
+                    if match:
+                        width = int(match.group(1))
+                candidates.append((width, bits[0]))
+            self.images.extend(url for _width, url in sorted(candidates, reverse=True))
+            for key in ("data-orig-file", "data-lazy-src", "data-src", "data-original", "src"):
+                if values.get(key):
+                    self.images.append(values[key])
+        elif tag == "link" and "image_src" in values.get("rel", "").lower() and values.get("href"):
+            self.images.append(values["href"])
+
+
+def rss_article_body(markup: str) -> str:
+    parser = _RSSBodyParser()
+    try:
+        parser.feed(str(markup or ""))
+        parser.close()
+    except Exception:
+        return ""
+    raw = html.unescape("".join(parser.parts)).replace("\xa0", " ")
+    paragraphs = [re.sub(r"\s+", " ", part).strip() for part in raw.splitlines()]
+    return "\n\n".join(part for part in paragraphs if part)[:50000].strip()
+
+
+def rss_article_image(item: ET.Element, content_markup: str, base_url: str) -> str:
+    candidates: list[str] = []
+    for node in item.iter():
+        local_name = node.tag.rsplit("}", 1)[-1].lower()
+        if local_name not in {"thumbnail", "content", "enclosure"}:
+            continue
+        media_type = str(node.attrib.get("type") or "").lower()
+        medium = str(node.attrib.get("medium") or "").lower()
+        if (media_type and not media_type.startswith("image/")) or (medium and medium != "image"):
+            continue
+        candidate = node.attrib.get("url") or node.attrib.get("href") or ""
+        if candidate:
+            candidates.append(candidate)
+    image_parser = _RSSImageParser()
+    try:
+        image_parser.feed(content_markup or "")
+        image_parser.close()
+    except Exception:
+        pass
+    candidates.extend(image_parser.images)
+    for candidate in candidates:
+        resolved = _absolute_media_url(candidate, base_url)
+        if resolved:
+            return resolved
+    return ""
+
+
 def parse_date(value: str) -> str:
     if not value:
         return ""
@@ -323,8 +443,25 @@ def parse_rss(payload: bytes, source: str, source_type: str, region: str = "кЄАл
         # page falls back to the hostname of the resolved link.
         original_source = first_text(item, ("source", "{http://www.w3.org/2005/Atom}source"))
         if title and link:
-            output.append(make_article(title, link, summary, parse_date(published), source, source_type,
-                                       region, original_source))
+            article = make_article(title, link, summary, parse_date(published), source, source_type,
+                                   region, original_source)
+            content_node = item.find("{http://purl.org/rss/1.0/modules/content/}encoded")
+            if content_node is None:
+                content_node = item.find("{http://www.w3.org/2005/Atom}content")
+            content_markup = str(content_node.text or "") if content_node is not None else ""
+            image_markup = content_markup
+            for summary_tag in ("description", "{http://www.w3.org/2005/Atom}summary"):
+                summary_node = item.find(summary_tag)
+                if summary_node is not None and summary_node.text:
+                    image_markup += "\n" + str(summary_node.text)
+            if content_markup:
+                body = rss_article_body(content_markup)
+                # Some feeds repeat the same short teaser in description and content:encoded.
+                # Only treat a meaningfully longer body as source text for full translation.
+                if len(body) >= max(500, int(len(article["summary"]) * 1.25)):
+                    article["full_text"] = body
+            article["image_url"] = rss_article_image(item, image_markup, link)
+            output.append(article)
     return output
 
 
@@ -815,6 +952,10 @@ def init_db() -> None:
             connection.execute("ALTER TABLE articles ADD COLUMN video_url TEXT")
         if "media_checked_at" not in columns:
             connection.execute("ALTER TABLE articles ADD COLUMN media_checked_at TEXT")
+        # RSS feeds can include full article text and lead images when publishers
+        # block direct article-page requests. Store these fields on the shared row.
+        if "full_text" not in columns:
+            connection.execute("ALTER TABLE articles ADD COLUMN full_text TEXT")
         # No index on `categories`: the filter is a contains-match, which no index can serve.
         for column in ("published_at", "region", "category", "source", "priority"):
             connection.execute(f"CREATE INDEX IF NOT EXISTS idx_articles_{column} ON articles({column})")
@@ -874,6 +1015,7 @@ def insert_articles(articles: list[dict[str, Any]]) -> int:
             article.get("asset", ""), int(article.get("priority", 3)),
             article.get("published_at", ""), article.get("collected_at", ""),
             article.get("original_source", ""),
+            article.get("image_url", ""), article.get("full_text", ""),
         )
         for article in articles
         if article.get("link") and article.get("published_at")
@@ -883,8 +1025,8 @@ def insert_articles(articles: list[dict[str, Any]]) -> int:
     with DB_LOCK, db_connect() as connection:
         before = connection.total_changes
         connection.executemany(
-            "INSERT OR IGNORE INTO articles (link, title, summary, source, source_type, region, category, categories, asset, priority, published_at, collected_at, original_source) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT OR IGNORE INTO articles (link, title, summary, source, source_type, region, category, categories, asset, priority, published_at, collected_at, original_source, image_url, full_text) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             rows,
         )
         inserted = connection.total_changes - before
@@ -914,6 +1056,44 @@ def insert_articles(articles: list[dict[str, Any]]) -> int:
         return inserted
 
 
+def backfill_feed_metadata(articles: list[dict[str, Any]]) -> int:
+    """Fill empty image/body fields from RSS for previously stored stories."""
+    metadata: dict[str, tuple[str, str]] = {}
+    for article in articles:
+        link = str(article.get("link") or "").strip()
+        if not link:
+            continue
+        image_url = _absolute_media_url(article.get("image_url", ""), link)
+        body = str(article.get("full_text") or "").strip()
+        previous = metadata.get(link, ("", ""))
+        metadata[link] = (image_url or previous[0], body if len(body) > len(previous[1]) else previous[1])
+    rows = [(image_url, body, link, image_url, body)
+            for link, (image_url, body) in metadata.items() if image_url or body]
+    if not rows:
+        return 0
+    hidden = hidden_sources()
+    with DB_LOCK, db_connect() as connection:
+        before = connection.total_changes
+        visibility = (
+            "link=? AND link NOT IN (SELECT link FROM hidden_links) "
+            "AND link NOT IN (SELECT h.link FROM filter_hits h JOIN filter_rules r ON r.id=h.rule_id "
+            "WHERE r.enabled=1 AND h.link NOT IN (SELECT link FROM filter_keeps))"
+        )
+        if hidden:
+            visibility += " AND source NOT IN (" + ",".join("?" for _ in hidden) + ")"
+        for image_url, body, link, has_image, has_body in rows:
+            connection.execute(
+                "UPDATE articles SET "
+                "image_url = CASE WHEN TRIM(COALESCE(image_url,''))='' THEN NULLIF(?, '') ELSE image_url END, "
+                "full_text = CASE WHEN TRIM(COALESCE(full_text,''))='' THEN NULLIF(?, '') ELSE full_text END "
+                "WHERE " + visibility + " AND ((TRIM(COALESCE(image_url,''))='' AND ?<>'') "
+                "OR (TRIM(COALESCE(full_text,''))='' AND ?<>''))",
+                (image_url, body, link, *hidden, has_image, has_body),
+            )
+        connection.commit()
+        return connection.total_changes - before
+
+
 class _ArticleMediaParser(HTMLParser):
     """Read only simple publisher media hints; never execute or preserve markup."""
 
@@ -923,6 +1103,8 @@ class _ArticleMediaParser(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.images: dict[str, str] = {}
+        self.inline_images: list[str] = []
+        self.link_images: list[str] = []
         self.videos: dict[str, str] = {}
         self.video_sources: list[str] = []
         self.video_posters: list[str] = []
@@ -937,6 +1119,25 @@ class _ArticleMediaParser(HTMLParser):
                 self.images.setdefault(key, content)
             if key in self.VIDEO_KEYS and content:
                 self.videos.setdefault(key, content)
+        elif tag == "link" and "image_src" in values.get("rel", "").lower() and values.get("href"):
+            self.link_images.append(values["href"])
+        elif tag == "img":
+            srcset = values.get("data-lazy-srcset") or values.get("srcset") or ""
+            candidates = []
+            for item in srcset.split(","):
+                bits = item.strip().rsplit(None, 1)
+                if not bits or not bits[0]:
+                    continue
+                width = 0
+                if len(bits) == 2:
+                    match = re.fullmatch(r"(\d+)w", bits[1])
+                    if match:
+                        width = int(match.group(1))
+                candidates.append((width, bits[0]))
+            self.inline_images.extend(url for _width, url in sorted(candidates, reverse=True))
+            for key in ("data-orig-file", "data-lazy-src", "data-src", "data-original", "src"):
+                if values.get(key):
+                    self.inline_images.append(values[key])
         elif tag == "video":
             self.in_video = True
             if values.get("poster"):
@@ -964,6 +1165,9 @@ def _absolute_media_url(value: str, base_url: str) -> str:
                 or parsed.username or parsed.password
                 or any(ord(char) < 33 for char in candidate)):
             return ""
+        if parsed.scheme == "http":
+            parsed = parsed._replace(scheme="https")
+            candidate = urllib.parse.urlunsplit(parsed)
     except (TypeError, ValueError):
         return ""
     return candidate
@@ -976,6 +1180,8 @@ def parse_article_media(markup: str, base_url: str) -> dict[str, str]:
     parser.close()
     image_candidates = list(parser.video_posters)
     image_candidates.extend(parser.images.get(key, "") for key in parser.IMAGE_KEYS)
+    image_candidates.extend(parser.link_images)
+    image_candidates.extend(parser.inline_images)
     video_candidates = [parser.videos.get(key, "") for key in parser.VIDEO_KEYS]
     video_candidates.extend(parser.video_sources)
 
@@ -1030,7 +1236,12 @@ def fetch_article_media(url: str, timeout: int = 5) -> dict[str, Any]:
         if (parsed.scheme not in ("http", "https") or not parsed.hostname
                 or parsed.username or parsed.password):
             return {"image_url": "", "video_url": "", "checked": False}
-        request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        request = urllib.request.Request(url, headers={
+            "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                           "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"),
+            "Accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "th-TH,th;q=0.9,en-US;q=0.8,en;q=0.7",
+        })
         with urllib.request.urlopen(request, timeout=timeout) as response:
             markup = response.read(262144).decode("utf-8", errors="ignore")
     except Exception:
@@ -1086,11 +1297,12 @@ def backfill_article_media(limit: int = 10) -> int:
         cached = original_links()
     except Exception:
         cached = {}
-    retry_before = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    retry_before = (datetime.now(timezone.utc) - timedelta(hours=6)).isoformat()
     with DB_LOCK, db_connect() as connection:
         rows = connection.execute(
             "SELECT link FROM articles WHERE media_checked_at IS NULL OR media_checked_at < ? "
-            "ORDER BY collected_at DESC, published_at DESC LIMIT ?",
+            "ORDER BY CASE WHEN TRIM(COALESCE(image_url,''))='' THEN 0 ELSE 1 END, "
+            "collected_at DESC, published_at DESC LIMIT ?",
             (retry_before, max(1, int(limit))),
         ).fetchall()
     targets = []
@@ -1110,6 +1322,13 @@ def backfill_article_media(limit: int = 10) -> int:
     def fetch_one(item: tuple[str, str]) -> tuple[str, dict[str, Any]]:
         link, url = item
         media = fetch_article_media(url)
+        if url != link and (not media.get("image_url") or not media.get("checked")):
+            fallback = fetch_article_media(link)
+            media = {
+                "image_url": media.get("image_url") or fallback.get("image_url", ""),
+                "video_url": media.get("video_url") or fallback.get("video_url", ""),
+                "checked": bool(media.get("checked") or fallback.get("checked")),
+            }
         return link, media
 
     found: list[tuple[str, dict[str, str]]] = []
@@ -1122,7 +1341,7 @@ def backfill_article_media(limit: int = 10) -> int:
             if media.get("checked"):
                 if media.get("image_url"):
                     connection.execute(
-                        "UPDATE articles SET image_url = ? WHERE link = ? AND image_url IS NULL",
+                        "UPDATE articles SET image_url = ? WHERE link = ? AND TRIM(COALESCE(image_url,'')) = ''",
                         (media["image_url"], link),
                     )
                 connection.execute(
@@ -1659,7 +1878,10 @@ def query_articles(hours: int = RETENTION_HOURS, region: str = "", category: Any
     picks = pick_map()
     items = []
     for row in rows:
-        item = dict(row)
+        # Full translated article text is served by the authenticated detail route,
+        # never by the public feed JSON.
+        item = {key: value for key, value in dict(row).items()
+                if key not in {"full_text", "full_text_ko"}}
         item["categories"] = taxonomy.split_categories(item.get("categories"), item.get("category"))
         item["lang"] = taxonomy.detect_lang(item.get("title") or "")
         item["summary_lang"] = taxonomy.detect_lang(item.get("summary") or "")
@@ -1815,6 +2037,12 @@ def collect_news() -> dict[str, Any]:
     # arriving in a later cycle under another outlet's link is the repetition a reader notices.
     deduped = drop_already_stored(dedupe_by_region(fresh_articles))
     inserted = financialjuice_inserted_count + insert_articles(deduped)
+    try:
+        feed_metadata_updated = backfill_feed_metadata(fresh_articles)
+        if feed_metadata_updated:
+            logging.info("RSS article images/bodies backfilled: %d", feed_metadata_updated)
+    except Exception:
+        logging.exception("RSS article metadata backfill failed; collection continues")
     # Translation is deliberately best-effort: if providers are unavailable, originals stay readable
     # and the next collection cycle can retry the pending rows.
     if os.environ.get("TEEMO_TRANSLATE_KO_ENABLED", "1").strip().lower() not in {"0", "false", "no"}:
