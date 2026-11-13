@@ -2290,7 +2290,18 @@ def build_server(db_path: str = "news.db") -> dict[str, int]:
     for gone in pruned:
         print("removed stale section %s (its address now redirects)" % gone)
     editorial_snapshot = editorial_snapshot_from_blog()
-    sizes["index.html"] = write(ROOT / "index.html", landing.render_landing(editorial_snapshot))
+    homepage_posts = landing.editorial_posts(limit=10)
+    known_posts = {
+        (str(post.get("date") or ""), str(post.get("title") or "").strip().casefold())
+        for post in homepage_posts
+    }
+    for post in editorial_snapshot:
+        key = (str(post.get("date") or ""), str(post.get("title") or "").strip().casefold())
+        if key not in known_posts:
+            homepage_posts.append(post)
+            known_posts.add(key)
+    homepage_posts.sort(key=lambda post: str(post.get("date") or ""), reverse=True)
+    sizes["index.html"] = write(ROOT / "index.html", landing.render_landing(homepage_posts[:10]))
     sizes.update(build_blog())
     sizes["perspectives/index.html"] = write(
         ROOT / "perspectives" / "index.html", landing.render_perspectives_page(editorial_snapshot))

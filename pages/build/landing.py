@@ -346,7 +346,7 @@ __HEADER__
 </section>
 <section class="section" id="news" aria-labelledby="news-title"><div class="sec-head"><h2 id="news-title">최근 경제 뉴스</h2></div><p class="section-intro">금리와 경기, 기업과 정책, 지정학까지. 시장에 연결되는 소식을 원문과 시각으로 확인하세요.</p><div class="news-status"><span class="live">● 자동 수집 · 한국어로 표시</span><span id="update-status" role="status">수집 상태 확인 중</span><button class="news-new" id="news-new" type="button" hidden aria-live="polite" aria-atomic="true"></button><button class="retry" id="retry" type="button" hidden>다시 불러오기</button></div><div class="news-list" id="news-list" aria-busy="true"><div class="loading-line short"></div><div class="loading-line"></div><div class="loading-line"></div></div><noscript><p>뉴스 목록을 불러오려면 자바스크립트가 필요합니다. <a href="/news/ko/">경제 뉴스 페이지에서 확인하세요.</a></p></noscript><a class="section-link" href="/news/ko/">전체 뉴스 보기 →</a><figure class="news-strip"><img src="/assets/landing/news-editorial.webp" width="1536" height="1024" loading="lazy" decoding="async" alt="방콕의 편집 데스크에서 경제 뉴스와 시장 자료를 살펴보는 장면"><figcaption>뉴스는 원문과 게시 시각을 확인해 읽습니다.</figcaption></figure></section>
 <section class="kinetic" aria-label="시장을 읽는 방식"><div class="kinetic-inner"><ol class="kinetic-flow"><li class="kinetic-step"><span class="kinetic-copy"><span>뉴스를</span> 읽고</span></li><li class="kinetic-arrow" aria-hidden="true" role="presentation"><span>→</span></li><li class="kinetic-step"><span class="kinetic-copy"><span>관점을</span> 세우고</span></li><li class="kinetic-arrow" aria-hidden="true" role="presentation"><span>→</span></li><li class="kinetic-step"><span class="kinetic-copy"><span>차트로</span> 검증한다</span></li></ol></div></section>
-<section class="section" id="perspectives" aria-labelledby="perspectives-title"><div class="sec-head"><h2 id="perspectives-title">시장 관점</h2></div><p class="section-intro">뉴스와 차트를 어떻게 읽는지, 어떤 조건에서 생각을 바꾸는지. 트레이더로서의 판단을 기록합니다.</p><div class="posts">__POSTS__</div><a class="section-link" href="/blog/">관점 글 더 보기 →</a><p class="note">각 글은 작성 당시의 개인적인 관점입니다. 가격과 시나리오는 현재 시점과 다를 수 있습니다.</p></section>
+<section class="section" id="perspectives" aria-labelledby="perspectives-title"><div class="sec-head"><h2 id="perspectives-title">시장 관점</h2></div><p class="section-intro">뉴스와 차트를 어떻게 읽는지, 어떤 조건에서 생각을 바꾸는지. 트레이더로서의 판단을 기록합니다.</p><div class="posts">__POSTS__</div><a class="section-link" href="https://teemobkk.substack.com/" target="_blank" rel="noopener noreferrer">Substack에서 최신 관점 보기 ↗</a> <a class="section-link" href="/blog/">관점 글 더 보기 →</a><p class="note">각 글은 작성 당시의 개인적인 관점입니다. 가격과 시나리오는 현재 시점과 다를 수 있습니다.</p></section>
 <section class="section" id="indicators" aria-labelledby="indicators-title"><div class="sec-head"><h2 id="indicators-title">직접 만든 트레이딩뷰 지표</h2></div><p class="section-intro">차트의 구조와 파동을 살펴보는 도구입니다. 공식 트레이딩뷰 페이지에서 무료로 사용할 수 있습니다.</p><div class="indicators">__INDICATORS__</div><a class="section-link" href="/indicators/">지표 전체 보기 →</a><a class="section-link" href="https://kr.tradingview.com/u/TeemoBKK/#published-scripts" target="_blank" rel="noopener noreferrer me">트레이딩뷰 전체 지표 보기 ↗</a><p class="note">파동 카운팅과 목표 구간은 진행 중인 가격에 따라 달라질 수 있습니다. 사용 조건과 설정은 각 지표 페이지에서 확인하세요.</p></section>
 <section class="about" aria-labelledby="about-title"><div><div class="sec-head"><h2 id="about-title">TeemoBKK에 대하여</h2></div><p>경제 뉴스를 모으고, 시장을 바라보는 관점을 쓰며, 차트에서 사용하는 지표를 만듭니다.</p><p>뉴스는 시장의 맥락을 살피는 출발점입니다. 해석과 시나리오는 사실과 구분해 기록하겠습니다.</p><a class="section-link" href="/about/">사이트 소개 보기 →</a></div><div><h3>읽기 전에</h3><ul><li>뉴스는 자동 수집한 원문 제목과 출처를 제공합니다.</li><li>시장 관점은 운영자의 개인적인 해석입니다.</li><li>지표는 분석 보조 도구이며 수익을 보장하지 않습니다.</li></ul></div></section>
 </div>
@@ -499,13 +499,18 @@ def _homepage_post_cards(posts) -> str:
     cards = []
     for post in posts:
         slug = str(post.get("original_slug") or "").strip()
-        if not slug:
-            continue
+        if slug:
+            url = "/blog/{}/".format(quote(slug, safe="-._~"))
+        else:
+            url = str(post.get("url") or "").strip()
+            if not url.startswith("https://teemobkk.substack.com/"):
+                continue
         cards.append({
             "date": str(post.get("date") or ""),
             "title": _homepage_title(str(post.get("title") or "")),
-            "url": "/blog/{}/".format(quote(slug, safe="-._~")),
-            "summary": _blog_teaser_summary(post.get("body") or ""),
+            "url": url,
+            "summary": str(post.get("summary") or "").strip()
+            or _blog_teaser_summary(post.get("body") or ""),
         })
     return _render_post_cards(cards[:3])
 
@@ -706,7 +711,7 @@ def render_indicators_page() -> str:
 
 def render_landing(posts=None) -> str:
     selected = [] if posts is None else list(posts)
-    if not selected or not any(post.get("original_slug") for post in selected):
+    if not selected:
         from pages.build.page_build import read_blog_posts
 
         selected = read_blog_posts()
