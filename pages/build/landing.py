@@ -109,6 +109,13 @@ def _substack_image_html(post):
     return ('<img class="substack-post-image" src="{}" alt="{}" '
             'loading="lazy" decoding="async">').format(escape(image, quote=True), title)
 
+
+def _substack_link_attrs(post):
+    url = str(post.get("url") or "")
+    if url.startswith("https://teemobkk.substack.com/"):
+        return ' target="_blank" rel="noopener noreferrer"'
+    return ""
+
 INDICATORS = (
     {
         "code": "fpkVFwl2",
@@ -623,8 +630,9 @@ def _render_post_cards(posts) -> str:
         fields = {key: escape(str(value or ""), quote=True) for key, value in post.items()}
         fields["visible_date"] = escape(theme.display_date(str(post.get("date", ""))))
         fields["image_html"] = _substack_image_html(post)
+        fields["link_attrs"] = _substack_link_attrs(post)
         cards.append(
-            '<article class="post">{image_html}<h3><a href="{url}">{title}</a></h3>'
+            '<article class="post">{image_html}<h3><a href="{url}"{link_attrs}>{title}</a></h3>'
             '<time datetime="{date}">{visible_date}</time>'
             '<p>{summary}</p><a class="read" href="{url}" target="_blank" '
             'rel="noopener noreferrer">Substack 원문 읽기 ↗</a></article>'.format(**fields)
@@ -680,10 +688,11 @@ def render_perspectives_page(posts=None) -> str:
         fields["visible_date"] = escape(theme.display_date(date))
         fields["date"] = escape(date, quote=True)
         fields["image_html"] = _substack_image_html(post)
+        fields["link_attrs"] = _substack_link_attrs(post)
         entries.append(
-            '<article class="page-post">{image_html}<h2><a href="{url}">{title}</a></h2>'
+            '<article class="page-post">{image_html}<h2><a href="{url}"{link_attrs}>{title}</a></h2>'
             '<time datetime="{date}">{visible_date}</time>'
-            '<p>{summary}</p><a class="read" href="{url}">'
+            '<p>{summary}</p><a class="read" href="{url}"{link_attrs}>'
             'Substack 원문 읽기 ↗</a></article>'.format(**fields)
         )
     if not entries:
