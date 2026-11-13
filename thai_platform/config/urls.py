@@ -75,4 +75,5 @@ urlpatterns = [
     path("community/<int:pk>/comments/", web.comment_create, name="comment-create"),
     path("community/<int:pk>/comments/<int:comment_pk>/like/", web.comment_like, name="comment-like"),
     path("community/<int:pk>/report/", web.report_create, name="report-create"),
+    path("community/<slug:category>/", web.board_shortcut, name="post-board-shortcut"),
 ]

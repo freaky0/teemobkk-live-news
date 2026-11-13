@@ -122,6 +122,13 @@ def home(request):
         description="태국 소식은 한국어로 읽고, 비자·집·생활 정보는 이웃의 경험에서 찾아보세요.",
     )
 
+def board_shortcut(request, category):
+    if category not in dict(CATEGORIES):
+        raise Http404
+    query = urlencode({"category": category})
+    return redirect("{}?{}".format(reverse("post-list"), query))
+
+
 def post_list(request):
     qs = published(request.user)
     resolution = request.GET.get('resolution', '')
