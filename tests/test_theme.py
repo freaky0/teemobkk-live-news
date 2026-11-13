@@ -115,9 +115,10 @@ class SharedThemeContract(unittest.TestCase):
             "post_date": "2026-10-{:02d}T00:00:00Z".format(index),
             "canonical_url": "https://teemobkk.substack.com/p/post-{}".format(index),
             "subtitle": "요약 {}".format(index),
+            "section_id": landing.SUBSTACK_PERSPECTIVES_SECTION_ID,
             "postTags": [],
         } for index in range(1, 16)]
-        response = io.BytesIO(json.dumps(payload).encode("utf-8"))
+        response = io.BytesIO(json.dumps({"posts": payload, "nextCursor": "next"}).encode("utf-8"))
         with patch.object(landing, "_fresh_cache", return_value=None), \
                 patch.object(landing, "urlopen", return_value=response) as fetch, \
                 patch.object(landing, "_write_cache"):
@@ -144,7 +145,8 @@ class SharedThemeContract(unittest.TestCase):
                     patch.object(page_build, "seed_from_db", return_value=""), \
                     patch.object(page_build, "seed_briefing_from_db", return_value=("", "")), \
                     patch.object(page_build, "_prune_sections", return_value=[]), \
-                    patch.object(landing, "editorial_posts", side_effect=selected_posts):
+                    patch.object(landing, "editorial_posts", side_effect=selected_posts), \
+                    patch.object(landing, "trading_posts", return_value=[]):
                 sizes = page_build.build_server(db_path="not-used.db")
 
             perspectives = (root / "perspectives" / "index.html").read_text(encoding="utf-8")
