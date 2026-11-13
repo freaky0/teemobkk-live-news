@@ -18,6 +18,8 @@ from html import escape
 import json
 import re
 import time
+from html.parser import HTMLParser
+from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 from pages.build import theme
 
@@ -30,6 +32,82 @@ _CACHE_FILES = {
     SUBSTACK_TRADING_SECTION_ID: _REPO_ROOT / "trading_cache.json",
 }
 _CACHE_TTL_SECONDS = 3600
+_CACHE_VERSION = 2
+
+
+class _ParagraphCollector(HTMLParser):
+    """Collect paragraph text from Substack HTML without emitting markup."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.paragraphs = []
+        self._inside_paragraph = False
+        self._skip_depth = 0
+        self._paragraph = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag in {"script", "style", "noscript"}:
+            self._skip_depth += 1
+        elif tag == "p" and not self._skip_depth:
+            self._inside_paragraph = True
+            self._paragraph = []
+
+    def handle_endtag(self, tag):
+        if tag in {"script", "style", "noscript"} and self._skip_depth:
+            self._skip_depth -= 1
+        elif tag == "p" and self._inside_paragraph:
+            text = re.sub(r"\s+", " ", " ".join(self._paragraph)).strip()
+            if text:
+                self.paragraphs.append(text)
+            self._inside_paragraph = False
+            self._paragraph = []
+
+    def handle_data(self, data):
+        if self._inside_paragraph and not self._skip_depth:
+            self._paragraph.append(data)
+
+
+def _body_excerpt(body_html, limit=190):
+    parser = _ParagraphCollector()
+    try:
+        parser.feed(str(body_html or ""))
+    except (ValueError, TypeError):
+        return ""
+    candidates = [
+        paragraph for paragraph in parser.paragraphs
+        if len(paragraph) >= 40 and not re.match(r"(?i)^by\s+teemobkk\b", paragraph)
+    ]
+    if not candidates:
+        return ""
+    excerpt = candidates[0]
+    if len(excerpt) > limit:
+        excerpt = excerpt[:limit - 1].rsplit(" ", 1)[0].rstrip(" ,;:—–-") + "…"
+    return excerpt
+
+
+def _safe_cover_image(value):
+    image = str(value or "").strip()
+    try:
+        parsed = urlsplit(image)
+    except ValueError:
+        return ""
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme != "https" or not (
+        host == "substackcdn.com"
+        or host.endswith(".substackcdn.com")
+        or host == "substack-post-media.s3.amazonaws.com"
+    ):
+        return ""
+    return image
+
+
+def _substack_image_html(post):
+    image = _safe_cover_image(post.get("image"))
+    if not image:
+        return ""
+    title = escape(str(post.get("title") or ""), quote=True)
+    return ('<img class="substack-post-image" src="{}" alt="{}" '
+            'loading="lazy" decoding="async">').format(escape(image, quote=True), title)
 
 INDICATORS = (
     {
@@ -62,7 +140,8 @@ def _read_cache(section_id):
     try:
         with _CACHE_FILES[section_id].open(encoding="utf-8") as handle:
             cached = json.load(handle)
-        if not isinstance(cached, dict) or cached.get("section_id") != section_id:
+        if (not isinstance(cached, dict) or cached.get("section_id") != section_id
+                or cached.get("version") != _CACHE_VERSION):
             return None
         posts = cached.get("posts")
         return posts if _valid_posts(posts) else None
@@ -99,7 +178,9 @@ def _fetch_posts(section_id):
             "title": title,
             "date": date,
             "url": url,
-            "summary": str(item.get("subtitle") or item.get("description") or "").strip(),
+            "summary": _body_excerpt(item.get("body_html"))
+            or str(item.get("subtitle") or item.get("description") or "").strip(),
+            "image": _safe_cover_image(item.get("cover_image")),
         })
     posts.sort(key=lambda post: post["date"], reverse=True)
     return posts[:10]
@@ -110,7 +191,8 @@ def _write_cache(section_id, posts):
     temporary = cache_file.with_name(cache_file.name + ".tmp")
     try:
         with temporary.open("w", encoding="utf-8") as handle:
-            json.dump({"fetched_at": int(time.time()), "section_id": section_id, "posts": posts},
+            json.dump({"fetched_at": int(time.time()), "section_id": section_id,
+                       "version": _CACHE_VERSION, "posts": posts},
                       handle, ensure_ascii=False, indent=2)
             handle.write("\n")
         temporary.replace(cache_file)
@@ -257,6 +339,7 @@ h2{font-size:clamp(24px,3vw,34px);line-height:1.18;letter-spacing:-.035em;margin
 .post h3{font-size:20px;line-height:1.35;letter-spacing:-.025em;margin:0 0 8px;font-weight:750;word-break:keep-all}
 .post h3 a:hover{color:var(--accent)}
 .post p{font-size:17px;color:var(--text);margin:0;line-height:1.75;max-width:60ch;word-break:keep-all}
+.post .substack-post-image{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;margin:0 0 14px;background:var(--surface2)}
 .post .read{display:inline-flex;align-items:center;min-height:40px;color:var(--accent);font:600 13.5px/1.5 var(--sans);margin-top:10px}
 .post .read:hover{text-decoration:underline;text-underline-offset:4px}
 .note{font-size:13.5px;color:var(--muted);margin-top:22px;max-width:60ch;line-height:1.75}
@@ -529,6 +612,7 @@ def _homepage_post_cards(posts) -> str:
             "url": url,
             "summary": str(post.get("summary") or "").strip()
             or _blog_teaser_summary(post.get("body") or ""),
+            "image": str(post.get("image") or ""),
         })
     return _render_post_cards(cards[:3])
 
@@ -538,12 +622,20 @@ def _render_post_cards(posts) -> str:
     for post in posts:
         fields = {key: escape(str(value or ""), quote=True) for key, value in post.items()}
         fields["visible_date"] = escape(theme.display_date(str(post.get("date", ""))))
+        fields["image_html"] = _substack_image_html(post)
         cards.append(
-            '<article class="post"><h3><a href="{url}">{title}</a></h3>'
+            '<article class="post">{image_html}<h3><a href="{url}">{title}</a></h3>'
             '<time datetime="{date}">{visible_date}</time>'
-            '<p>{summary}</p><a class="read" href="{url}">블로그 글 읽기 →</a></article>'.format(**fields)
+            '<p>{summary}</p><a class="read" href="{url}" target="_blank" '
+            'rel="noopener noreferrer">Substack 원문 읽기 ↗</a></article>'.format(**fields)
         )
     return "".join(cards)
+
+
+SUBSTACK_CARD_CSS = (
+    ".substack-post-image{display:block;width:100%;aspect-ratio:16/9;"
+    "object-fit:cover;margin:0 0 14px;background:var(--surface2)}"
+)
 
 
 def _standalone_page(title: str, description: str, content: str, extra_css: str = "",
@@ -587,17 +679,19 @@ def render_perspectives_page(posts=None) -> str:
         date = str(post.get("date", ""))
         fields["visible_date"] = escape(theme.display_date(date))
         fields["date"] = escape(date, quote=True)
+        fields["image_html"] = _substack_image_html(post)
         entries.append(
-            '<article class="page-post"><h2><a href="{url}">{title}</a></h2>'
+            '<article class="page-post">{image_html}<h2><a href="{url}">{title}</a></h2>'
             '<time datetime="{date}">{visible_date}</time>'
             '<p>{summary}</p><a class="read" href="{url}">'
-            '블로그 글 읽기 →</a></article>'.format(**fields)
+            'Substack 원문 읽기 ↗</a></article>'.format(**fields)
         )
     if not entries:
         entries.append('<p class="empty">현재 표시할 관점 글이 없습니다.</p>')
     content = '<div class="page-posts">{}</div>'.format("".join(entries))
     return _standalone_page(
         "시장 관점", "시장 관점은 짧은 요약으로 살펴보고, 전체 글은 블로그에서 읽을 수 있습니다.", content,
+        extra_css=SUBSTACK_CARD_CSS,
         active="perspectives",
     )
 
@@ -713,11 +807,12 @@ def render_trading_blog_list(posts) -> str:
         date = escape(str(post.get("date") or ""), quote=True)
         visible = escape(theme.display_date(str(post.get("date") or "")))
         summary = escape(str(post.get("summary") or ""))
+        image_html = _substack_image_html(post)
         entries.append(
-            '<article class="page-post"><h2><a href="{url}" target="_blank" '
+            '<article class="page-post">{image_html}<h2><a href="{url}" target="_blank" '
             'rel="noopener noreferrer">{title} ↗</a></h2><time datetime="{date}">'
             '{visible}</time>{summary_html}</article>'.format(
-                url=escape(url, quote=True), title=title, date=date, visible=visible,
+                image_html=image_html, url=escape(url, quote=True), title=title, date=date, visible=visible,
                 summary_html='<p>{}</p>'.format(summary) if summary else ""))
     if not entries:
         entries.append('<p class="empty">현재 표시할 트레이딩 글이 없습니다.</p>')
@@ -727,6 +822,7 @@ def render_trading_blog_list(posts) -> str:
             '<div class="page-posts">{}</div><a class="section-link" '
             'href="https://teemobkk.substack.com/s/5d2" target="_blank" '
             'rel="noopener noreferrer">Substack 트레이딩 전체 보기 ↗</a>'.format("".join(entries)),
+            extra_css=SUBSTACK_CARD_CSS,
             active="blog",
         ),
         "https://teemobkk.io/blog/",
